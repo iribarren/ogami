@@ -1,0 +1,1653 @@
+{
+    "schemaVersion": 2,
+    "gameSystem": {
+        "key": "lanterns-of-the-mire",
+        "name": "Lanterns of the Mire",
+        "description": "An original mystery game of folk-beings and lantern light in the 1870s North, built on the Year Zero Engine SRD.",
+        "credits": {
+            "notice": "Lanterns of the Mire is an original game; its text was written with the help of generative AI. This game is not affiliated with, sponsored, or endorsed by Fria Ligan AB. The Year Zero Engine System Reference Document is used under Fria Ligan AB's Free Tabletop License.",
+            "license": "Year Zero Engine Free Tabletop License 1.1",
+            "url": "https://freeleaguepublishing.com/wp-content/uploads/2026/03/Year-Zero-Engine-License-Agreement-version-1.1.pdf"
+        }
+    },
+    "theme": "eldritch",
+    "oracles": {
+        "tables": [
+            {
+                "key": "folk-being",
+                "name": "The folk-being",
+                "dice": "1d12",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "Water-horse: a pale horse at the river's edge that begs to be ridden and never stops at the bank"
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "Forest-wife: a woman of the deep woods, lovely from the front and hollow as a rotten stump behind"
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "Drowned one: a sailor the sea did not keep, walking ashore to demand a proper grave"
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "Night-rider: a weight that sits on sleepers' chests and drinks their breath"
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "Marsh-light: a wandering flame that leads travellers off the causeway into the bog"
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "Changeling: a child that is not the child, left in the cradle by the hill-folk"
+                    },
+                    {
+                        "min": 7,
+                        "max": 7,
+                        "text": "Barrow-dweller: the restless lord of an old mound, jealous of every stone of it"
+                    },
+                    {
+                        "min": 8,
+                        "max": 8,
+                        "text": "Church-grim: a black dog that guards the churchyard and hunts those who rob it"
+                    },
+                    {
+                        "min": 9,
+                        "max": 9,
+                        "text": "Hill-folk: proud people under the hill who keep old bargains to the letter"
+                    },
+                    {
+                        "min": 10,
+                        "max": 10,
+                        "text": "Mine-keeper: a woman of the deep seams who rewards respect and buries the greedy"
+                    },
+                    {
+                        "min": 11,
+                        "max": 11,
+                        "text": "Hearth-gnome: a small old one of the farmstead, generous until it is slighted"
+                    },
+                    {
+                        "min": 12,
+                        "max": 12,
+                        "text": "Sea-wife: a voice in the waves that calls fishermen to her and keeps them"
+                    }
+                ]
+            },
+            {
+                "key": "what-it-wants",
+                "name": "What it wants",
+                "dice": "1d8",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "Revenge for a wrong done long ago"
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "A promise kept that someone's grandparent broke"
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "Something stolen from it, given back"
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "A child, owed to it by an old bargain"
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "To be remembered with the old offerings"
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "Its land back, now ploughed, dammed or mined"
+                    },
+                    {
+                        "min": 7,
+                        "max": 7,
+                        "text": "Release from a binding someone laid on it"
+                    },
+                    {
+                        "min": 8,
+                        "max": 8,
+                        "text": "A mortal's company, forever"
+                    }
+                ]
+            },
+            {
+                "key": "where-the-trouble-lies",
+                "name": "Where the trouble lies",
+                "dice": "1d8",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "A mill village on a fast river"
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "A manor house with a shuttered wing"
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "A lighthouse on a lonely skerry"
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "A mining town high in the fells"
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "A parish church and its old churchyard"
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "A ferry crossing lost in fog"
+                    },
+                    {
+                        "min": 7,
+                        "max": 7,
+                        "text": "A university town and its crumbling library"
+                    },
+                    {
+                        "min": 8,
+                        "max": 8,
+                        "text": "A fishing hamlet at the edge of the ice"
+                    }
+                ]
+            },
+            {
+                "key": "a-clue",
+                "name": "A clue",
+                "dice": "1d10",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "Footprints that end in the middle of a field"
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "A smell of wet earth and river weed indoors"
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "An old ballad the elders will not finish"
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "A page missing from the parish register"
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "A witness who dreamed it before it happened"
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "An iron charm, nailed up and then torn down"
+                    },
+                    {
+                        "min": 7,
+                        "max": 7,
+                        "text": "Something missing that no thief would want"
+                    },
+                    {
+                        "min": 8,
+                        "max": 8,
+                        "text": "Animals that refuse to go near one place"
+                    },
+                    {
+                        "min": 9,
+                        "max": 9,
+                        "text": "A child's drawing of a visitor no one else saw"
+                    },
+                    {
+                        "min": 10,
+                        "max": 10,
+                        "text": "A name carved into an old beam, then scratched out"
+                    }
+                ]
+            },
+            {
+                "key": "complication",
+                "name": "Complication",
+                "dice": "1d8",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "The light fails: lanterns gutter and go out"
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "The locals turn on you: strangers bring trouble"
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "A witness vanishes"
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "The weather closes in: snow, fog or flood"
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "A rival wants the credit, or the creature"
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "The authorities forbid you to go further"
+                    },
+                    {
+                        "min": 7,
+                        "max": 7,
+                        "text": "Someone you trust lies to you"
+                    },
+                    {
+                        "min": 8,
+                        "max": 8,
+                        "text": "It is watching you now"
+                    }
+                ]
+            }
+        ],
+        "likelihood": [
+            {
+                "key": "is-it-so",
+                "name": "Is it so?",
+                "sides": 100,
+                "levels": [
+                    {
+                        "key": "unlikely",
+                        "label": "Unlikely",
+                        "target": 25
+                    },
+                    {
+                        "key": "even",
+                        "label": "Even odds",
+                        "target": 50
+                    },
+                    {
+                        "key": "likely",
+                        "label": "Likely",
+                        "target": 75
+                    }
+                ]
+            }
+        ]
+    },
+    "trackers": [
+        {
+            "key": "clues",
+            "name": "Clues",
+            "hint": "Rises when an inquiry finds something. At 4 you know enough to unmask the folk-being.",
+            "kind": "counter",
+            "min": 0,
+            "max": 6,
+            "initial": 0
+        },
+        {
+            "key": "nightfall",
+            "name": "Nightfall",
+            "hint": "Fills as time runs out. When it is full, the folk-being strikes.",
+            "kind": "clock",
+            "segments": 6
+        }
+    ],
+    "factSlots": [],
+    "tags": [
+        {
+            "key": "witness",
+            "label": "Witness",
+            "hint": "Saw or heard something",
+            "appliesTo": [
+                "npc"
+            ]
+        },
+        {
+            "key": "suspect",
+            "label": "Suspect",
+            "hint": "May be behind it, or hiding it",
+            "appliesTo": [
+                "npc"
+            ]
+        },
+        {
+            "key": "folk-being",
+            "label": "Folk-being",
+            "hint": "One of the hidden folk",
+            "appliesTo": [
+                "npc"
+            ]
+        },
+        {
+            "key": "ally",
+            "label": "Ally",
+            "hint": "Someone on your side",
+            "appliesTo": [
+                "npc"
+            ]
+        }
+    ],
+    "sceneTypes": [
+        {
+            "key": "inquiry",
+            "name": "Inquiry",
+            "purpose": "Investigation: question witnesses, search places and records, piece the mystery together.",
+            "oracles": [
+                "a-clue",
+                "is-it-so"
+            ],
+            "setup": [
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "Where do you look, and for what?",
+                    "prompt": "Say where the scene is set and what you hope to learn. Give it a short title.",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "sceneTitle",
+                            "title": "{answer}"
+                        }
+                    ]
+                },
+                {
+                    "key": "table-1",
+                    "kind": "table",
+                    "title": "Find a clue",
+                    "prompt": "Roll for what you find, then say how it fits the mystery so far.",
+                    "mandatory": true,
+                    "table": "a-clue"
+                }
+            ],
+            "play": [
+                {
+                    "key": "check-1",
+                    "kind": "check",
+                    "title": "Dig deeper",
+                    "prompt": "Pick how you dig: Lore, Inquiry, Alertness, Persuade or Insight. A success adds a Clue; a failure lets the night draw in.",
+                    "mandatory": true,
+                    "checks": [
+                        "lore",
+                        "inquiry",
+                        "alertness",
+                        "persuade",
+                        "insight"
+                    ],
+                    "outcomes": [
+                        {
+                            "band": "failure",
+                            "effects": [
+                                {
+                                    "kind": "tracker",
+                                    "tracker": "nightfall",
+                                    "op": "add",
+                                    "value": 1
+                                }
+                            ]
+                        },
+                        {
+                            "band": "success",
+                            "effects": [
+                                {
+                                    "kind": "tracker",
+                                    "tracker": "clues",
+                                    "op": "add",
+                                    "value": 1
+                                }
+                            ]
+                        },
+                        {
+                            "band": "strong",
+                            "effects": [
+                                {
+                                    "kind": "tracker",
+                                    "tracker": "clues",
+                                    "op": "add",
+                                    "value": 1
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "closing": [
+                {
+                    "key": "condition-1",
+                    "kind": "condition",
+                    "title": "How much do you know?",
+                    "tracker": "clues",
+                    "bands": [
+                        {
+                            "upTo": 3,
+                            "label": "Not enough yet: keep digging, or face what comes."
+                        },
+                        {
+                            "label": "You know enough: when ready, end the Investigation and unmask the folk-being."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "key": "struggle",
+            "name": "Struggle",
+            "purpose": "Danger: chases, fights, storms and the folk-being's tricks, where you act to survive.",
+            "oracles": [
+                "complication",
+                "is-it-so"
+            ],
+            "setup": [
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "What threatens you?",
+                    "prompt": "Say what danger you face and where. Give the scene a short title.",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "sceneTitle",
+                            "title": "{answer}"
+                        }
+                    ]
+                },
+                {
+                    "key": "table-1",
+                    "kind": "table",
+                    "title": "Add a complication",
+                    "prompt": "Roll for a complication and work it into the danger.",
+                    "mandatory": true,
+                    "table": "complication"
+                }
+            ],
+            "play": [
+                {
+                    "key": "check-1",
+                    "kind": "check",
+                    "title": "Act to survive",
+                    "prompt": "Pick how you act: Brawl, Endure, Haul, Shoot, Sneak or Nimble. A failure lets the night draw in.",
+                    "mandatory": true,
+                    "checks": [
+                        "brawl",
+                        "endure",
+                        "haul",
+                        "shoot",
+                        "sneak",
+                        "nimble"
+                    ],
+                    "outcomes": [
+                        {
+                            "band": "failure",
+                            "effects": [
+                                {
+                                    "kind": "tracker",
+                                    "tracker": "nightfall",
+                                    "op": "add",
+                                    "value": 1
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "closing": []
+        },
+        {
+            "key": "respite",
+            "name": "Respite",
+            "purpose": "Rest: tend wounds, steady your nerves and remember why you came. Time passes.",
+            "oracles": [
+                "is-it-so"
+            ],
+            "setup": [
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "Where do you rest, and with whom?",
+                    "prompt": "Say where you find shelter and who keeps you company. Give the scene a short title.",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "sceneTitle",
+                            "title": "{answer}"
+                        }
+                    ]
+                }
+            ],
+            "play": [
+                {
+                    "key": "choice-1",
+                    "kind": "choice",
+                    "title": "How do you recover?",
+                    "prompt": "Resting costs time: the night draws in.",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "tracker",
+                            "tracker": "nightfall",
+                            "op": "add",
+                            "value": 1
+                        }
+                    ],
+                    "options": [
+                        {
+                            "key": "tend-wounds",
+                            "label": "Tend your wounds",
+                            "effects": [
+                                {
+                                    "kind": "sheet",
+                                    "field": "body",
+                                    "op": "clear"
+                                }
+                            ]
+                        },
+                        {
+                            "key": "steady-nerves",
+                            "label": "Steady your nerves",
+                            "effects": [
+                                {
+                                    "kind": "sheet",
+                                    "field": "mind",
+                                    "op": "clear"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "closing": []
+        },
+        {
+            "key": "confrontation",
+            "name": "Confrontation",
+            "purpose": "The unmasking: name the folk-being, face it, and settle what it wants.",
+            "oracles": [
+                "folk-being",
+                "what-it-wants",
+                "is-it-so"
+            ],
+            "setup": [
+                {
+                    "key": "table-1",
+                    "kind": "table",
+                    "title": "Name the folk-being",
+                    "prompt": "Roll to learn what has been behind it all, then say how your clues pointed to it.",
+                    "mandatory": true,
+                    "table": "folk-being"
+                },
+                {
+                    "key": "table-2",
+                    "kind": "table",
+                    "title": "Learn what it wants",
+                    "prompt": "Roll for its want, then say what that means for the people here.",
+                    "mandatory": true,
+                    "table": "what-it-wants"
+                },
+                {
+                    "key": "check-1",
+                    "kind": "check",
+                    "title": "Stand fast",
+                    "prompt": "It shows itself. Roll Stand Fast.",
+                    "mandatory": true,
+                    "check": "stand-fast",
+                    "outcomes": [
+                        {
+                            "band": "failure",
+                            "effects": [
+                                {
+                                    "kind": "sheet",
+                                    "field": "mind",
+                                    "op": "mark",
+                                    "value": "dread"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "play": [
+                {
+                    "key": "check-1",
+                    "kind": "check",
+                    "title": "Settle it",
+                    "prompt": "Banish it with Lore, bargain with Persuade, or fight it with Brawl or Shoot. On a failure it marks you.",
+                    "mandatory": true,
+                    "checks": [
+                        "brawl",
+                        "shoot",
+                        "lore",
+                        "persuade"
+                    ],
+                    "outcomes": [
+                        {
+                            "band": "failure",
+                            "effects": [
+                                {
+                                    "kind": "sheet",
+                                    "field": "body",
+                                    "op": "mark",
+                                    "value": "bleeding"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "closing": []
+        }
+    ],
+    "flows": [
+        {
+            "key": "a-mystery",
+            "name": "A Mystery",
+            "description": "One mystery for one investigator: a letter calls you to a place where the hidden folk stir. Investigate, then unmask what is behind it.",
+            "introduction": "You are the whole table. Make your investigator, read the letter that calls you, then play scenes of Inquiry, Struggle and Respite until you know enough. Clues bring you closer; Nightfall runs out the time. Roll with a pool of six-sided dice: every six is a success. Any roll with a missed die can be pushed once: re-roll the dice that missed, and mark a Condition. When you know enough, or the night is full, end the Investigation and unmask the folk-being.",
+            "default": true,
+            "defaultView": "focus",
+            "oracles": [
+                "folk-being",
+                "what-it-wants",
+                "where-the-trouble-lies",
+                "a-clue",
+                "complication",
+                "is-it-so"
+            ],
+            "trackers": [
+                "clues",
+                "nightfall"
+            ],
+            "phases": [
+                {
+                    "key": "prologue",
+                    "name": "Prologue",
+                    "act": "The letter",
+                    "description": "A letter calls you north.",
+                    "mode": "once",
+                    "selection": {
+                        "rule": "sequence",
+                        "sceneTypes": [
+                            "inquiry"
+                        ]
+                    },
+                    "phaseOpening": [
+                        {
+                            "key": "character-1",
+                            "kind": "character",
+                            "title": "Make your investigator",
+                            "prompt": "Name your investigator, pick an archetype, a drive and a dark secret. Spread 12 points over your four attributes (2 to 4 each), then 8 points over your skills (at most 3 in one). Note a keepsake.",
+                            "mandatory": true
+                        },
+                        {
+                            "key": "table-1",
+                            "kind": "table",
+                            "title": "Where the trouble lies",
+                            "prompt": "Roll for the place the letter comes from.",
+                            "mandatory": true,
+                            "table": "where-the-trouble-lies"
+                        },
+                        {
+                            "key": "prompt-1",
+                            "kind": "prompt",
+                            "title": "Who wrote to you? Give a name.",
+                            "prompt": "Name the person who asked for help, in a few words.",
+                            "tip": "They become an NPC. They want it ended, and hide something about it.",
+                            "mandatory": true,
+                            "effects": [
+                                {
+                                    "kind": "createNpc",
+                                    "name": "{answer}",
+                                    "agenda": "Wants the trouble ended, and hides something about it.",
+                                    "tags": [
+                                        "witness"
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "key": "prompt-2",
+                            "kind": "prompt",
+                            "title": "What has gone wrong there? A few words.",
+                            "prompt": "Say in a few words what the letter describes.",
+                            "mandatory": true,
+                            "effects": [
+                                {
+                                    "kind": "createThread",
+                                    "name": "{answer}"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "key": "investigation",
+                    "name": "Investigation",
+                    "act": "The mystery",
+                    "description": "Dig, survive, rest. End this phase when you know enough or the night is full.",
+                    "mode": "loop",
+                    "selection": {
+                        "rule": "player",
+                        "sceneTypes": [
+                            "inquiry",
+                            "struggle",
+                            "respite"
+                        ]
+                    },
+                    "sceneClosing": [
+                        {
+                            "key": "condition-1",
+                            "kind": "condition",
+                            "title": "Has night fallen?",
+                            "tracker": "nightfall",
+                            "bands": [
+                                {
+                                    "upTo": 5,
+                                    "label": "The night still holds."
+                                },
+                                {
+                                    "label": "Night has fallen: the folk-being strikes. Face it now.",
+                                    "effects": [
+                                        {
+                                            "kind": "endPhase"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "key": "unmasking",
+                    "name": "Unmasking",
+                    "act": "The reckoning",
+                    "description": "Face the folk-being.",
+                    "mode": "once",
+                    "selection": {
+                        "rule": "sequence",
+                        "sceneTypes": [
+                            "confrontation"
+                        ]
+                    },
+                    "phaseClosing": [
+                        {
+                            "key": "choice-1",
+                            "kind": "choice",
+                            "title": "Did you learn what it truly wanted?",
+                            "options": [
+                                {
+                                    "key": "yes",
+                                    "label": "Yes",
+                                    "effects": [
+                                        {
+                                            "kind": "sheet",
+                                            "field": "xp",
+                                            "op": "add",
+                                            "value": 1
+                                        }
+                                    ]
+                                },
+                                {
+                                    "key": "no",
+                                    "label": "No"
+                                }
+                            ],
+                            "skip": "no"
+                        },
+                        {
+                            "key": "choice-2",
+                            "kind": "choice",
+                            "title": "Did you face it at the risk of harm?",
+                            "options": [
+                                {
+                                    "key": "yes",
+                                    "label": "Yes",
+                                    "effects": [
+                                        {
+                                            "kind": "sheet",
+                                            "field": "xp",
+                                            "op": "add",
+                                            "value": 1
+                                        }
+                                    ]
+                                },
+                                {
+                                    "key": "no",
+                                    "label": "No"
+                                }
+                            ],
+                            "skip": "no"
+                        },
+                        {
+                            "key": "choice-3",
+                            "kind": "choice",
+                            "title": "Did your drive or your dark secret come into play?",
+                            "options": [
+                                {
+                                    "key": "yes",
+                                    "label": "Yes",
+                                    "effects": [
+                                        {
+                                            "kind": "sheet",
+                                            "field": "xp",
+                                            "op": "add",
+                                            "value": 1
+                                        }
+                                    ]
+                                },
+                                {
+                                    "key": "no",
+                                    "label": "No"
+                                }
+                            ],
+                            "skip": "no"
+                        },
+                        {
+                            "key": "prompt-1",
+                            "kind": "prompt",
+                            "title": "What do you carry home?",
+                            "prompt": "Say what this mystery left you with. Your wounds and strain heal before the next letter.",
+                            "effects": [
+                                {
+                                    "kind": "sheet",
+                                    "field": "body",
+                                    "op": "clear"
+                                },
+                                {
+                                    "kind": "sheet",
+                                    "field": "mind",
+                                    "op": "clear"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "sheet": {
+        "fields": [
+            {
+                "key": "archetype",
+                "label": "Archetype",
+                "hint": "Who you were before you saw the hidden folk: a priest, a doctor, a soldier, a scholar, a servant…",
+                "group": "Identity",
+                "type": "text"
+            },
+            {
+                "key": "drive",
+                "label": "Drive",
+                "hint": "Why you keep walking toward the dark.",
+                "group": "Identity",
+                "type": "text"
+            },
+            {
+                "key": "dark-secret",
+                "label": "Dark secret",
+                "hint": "What you hide, even from the society.",
+                "group": "Identity",
+                "type": "text"
+            },
+            {
+                "key": "vigour",
+                "label": "Vigour",
+                "hint": "Strength, stamina and grit.",
+                "group": "Attributes",
+                "type": "number",
+                "min": 2,
+                "max": 5,
+                "default": 2
+            },
+            {
+                "key": "finesse",
+                "label": "Finesse",
+                "hint": "Speed, balance and a steady hand.",
+                "group": "Attributes",
+                "type": "number",
+                "min": 2,
+                "max": 5,
+                "default": 2
+            },
+            {
+                "key": "reason",
+                "label": "Reason",
+                "hint": "Learning, logic and a sharp eye.",
+                "group": "Attributes",
+                "type": "number",
+                "min": 2,
+                "max": 5,
+                "default": 2
+            },
+            {
+                "key": "heart",
+                "label": "Heart",
+                "hint": "Warmth, will and understanding of people.",
+                "group": "Attributes",
+                "type": "number",
+                "min": 2,
+                "max": 5,
+                "default": 2
+            },
+            {
+                "key": "body",
+                "label": "Bodily harm",
+                "hint": "Each one marked costs a die on Vigour and Finesse rolls. All three: you are broken until someone tends you.",
+                "group": "Conditions",
+                "type": "conditions",
+                "options": [
+                    {
+                        "key": "winded",
+                        "label": "Winded"
+                    },
+                    {
+                        "key": "bruised",
+                        "label": "Bruised"
+                    },
+                    {
+                        "key": "bleeding",
+                        "label": "Bleeding"
+                    }
+                ]
+            },
+            {
+                "key": "mind",
+                "label": "Strain on the mind",
+                "hint": "Each one marked costs a die on Reason and Heart rolls and on Stand Fast. All three: you are broken until you rest.",
+                "group": "Conditions",
+                "type": "conditions",
+                "options": [
+                    {
+                        "key": "rattled",
+                        "label": "Rattled"
+                    },
+                    {
+                        "key": "dread",
+                        "label": "Dread"
+                    },
+                    {
+                        "key": "despair",
+                        "label": "Despair"
+                    }
+                ]
+            },
+            {
+                "key": "brawl",
+                "label": "Brawl",
+                "hint": "Vigour. Fists, knives, cudgels.",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5,
+                "default": 0
+            },
+            {
+                "key": "endure",
+                "label": "Endure",
+                "hint": "Vigour. Cold, hunger, poison, long nights.",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5,
+                "default": 0
+            },
+            {
+                "key": "haul",
+                "label": "Haul",
+                "hint": "Vigour. Lift, break, climb by main force.",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5,
+                "default": 0
+            },
+            {
+                "key": "shoot",
+                "label": "Shoot",
+                "hint": "Finesse. Pistols, rifles, bows, throwing.",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5,
+                "default": 0
+            },
+            {
+                "key": "sneak",
+                "label": "Sneak",
+                "hint": "Finesse. Move unseen, hide, pick a lock.",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5,
+                "default": 0
+            },
+            {
+                "key": "nimble",
+                "label": "Nimble",
+                "hint": "Finesse. Run, leap, dodge, keep your footing.",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5,
+                "default": 0
+            },
+            {
+                "key": "lore",
+                "label": "Lore",
+                "hint": "Reason. Old stories, rites and the ways of the hidden folk.",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5,
+                "default": 0
+            },
+            {
+                "key": "inquiry",
+                "label": "Inquiry",
+                "hint": "Reason. Search a room, an archive or a body.",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5,
+                "default": 0
+            },
+            {
+                "key": "alertness",
+                "label": "Alertness",
+                "hint": "Reason. Notice danger before it notices you.",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5,
+                "default": 0
+            },
+            {
+                "key": "persuade",
+                "label": "Persuade",
+                "hint": "Heart. Convince, charm, bargain, deceive.",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5,
+                "default": 0
+            },
+            {
+                "key": "mend",
+                "label": "Mend",
+                "hint": "Heart. Treat wounds and sickness, calm the shaken.",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5,
+                "default": 0
+            },
+            {
+                "key": "insight",
+                "label": "Insight",
+                "hint": "Heart. Read moods, motives and lies.",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5,
+                "default": 0
+            },
+            {
+                "key": "xp",
+                "label": "Experience",
+                "hint": "Spend 5 to raise a skill by one between mysteries.",
+                "group": "Progress",
+                "type": "number",
+                "min": 0,
+                "max": 20,
+                "default": 0
+            },
+            {
+                "key": "keepsakes",
+                "label": "Keepsakes and gear",
+                "hint": "A lantern, a keepsake from home, and what you carry.",
+                "group": "Progress",
+                "type": "list"
+            }
+        ],
+        "columns": 2,
+        "groups": [
+            {
+                "name": "Identity",
+                "span": 2
+            },
+            {
+                "name": "Attributes"
+            },
+            {
+                "name": "Conditions"
+            },
+            {
+                "name": "Skills",
+                "span": 2
+            },
+            {
+                "name": "Progress",
+                "span": 2
+            }
+        ],
+        "pointBudget": {
+            "label": "Attribute points",
+            "total": 12,
+            "fields": [
+                "vigour",
+                "finesse",
+                "reason",
+                "heart"
+            ],
+            "min": 2,
+            "max": 4
+        }
+    },
+    "checks": [
+        {
+            "key": "brawl",
+            "label": "Brawl (Vigour)",
+            "hint": "Fight hand to hand.",
+            "pool": {
+                "count": {
+                    "formula": "{vigour} + {brawl} - {body}"
+                },
+                "sides": 6,
+                "successAt": 6
+            },
+            "push": {
+                "label": "Mark bodily harm",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "body",
+                        "op": "mark"
+                    }
+                ]
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it does not work, and the situation turns against you",
+                    "upTo": 0
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you do what you set out to do",
+                    "upTo": 1
+                },
+                {
+                    "key": "strong",
+                    "label": "Strong success: you succeed, and each extra six buys more (found, done faster, someone protected)"
+                }
+            ]
+        },
+        {
+            "key": "endure",
+            "label": "Endure (Vigour)",
+            "hint": "Hold out against cold, hunger, poison or exhaustion.",
+            "pool": {
+                "count": {
+                    "formula": "{vigour} + {endure} - {body}"
+                },
+                "sides": 6,
+                "successAt": 6
+            },
+            "push": {
+                "label": "Mark bodily harm",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "body",
+                        "op": "mark"
+                    }
+                ]
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it does not work, and the situation turns against you",
+                    "upTo": 0
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you do what you set out to do",
+                    "upTo": 1
+                },
+                {
+                    "key": "strong",
+                    "label": "Strong success: you succeed, and each extra six buys more (found, done faster, someone protected)"
+                }
+            ]
+        },
+        {
+            "key": "haul",
+            "label": "Haul (Vigour)",
+            "hint": "Lift, break or climb by main force.",
+            "pool": {
+                "count": {
+                    "formula": "{vigour} + {haul} - {body}"
+                },
+                "sides": 6,
+                "successAt": 6
+            },
+            "push": {
+                "label": "Mark bodily harm",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "body",
+                        "op": "mark"
+                    }
+                ]
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it does not work, and the situation turns against you",
+                    "upTo": 0
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you do what you set out to do",
+                    "upTo": 1
+                },
+                {
+                    "key": "strong",
+                    "label": "Strong success: you succeed, and each extra six buys more (found, done faster, someone protected)"
+                }
+            ]
+        },
+        {
+            "key": "shoot",
+            "label": "Shoot (Finesse)",
+            "hint": "Fire or throw at something at a distance.",
+            "pool": {
+                "count": {
+                    "formula": "{finesse} + {shoot} - {body}"
+                },
+                "sides": 6,
+                "successAt": 6
+            },
+            "push": {
+                "label": "Mark bodily harm",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "body",
+                        "op": "mark"
+                    }
+                ]
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it does not work, and the situation turns against you",
+                    "upTo": 0
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you do what you set out to do",
+                    "upTo": 1
+                },
+                {
+                    "key": "strong",
+                    "label": "Strong success: you succeed, and each extra six buys more (found, done faster, someone protected)"
+                }
+            ]
+        },
+        {
+            "key": "sneak",
+            "label": "Sneak (Finesse)",
+            "hint": "Go unseen and unheard, or open what is locked.",
+            "pool": {
+                "count": {
+                    "formula": "{finesse} + {sneak} - {body}"
+                },
+                "sides": 6,
+                "successAt": 6
+            },
+            "push": {
+                "label": "Mark bodily harm",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "body",
+                        "op": "mark"
+                    }
+                ]
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it does not work, and the situation turns against you",
+                    "upTo": 0
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you do what you set out to do",
+                    "upTo": 1
+                },
+                {
+                    "key": "strong",
+                    "label": "Strong success: you succeed, and each extra six buys more (found, done faster, someone protected)"
+                }
+            ]
+        },
+        {
+            "key": "nimble",
+            "label": "Nimble (Finesse)",
+            "hint": "Run, leap, dodge or keep your footing.",
+            "pool": {
+                "count": {
+                    "formula": "{finesse} + {nimble} - {body}"
+                },
+                "sides": 6,
+                "successAt": 6
+            },
+            "push": {
+                "label": "Mark bodily harm",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "body",
+                        "op": "mark"
+                    }
+                ]
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it does not work, and the situation turns against you",
+                    "upTo": 0
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you do what you set out to do",
+                    "upTo": 1
+                },
+                {
+                    "key": "strong",
+                    "label": "Strong success: you succeed, and each extra six buys more (found, done faster, someone protected)"
+                }
+            ]
+        },
+        {
+            "key": "lore",
+            "label": "Lore (Reason)",
+            "hint": "Recall what the old stories say, or work a rite.",
+            "pool": {
+                "count": {
+                    "formula": "{reason} + {lore} - {mind}"
+                },
+                "sides": 6,
+                "successAt": 6
+            },
+            "push": {
+                "label": "Mark strain on the mind",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "mind",
+                        "op": "mark"
+                    }
+                ]
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it does not work, and the situation turns against you",
+                    "upTo": 0
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you do what you set out to do",
+                    "upTo": 1
+                },
+                {
+                    "key": "strong",
+                    "label": "Strong success: you succeed, and each extra six buys more (found, done faster, someone protected)"
+                }
+            ]
+        },
+        {
+            "key": "inquiry",
+            "label": "Inquiry (Reason)",
+            "hint": "Search a place, a record or a body for what is hidden.",
+            "pool": {
+                "count": {
+                    "formula": "{reason} + {inquiry} - {mind}"
+                },
+                "sides": 6,
+                "successAt": 6
+            },
+            "push": {
+                "label": "Mark strain on the mind",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "mind",
+                        "op": "mark"
+                    }
+                ]
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it does not work, and the situation turns against you",
+                    "upTo": 0
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you do what you set out to do",
+                    "upTo": 1
+                },
+                {
+                    "key": "strong",
+                    "label": "Strong success: you succeed, and each extra six buys more (found, done faster, someone protected)"
+                }
+            ]
+        },
+        {
+            "key": "alertness",
+            "label": "Alertness (Reason)",
+            "hint": "Sense danger, or spot what is out of place.",
+            "pool": {
+                "count": {
+                    "formula": "{reason} + {alertness} - {mind}"
+                },
+                "sides": 6,
+                "successAt": 6
+            },
+            "push": {
+                "label": "Mark strain on the mind",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "mind",
+                        "op": "mark"
+                    }
+                ]
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it does not work, and the situation turns against you",
+                    "upTo": 0
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you do what you set out to do",
+                    "upTo": 1
+                },
+                {
+                    "key": "strong",
+                    "label": "Strong success: you succeed, and each extra six buys more (found, done faster, someone protected)"
+                }
+            ]
+        },
+        {
+            "key": "persuade",
+            "label": "Persuade (Heart)",
+            "hint": "Win someone over, strike a bargain, or lie well.",
+            "pool": {
+                "count": {
+                    "formula": "{heart} + {persuade} - {mind}"
+                },
+                "sides": 6,
+                "successAt": 6
+            },
+            "push": {
+                "label": "Mark strain on the mind",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "mind",
+                        "op": "mark"
+                    }
+                ]
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it does not work, and the situation turns against you",
+                    "upTo": 0
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you do what you set out to do",
+                    "upTo": 1
+                },
+                {
+                    "key": "strong",
+                    "label": "Strong success: you succeed, and each extra six buys more (found, done faster, someone protected)"
+                }
+            ]
+        },
+        {
+            "key": "mend",
+            "label": "Mend (Heart)",
+            "hint": "Treat a wound or calm a shaken mind.",
+            "pool": {
+                "count": {
+                    "formula": "{heart} + {mend} - {mind}"
+                },
+                "sides": 6,
+                "successAt": 6
+            },
+            "push": {
+                "label": "Mark strain on the mind",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "mind",
+                        "op": "mark"
+                    }
+                ]
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it does not work, and the situation turns against you",
+                    "upTo": 0
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you do what you set out to do",
+                    "upTo": 1
+                },
+                {
+                    "key": "strong",
+                    "label": "Strong success: you succeed, and each extra six buys more (found, done faster, someone protected)"
+                }
+            ]
+        },
+        {
+            "key": "insight",
+            "label": "Insight (Heart)",
+            "hint": "Read what someone feels, wants or hides.",
+            "pool": {
+                "count": {
+                    "formula": "{heart} + {insight} - {mind}"
+                },
+                "sides": 6,
+                "successAt": 6
+            },
+            "push": {
+                "label": "Mark strain on the mind",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "mind",
+                        "op": "mark"
+                    }
+                ]
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it does not work, and the situation turns against you",
+                    "upTo": 0
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you do what you set out to do",
+                    "upTo": 1
+                },
+                {
+                    "key": "strong",
+                    "label": "Strong success: you succeed, and each extra six buys more (found, done faster, someone protected)"
+                }
+            ]
+        },
+        {
+            "key": "stand-fast",
+            "label": "Stand Fast",
+            "hint": "Face the uncanny without breaking. Cannot be pushed.",
+            "pool": {
+                "count": {
+                    "formula": "{reason} + {heart} - {mind}"
+                },
+                "sides": 6,
+                "successAt": 6
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "You break: you flee, freeze or lash out",
+                    "upTo": 0
+                },
+                {
+                    "key": "held",
+                    "label": "You hold your ground"
+                }
+            ]
+        }
+    ]
+}

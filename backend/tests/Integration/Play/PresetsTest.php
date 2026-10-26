@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Play;
 
 use App\Play\Application\GetGameSystemSnapshot;
+use App\Play\Domain\GameSystem\Flow\CheckStep;
+use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\FlowView;
+use App\Play\Domain\GameSystem\Flow\TableStep;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
@@ -247,7 +250,7 @@ final class PresetsTest extends KernelTestCase
                             $inspired[] = $table;
                         }
                     }
-                    self::assertNotInstanceOf(\App\Play\Domain\GameSystem\Flow\TableStep::class, $step, \sprintf('Step "%s": tables are inspiration, not rolled for facts.', $step->key));
+                    self::assertNotInstanceOf(TableStep::class, $step, \sprintf('Step "%s": tables are inspiration, not rolled for facts.', $step->key));
                 }
             }
         }
@@ -334,11 +337,23 @@ final class PresetsTest extends KernelTestCase
             self::assertFalse($tag->isFor(\App\Play\Domain\GameSystem\Flow\ItemKind::Thread), $tag->key);
         }
 
-        self::assertSame(['toxic-power', 'story-element', 'romantic-complication', 'location', 'villains-next-move'], $snapshot->oracleTableKeys());
-        foreach (['toxic-power' => 6, 'story-element' => 8, 'romantic-complication' => 8, 'location' => 8, 'villains-next-move' => 8] as $table => $entries) {
+        self::assertSame(['toxic-power', 'story-element', 'romantic-complication', 'swashbuckle-complication', 'intrigue-complication', 'location', 'villains-next-move'], $snapshot->oracleTableKeys());
+        foreach (['toxic-power' => 6, 'story-element' => 8, 'romantic-complication' => 8, 'swashbuckle-complication' => 6, 'intrigue-complication' => 6, 'location' => 8, 'villains-next-move' => 8] as $table => $entries) {
             $this->assertWeightedTableResolves($snapshot, $table, $entries, $snapshot->resolveOracleTable($table, new ScriptedRandomNumberGenerator(1))->steps()[0]->text(), $snapshot->resolveOracleTable($table, new ScriptedRandomNumberGenerator($entries))->steps()[0]->text());
         }
         self::assertSame(['will-it-work'], $this->likelihoodKeys($snapshot));
+
+        // ADR 0042: the Scenes move is a check set (Defy Disaster with any stat), the complication table follows the Scene Type, and the Climax XP question awards the XP.
+        $phases = array_column($flow->phases ?? [], null, 'key');
+        $table = $phases['scenes']->sceneOpening->step('table-1');
+        $move = $phases['scenes']->sceneOpening->step('check-1');
+        $question = $phases['climax']->phaseClosing->step('choice-1');
+        self::assertInstanceOf(TableStep::class, $table);
+        self::assertInstanceOf(CheckStep::class, $move);
+        self::assertInstanceOf(ChoiceStep::class, $question);
+        self::assertSame(['romantic-complication', ['intrigue' => 'intrigue-complication', 'swashbuckle' => 'swashbuckle-complication']], [$table->table, $table->tableBySceneType]);
+        self::assertSame(['defy-disaster-daring', 'defy-disaster-grace', 'defy-disaster-heart', 'defy-disaster-wit', 'defy-disaster-spirit'], $move->checks);
+        self::assertSame([true, false], [$question->option('yes')?->changesSheet(), $question->option('no')?->changesSheet()]);
 
         // The sheet has the five stats and five Conditions, the Conditions marked and the XP; the moves are the twelve checks.
         $sheet = $snapshot->sheet();

@@ -145,6 +145,80 @@
                 ]
             },
             {
+                "key": "swashbuckle-complication",
+                "name": "Swashbuckle complication",
+                "dice": "1d6",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "Outnumbered: more guards pour in than you counted"
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "Bad footing: a rotten beam, a slick roof or a swaying rope gives way"
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "Hostage: the villain grabs someone you cannot leave behind"
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "Broken blade: your weapon snaps or flies from your hand"
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "Fire: a lantern tips and flames spread fast"
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "Crowd: innocent bystanders crowd into the line of the fight"
+                    }
+                ]
+            },
+            {
+                "key": "intrigue-complication",
+                "name": "Intrigue complication",
+                "dice": "1d6",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "Forged papers: the proof you hold turns out to be fake"
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "Turncoat: a trusted informant sells you out"
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "Watched: someone has been following you all evening"
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "Wrong door: the secret you uncover belongs to an ally, not the villain"
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "Debt called in: a favour you owe comes due at the worst time"
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "Rumour: whispers about you spread faster than the truth"
+                    }
+                ]
+            },
+            {
                 "key": "location",
                 "name": "Location",
                 "dice": "1d8",
@@ -303,6 +377,7 @@
             "name": "Swashbuckle",
             "purpose": "Action: duels, chases and daring escapes where the heroes act and the villain reacts.",
             "oracles": [
+                "swashbuckle-complication",
                 "location",
                 "villains-next-move",
                 "will-it-work"
@@ -328,6 +403,7 @@
             "name": "Intrigue",
             "purpose": "Plot: investigating, scheming and uncovering what the villain is really up to.",
             "oracles": [
+                "intrigue-complication",
                 "story-element",
                 "villains-next-move",
                 "will-it-work"
@@ -349,6 +425,8 @@
                 "toxic-power",
                 "story-element",
                 "romantic-complication",
+                "swashbuckle-complication",
+                "intrigue-complication",
                 "villains-next-move",
                 "will-it-work",
                 "location"
@@ -461,15 +539,19 @@
                             "key": "table-1",
                             "kind": "table",
                             "title": "Add a complication",
-                            "prompt": "Roll for a romantic complication and work it into the scene.",
+                            "prompt": "Roll for a complication that fits the scene and work it into it.",
                             "mandatory": true,
-                            "table": "romantic-complication"
+                            "table": "romantic-complication",
+                            "tableBySceneType": {
+                                "intrigue": "intrigue-complication",
+                                "swashbuckle": "swashbuckle-complication"
+                            }
                         },
                         {
                             "key": "check-1",
                             "kind": "check",
                             "title": "Make your move",
-                            "prompt": "Face the complication head on. This step rolls Defy Disaster (Daring). To act another way, roll another move first with Roll a check on the character sheet. A miss marks XP.",
+                            "prompt": "Face the complication head on: pick the stat you lean on and roll Defy Disaster with it. To act another way, roll another move first with Roll a check on the character sheet. A miss marks XP.",
                             "mandatory": true,
                             "effects": [
                                 {
@@ -479,7 +561,13 @@
                                     "value": 1
                                 }
                             ],
-                            "check": "defy-disaster-daring",
+                            "checks": [
+                                "defy-disaster-daring",
+                                "defy-disaster-grace",
+                                "defy-disaster-heart",
+                                "defy-disaster-wit",
+                                "defy-disaster-spirit"
+                            ],
                             "outcomes": [
                                 {
                                     "band": "miss",
@@ -513,7 +601,7 @@
                             "key": "choice-1",
                             "kind": "choice",
                             "title": "Did you learn something about yourself or the villain?",
-                            "prompt": "Think back over the night. If you learned something about yourself or about the villain, mark 1 XP.",
+                            "prompt": "Think back over the night. If you learned something about yourself or about the villain, answer Yes to mark 1 XP.",
                             "mandatory": true,
                             "options": [
                                 {
@@ -522,7 +610,15 @@
                                 },
                                 {
                                     "key": "yes",
-                                    "label": "Yes"
+                                    "label": "Yes",
+                                    "effects": [
+                                        {
+                                            "kind": "sheet",
+                                            "field": "xp",
+                                            "op": "add",
+                                            "value": 1
+                                        }
+                                    ]
                                 }
                             ]
                         }

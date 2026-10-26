@@ -8,6 +8,7 @@ use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
+use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Domain\Campaign\FlowRun\ScenePart;
 use App\Play\Domain\Campaign\FlowRun\SheetChange;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
@@ -58,7 +59,7 @@ final class HeartsAndRapiersPresetFlowTest extends FlowRunTestCase
     {
         $campaign = $this->inAScene();
 
-        $changes = $campaign->completeFlowStep('check-1', $this->checked($campaign, 'check-1', 'defy-disaster-daring', 3, 3), $this->release, self::at());
+        $changes = $campaign->completeFlowStep('check-1', $this->checked($campaign, 'check-1', 'defy-disaster-daring', 'defy-disaster-daring', 3, 3), $this->release, self::at());
 
         self::assertSame([['xp', 0, 1]], array_map(static fn (SheetChange $change): array => [$change->field, $change->before, $change->after], $changes));
         self::assertSame(1, $campaign->trackerValue($this->release->tracker('countdown') ?? self::fail('No countdown.')));
@@ -69,7 +70,7 @@ final class HeartsAndRapiersPresetFlowTest extends FlowRunTestCase
     {
         $campaign = $this->inAScene();
 
-        $changes = $campaign->completeFlowStep('check-1', $this->checked($campaign, 'check-1', 'defy-disaster-daring', 5, 5), $this->release, self::at());
+        $changes = $campaign->completeFlowStep('check-1', $this->checked($campaign, 'check-1', 'defy-disaster-daring', 'defy-disaster-daring', 5, 5), $this->release, self::at());
 
         self::assertSame([], $changes);
         self::assertSame(1, $campaign->trackerValue($this->release->tracker('countdown') ?? self::fail('No countdown.')));
@@ -79,16 +80,74 @@ final class HeartsAndRapiersPresetFlowTest extends FlowRunTestCase
     public function aMissedConfrontationMarksXp(): void
     {
         $campaign = $this->inAScene();
-        $campaign->completeFlowStep('check-1', $this->checked($campaign, 'check-1', 'defy-disaster-daring', 5, 5), $this->release, self::at());
+        $campaign->completeFlowStep('check-1', $this->checked($campaign, 'check-1', 'defy-disaster-daring', 'defy-disaster-daring', 5, 5), $this->release, self::at());
         $campaign->endFlowScene(3, $this->release, self::at());
         $campaign->moveOn('scenes', $this->release, self::at());
 
         // The confrontation is the opening of the Climax's one Swashbuckle scene, not of the phase.
         $progress = $campaign->flowRunView($this->release)?->progress;
         self::assertSame(['climax', 'Swashbuckle', ScenePart::SceneOpening, 'check-1'], [$progress?->phaseKey, $progress->sceneType ?? null, $progress->part ?? null, self::position($campaign)[1]]);
-        $changes = $campaign->completeFlowStep('check-1', $this->checked($campaign, 'check-1', 'fight-daring', 2, 3), $this->release, self::at());
+        $changes = $campaign->completeFlowStep('check-1', $this->checked($campaign, 'check-1', 'fight-daring', null, 2, 3), $this->release, self::at());
 
         self::assertSame([['xp', 0, 1]], array_map(static fn (SheetChange $change): array => [$change->field, $change->before, $change->after], $changes));
+    }
+
+    #[Test]
+    public function theScenesMoveRollsTheStatThePlayerPicksAndAMissStillMarksXp(): void
+    {
+        $campaign = $this->inAScene(['wit' => 2]);
+
+        $result = $this->checked($campaign, 'check-1', 'defy-disaster-wit', 'defy-disaster-wit', 2, 3);
+        $changes = $campaign->completeFlowStep('check-1', $result, $this->release, self::at());
+
+        // Wit adds 2 to the 5 rolled, which is a partial hit: no XP is marked, and the Countdown moves.
+        self::assertSame([], $changes);
+        self::assertSame(1, $campaign->trackerValue($this->release->tracker('countdown') ?? self::fail('No countdown.')));
+        self::assertSame([2, 7], [$result->check?->modifier, $result->check?->total]);
+    }
+
+    #[Test]
+    public function theScenesMoveIsRefusedWithoutAPickedCheck(): void
+    {
+        $campaign = $this->inAScene();
+        $before = clone $campaign;
+
+        try {
+            $campaign->completeFlowStep('check-1', $this->checked($campaign, 'check-1', 'defy-disaster-daring', null, 3, 3), $this->release, self::at());
+            self::fail('The step was completed.');
+        } catch (InvalidStepResult $e) {
+            self::assertSame('Step "check-1" is a check step: it needs "checkKey".', $e->getMessage());
+        }
+
+        self::assertEquals($before, $campaign);
+    }
+
+    #[Test]
+    public function theComplicationTableFollowsTheSceneType(): void
+    {
+        $tables = [];
+        foreach (['swashbuckle', 'intrigue', 'heart-to-heart'] as $sceneType) {
+            $campaign = $this->afterTheSetup();
+            $campaign->endFlowScene(2, $this->release, self::at());
+            $campaign->pickSceneType($sceneType, $this->release, self::at());
+            $campaign->completeFlowStep('prompt-1', self::prompt('A scene'), $this->release, self::at());
+            $tables[$sceneType] = $campaign->flowRunView($this->release)?->step?->table;
+        }
+
+        self::assertSame(['swashbuckle' => 'swashbuckle-complication', 'intrigue' => 'intrigue-complication', 'heart-to-heart' => 'romantic-complication'], $tables);
+    }
+
+    #[Test]
+    public function theClimaxXpQuestionAwardsOneXpOnYesAndNothingOnNo(): void
+    {
+        $yes = $this->atTheClosingQuestion();
+        $no = $this->atTheClosingQuestion();
+
+        $awarded = $yes->completeFlowStep('choice-1', StepResult::choice('yes', 'hero'), $this->release, self::at());
+        $declined = $no->completeFlowStep('choice-1', StepResult::choice('no'), $this->release, self::at());
+
+        self::assertSame([['xp', 0, 1]], array_map(static fn (SheetChange $change): array => [$change->field, $change->before, $change->after], $awarded));
+        self::assertSame([], $declined);
     }
 
     /**
@@ -145,15 +204,15 @@ final class HeartsAndRapiersPresetFlowTest extends FlowRunTestCase
     }
 
     /**
-     * The hero rolling the check with the two dice scripted.
+     * The hero rolling the check with the two dice scripted; `$key` is the check picked from a set, null for a step with one check.
      */
-    private function checked(Campaign $campaign, string $stepKey, string $check, int $first, int $second): StepResult
+    private function checked(Campaign $campaign, string $stepKey, string $check, ?string $key, int $first, int $second): StepResult
     {
         $campaign->flowCheckDifficulty($stepKey, 'hero', null, $this->release, self::at());
         $hero = $campaign->character(CharacterId::fromString('hero')) ?? self::fail('No hero.');
         $values = SheetValues::of($this->release->sheet(), $hero->values(), $campaign->trackerValuesOf($this->release));
 
-        return StepResult::check('hero', ($this->release->check($check) ?? self::fail('No check.'))->perform(new ScriptedRandomNumberGenerator($first, $second), $values, null, 0));
+        return StepResult::check('hero', ($this->release->check($check) ?? self::fail('No check.'))->perform(new ScriptedRandomNumberGenerator($first, $second), $values, null, 0), $key);
     }
 
     private function rolled(string $table, int $total): StepResult
@@ -163,12 +222,14 @@ final class HeartsAndRapiersPresetFlowTest extends FlowRunTestCase
 
     /**
      * A campaign through the Setup: the hero, the toxic power and story element tables, the villain and the goal.
+     *
+     * @param array<string, int|string> $values the sheet values the hero sets
      */
-    private function afterTheSetup(): Campaign
+    private function afterTheSetup(array $values = []): Campaign
     {
         $campaign = self::guided($this->release, 'one-shot');
         $campaign->startSession(self::at(), $this->release);
-        $campaign->addCharacter(CharacterId::fromString('hero'), 'Rosalind', [], [], ['playbook' => 'The Adventurer'], $this->release);
+        $campaign->addCharacter(CharacterId::fromString('hero'), 'Rosalind', [], [], ['playbook' => 'The Adventurer', ...$values], $this->release);
         $campaign->completeFlowStep('character-1', StepResult::character('hero'), $this->release, self::at());
         $campaign->completeFlowStep('table-1', $this->rolled('toxic-power', 1), $this->release, self::at());
         $campaign->completeFlowStep('table-2', $this->rolled('story-element', 1), $this->release, self::at());
@@ -180,14 +241,32 @@ final class HeartsAndRapiersPresetFlowTest extends FlowRunTestCase
 
     /**
      * A campaign in a Swashbuckle scene of the Scenes phase, at its move check.
+     *
+     * @param array<string, int|string> $values the sheet values the hero sets
      */
-    private function inAScene(): Campaign
+    private function inAScene(array $values = []): Campaign
     {
-        $campaign = $this->afterTheSetup();
+        $campaign = $this->afterTheSetup($values);
         $campaign->endFlowScene(2, $this->release, self::at());
         $campaign->pickSceneType('swashbuckle', $this->release, self::at());
         $campaign->completeFlowStep('prompt-1', self::prompt('Duel on the quay'), $this->release, self::at());
-        $campaign->completeFlowStep('table-1', $this->rolled('romantic-complication', 1), $this->release, self::at());
+        $campaign->completeFlowStep('table-1', $this->rolled('swashbuckle-complication', 1), $this->release, self::at());
+
+        return $campaign;
+    }
+
+    /**
+     * A campaign at the Climax's closing XP question, past the Scenes phase and the confrontation.
+     */
+    private function atTheClosingQuestion(): Campaign
+    {
+        $campaign = $this->inAScene();
+        $campaign->completeFlowStep('check-1', $this->checked($campaign, 'check-1', 'defy-disaster-daring', 'defy-disaster-daring', 5, 5), $this->release, self::at());
+        $campaign->endFlowScene(3, $this->release, self::at());
+        $campaign->moveOn('scenes', $this->release, self::at());
+        $campaign->completeFlowStep('check-1', $this->checked($campaign, 'check-1', 'fight-daring', null, 5, 5), $this->release, self::at());
+        $campaign->endFlowScene(4, $this->release, self::at());
+        self::assertSame([null, 'choice-1'], self::position($campaign));
 
         return $campaign;
     }

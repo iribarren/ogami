@@ -14,8 +14,8 @@ use OpenApi\Attributes as OA;
  * Optional fields are nullable with no PHP default (see GameSystemOracleTableEntry).
  */
 #[OA\Schema(
-    description: 'Total = dice + modifier + situational modifier; the outcome is the first band whose bound is at least the total.',
-    required: ['key', 'label', 'dice', 'bands'],
+    description: 'Rolls dice or a pool, exactly one of `dice` and `pool`. With dice, total = dice + modifier + situational modifier; with a pool, total = the successes (no modifier). The outcome is the first band whose bound is at least the total.',
+    required: ['key', 'label', 'bands'],
 )]
 final readonly class GameSystemCheck
 {
@@ -29,9 +29,13 @@ final readonly class GameSystemCheck
         public string $label,
         #[OA\Property(description: 'Shown to the player when they roll.', maxLength: 500)]
         public ?string $hint,
-        #[OA\Property(description: 'Dice notation, at most 100 characters.', example: '1d10')]
-        public string $dice,
-        #[OA\Property(description: 'A formula over the sheet and trackers (1 to 200 characters) added to the roll.', example: '{hands}+{edge}')]
+        #[OA\Property(description: 'Dice notation, at most 100 characters. Absent on a pool check.', example: '1d10')]
+        public ?string $dice,
+        #[OA\Property(ref: new Model(type: GameSystemCheckPool::class), description: 'The dice pool rolled instead of `dice`; absent on a dice check.', nullable: true)]
+        public ?GameSystemCheckPool $pool,
+        #[OA\Property(ref: new Model(type: GameSystemCheckPush::class), description: 'What a player may pay to push a failed pool roll; only with `pool`.', nullable: true)]
+        public ?GameSystemCheckPush $push,
+        #[OA\Property(description: 'A formula over the sheet and trackers (1 to 200 characters) added to the roll. Refused with a pool.', example: '{hands}+{edge}')]
         public ?string $modifier,
         #[OA\Property(ref: new Model(type: GameSystemCheckDifficulty::class), description: 'Absent or null when the check has no difficulty.', nullable: true)]
         public ?GameSystemCheckDifficulty $difficulty,

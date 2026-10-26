@@ -34,6 +34,7 @@ final readonly class GetGameSystemChecksHandler implements QueryHandler
             $checks,
             $version1 ? [] : $this->fields($document),
             $version1 ? [] : $this->trackers($document),
+            $version1 ? [] : $this->conditions($document),
             $this->usages($document, $checks),
         );
     }
@@ -82,6 +83,36 @@ final readonly class GetGameSystemChecksHandler implements QueryHandler
 
             $initial = 'clock' === ($tracker['kind'] ?? null) ? 0 : $tracker['initial'] ?? null;
             $views[] = new CheckTrackerView($tracker['key'], \is_string($tracker['name'] ?? null) ? $tracker['name'] : '', \is_int($initial) ? $initial : null);
+        }
+
+        return $views;
+    }
+
+    /**
+     * The conditions fields with a string key, and their options with a string key: what is not an
+     * object with one is left out.
+     *
+     * @param array<string, mixed> $document
+     *
+     * @return list<CheckConditionsFieldView>
+     */
+    private function conditions(array $document): array
+    {
+        $sheet = $document['sheet'] ?? null;
+        $views = [];
+        foreach ($this->objects(\is_array($sheet) ? $sheet['fields'] ?? null : null) as $field) {
+            if ('conditions' !== ($field['type'] ?? null) || !\is_string($field['key'] ?? null)) {
+                continue;
+            }
+
+            $options = [];
+            foreach ($this->objects($field['options'] ?? null) as $option) {
+                if (\is_string($option['key'] ?? null)) {
+                    $options[] = new CheckConditionOptionView($option['key'], \is_string($option['label'] ?? null) ? $option['label'] : '');
+                }
+            }
+
+            $views[] = new CheckConditionsFieldView($field['key'], \is_string($field['label'] ?? null) ? $field['label'] : '', $options);
         }
 
         return $views;

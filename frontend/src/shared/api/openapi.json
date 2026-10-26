@@ -15444,6 +15444,74 @@
                 },
                 "type": "object"
             },
+            "GameSystemCheckPool": {
+                "description": "The pool rolls count (plus the situational modifier, 1 to 100) dice of `sides` sides; each die showing at least `successAt` is a success, and the total is the number of successes.",
+                "required": [
+                    "count",
+                    "sides",
+                    "successAt"
+                ],
+                "properties": {
+                    "count": {
+                        "description": "The number of dice: an integer from 1 to 100, or a formula over the sheet (1 to 200 characters, read as a modifier).",
+                        "oneOf": [
+                            {
+                                "type": "integer",
+                                "example": 4
+                            },
+                            {
+                                "required": [
+                                    "formula"
+                                ],
+                                "properties": {
+                                    "formula": {
+                                        "type": "string",
+                                        "example": "{agility}+{brawl}"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        ]
+                    },
+                    "sides": {
+                        "description": "Faces of each die, 2 to 1,000.",
+                        "type": "integer",
+                        "example": 10
+                    },
+                    "successAt": {
+                        "description": "A die showing this or more is a success, 1 to `sides`.",
+                        "type": "integer",
+                        "example": 6
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemCheckPush": {
+                "description": "Only on a check with a pool. A push is offered when a die failed.",
+                "required": [
+                    "label",
+                    "effects"
+                ],
+                "properties": {
+                    "label": {
+                        "description": "What the push costs, in the words of the check.",
+                        "type": "string",
+                        "example": "Take a Condition",
+                        "maxLength": 100,
+                        "minLength": 1
+                    },
+                    "effects": {
+                        "description": "The cost: sheet and tracker effect objects as the release contract defines them (at most 10). A mark without an option lets the player pick one.",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": true
+                        },
+                        "maxItems": 10
+                    }
+                },
+                "type": "object"
+            },
             "GameSystemCheckDifficulty": {
                 "description": "Integers between -1,000 and 1,000 with min <= default <= max.",
                 "required": [
@@ -15529,11 +15597,10 @@
                 "type": "object"
             },
             "GameSystemCheck": {
-                "description": "Total = dice + modifier + situational modifier; the outcome is the first band whose bound is at least the total.",
+                "description": "Rolls dice or a pool, exactly one of `dice` and `pool`. With dice, total = dice + modifier + situational modifier; with a pool, total = the successes (no modifier). The outcome is the first band whose bound is at least the total.",
                 "required": [
                     "key",
                     "label",
-                    "dice",
                     "bands"
                 ],
                 "properties": {
@@ -15555,12 +15622,31 @@
                         "maxLength": 500
                     },
                     "dice": {
-                        "description": "Dice notation, at most 100 characters.",
+                        "description": "Dice notation, at most 100 characters. Absent on a pool check.",
                         "type": "string",
-                        "example": "1d10"
+                        "example": "1d10",
+                        "nullable": true
+                    },
+                    "pool": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/GameSystemCheckPool"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The dice pool rolled instead of `dice`; absent on a dice check."
+                    },
+                    "push": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/GameSystemCheckPush"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "What a player may pay to push a failed pool roll; only with `pool`."
                     },
                     "modifier": {
-                        "description": "A formula over the sheet and trackers (1 to 200 characters) added to the roll.",
+                        "description": "A formula over the sheet and trackers (1 to 200 characters) added to the roll. Refused with a pool.",
                         "type": "string",
                         "example": "{hands}+{edge}",
                         "nullable": true
@@ -15647,6 +15733,49 @@
                 },
                 "type": "object"
             },
+            "CheckConditionOptionResponse": {
+                "required": [
+                    "key",
+                    "label"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "The option's key, the \"value\" of a mark or clear effect.",
+                        "type": "string",
+                        "example": "shaken"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Shaken"
+                    }
+                },
+                "type": "object"
+            },
+            "CheckConditionsFieldResponse": {
+                "required": [
+                    "key",
+                    "label",
+                    "options"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "The field's key, the \"field\" of a mark or clear effect.",
+                        "type": "string",
+                        "example": "conditions"
+                    },
+                    "label": {
+                        "type": "string",
+                        "example": "Conditions"
+                    },
+                    "options": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CheckConditionOptionResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
             "GameSystemChecksResponse": {
                 "required": [
                     "version",
@@ -15654,6 +15783,7 @@
                     "checks",
                     "fields",
                     "trackers",
+                    "conditions",
                     "usages"
                 ],
                 "properties": {
@@ -15686,6 +15816,13 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/CheckTrackerResponse"
+                        }
+                    },
+                    "conditions": {
+                        "description": "The draft's conditions fields with their options, which the effects of a push cost mark or clear.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CheckConditionsFieldResponse"
                         }
                     },
                     "usages": {

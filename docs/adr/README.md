@@ -43,9 +43,10 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0037 | [API error codes](0037-api-error-codes.md) | Accepted |
 | 0038 | [Studio release view](0038-studio-release-view.md) | Accepted |
 | 0039 | [Release diff](0039-release-diff.md) | Accepted |
-| 0040 | [Structured character creation](0040-structured-character-creation.md) | Accepted |
+| 0040 | [Structured character creation](0040-structured-character-creation.md) | Accepted, amended by 0043 |
 | 0041 | [Dice pools, pushed rolls and conditions](0041-dice-pools-pushes-and-conditions.md) | Accepted |
 | 0042 | [Sheet effects on choices and prompts, check sets and tables by scene type](0042-flow-choices-check-sets-and-scene-tables.md) | Accepted |
+| 0043 | [Several point budgets per sheet](0043-several-point-budgets.md) | Accepted |
 
 ## Template
 

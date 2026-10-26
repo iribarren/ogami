@@ -2389,7 +2389,7 @@ export interface components {
              */
             likelihood: string | null;
             /**
-             * @description The key of the oracle table rolled (table step); null for the other kinds.
+             * @description The key of the oracle table the step rolls now (table step): the table mapped to the current Scene Type when the step has a table by Scene Type, else its default (also in a hook or outside a scene); null for the other kinds.
              * @example client
              */
             table: string | null;
@@ -2405,10 +2405,12 @@ export interface components {
             /** @description The Fact slots any Effect of the step may fill, in the release's slot order (a fillFact Effect fills a slot once the step is completed); empty for a step that fills none. */
             fills: components["schemas"]["FactSlotResponse"][];
             /**
-             * @description The key of the check performed (check step); null for the other kinds.
+             * @description The key of the check performed (check step with a single check); null for a check set (see checks) and for the other kinds.
              * @example slip-past
              */
             check: string | null;
+            /** @description The keys of the check set the player picks from, in the order the step lists them; the answer names one as "checkKey" (check step with a check set); empty for a single-check step and for the other kinds. */
+            checks: string[];
             /**
              * @description The Check difficulty the check step fixes, as it stands now; null when the player sets it, for the other kinds, and when the step's formula cannot be evaluated (answering the step is then refused).
              * @example 7
@@ -3149,6 +3151,11 @@ export interface components {
              * @example -2
              */
             situational?: number | null;
+            /**
+             * @description Check step with a check set (its checks): the key of the check of the set to roll; required there. Must be omitted or null on a single-check step.
+             * @example sneak
+             */
+            checkKey?: string | null;
         };
         SkipFlowStepRequest: {
             /**
@@ -8520,7 +8527,7 @@ export interface operations {
                     "application/json": components["schemas"]["CampaignResponse"];
                 };
             };
-            /** @description The JSON body is malformed: no string "stepKey", or a non-string "text", "optionKey" or "likelihood", a non-integer "chaosFactor", "difficulty" or "situational", or "pickedIds" that is not a list of strings. */
+            /** @description The JSON body is malformed: no string "stepKey", or a non-string "text", "optionKey" or "likelihood", a non-string "checkKey", a non-integer "chaosFactor", "difficulty" or "situational", or "pickedIds" that is not a list of strings. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -8574,7 +8581,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character. Or a formula of a band bound, a tracker or sheet Effect value or a step's difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed. */
+            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character, or its check set is given no "checkKey" or one outside the set, or a single-check step is given one. Or a formula of a band bound, a tracker or sheet Effect value or a step's difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed. */
             422: {
                 headers: {
                     [name: string]: unknown;

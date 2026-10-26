@@ -75,28 +75,33 @@ export function sheetLayoutAnswer(text: string): SheetLayoutAnswer {
   return { columns: null, groups: {}, form: text }
 }
 
-/** Where a refused save of the point budget belongs in its dialog. */
+/** Where a refused save of a point budget belongs in its dialog. */
 export interface SheetPointBudgetAnswer {
   /** The message of an input, keyed by the property the publisher named. */
-  inputs: Partial<Record<'label' | 'total' | 'min' | 'max', string>>
+  inputs: Partial<Record<'key' | 'label' | 'total' | 'min' | 'max', string>>
   /** The message about the covered fields as a whole or one of them. */
   fields: string | null
   form: string | null
 }
 
 /**
- * Reads the publisher's `path: message` for the point budget: `sheet.pointBudget.<label|total|min|max>`
- * go to their inputs, `sheet.pointBudget.fields` and `.fields[i]` to the fields list. Everything
- * else comes back whole as a form message, including `sheet.pointBudget: …` (the budget as a whole).
+ * Reads the publisher's `path: message` for the budget at `index` of the draft's list:
+ * `sheet.pointBudgets[i].<key|label|total|min|max>` go to their inputs, `.fields` and `.fields[j]`
+ * to the fields list. Everything else comes back whole as a form message, including
+ * `sheet.pointBudgets[i]: …` (the budget as a whole), the list as a whole and other budgets.
  */
-export function sheetPointBudgetAnswer(text: string): SheetPointBudgetAnswer {
-  const input = /^sheet\.pointBudget\.(label|total|min|max): (.*)$/s.exec(text)
-  if (input?.[1] !== undefined && input[2] !== undefined) {
-    return { inputs: { [input[1]]: input[2] }, fields: null, form: null }
-  }
-  const fields = /^sheet\.pointBudget\.fields(?:\[\d+\])?: (.*)$/s.exec(text)
-  if (fields?.[1] !== undefined) {
-    return { inputs: {}, fields: fields[1], form: null }
+export function sheetPointBudgetAnswer(text: string, index: number): SheetPointBudgetAnswer {
+  const prefix = `sheet.pointBudgets[${String(index)}].`
+  if (text.startsWith(prefix)) {
+    const rest = text.slice(prefix.length)
+    const input = /^(key|label|total|min|max): (.*)$/s.exec(rest)
+    if (input?.[1] !== undefined && input[2] !== undefined) {
+      return { inputs: { [input[1]]: input[2] }, fields: null, form: null }
+    }
+    const fields = /^fields(?:\[\d+\])?: (.*)$/s.exec(rest)
+    if (fields?.[1] !== undefined) {
+      return { inputs: {}, fields: fields[1], form: null }
+    }
   }
   return { inputs: {}, fields: null, form: text }
 }

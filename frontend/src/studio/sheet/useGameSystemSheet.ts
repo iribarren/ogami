@@ -224,14 +224,14 @@ export function useRemoveSheetLayout(key: string) {
   })
 }
 
-/** What `PUT /sheet/point-budget` takes besides the version; optional bounds are left out when unset. */
+/** What `PUT /sheet/point-budgets/{budget}` takes besides the version; optional bounds are left out when unset. */
 export type PointBudgetRequest = Omit<
-  components['schemas']['SaveSheetPointBudgetRequest'],
+  components['schemas']['SaveSheetPointBudgetEntryRequest'],
   'expectedVersion'
 >
 
-/** `PUT /sheet/point-budget`: replaces the whole budget. */
-export function useSaveSheetPointBudget(key: string) {
+/** `PUT /sheet/point-budgets/{budget}`: replaces that budget in place, else appends it. */
+export function useSaveSheetPointBudgetEntry(key: string) {
   const api = useApiClient()
 
   return useSheetWrite(
@@ -239,13 +239,15 @@ export function useSaveSheetPointBudget(key: string) {
     async ({
       expectedVersion,
       budget,
+      request,
     }: {
       expectedVersion: number
-      budget: PointBudgetRequest
+      budget: string
+      request: PointBudgetRequest
     }) => {
       const { data, error, response } = await api.PUT(
-        '/api/studio/game-systems/{key}/sheet/point-budget',
-        { params: { path: { key } }, body: { expectedVersion, ...budget } },
+        '/api/studio/game-systems/{key}/sheet/point-budgets/{budget}',
+        { params: { path: { key, budget } }, body: { expectedVersion, ...request } },
       )
       if (data !== undefined) {
         return data
@@ -255,18 +257,21 @@ export function useSaveSheetPointBudget(key: string) {
   )
 }
 
-/** `DELETE /sheet/point-budget?expectedVersion=N`: Characters are created without a budget. */
-export function useRemoveSheetPointBudget(key: string) {
+/** `DELETE /sheet/point-budgets/{budget}?expectedVersion=N`: removes that budget. */
+export function useRemoveSheetPointBudgetEntry(key: string) {
   const api = useApiClient()
 
-  return useSheetWrite(key, async ({ expectedVersion }: { expectedVersion: number }) => {
-    const { data, error, response } = await api.DELETE(
-      '/api/studio/game-systems/{key}/sheet/point-budget',
-      { params: { path: { key }, query: { expectedVersion } } },
-    )
-    if (data !== undefined) {
-      return data
-    }
-    throw sheetError(response, error, 'Removing the point budget')
-  })
+  return useSheetWrite(
+    key,
+    async ({ expectedVersion, budget }: { expectedVersion: number; budget: string }) => {
+      const { data, error, response } = await api.DELETE(
+        '/api/studio/game-systems/{key}/sheet/point-budgets/{budget}',
+        { params: { path: { key, budget }, query: { expectedVersion } } },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw sheetError(response, error, 'Removing the point budget')
+    },
+  )
 }

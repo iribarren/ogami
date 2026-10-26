@@ -89,14 +89,15 @@ describe('reading a refusal for the layout dialog', () => {
   })
 })
 
-describe('reading a refusal for the point budget', () => {
+describe('reading a refusal for the point budget at a position', () => {
   it.each([
-    ['label', 'sheet.pointBudget.label: must be at most 60 characters'],
-    ['total', 'sheet.pointBudget.total: must be at least 1'],
-    ['min', 'sheet.pointBudget.min: must be a whole number'],
-    ['max', 'sheet.pointBudget.max: must be at least min (20), 10 given'],
+    ['key', 'sheet.pointBudgets[1].key: duplicate budget key "attributes"'],
+    ['label', 'sheet.pointBudgets[1].label: must be at most 60 characters'],
+    ['total', 'sheet.pointBudgets[1].total: must be at least 1'],
+    ['min', 'sheet.pointBudgets[1].min: must be a whole number'],
+    ['max', 'sheet.pointBudgets[1].max: must be at least min (20), 10 given'],
   ])('gives the %s message to its input, without its path', (name, text) => {
-    const answer = sheetPointBudgetAnswer(text)
+    const answer = sheetPointBudgetAnswer(text, 1)
 
     expect(answer.inputs).toEqual({ [name]: text.slice(text.indexOf(': ') + 2) })
     expect(answer.fields).toBeNull()
@@ -104,19 +105,26 @@ describe('reading a refusal for the point budget', () => {
   })
 
   it.each([
-    ['sheet.pointBudget.fields: must list at least one field', 'must list at least one field'],
-    ['sheet.pointBudget.fields[1]: duplicate field "pow"', 'duplicate field "pow"'],
+    ['sheet.pointBudgets[1].fields: must list at least one field', 'must list at least one field'],
+    [
+      'sheet.pointBudgets[1].fields[2]: field "pow" is already in budget "attributes"',
+      'field "pow" is already in budget "attributes"',
+    ],
   ])('gives %s to the fields list', (text, message) => {
-    expect(sheetPointBudgetAnswer(text)).toEqual({ inputs: {}, fields: message, form: null })
+    expect(sheetPointBudgetAnswer(text, 1)).toEqual({ inputs: {}, fields: message, form: null })
   })
 
   it.each([
-    ['the budget as a whole', 'sheet.pointBudget: unknown field "bonus"'],
-    ['a property with no input', 'sheet.pointBudget.colour: unknown property'],
+    ['the budget as a whole', 'sheet.pointBudgets[1]: unknown field "bonus"'],
+    ['a property with no input', 'sheet.pointBudgets[1].colour: unknown property'],
+    ['another budget', 'sheet.pointBudgets[0].total: must be at least 1'],
+    ['a position that only starts like it', 'sheet.pointBudgets[11].total: must be at least 1'],
+    ['the list as a whole', 'sheet.pointBudgets: at most 10 point budgets'],
+    ['the legacy budget', 'sheet.pointBudget.total: must be at least 1'],
     ['a field of the sheet', 'sheet.fields[1].label: must not be blank'],
     ['a message without a path', 'Something else'],
   ])('gives %s to the form, path and all', (_name, text) => {
-    expect(sheetPointBudgetAnswer(text)).toEqual({ inputs: {}, fields: null, form: text })
+    expect(sheetPointBudgetAnswer(text, 1)).toEqual({ inputs: {}, fields: null, form: text })
   })
 })
 

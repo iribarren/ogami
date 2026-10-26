@@ -4,7 +4,7 @@ import { expect, userEvent, within } from 'storybook/test'
 import type { FakeHandler } from '@/test/fakeApi'
 import { StoryProviders } from '@/test/StoryProviders'
 
-import { sheet, sheetWithPointBudget } from '../fixtures'
+import { sheet, sheetWithPointBudgets } from '../fixtures'
 import { SheetPointBudgetPanel } from './SheetPointBudgetPanel'
 
 const base = '/api/studio/game-systems/my-draft'
@@ -29,9 +29,14 @@ type Story = StoryObj<typeof meta>
 /** No budget: Characters are created without one until it is added. */
 export const WithoutBudget: Story = {}
 
-/** A budget: its label, total, fields and the range a field takes while a Character is created. */
-export const WithBudget: Story = {
-  args: { sheet: sheetWithPointBudget },
+/** Two budgets, each with its label, key, total, fields and the range a field takes at creation. */
+export const WithTwoBudgets: Story = {
+  args: { sheet: sheetWithPointBudgets },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole('listitem', { name: 'Attribute points' })).toBeVisible()
+    await expect(canvas.getByRole('listitem', { name: 'Skill points' })).toBeVisible()
+  },
 }
 
 /** Only the sheet's number fields can be spent on. */

@@ -5,7 +5,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 import { typeText } from '@/test/typeText'
 
-import { draft, sheet, sheetWithPointBudget, validDraft } from '../fixtures'
+import { draft, sheet, sheetWithLegacyBudget, sheetWithPointBudgets, validDraft } from '../fixtures'
 
 // Radix checkboxes render a hidden input whose size it measures.
 vi.stubGlobal(
@@ -37,9 +37,9 @@ async function openSheet(handlers: Record<string, FakeHandler> = {}) {
   return { user, ...rendered }
 }
 
-const withBudget = { [`GET ${base}/sheet`]: json(sheetWithPointBudget) }
+const withBudgets = { [`GET ${base}/sheet`]: json(sheetWithPointBudgets) }
 const inDialog = () => within(screen.getByRole('dialog'))
-const panel = () => screen.getByRole('region', { name: 'Point budget' })
+const panel = () => screen.getByRole('region', { name: 'Point budgets' })
 
 /** What a write sent: its JSON body, or the query of a DELETE. */
 function recorder(response: Response | (() => Response)) {
@@ -56,45 +56,45 @@ function recorder(response: Response | (() => Response)) {
 }
 
 const reload = { name: 'Reload the latest version' }
-const budget = { label: null, total: 30, fields: ['pow'], min: null, max: null }
+const entry = (key: string) => `${base}/sheet/point-budgets/${key}`
+const added = { key: 'luck', label: 'Luck', total: 30, fields: ['pow'], min: null, max: null }
 
 describe('a sheet without a point budget', () => {
   it('says so and adds a budget over the number fields only', async () => {
-    const saved = { ...sheet, version: 8, pointBudget: budget }
+    const saved = { ...sheet, version: 8, pointBudgets: [added] }
     const { sent, handler } = recorder(Response.json(saved))
-    const { user } = await openSheet({ [`PUT ${base}/sheet/point-budget`]: handler })
+    const { user } = await openSheet({ [`PUT ${entry('luck')}`]: handler })
 
     expect(await screen.findByText('Characters are created without a point budget.')).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Add point budget' }))
 
-    expect(
-      inDialog()
-        .getAllByRole('checkbox')
-        .map((box) => box.id),
-    ).toHaveLength(2)
+    expect(inDialog().getAllByRole('checkbox')).toHaveLength(2)
     expect(inDialog().getByText('Power')).toBeVisible()
-    expect(inDialog().getByText('Dexterity')).toBeVisible()
     expect(inDialog().queryByText('Hit points')).not.toBeInTheDocument()
+    await typeText(user, inDialog().getByLabelText('Label'), 'Luck')
+    expect(inDialog().getByLabelText('Key')).toHaveValue('luck')
     await typeText(user, inDialog().getByLabelText('Total'), '30')
     await user.click(inDialog().getByRole('checkbox', { name: /Power/ }))
     await user.click(inDialog().getByRole('button', { name: 'Save point budget' }))
 
     await waitFor(() => {
-      expect(sent).toEqual([{ expectedVersion: 7, total: 30, fields: ['pow'] }])
+      expect(sent).toEqual([{ expectedVersion: 7, label: 'Luck', total: 30, fields: ['pow'] }])
     })
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
-    expect(within(panel()).getByText('Points: 30')).toBeVisible()
+    expect(within(panel()).getByText('Luck: 30')).toBeVisible()
     expect(within(panel()).getByText('Spent over Power')).toBeVisible()
   })
 
-  it('sends the label and the creation bounds when they are set', async () => {
-    const { sent, handler } = recorder(Response.json({ ...sheet, pointBudget: budget }))
-    const { user } = await openSheet({ [`PUT ${base}/sheet/point-budget`]: handler })
+  it('stops following the label once the key is typed, and sends the bounds', async () => {
+    const { sent, handler } = recorder(Response.json({ ...sheet, pointBudgets: [added] }))
+    const { user } = await openSheet({ [`PUT ${entry('fortune')}`]: handler })
 
     await user.click(await screen.findByRole('button', { name: 'Add point budget' }))
-    await typeText(user, inDialog().getByLabelText('Label'), 'Characteristic points')
+    await typeText(user, inDialog().getByLabelText('Key'), 'fortune')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Luck points')
+    expect(inDialog().getByLabelText('Key')).toHaveValue('fortune')
     await typeText(user, inDialog().getByLabelText('Total'), '20')
     await user.click(inDialog().getByRole('checkbox', { name: /Dexterity/ }))
     await user.click(inDialog().getByRole('checkbox', { name: /Power/ }))
@@ -106,7 +106,7 @@ describe('a sheet without a point budget', () => {
       expect(sent).toEqual([
         {
           expectedVersion: 7,
-          label: 'Characteristic points',
+          label: 'Luck points',
           total: 20,
           fields: ['pow', 'dex'],
           min: 5,
@@ -116,18 +116,23 @@ describe('a sheet without a point budget', () => {
     })
   })
 
-  it('needs a total and whole numbers before it asks the server', async () => {
+  it('needs a label, a key, a total and whole numbers before it asks the server', async () => {
     const { sent, handler } = recorder(Response.json(sheet))
-    const { user } = await openSheet({ [`PUT ${base}/sheet/point-budget`]: handler })
+    const { user } = await openSheet({ [`PUT ${entry('luck')}`]: handler })
 
     await user.click(await screen.findByRole('button', { name: 'Add point budget' }))
     await user.click(inDialog().getByRole('button', { name: 'Save point budget' }))
-    expect(await inDialog().findByText('Enter the total.')).toBeVisible()
+    expect(await inDialog().findByText('Enter the label.')).toBeVisible()
+    expect(inDialog().getByText(/Use 1 to 64 lower case letters/)).toBeVisible()
+    expect(inDialog().getByText('Enter the total.')).toBeVisible()
 
+    await typeText(user, inDialog().getByLabelText('Label'), 'Luck')
+    await typeText(user, inDialog().getByLabelText('Key'), 'Bad Key')
     await typeText(user, inDialog().getByLabelText('Total'), '20')
     await typeText(user, inDialog().getByLabelText('Creation min'), '1.5')
     await user.click(inDialog().getByRole('button', { name: 'Save point budget' }))
     expect(await inDialog().findByText('Enter a whole number.')).toBeVisible()
+    expect(inDialog().getByText(/Use 1 to 64 lower case letters/)).toBeVisible()
     expect(sent).toEqual([])
   })
 
@@ -144,90 +149,85 @@ describe('a sheet without a point budget', () => {
     expect(inDialog().getByText(/no number field to spend points on/)).toBeVisible()
     expect(inDialog().getByRole('button', { name: 'Save point budget' })).toBeDisabled()
   })
-
-  // The API reads a draft stored before point budgets with `pointBudget: null`, never without the key.
-  it('reads a draft stored before point budgets, sent with a null budget, the same way', async () => {
-    await openSheet({ [`GET ${base}/sheet`]: json({ ...sheet, pointBudget: null }) })
-
-    expect(await screen.findByText('Characters are created without a point budget.')).toBeVisible()
-  })
 })
 
-describe('a sheet with a point budget', () => {
-  it('shows its label, total, fields and creation range', async () => {
-    await openSheet(withBudget)
+describe('a sheet with several point budgets', () => {
+  it('lists each with its label, key, total, fields and creation range', async () => {
+    await openSheet(withBudgets)
 
-    expect(
-      await within(await screen.findByRole('region', { name: 'Point budget' })).findByText(
-        'Characteristic points: 20',
-      ),
-    ).toBeVisible()
-    expect(within(panel()).getByText('Spent over Power, Dexterity')).toBeVisible()
-    expect(within(panel()).getByText('Creation range: 5 to 15')).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Add point budget' })).not.toBeInTheDocument()
+    const attributes = within(await screen.findByRole('listitem', { name: 'Attribute points' }))
+    expect(attributes.getByText('Attribute points: 12')).toBeVisible()
+    expect(attributes.getByText('attributes')).toBeVisible()
+    expect(attributes.getByText('Spent over Power')).toBeVisible()
+    expect(attributes.getByText('Creation range: 1 to 5')).toBeVisible()
+    const skills = within(screen.getByRole('listitem', { name: 'Skill points' }))
+    expect(skills.getByText('Spent over Dexterity')).toBeVisible()
+    expect(skills.getByText('Creation range: at most 3')).toBeVisible()
   })
 
-  it.each([
-    [{ min: 5, max: null }, 'Creation range: at least 5'],
-    [{ min: null, max: 15 }, 'Creation range: at most 15'],
-  ])('says %o as a one-sided range', async (bounds, text) => {
+  it('says a lower bound alone as at least', async () => {
     await openSheet({
       [`GET ${base}/sheet`]: json({
-        ...sheetWithPointBudget,
-        pointBudget: { ...sheetWithPointBudget.pointBudget, ...bounds },
+        ...sheetWithPointBudgets,
+        pointBudgets: [{ ...sheetWithPointBudgets.pointBudgets[0], min: 2, max: null }],
       }),
     })
 
-    expect(await screen.findByText(text)).toBeVisible()
+    expect(await screen.findByText('Creation range: at least 2')).toBeVisible()
   })
 
-  it('edits the whole budget from what it holds', async () => {
-    const saved = { ...sheetWithPointBudget, version: 9, pointBudget: budget }
+  it('edits one budget by its key, which stays read-only', async () => {
+    const saved = {
+      ...sheetWithPointBudgets,
+      version: 12,
+      pointBudgets: [
+        { ...sheetWithPointBudgets.pointBudgets[0], total: 14 },
+        sheetWithPointBudgets.pointBudgets[1],
+      ],
+    }
     const { sent, handler } = recorder(Response.json(saved))
-    const { user } = await openSheet({ ...withBudget, [`PUT ${base}/sheet/point-budget`]: handler })
+    const { user } = await openSheet({ ...withBudgets, [`PUT ${entry('attributes')}`]: handler })
 
-    await user.click(await screen.findByRole('button', { name: 'Edit' }))
-    expect(inDialog().getByLabelText('Label')).toHaveValue('Characteristic points')
-    expect(inDialog().getByLabelText('Total')).toHaveValue('20')
-    expect(inDialog().getByRole('checkbox', { name: /Dexterity/ })).toBeChecked()
-    expect(inDialog().getByLabelText('Creation min')).toHaveValue('5')
-    await user.click(inDialog().getByRole('checkbox', { name: /Dexterity/ }))
-    await user.clear(inDialog().getByLabelText('Label'))
+    await user.click(await screen.findByRole('button', { name: 'Edit Attribute points' }))
+    expect(inDialog().queryByLabelText('Key')).not.toBeInTheDocument()
+    expect(inDialog().getByText('attributes')).toBeVisible()
+    expect(inDialog().getByLabelText('Label')).toHaveValue('Attribute points')
+    expect(inDialog().getByLabelText('Total')).toHaveValue('12')
+    expect(inDialog().getByRole('checkbox', { name: /Power/ })).toBeChecked()
+    expect(inDialog().getByLabelText('Creation min')).toHaveValue('1')
+    await user.clear(inDialog().getByLabelText('Total'))
+    await typeText(user, inDialog().getByLabelText('Total'), '14')
     await user.clear(inDialog().getByLabelText('Creation min'))
-    await user.clear(inDialog().getByLabelText('Creation max'))
     await user.click(inDialog().getByRole('button', { name: 'Save point budget' }))
 
     await waitFor(() => {
-      expect(sent).toEqual([{ expectedVersion: 8, total: 20, fields: ['pow'] }])
+      expect(sent).toEqual([
+        { expectedVersion: 11, label: 'Attribute points', total: 14, fields: ['pow'], max: 5 },
+      ])
     })
-    expect(await within(panel()).findByText('Points: 30')).toBeVisible()
+    expect(await within(panel()).findByText('Attribute points: 14')).toBeVisible()
   })
 
-  it('removes it with the version it read', async () => {
-    const { sent, handler } = recorder(Response.json({ ...sheet, version: 9 }))
-    const { user } = await openSheet({
-      ...withBudget,
-      [`DELETE ${base}/sheet/point-budget`]: handler,
-    })
+  it('removes one budget with the version it read', async () => {
+    const saved = { ...sheetWithPointBudgets, version: 12, pointBudgets: [] }
+    const { sent, handler } = recorder(Response.json(saved))
+    const { user } = await openSheet({ ...withBudgets, [`DELETE ${entry('skills')}`]: handler })
 
-    await user.click(await screen.findByRole('button', { name: 'Remove' }))
+    await user.click(await screen.findByRole('button', { name: 'Remove Skill points' }))
 
     await waitFor(() => {
-      expect(sent).toEqual(['?expectedVersion=8'])
+      expect(sent).toEqual(['?expectedVersion=11'])
     })
     expect(await screen.findByText('Characters are created without a point budget.')).toBeVisible()
   })
 
   it('shows why a removal failed and offers the reload on a 409', async () => {
     const { user } = await openSheet({
-      ...withBudget,
-      [`DELETE ${base}/sheet/point-budget`]: json(
-        { error: 'Another request saved the draft.' },
-        409,
-      ),
+      ...withBudgets,
+      [`DELETE ${entry('skills')}`]: json({ error: 'Another request saved the draft.' }, 409),
     })
 
-    await user.click(await screen.findByRole('button', { name: 'Remove' }))
+    await user.click(await screen.findByRole('button', { name: 'Remove Skill points' }))
 
     expect(await screen.findByText('Another request saved the draft.')).toBeVisible()
     expect(screen.getByRole('button', reload)).toBeVisible()
@@ -235,54 +235,112 @@ describe('a sheet with a point budget', () => {
 
   it('shows the message of a 404 on removal without a reload', async () => {
     const { user } = await openSheet({
-      ...withBudget,
-      [`DELETE ${base}/sheet/point-budget`]: json({ error: 'No GameSystem "my-draft".' }, 404),
+      ...withBudgets,
+      [`DELETE ${entry('skills')}`]: json(
+        { error: 'The draft has no point budget "skills".' },
+        404,
+      ),
     })
 
-    await user.click(await screen.findByRole('button', { name: 'Remove' }))
+    await user.click(await screen.findByRole('button', { name: 'Remove Skill points' }))
 
-    expect(await screen.findByText('No GameSystem "my-draft".')).toBeVisible()
+    expect(await screen.findByText('The draft has no point budget "skills".')).toBeVisible()
     expect(screen.queryByRole('button', reload)).not.toBeInTheDocument()
   })
 })
 
-describe('a refused save', () => {
-  async function refuse(error: string, status = 422) {
-    const { user } = await openSheet({
-      ...withBudget,
-      [`PUT ${base}/sheet/point-budget`]: json({ error }, status),
+describe('a legacy budget with no label', () => {
+  const legacy = { [`GET ${base}/sheet`]: json(sheetWithLegacyBudget) }
+
+  it('reads as the budget points and needs a label to be saved', async () => {
+    const { sent, handler } = recorder(
+      Response.json({
+        ...sheetWithLegacyBudget,
+        version: 13,
+        pointBudgets: [
+          { ...sheetWithLegacyBudget.pointBudgets[0], label: 'Characteristic points' },
+        ],
+      }),
+    )
+    const { user } = await openSheet({ ...legacy, [`PUT ${entry('points')}`]: handler })
+
+    expect(await screen.findByText('Points: 30')).toBeVisible()
+    expect(screen.getByText('points')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Edit Points' }))
+    expect(inDialog().getByLabelText('Label')).toHaveValue('')
+    await user.click(inDialog().getByRole('button', { name: 'Save point budget' }))
+    expect(await inDialog().findByText('Enter the label.')).toBeVisible()
+    expect(sent).toEqual([])
+
+    await typeText(user, inDialog().getByLabelText('Label'), 'Characteristic points')
+    await user.click(inDialog().getByRole('button', { name: 'Save point budget' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([
+        { expectedVersion: 12, label: 'Characteristic points', total: 30, fields: ['pow'] },
+      ])
     })
-    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    expect(await within(panel()).findByText('Characteristic points: 30')).toBeVisible()
+  })
+})
+
+describe('a refused save', () => {
+  async function refuse(error: string, status = 422, edit = 'Edit Skill points') {
+    const { user } = await openSheet({
+      ...withBudgets,
+      [`PUT ${entry('skills')}`]: json({ error }, status),
+      [`PUT ${entry('luck')}`]: json({ error }, status),
+    })
+    await user.click(await screen.findByRole('button', { name: edit }))
+    if (edit === 'Add point budget') {
+      await typeText(user, inDialog().getByLabelText('Label'), 'Luck')
+      await typeText(user, inDialog().getByLabelText('Total'), '3')
+      await user.click(inDialog().getByRole('checkbox', { name: /Power/ }))
+    }
     await user.click(inDialog().getByRole('button', { name: 'Save point budget' }))
     return user
   }
 
   it.each([
-    ['Total', 'sheet.pointBudget.total: must be at least 1', 'must be at least 1'],
-    ['Label', 'sheet.pointBudget.label: must not be blank', 'must not be blank'],
-    ['Creation min', 'sheet.pointBudget.min: must be a whole number', 'must be a whole number'],
-    ['Creation max', 'sheet.pointBudget.max: must be at least min (5)', 'must be at least min (5)'],
-  ])('puts the message of the %s input next to it', async (label, error, message) => {
-    await refuse(error)
+    ['Total', 'sheet.pointBudgets[1].total: must be at least 1', 'must be at least 1'],
+    ['Label', 'sheet.pointBudgets[1].label: must not be blank', 'must not be blank'],
+    ['Creation min', 'sheet.pointBudgets[1].min: must be a whole number', 'must be a whole number'],
+    ['Creation max', 'sheet.pointBudgets[1].max: must be at least min', 'must be at least min'],
+  ])(
+    'puts the message of the %s input of an edited budget next to it',
+    async (label, error, message) => {
+      await refuse(error)
 
-    expect(await inDialog().findByText(message)).toBeVisible()
-    expect(inDialog().getByLabelText(label)).toBeInvalid()
-    expect(inDialog().queryByRole('alert')).not.toBeInTheDocument()
+      expect(await inDialog().findByText(message)).toBeVisible()
+      expect(inDialog().getByLabelText(label)).toBeInvalid()
+      expect(inDialog().queryByRole('alert')).not.toBeInTheDocument()
+    },
+  )
+
+  it('reads the position of an added budget as the last of the list', async () => {
+    await refuse('sheet.pointBudgets[2].key: duplicate budget key "luck"', 422, 'Add point budget')
+
+    expect(await inDialog().findByText('duplicate budget key "luck"')).toBeVisible()
+    expect(inDialog().getByLabelText('Key')).toBeInvalid()
   })
 
   it('puts a refusal of the fields with the list', async () => {
-    await refuse('sheet.pointBudget.fields[1]: duplicate field "pow"')
+    await refuse('sheet.pointBudgets[1].fields[0]: field "pow" is already in budget "attributes"')
 
-    expect(await inDialog().findByText('duplicate field "pow"')).toBeVisible()
+    expect(
+      await inDialog().findByText('field "pow" is already in budget "attributes"'),
+    ).toBeVisible()
     expect(inDialog().queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('keeps the whole budget message in the form', async () => {
-    await refuse('sheet.pointBudget: unknown field "bonus"')
+  it.each([
+    ['the budget as a whole', 'sheet.pointBudgets[1]: unknown field "bonus"'],
+    ['another budget', 'sheet.pointBudgets[0].total: must be at least 1'],
+    ['the list as a whole', 'sheet.pointBudgets: at most 10 point budgets'],
+  ])('keeps %s in the form, path and all', async (_name, error) => {
+    await refuse(error)
 
-    expect(await inDialog().findByRole('alert')).toHaveTextContent(
-      'sheet.pointBudget: unknown field "bonus"',
-    )
+    expect(await inDialog().findByRole('alert')).toHaveTextContent(error)
   })
 
   it('shows a 400 as it is, with no reload', async () => {
@@ -301,6 +359,6 @@ describe('a refused save', () => {
     await waitFor(() => {
       expect(inDialog().queryByText('Another request saved the draft.')).not.toBeInTheDocument()
     })
-    expect(inDialog().getByLabelText('Total')).toHaveValue('20')
+    expect(inDialog().getByLabelText('Total')).toHaveValue('8')
   })
 })

@@ -727,6 +727,7 @@ export const sheet = {
   trackers: [{ key: 'heat', label: 'Heat', max: 10 }],
   publishedFieldKeys: ['hp'],
   pointBudget: null,
+  pointBudgets: [],
 }
 
 /** The sheet with a conditions field, Physical, marked from Hurt and Tired. */
@@ -759,6 +760,16 @@ export const sheetWithPointBudget = {
     min: 5,
     max: 15,
   },
+  pointBudgets: [
+    {
+      key: 'points',
+      label: 'Characteristic points',
+      total: 20,
+      fields: ['pow', 'dex'],
+      min: 5,
+      max: 15,
+    },
+  ],
 }
 
 /** A sheet without declared groups: Play lists consecutive fields of one group together. */
@@ -776,6 +787,7 @@ export const sheetUngrouped = {
   trackers: [],
   publishedFieldKeys: [],
   pointBudget: null,
+  pointBudgets: [],
 }
 
 /** A schema version 1 draft's sheet: no fields. */

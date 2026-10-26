@@ -287,7 +287,7 @@ final class PresetsTest extends KernelTestCase
         self::assertSame('{hp-max}', $hp->startMax?->toString());
 
         // Characters are created by rolling or by spending 460 points over the eight characteristics (ADR 0040).
-        $budget = $sheet->budget();
+        $budget = $sheet->budgets()[0] ?? null;
         self::assertNotNull($budget);
         self::assertSame([460, 15, 90, ['str', 'con', 'siz', 'dex', 'app', 'int', 'pow', 'edu']], [$budget->total, $budget->min, $budget->max, $budget->fields]);
         $siz = $sheet->field('siz');
@@ -422,7 +422,7 @@ final class PresetsTest extends KernelTestCase
             self::assertInstanceOf(ConditionsField::class, $conditions, $key);
             self::assertSame($options, $conditions->optionKeys(), $key);
         }
-        $budget = $sheet->budget();
+        $budget = $sheet->budgets()[0] ?? null;
         self::assertNotNull($budget);
         self::assertSame([12, ['vigour', 'finesse', 'reason', 'heart']], [$budget->total, $budget->fields]);
 

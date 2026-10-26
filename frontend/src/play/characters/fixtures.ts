@@ -198,6 +198,7 @@ export const creationCampaign: Campaign = {
     ...nightJobCampaign.pinnedRelease,
     sheet: creationSheet,
     pointBudget: creationBudget,
+    pointBudgets: [{ key: 'points', ...creationBudget }],
   },
   characters: [],
 }

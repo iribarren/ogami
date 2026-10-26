@@ -7,6 +7,7 @@ namespace App\Play\Domain\GameSystem\Sheet;
 /**
  * The points a player spends on number fields when a Character is created (ADR 0040): at most
  * $total over the $fields, each inside its own bounds and the budget's creation-only $min and $max.
+ * $key names it in a sheet's list (ADR 0043); a legacy single budget is "points".
  */
 final readonly class PointBudget
 {
@@ -19,6 +20,7 @@ final readonly class PointBudget
         public ?string $label = null,
         public ?int $min = null,
         public ?int $max = null,
+        public string $key = 'points',
     ) {
         if ($total < 1) {
             throw new \InvalidArgumentException('A point budget needs a total of at least 1.');

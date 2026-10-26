@@ -1,7 +1,7 @@
 # Feature: preset-vaesen
 
 - **Locator:** `odd/tasks/preset-vaesen.md` · Engram topic `odd/preset-vaesen/tasks`
-- **Issue:** #294 · **Branch:** `feat/preset-vaesen-1-preset` · **Status:** in progress (slice 1)
+- **Issue:** #294 · **Branch:** `feat/preset-vaesen-2-point-budgets` · **Status:** in progress (slice 2)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B9 (after `rules-dice-pools`, [ADR 0041](../../docs/adr/0041-dice-pools-pushes-and-conditions.md), and `rules-flow-choices`, [ADR 0042](../../docs/adr/0042-flow-choices-check-sets-and-scene-tables.md))
@@ -28,6 +28,10 @@ Out of scope: VtM's criticals and Hunger dice (B10); items and money (B11); Stud
 | Push cost | Mark one Condition of the matching kind, the player picks it (`mark` without a value) |
 | Fear | Stand Fast (Reason + Heart) is a pool check without a push |
 | Skill points (P2) | Built in this feature: a sheet may declare several point budgets, so Lanterns budgets attributes (12) and skills (8, at most 3 each) (user, 2026-10-26) |
+| Budget shape (slice 2) | Additive `sheet.pointBudgets`: a list of 1–10 `{key, label, total, fields, min?, max?}`, key and label required; the legacy single `pointBudget` stays valid, declaring both is refused. No schema version 3; every existing content hash is unchanged. Studio drafts hold a list; publishing one budget emits the legacy `pointBudget` (no key), so a one-budget release keeps its shape and hash; two or more emit `pointBudgets` (parent, 2026-10-26) |
+| Budgets and fields (slice 2) | A field sits in at most one budget: refused at publish and by Studio draft commands |
+| Roll or points (slice 2) | One method per Character, as in ADR 0040. A budget is *rollable* when it covers a field with a dice default; the player picks a method only when some budget is rollable. `roll` rolls the dice fields and skips rollable budgets, but still spends every other budget (Percentile Horror's skill points); `points` spends every budget. `point_budget_exceeded` names the budget's label |
+| Studio API and views (slice 2) | Budgets addressed by key (`PUT` / `DELETE …/sheet/point-budgets/{key}`). The single-budget endpoint and view field keep working on a draft with at most one budget until slice 3 moves the UI, then go. Play's pinned release response adds `pointBudgets` beside `pointBudget` for the same window |
 
 ## Publisher policy
 
@@ -71,10 +75,10 @@ Point budget map (explorer, 2026-10-26): publisher `Studio/Domain/Release/Versio
 | T1 | 1 | Docs: this feature doc; roadmap B9 in progress (Vaesen-style original on the YZE SRD) | parent (inline, docs) | [x] | ed44865 |
 | T2 | 1 | Author `lanterns-of-the-mire` in Studio from the outline, sandbox-roll a pool and a push, publish v1; log every Studio friction under Studio findings | parent (browser, worker) | [x] | — |
 | T3 | 1 | Play a session in Play (browser): Prologue, Inquiry, Struggle, Respite, Unmasking, Aftermath; pushes from the sheet and from a step; fix content in Studio and republish; log Play findings and gaps | parent (browser, worker) | [x] | — |
-| T4 | 1 | Export the latest release to `backend/presets/lanterns-of-the-mire.json` unedited; `PresetsTest` (publishes, credits notice, 13 pool checks, push costs, conditions) | delegated writer (slice 1) | [x] | |
-| T5 | 2 | ADR: several point budgets per sheet (amends ADR 0040): shape, hash and legacy single budget, a field in one budget only, roll-or-points rule, Studio routes; contract doc | delegated writer (Opus, design) | [ ] | |
-| T6 | 2 | Contract, publisher and Studio backend: schema, validation, draft commands, in-use guards, views and API; tests; `make api` | delegated writer | [ ] | |
-| T7 | 2 | Play backend: translator reads both shapes, `SheetTemplate` budgets, `CharacterCreation` per budget, pinned release response; tests | delegated writer | [ ] | |
+| T4 | 1 | Export the latest release to `backend/presets/lanterns-of-the-mire.json` unedited; `PresetsTest` (publishes, credits notice, 13 pool checks, push costs, conditions) | delegated writer (slice 1) | [x] | 43ab5a1 |
+| T5 | 2 | ADR: several point budgets per sheet (amends ADR 0040): shape, hash and legacy single budget, a field in one budget only, roll-or-points rule, Studio routes; contract doc | delegated writer (Opus, design; preparation trigger: code reading for the design) | [x] | |
+| T6 | 2 | Contract, publisher and Studio backend: schema, validation, draft commands, in-use guards, views and API; tests; `make api` | delegated writer (Sonnet) | [x] | |
+| T7 | 2 | Play backend: translator reads both shapes, `SheetTemplate` budgets, `CharacterCreation` per budget, pinned release response; tests | delegated writer (Sonnet) | [x] | |
 | T8 | 3 | Studio sheet: a list of budgets (add, edit, remove), error paths; tests and story | delegated writer | [ ] | |
 | T9 | 3 | Play character form: one counter per budget, submit blocked when any is over; tests | delegated writer | [ ] | |
 | T10 | 3 | S27: the effect-kind select shows every kind (no clipped tenth row); test | delegated writer | [ ] | |
@@ -134,12 +138,17 @@ Played 2026-10-26 by a Claude in Chrome worker as `mire-author@ogami.test`: camp
 - 2026-10-26: T3: v2 published (S27: `sheet` hidden as the tenth row of the kind list); session played to the end on v2; 15 Play findings, no bugs. User chose to build several point budgets per sheet here (P2). v3 (P10 Nightfall end, P14 wording) in progress.
 - 2026-10-26: T3 done: v3 published (Investigation scene closing `condition` on Nightfall with `endPhase`; push wording); the v2 campaign upgraded to v3 and Nightfall 6 ended the phase into the Confrontation (P17). Point budget map recorded in the slice plan.
 - 2026-10-26: T4 done: exported v3 unedited (1,653 lines); re-export to a temp path `cmp` byte-identical (temp deleted); `make presets` prints `Unchanged lanterns-of-the-mire (v3, managed in Studio)`; no "Vaesen" in the file. `PresetsTest::lanternsOfTheMire...` passed first against the existing file (77 assertions); proved live by flipping the point budget total 12 to 13 (failed), then restored (PresetsTest 9 tests green). The preset publishes as v1 on the test database.
+- 2026-10-26: T6 done (writer, Sonnet): `sheet.pointBudgets` in the publisher (`PointBudget::validate`, one-entry canonicalisation to `pointBudget`), draft commands `SaveSheetPointBudgetEntry` / `RemoveSheetPointBudgetEntry`, routes `PUT`/`DELETE …/sheet/point-budgets/{budget}`, `several_point_budgets` 409 on the single-budget routes, view `pointBudgets`. RED: `ReleaseContentPointBudgetsTest` (22 of 28 failed, 4 errors) and `GameSystemSheetPointBudgetsTest` (12 errors, 1 failure) before the code, then green; handler and API tests were written after the application layer, so no separate RED. Size ~1,480 changed lines (domain and application ~430, Studio HTTP ~230, tests ~790, schema ~30); `make api` adds ~660 generated lines (openapi.json 376, schema.d.ts 281), not committed here.
+- 2026-10-26: T7 done (writer, Sonnet): translator reads `pointBudget` (key `points`) and `pointBudgets` into a list and refuses both, bad keys, duplicate keys and a field in two budgets; `SheetTemplate::budgets()` (keyed list, `PointBudget::$key`); `CharacterCreation` per ADR 0043 (rollable = covers a dice field; method required only when some budget is rollable; roll spends the non-rollable budgets, skips rollable ones but keeps their bounds; messages name the budget label); pinned release response adds `pointBudgets`. RED before code: new `CharacterCreationBudgetsTest`, `GameSystemReleaseTranslatorBudgetsTest` and API tests failed (33 errors and 2 failures in the Play unit suite, 5 failures in `CampaignCharactersApiTest`); GREEN after (Play unit and integration suites). Messages of the existing labelled-budget refusals now name the label (e.g. `"Points" allows 100 points, 101 spent.`); `PresetsTest` reads `budgets()[0]` and stays green.
+- 2026-10-26: The user approved a slice of about 2,700 changed lines (generated files included) over the ~1,700 ceiling, so T7 stays in slice 2; new stop line 2,900.
+- 2026-10-26: T5 done: [ADR 0043](../../docs/adr/0043-several-point-budgets.md) (docs only: structural readback, no runnable RED). Settled: a one-entry `pointBudgets` canonicalizes to the legacy `pointBudget` in the publisher, so every publish path hashes alike; a legacy budget reads as key `points`; a draft keeps a legacy budget as restored until a keyed write (a label-less one round-trips); keyed routes `…/sheet/point-budgets/{budget}`; the single-budget endpoint answers 409 `several_point_budgets` with two or more. Contract doc updated, its claim that Play refuses budgets fixed.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | — | ed44865, 43ab5a1 | Review on 43ab5a1 offered, skipped by the user; no findings | [#295](https://github.com/iribarren/ogami/pull/295) |
 
 ## Next step
 
-Slice 1: review; PR. Then slice 2 (T5–T7).
+Slice 2 (T5–T7): ADR 0043 several point budgets, then contract, Studio and Play backend.

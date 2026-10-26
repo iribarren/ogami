@@ -45,7 +45,7 @@ final class CharacterCreationTest extends TestCase
             new DerivedField('half', 'Half', null, null, formula: Formula::fromString('({str}+{con})/2')),
             new TrackField('hp', 'Hit points', startMax: Formula::fromString('{half}')),
             new TextField('role', 'Role'),
-        ], budget: $budget ?? new PointBudget(460, ['str', 'con'], 'Points', 15, 90));
+        ], budgets: [$budget ?? new PointBudget(460, ['str', 'con'], 'Points', 15, 90)]);
     }
 
     #[Test]
@@ -98,7 +98,7 @@ final class CharacterCreationTest extends TestCase
     #[Test]
     public function aBudgetWithoutDiceDefaultsIsSpentWithoutChoosingAMethod(): void
     {
-        $sheet = new SheetTemplate([new NumberField('str', 'Strength', min: 1, max: 10), new NumberField('con', 'Constitution', min: 1, max: 10)], budget: new PointBudget(12, ['str', 'con']));
+        $sheet = new SheetTemplate([new NumberField('str', 'Strength', min: 1, max: 10), new NumberField('con', 'Constitution', min: 1, max: 10)], budgets: [new PointBudget(12, ['str', 'con'])]);
         $random = new ScriptedRandomNumberGenerator();
 
         self::assertSame(['str' => 7, 'con' => 5], CharacterCreation::values($sheet, ['str' => 7, 'con' => 5], null, $random));
@@ -163,7 +163,7 @@ final class CharacterCreationTest extends TestCase
         return new SheetTemplate([
             new NumberField('str', 'Strength', min: 1, max: 99, roll: DiceExpression::fromString('3d6*5')),
             new NumberField('san', 'Sanity', min: 1, max: 99, default: 50),
-        ], budget: new PointBudget(100, ['str', 'san'], 'Points', 15, 90));
+        ], budgets: [new PointBudget(100, ['str', 'san'], 'Points', 15, 90)]);
     }
 
     #[Test]
@@ -187,7 +187,7 @@ final class CharacterCreationTest extends TestCase
     #[Test]
     public function aBudgetWithNothingToRollIsCheckedWithoutChoosingAMethod(): void
     {
-        $sheet = new SheetTemplate([new NumberField('str', 'Strength', min: 1, max: 10), new NumberField('con', 'Constitution', min: 1, max: 10)], budget: new PointBudget(12, ['str', 'con']));
+        $sheet = new SheetTemplate([new NumberField('str', 'Strength', min: 1, max: 10), new NumberField('con', 'Constitution', min: 1, max: 10)], budgets: [new PointBudget(12, ['str', 'con'])]);
 
         $this->assertRefused(CreationRefusal::BudgetExceeded, static fn (): array => CharacterCreation::values($sheet, ['str' => 7, 'con' => 6], null, null));
     }

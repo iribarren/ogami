@@ -10,8 +10,8 @@ use App\Formula\Domain\InvalidFormula;
 /**
  * The character sheet a GameSystem release defines (ADR 0022): its fields in layout order. A
  * release without fields has an empty template, and its Characters have a name and tags only. The
- * layout (ADR 0031) is null when the release declares no groups; the point budget (ADR 0040) when
- * it declares none.
+ * layout (ADR 0031) is null when the release declares no groups; the point budgets (ADR 0040,
+ * 0043) are a keyed list, empty when it declares none.
  */
 final readonly class SheetTemplate
 {
@@ -22,11 +22,12 @@ final readonly class SheetTemplate
     private array $derivedOrder;
 
     /**
-     * @param list<Field> $fields in definition order
+     * @param list<Field>       $fields  in definition order
+     * @param list<PointBudget> $budgets in order
      *
-     * @throws \InvalidArgumentException when two fields share a key, derived fields read each other in a cycle or the budget covers a field that is not a number field
+     * @throws \InvalidArgumentException when two fields share a key, derived fields read each other in a cycle, two budgets share a key, a budget covers a field that is not a number field or a field is in two budgets
      */
-    public function __construct(array $fields = [], private ?SheetLayout $layout = null, private ?PointBudget $budget = null)
+    public function __construct(array $fields = [], private ?SheetLayout $layout = null, private array $budgets = [])
     {
         $byKey = [];
         foreach ($fields as $field) {
@@ -39,9 +40,24 @@ final readonly class SheetTemplate
 
         $this->fields = $byKey;
 
-        foreach ($budget->fields ?? [] as $key) {
-            if (!($byKey[$key] ?? null) instanceof NumberField) {
-                throw new \InvalidArgumentException(\sprintf('The point budget covers "%s", which is not a number field.', $key));
+        $owners = [];
+        $budgetKeys = [];
+        foreach ($budgets as $budget) {
+            if (isset($budgetKeys[$budget->key])) {
+                throw new \InvalidArgumentException(\sprintf('Point budget key "%s" is used twice.', $budget->key));
+            }
+
+            $budgetKeys[$budget->key] = true;
+            foreach ($budget->fields as $key) {
+                if (!($byKey[$key] ?? null) instanceof NumberField) {
+                    throw new \InvalidArgumentException(\sprintf('The point budget covers "%s", which is not a number field.', $key));
+                }
+
+                if (isset($owners[$key])) {
+                    throw new \InvalidArgumentException(\sprintf('Field "%s" is in budgets "%s" and "%s".', $key, $owners[$key], $budget->key));
+                }
+
+                $owners[$key] = $budget->key;
             }
         }
 
@@ -72,9 +88,12 @@ final readonly class SheetTemplate
         return $this->layout;
     }
 
-    public function budget(): ?PointBudget
+    /**
+     * @return list<PointBudget> in order; none when the release declares none
+     */
+    public function budgets(): array
     {
-        return $this->budget;
+        return $this->budgets;
     }
 
     public function field(string $key): ?Field

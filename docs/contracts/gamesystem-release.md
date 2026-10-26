@@ -248,7 +248,7 @@ A release may define a **sheet template** ([ADR 0022](../adr/0022-character-shee
 
 | Part | Shape | Rules |
 |---|---|---|
-| `sheet` | object | Exactly `fields`, `columns`, `groups` and `pointBudget`; any other property is rejected. `{}`, `{"fields": []}` and `{"fields": null}` are the same sheet and canonicalize to `{}` |
+| `sheet` | object | Exactly `fields`, `columns`, `groups`, `pointBudget` and `pointBudgets`; any other property is rejected. `{}`, `{"fields": []}` and `{"fields": null}` are the same sheet and canonicalize to `{}` |
 | `sheet.fields` | optional list of Field | At most 100; keys unique (domain check) |
 | Field (all types) | `{key, label (1–100), hint? (≤500), group? (1–60), span? (1–4), type}` | `key` follows the key rule. `label` is not blank once trimmed. Without declared `sheet.groups`, consecutive fields with the same `group` render together; with them, see [Sheet layout](#sheet-layout-adr-0031) |
 | `number` | `min?`, `max?`, `default?`, `roll?` | Integers from −1,000,000 to 1,000,000; `min ≤ default ≤ max` when given (domain check). A missing `default` reads as 0, or the nearest bound when 0 is outside `min..max`. `roll` is a `{dice}` (1–100 characters, a Randomness kernel expression such as `3d6*5`, validated like a `roll` step's): a dice default rolled when a Character is created |
@@ -256,7 +256,7 @@ A release may define a **sheet template** ([ADR 0022](../adr/0022-character-shee
 | `list` | `itemLabel?` (1–60), `maxItems?` (1–100) | Items are trimmed strings of 1–200 characters; `maxItems` defaults to 50. For inventory, cyberware and the like |
 | `track` | `max?` (1–999), `startMax?` | A resource track `{current, max}`. A fixed `max` when set, else each Character sets its own; it starts full. `startMax` is a `{formula}` (1–200 characters) for the max a Character starts with; it is exclusive with `max` (domain check) and reads `number` fields and `derived` fields that depend, directly or through other derived fields, on no track and no tracker. `{key.max}`, tracks, `{tracker:key}`, `{check:…}` and unknown keys are rejected |
 | `derived` | `formula` (required, 1–200 characters) | A DerivedValue computed from other fields and trackers by a [formula](#formulas-adr-0023); a Character stores no value for it |
-| `conditions` | `options` (required): 1–20 of `{key, label (1–60)}` | A set of conditions a Character marks and clears ([ADR 0041](../adr/0041-dice-pools-pushes-and-conditions.md)). Option keys follow the key rule and are unique in the field (domain check; two fields may reuse a key). The value is the marked keys, none at first. A formula reads the field as the number marked. `startMax` and `pointBudget` refuse it |
+| `conditions` | `options` (required): 1–20 of `{key, label (1–60)}` | A set of conditions a Character marks and clears ([ADR 0041](../adr/0041-dice-pools-pushes-and-conditions.md)). Option keys follow the key rule and are unique in the field (domain check; two fields may reuse a key). The value is the marked keys, none at first. A formula reads the field as the number marked. `startMax` and point budgets refuse it |
 
 Each type allows only its own properties; another is rejected. A `null` optional is left out of the canonical form, as is a `multiline` of `false`. Sheet fields change through [sheet effects](#sheet-effects-adr-0027), which are also additive in schema version 2. Checks are described in [Checks](#checks-additive-in-schema-version-2). Derived values are the additive `derived` field type of schema version 2 ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)). Play's translator reads the sheet into the snapshot, re-checks every limit and fails closed on anything malformed; until `rules-derived-values` slices 3 and 4 that includes a `derived` field.
 
@@ -264,19 +264,21 @@ The `character` step kind and `of: character` in `pick` and `condition` counts a
 
 #### Structured character creation (ADR 0040)
 
-`number.roll`, `track.startMax` and `sheet.pointBudget` say how a Character is created. They are additive in schema version 2: every release valid before stays valid with the same hash, and a `null` of any of them is left out of the canonical form.
+`number.roll`, `track.startMax` and the point budgets (`sheet.pointBudget`, or `sheet.pointBudgets`, [ADR 0043](../adr/0043-several-point-budgets.md)) say how a Character is created. They are additive in schema version 2: every release valid before stays valid with the same hash, and a `null` of any of them, or an empty `pointBudgets`, is left out of the canonical form.
 
 | Part | Shape | Rules |
 |---|---|---|
 | `sheet.pointBudget` | optional `{label?, total, fields, min?, max?}`, or `null` | Exactly these properties. `label` is 1–60 characters. `total` is an integer from 1 to 1,000,000. `fields` lists 1–100 distinct keys of `number` fields. `min` and `max` are creation-only bounds for every budget field (sheet numbers, `min ≤ max`) |
+| `sheet.pointBudgets` | optional list of 1–10 `{key, label, total, fields, min?, max?}`, or `null` | `key` follows the key rule, `label` is required (1–60 characters, not blank once trimmed); `total`, `fields`, `min` and `max` as in `pointBudget`. Refused together with a non-null `pointBudget`. A list of one budget canonicalizes to `pointBudget` (key dropped, label kept), so a one-budget release keeps the legacy shape and hash |
 
-Domain checks (item rules, so they also hold on a draft), each failing with its path, such as `sheet.pointBudget.fields[1]` or `sheet.fields[3].startMax`:
+Domain checks (item rules, so they also hold on a draft), each per budget, failing with its path, such as `sheet.pointBudget.fields[1]`, `sheet.pointBudgets[1].total` or `sheet.fields[3].startMax`:
 
 - Each budget field exists, is a `number` field and is listed once.
 - Each budget field keeps at least one value inside both its own `min..max` and the budget's `min..max`.
 - The lowest such values of all budget fields (an unbounded field counts as −1,000,000) add up to at most `total`.
+- `pointBudgets` keys are distinct (`sheet.pointBudgets[1].key`), and a field sits in at most one budget: the later occurrence fails, such as `sheet.pointBudgets[1].fields[0]`.
 
-A draft refuses to delete or rename a field that a `startMax` formula reads or `pointBudget.fields` lists, like any other reference. Play's translator refuses `roll`, `startMax` and `pointBudget` (unknown property) until Play creation supports them, so a release using them can be published but not played yet ([ADR 0040](../adr/0040-structured-character-creation.md)).
+A draft refuses to delete or rename a field that a `startMax` formula reads or a budget's `fields` lists, like any other reference. Play's translator reads `roll`, `startMax` and both budget shapes (a legacy `pointBudget` as one budget with key `points`) and creates Characters by them ([ADR 0040](../adr/0040-structured-character-creation.md), [ADR 0043](../adr/0043-several-point-budgets.md)): one method per Character; with a budget covering a dice field the player picks `roll` (those budgets unchecked, the others spent) or `points` (every budget spent).
 
 #### Sheet layout (ADR 0031)
 

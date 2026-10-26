@@ -25,6 +25,7 @@ final readonly class GetGameSystemSheetHandler implements QueryHandler
         $document = $gameSystem->document();
         $sheet = $this->sheet($document);
         $latest = $this->releases->latestFor($query->key);
+        $budgets = 1 === $gameSystem->schemaVersion() ? [] : $this->pointBudgets($sheet);
 
         return new GameSystemSheetView(
             $gameSystem->version(),
@@ -34,7 +35,8 @@ final readonly class GetGameSystemSheetHandler implements QueryHandler
             1 === $gameSystem->schemaVersion() ? [] : $this->fields($sheet),
             1 === $gameSystem->schemaVersion() ? [] : $this->trackers($document),
             $latest instanceof \App\Studio\Domain\Release\GameSystemRelease ? $this->keys($this->fields($this->sheet($latest->content()->toArray()))) : [],
-            1 === $gameSystem->schemaVersion() ? null : $this->pointBudget($sheet['pointBudget'] ?? null),
+            1 === \count($budgets) ? $budgets[0] : null,
+            $budgets,
         );
     }
 
@@ -49,21 +51,32 @@ final readonly class GetGameSystemSheetHandler implements QueryHandler
     }
 
     /**
-     * @return SheetPointBudgetView|null null without a budget, or when the stored one has no integer total
+     * @param array<array-key, mixed> $sheet
+     *
+     * @return list<SheetPointBudgetView> the stored list, else the legacy budget as "points"; a budget without a string key (in a list) or an integer total is left out
      */
-    private function pointBudget(mixed $budget): ?SheetPointBudgetView
+    private function pointBudgets(array $sheet): array
     {
-        if (!\is_array($budget) || !\is_int($budget['total'] ?? null)) {
-            return null;
+        $stored = $this->objects($sheet['pointBudgets'] ?? null);
+        if ([] === $stored && \is_array($sheet['pointBudget'] ?? null)) {
+            $stored = [['key' => 'points', ...$sheet['pointBudget']]];
         }
 
-        return new SheetPointBudgetView(
-            \is_string($budget['label'] ?? null) ? $budget['label'] : null,
-            $budget['total'],
-            array_values(array_filter(\is_array($budget['fields'] ?? null) ? $budget['fields'] : [], \is_string(...))),
-            \is_int($budget['min'] ?? null) ? $budget['min'] : null,
-            \is_int($budget['max'] ?? null) ? $budget['max'] : null,
-        );
+        $views = [];
+        foreach ($stored as $budget) {
+            if (\is_string($budget['key'] ?? null) && \is_int($budget['total'] ?? null)) {
+                $views[] = new SheetPointBudgetView(
+                    $budget['key'],
+                    \is_string($budget['label'] ?? null) ? $budget['label'] : null,
+                    $budget['total'],
+                    array_values(array_filter(\is_array($budget['fields'] ?? null) ? $budget['fields'] : [], \is_string(...))),
+                    \is_int($budget['min'] ?? null) ? $budget['min'] : null,
+                    \is_int($budget['max'] ?? null) ? $budget['max'] : null,
+                );
+            }
+        }
+
+        return $views;
     }
 
     /**

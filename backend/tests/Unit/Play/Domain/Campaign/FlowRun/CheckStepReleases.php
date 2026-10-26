@@ -34,7 +34,9 @@ use App\Randomness\Domain\DiceExpression;
  * difficulty - 1, "success" up to difficulty + 4, "crit") "flat" (1d6, no modifier or
  * difficulty, bands "low" up to 3 and "high"), "broken" (a modifier that divides by zero), "grit"
  * (a pool of 3d6 with successes on 5+, bands "miss" up to 0, "weak" up to 1 and "strong", pushable
- * at no cost, ADR 0041) and "steady" (the same pool without a push).
+ * at no cost, ADR 0041) and "steady" (the same pool without a push). For check sets (ADR 0042) each
+ * shares its band keys with a sibling: "knack" (1d10 + hands, the bands of "skill") and "nerve" (the
+ * pool of "grit" with a push, the bands of "grit").
  *
  * The Flow "play" has one loop phase picking the Scene Type "job", whose setup is the given check
  * step, the prompts "pass" and "fumble", or the prompt "wrap" when the step runs in the world turn
@@ -43,12 +45,13 @@ use App\Randomness\Domain\DiceExpression;
 final class CheckStepReleases
 {
     /**
-     * @param array<string, Outcome> $outcomes
-     * @param list<Effect>           $effects
+     * @param string|non-empty-list<string> $check    the check, or the check set
+     * @param array<string, Outcome>        $outcomes
+     * @param list<Effect>                  $effects
      */
-    public static function step(string $check = 'skill', int|Formula|null $difficulty = null, array $outcomes = [], ?string $next = null, array $effects = []): CheckStep
+    public static function step(string|array $check = 'skill', int|Formula|null $difficulty = null, array $outcomes = [], ?string $next = null, array $effects = []): CheckStep
     {
-        return new CheckStep('sneak', 'Sneak past the guard', null, null, false, $next, $effects, $check, $difficulty, $outcomes);
+        return new CheckStep('sneak', 'Sneak past the guard', null, null, false, $next, $effects, (array) $check, $difficulty, $outcomes);
     }
 
     public static function release(CheckStep $step, bool $inTheWorldTurn = false, int $version = 1): GameSystemSnapshot
@@ -63,9 +66,15 @@ final class CheckStepReleases
                 new CheckBand('success', 'Success', Formula::fromString('{check:difficulty} + 4')),
                 new CheckBand('crit', 'Critical success'),
             ]),
+            new Check('knack', 'Knack', null, DiceExpression::fromString('1d10'), Formula::fromString('{hands}'), new CheckDifficulty('Difficulty Value', 13, 9, 29), [
+                new CheckBand('fail', 'Fail', Formula::fromString('{check:difficulty} - 1')),
+                new CheckBand('success', 'Success', Formula::fromString('{check:difficulty} + 4')),
+                new CheckBand('crit', 'Critical success'),
+            ]),
             new Check('broken', 'Broken', null, DiceExpression::fromString('1d6'), Formula::fromString('{hands} / 0'), null, [new CheckBand('only', 'Only')]),
             new Check('flat', 'Flat', null, DiceExpression::fromString('1d6'), null, null, [new CheckBand('low', 'Low', 3), new CheckBand('high', 'High')]),
             new Check('grit', 'Grit', null, null, null, null, $poolBands, new CheckPool(3, 6, 5), new CheckPush('Push it')),
+            new Check('nerve', 'Nerve', null, null, null, null, $poolBands, new CheckPool(3, 6, 5), new CheckPush('Push it')),
             new Check('steady', 'Steady', null, null, null, null, $poolBands, new CheckPool(3, 6, 5)),
         ];
 

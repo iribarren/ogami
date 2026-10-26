@@ -27,7 +27,7 @@ use Doctrine\DBAL\Types\JsonType;
  * Stored shape: {status, phaseIndex, stage, sessionNumber, sceneNumber, sceneType, part, stepKey,
  * sequencePosition, scenesPlayed, answers: {stepKey: text}, forcedNextSceneType, phaseEnding,
  * switchCount, hook, phaseOpened, sessionOpeningDue, picked: {kind, ids} or null, autoPickDue, history: [{event, at, details: {…}}],
- * pendingCheck: {stepKey, entryId, characterId, difficulty, bandKey} or null}, every
+ * pendingCheck: {stepKey, entryId, characterId, difficulty, bandKey, checkKey} or null}, every
  * field present (null where the FlowRun has none). The details are those of the event's
  * FlowRunHistoryEntry factory (a skip's part is a scene part or a hook). Times keep their
  * microseconds and UTC offset. Reading checks the shape and every enumerated value and fails on
@@ -40,7 +40,8 @@ use Doctrine\DBAL\Types\JsonType;
  * scene (preset-mythic-flow slice 3, ADR 0020) lack autoPickDue: they read as waiting (false), so no
  * scene starts by surprise. A pending check (ADR 0041) is the current step's while guidance is active,
  * else the row fails to load; rows stored before check step rolls could pend (rules-dice-pools slice
- * 5) lack pendingCheck: they read as none.
+ * 5) lack pendingCheck: they read as none. A pending roll of a single-check step keeps no checkKey
+ * (null), and rows stored before check sets (ADR 0042) lack it: both read the step's own check.
  *
  * Registered by its attribute (DoctrineBundle autoconfiguration), not in doctrine.yaml.
  */
@@ -101,6 +102,7 @@ final class CampaignFlowRunType extends JsonType
                 'characterId' => $pending->characterId,
                 'difficulty' => $pending->difficulty,
                 'bandKey' => $pending->bandKey,
+                'checkKey' => $pending->checkKey,
             ] : null,
         ], $platform);
     }
@@ -171,7 +173,7 @@ final class CampaignFlowRunType extends JsonType
         }
 
         try {
-            return new PendingCheck($this->string($pending, 'stepKey'), $this->string($pending, 'entryId'), $this->string($pending, 'characterId'), $this->optionalInt($pending, 'difficulty'), $this->string($pending, 'bandKey'));
+            return new PendingCheck($this->string($pending, 'stepKey'), $this->string($pending, 'entryId'), $this->string($pending, 'characterId'), $this->optionalInt($pending, 'difficulty'), $this->string($pending, 'bandKey'), $this->optionalString($pending, 'checkKey'));
         } catch (\InvalidArgumentException $e) {
             throw ValueNotConvertible::new('pendingCheck', self::NAME, \sprintf('Stored campaign FlowRun: "pendingCheck" is invalid: %s', $e->getMessage()));
         }

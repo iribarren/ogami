@@ -35,6 +35,7 @@ final readonly class StepResult
         public array $picked = [],
         public ?string $characterId = null,
         public ?CheckResult $check = null,
+        public ?string $checkKey = null,
     ) {
     }
 
@@ -92,10 +93,12 @@ final readonly class StepResult
     /**
      * The check a check step performed for a Character, by id. Its answer is the label of the band
      * the total fell in, which the FlowRun branches on by the band's key.
+     *
+     * @param ?string $checkKey the check of the set the player picked; null for a single-check step
      */
-    public static function check(string $characterId, CheckResult $result): self
+    public static function check(string $characterId, CheckResult $result, ?string $checkKey = null): self
     {
-        return new self(StepKind::Check, $result->band->label, characterId: $characterId, check: $result);
+        return new self(StepKind::Check, $result->band->label, characterId: $characterId, check: $result, checkKey: $checkKey);
     }
 
     /**

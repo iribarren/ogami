@@ -12,7 +12,7 @@ use OpenApi\Attributes as OA;
  *
  * Which of the other fields a step takes depends on its kind: a prompt step a text, a choice step
  * an option, an oracle step a likelihood level (unless the step fixes it) and a chaos factor, a pick
- * step in mode choose the ids it picks, a character step the id of a Character of the campaign, a check step the Character who rolls and, optionally, a difficulty (unless the step fixes one) and a situational modifier. Roll and table steps, and a pick step in mode random, take
+ * step in mode choose the ids it picks, a character step the id of a Character of the campaign, a check step the Character who rolls and, optionally, a difficulty (unless the step fixes one) and a situational modifier, and the check to roll when it offers a check set. Roll and table steps, and a pick step in mode random, take
  * none: the server rolls and draws. A field the kind does not take is refused.
  * Optional fields are nullable with no PHP default: a default makes Nelmio emit `default: null`,
  * which the typed client turns into a required field. `required` lists the required ones.
@@ -47,6 +47,8 @@ final readonly class CompleteFlowStepRequest
         public ?int $difficulty,
         #[OA\Property(description: 'Check step: the Situational modifier, from -100 to 100; omitted or null for none.', example: -2, nullable: true)]
         public ?int $situational,
+        #[OA\Property(description: 'Check step with a check set (its checks): the key of the check of the set to roll; required there. Must be omitted or null on a single-check step.', example: 'sneak', nullable: true)]
+        public ?string $checkKey,
     ) {
     }
 }

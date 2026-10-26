@@ -1,7 +1,7 @@
 # Feature: rules-flow-choices
 
 - **Locator:** `odd/tasks/rules-flow-choices.md` · Engram topic `odd/rules-flow-choices/tasks`
-- **Issue:** #285 · **Branch:** `feat/rules-flow-choices-2-play-sheet-effects` · **Status:** slice 2 in progress
+- **Issue:** #285 · **Branch:** `feat/rules-flow-choices-3-play-sets-tables` · **Status:** slice 3 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B8b ([ADR 0042](../../docs/adr/0042-flow-choices-check-sets-and-scene-tables.md); `preset-pbta` findings [S11, S12](preset-pbta.md#studio-findings), [P4–P6](preset-pbta.md#playtest-findings))
@@ -63,10 +63,10 @@ Play adds: `characterId` on a choice/prompt answer (required when the picked opt
 |---|---|---|---|---|---|
 | T1 | 1 | This feature doc; ADR 0042 (index; status lines of ADR 0017, 0027, 0030, 0035; glossary "Check set"; roadmap B8b link); issue #285 | parent, inline | [x] | 63e7855 |
 | T2 | 1 | Contract: `v2.schema.json`, the contract doc, Studio validator (`Steps` placement, skip option, `checks`, `tableBySceneType`; `Effects` placement message; `StepParts`/`FlowReferences` reach), `DraftReferences` guards (checks, bands, oracle tables, entries, scene types, sheet fields and options), Play translator refuses the new shapes; fixtures; unit tests | writer (delegated: 2+ non-trivial files) | [x] | ee06cbf, 33993c5 |
-| T3a | 2 | Slice 1 review fixes | writer (delegated) | [x] | |
-| T3 | 2 | Play: translator reads sheet effects on choice options and prompts; `StepResult` and handler `characterId` (required/refused); `FlowRun` applies them, a skip applies none; journal sheet change; API and Behat tests | writer (delegated) | [x] | |
-| T4 | 2 | Choice and prompt step cards ask for the Character when the step can change the sheet (preselected when one); response Characters; fixtures; generated OpenAPI and TS | writer (delegated) | [x] | |
-| T5a | 3 | Slice 2 review fixes | writer (delegated) | [ ] | |
+| T3a | 2 | Slice 1 review fixes | writer (delegated) | [x] | 5f96035 |
+| T3 | 2 | Play: translator reads sheet effects on choice options and prompts; `StepResult` and handler `characterId` (required/refused); `FlowRun` applies them, a skip applies none; journal sheet change; API and Behat tests | writer (delegated) | [x] | 1420c38 |
+| T4 | 2 | Choice and prompt step cards ask for the Character when the step can change the sheet (preselected when one); response Characters; fixtures; generated OpenAPI and TS | writer (delegated) | [x] | 0bf322a |
+| T5a | 3 | Slice 2 review fixes | writer (delegated) | [x] | |
 | T5 | 3 | Play: translator reads `checks` and `tableBySceneType`; `CheckStep` set and every single-check read; `checkKey`; `PendingCheck` key with legacy rows; table resolved from the scene type in `FlowRun` and the handler; responses; upgrade drops a pending check-set roll; tests | writer (delegated) | [ ] | |
 | T6 | 3 | Check step card picks the check of a set; table step card names the scene's table; fixtures; generated OpenAPI and TS | writer (delegated) | [ ] | |
 | T7a | 4 | Slice 3 review fixes | writer (delegated) | [ ] | |
@@ -96,13 +96,15 @@ Play adds: `characterId` on a choice/prompt answer (required when the picked opt
 - 2026-10-26: T3a done (writer, delegated): `Steps::list` takes a `setup` flag; a prompt's and a choice option's sheet effects are refused in a Scene Type's setup, allowed in hooks, play and closing; check-set bands compared as key sets. RED observed (2 refusals missing, reordered bands refused, source stashed), GREEN on `tests/Unit/Studio`.
 - 2026-10-26: T3 done (writer, delegated): translator reads choice option and prompt sheet effects (refuses them on the skip option); `StepResult::choice/prompt` take `characterId`; handler and `FlowRun` require it when the option or prompt changes the sheet and refuse it otherwise (422, nothing changes); journal sheet change as for character steps; response flags `changesSheet` (per option, and per prompt step). Choice and prompt steps take any Character of the campaign, like the character step, so the response lists none. RED observed (source stashed: 10 domain and 13 API tests error), GREEN on `tests/Unit/Play` and `tests/Integration/Play`. No Behat feature covers choice or prompt completion.
 - 2026-10-26: T4 done (writer, delegated): choice and prompt step cards ask for the Character (`SheetCharacterSelect`, preselected when the campaign has one; for a choice only once an option with `changesSheet` is picked, other options answer at once); `characterId` is sent only then; fixtures gain `changesSheet`; OpenAPI and TS regenerated. RED observed (card change stashed: 6 of 8 new tests fail), GREEN on `src/play` (563 tests).
+- 2026-10-26: T5a done (writer, delegated): choice and prompt cards derive the Character (chosen, else the only one) on every render, so a list that becomes one Character after mount can be answered; an unknown `characterId` on a choice or prompt names the step's kind (`InvalidStepResult::unknownSheetCharacter`). RED observed (card change stashed: the new late-Character test fails, nothing sent), GREEN on `SheetEffectStep.test.tsx`, `tests/Unit/Play/Domain/Campaign/FlowRun` and the choice sheet effects API test.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | PR |
 |---|---|---|---|
 | 1 | `review-df1a7a6a6d761b3b` (63e7855..ee06cbf) | Approved, acknowledged. R3 warning: prompt sheet effects are allowed in Scene Type setup lists and hooks, while the contract doc still lists setup effects as an error and no test covers either (`Steps.php:117-118`); fixed in slice 2 (T3a): refused in Scene Type setup, allowed in hooks, both tested. Suggestion: check-set bands compared as ordered lists (`Steps.php:428-431`); fixed in slice 2 (T3a): compared as sets, reordered keys tested. CI fix 33993c5 | [#286](https://github.com/iribarren/ogami/pull/286) |
+| 2 | `review-0b9e00addc94f0b5` (5f96035..0bf322a) | Approved, acknowledged. R3 warning: `SheetCharacterSelect.tsx:37-43` hides the placeholder with one Character while `ChoiceForm`/`PromptForm` seed `characterId` once in a `useState` initializer, so a list that becomes one Character after mount leaves the step unanswerable; to fix in slice 3 (T5a). Suggestion: an unknown `characterId` on a choice or prompt reports "Character step … has no Character" (`CompleteFlowStepHandler.php:258-259`); to fix in slice 3 (T5a) | [#287](https://github.com/iribarren/ogami/pull/287) |
 
 ## Next step
 
-Slice 2: T3a, T3, T4 (writer), then review, push and PR.
+Slice 3: T5a, T5, T6 (writer), then review, push and PR.

@@ -201,8 +201,15 @@ function StepForm({ campaign, step, pending, onCommand }: StepProps) {
   }
 }
 
-/** The Character preselected for a step that changes a sheet: the only one, else none. */
-function onlyCharacterId(campaign: Campaign): string {
+/**
+ * The Character a step that changes a sheet answers with: the one the player chose, else the
+ * campaign's only Character, else none. Derived on every render, so a list that becomes one
+ * Character after mount still preselects it.
+ */
+function effectiveCharacterId(campaign: Campaign, chosen: string): string {
+  if (chosen !== '') {
+    return chosen
+  }
   return campaign.characters.length === 1 ? (campaign.characters[0]?.id ?? '') : ''
 }
 
@@ -219,7 +226,8 @@ function ChoiceForm({
   onAnswer: (fields: Omit<CompleteFlowStepRequest, 'stepKey'>) => void
 }) {
   const [picked, setPicked] = useState<string | null>(null)
-  const [characterId, setCharacterId] = useState(() => onlyCharacterId(campaign))
+  const [chosenCharacterId, setCharacterId] = useState('')
+  const characterId = effectiveCharacterId(campaign, chosenCharacterId)
   const option = step.options.find(({ key }) => key === picked)
 
   return (
@@ -276,7 +284,8 @@ function PromptForm({
   onSubmit: (text: string, characterId: string | undefined) => void
 }) {
   const [text, setText] = useState('')
-  const [characterId, setCharacterId] = useState(() => onlyCharacterId(campaign))
+  const [chosenCharacterId, setCharacterId] = useState('')
+  const characterId = effectiveCharacterId(campaign, chosenCharacterId)
   const textId = useId()
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {

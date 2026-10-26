@@ -256,7 +256,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
 
         $id = $command->characterId ?? throw InvalidStepResult::missingField($step->key, StepKind::of($step), 'characterId');
         if (null === ($campaign->itemNames(ItemKind::Character, [$id])[0] ?? null)) {
-            throw InvalidStepResult::unknownCharacter($step->key, $id);
+            throw InvalidStepResult::unknownSheetCharacter($step->key, StepKind::of($step), $id);
         }
 
         return $id;

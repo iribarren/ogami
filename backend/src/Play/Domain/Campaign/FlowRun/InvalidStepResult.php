@@ -86,6 +86,12 @@ final class InvalidStepResult extends \DomainException
         return new self(\sprintf('Character step "%s" has no Character "%s" in the campaign.', $step, $id));
     }
 
+    /** A choice or prompt step that changes a sheet names a Character the campaign lacks. */
+    public static function unknownSheetCharacter(string $step, StepKind $kind, string $id): self
+    {
+        return new self(\sprintf('%s step "%s" has no Character "%s" in the campaign.', ucfirst($kind->value), $step, $id));
+    }
+
     public static function pickCount(string $step, int $min, int $max, int $given): self
     {
         $takes = $min === $max ? \sprintf('%d', $min) : \sprintf('%d to %d', $min, $max);

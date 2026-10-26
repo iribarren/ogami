@@ -971,7 +971,7 @@ final class FlowRun
 
         $characterId ?? throw InvalidStepResult::missingField($step->key, StepKind::of($step), 'characterId');
         if (null === $context->characterName($characterId)) {
-            throw InvalidStepResult::unknownCharacter($step->key, $characterId);
+            throw InvalidStepResult::unknownSheetCharacter($step->key, StepKind::of($step), $characterId);
         }
     }
 

@@ -14,14 +14,15 @@ use OpenApi\Attributes as OA;
  * version a client sends back as the expected version of its next sheet write. Every sheet write
  * answers with this.
  */
-#[OA\Schema(required: ['version', 'schemaVersion', 'columns', 'groups', 'fields', 'trackers', 'publishedFieldKeys', 'pointBudget'])]
+#[OA\Schema(required: ['version', 'schemaVersion', 'columns', 'groups', 'fields', 'trackers', 'publishedFieldKeys', 'pointBudget', 'pointBudgets'])]
 final readonly class GameSystemSheetResponse
 {
     /**
-     * @param list<SheetGroupResponse>|null $groups
-     * @param list<array<array-key, mixed>> $fields
-     * @param list<SheetTrackerResponse>    $trackers
-     * @param list<string>                  $publishedFieldKeys
+     * @param list<SheetGroupResponse>|null       $groups
+     * @param list<array<array-key, mixed>>       $fields
+     * @param list<SheetTrackerResponse>          $trackers
+     * @param list<string>                        $publishedFieldKeys
+     * @param list<SheetPointBudgetEntryResponse> $pointBudgets
      */
     private function __construct(
         #[OA\Property(description: 'The draft\'s version: send it as "expectedVersion" with the next sheet write.', example: 3)]
@@ -38,8 +39,10 @@ final readonly class GameSystemSheetResponse
         public array $trackers,
         #[OA\Property(description: 'The field keys of the GameSystem\'s latest release, empty when it has none: renaming or deleting one makes Characters on later upgrades lose that value.', type: 'array', items: new OA\Items(type: 'string'), example: ['pow', 'hp'])]
         public array $publishedFieldKeys,
-        #[OA\Property(ref: new Model(type: SheetPointBudgetResponse::class), description: 'What a Character spends over number fields at creation (ADR 0040); null when the sheet has no point budget.', nullable: true)]
+        #[OA\Property(ref: new Model(type: SheetPointBudgetResponse::class), description: 'What a Character spends over number fields at creation (ADR 0040): the single point budget; null when the sheet has none or several (read pointBudgets). Kept until the Studio UI moves to pointBudgets.', nullable: true)]
         public ?SheetPointBudgetResponse $pointBudget,
+        #[OA\Property(description: 'The point budgets of the sheet in order (ADR 0043), a legacy single budget as the key "points"; empty without any.', type: 'array', items: new OA\Items(ref: new Model(type: SheetPointBudgetEntryResponse::class)))]
+        public array $pointBudgets,
     ) {
     }
 
@@ -54,6 +57,7 @@ final readonly class GameSystemSheetResponse
             array_map(SheetTrackerResponse::fromView(...), $view->trackers),
             $view->publishedFieldKeys,
             $view->pointBudget instanceof SheetPointBudgetView ? SheetPointBudgetResponse::fromView($view->pointBudget) : null,
+            array_map(SheetPointBudgetEntryResponse::fromView(...), $view->pointBudgets),
         );
     }
 }

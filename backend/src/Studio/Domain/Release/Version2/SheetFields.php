@@ -32,7 +32,7 @@ final class SheetFields
     public const int MAX_OPTION_LABEL_LENGTH = 60;
     public const int MAX_FORMULA_LENGTH = Formula::MAX_LENGTH;
 
-    private const array SHEET = ['fields' => false, 'columns' => false, 'groups' => false, 'pointBudget' => false];
+    private const array SHEET = ['fields' => false, 'columns' => false, 'groups' => false, 'pointBudget' => false, 'pointBudgets' => false];
     private const array COMMON = ['key' => true, 'label' => true, 'hint' => false, 'group' => false, 'span' => false, 'type' => true];
 
     /** The fields each type adds to COMMON, in schema order: name => required. */
@@ -50,7 +50,7 @@ final class SheetFields
     /**
      * @param list<string> $trackerKeys the trackers of the release, which derived fields may read
      *
-     * @return array{fields?: list<array<string, mixed>>, columns?: int, groups?: list<array<string, mixed>>, pointBudget?: array<string, mixed>} no "fields" key when the sheet has none, no layout or budget keys without them
+     * @return array{fields?: list<array<string, mixed>>, columns?: int, groups?: list<array<string, mixed>>, pointBudget?: array<string, mixed>, pointBudgets?: list<array<string, mixed>>} no "fields" key when the sheet has none, no layout or budget keys without them
      */
     public static function validate(mixed $value, array $trackerKeys = []): array
     {

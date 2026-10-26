@@ -11,7 +11,9 @@ use App\Studio\Application\PublishGameSystemRelease;
 use App\Studio\Infrastructure\Http\GameSystemSheetController;
 use App\Studio\Infrastructure\Http\GameSystemSheetResponse;
 use App\Studio\Infrastructure\Http\OracleInUseResponse;
+use App\Studio\Infrastructure\Http\SheetConflictResponse;
 use App\Studio\Infrastructure\Http\SheetGroupResponse;
+use App\Studio\Infrastructure\Http\SheetPointBudgetEntryResponse;
 use App\Studio\Infrastructure\Http\SheetPointBudgetResponse;
 use App\Studio\Infrastructure\Http\SheetTrackerResponse;
 use App\Tests\Support\Studio\ReleaseArrays;
@@ -33,6 +35,8 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 #[CoversClass(GameSystemSheetResponse::class)]
 #[CoversClass(SheetGroupResponse::class)]
 #[CoversClass(SheetPointBudgetResponse::class)]
+#[CoversClass(SheetPointBudgetEntryResponse::class)]
+#[CoversClass(SheetConflictResponse::class)]
 #[CoversClass(SheetTrackerResponse::class)]
 #[CoversClass(OracleInUseResponse::class)]
 final class GameSystemSheetApiTest extends WebTestCase
@@ -50,6 +54,8 @@ final class GameSystemSheetApiTest extends WebTestCase
         'removeLayout' => ['DELETE', '/mine/sheet/layout?expectedVersion=1'],
         'savePointBudget' => ['PUT', '/mine/sheet/point-budget'],
         'removePointBudget' => ['DELETE', '/mine/sheet/point-budget?expectedVersion=1'],
+        'savePointBudgetEntry' => ['PUT', '/mine/sheet/point-budgets/skills'],
+        'removePointBudgetEntry' => ['DELETE', '/mine/sheet/point-budgets/skills?expectedVersion=1'],
     ];
 
     private KernelBrowser $client;
@@ -452,6 +458,206 @@ final class GameSystemSheetApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aSheetWithoutBudgetsReadsAnEmptyList(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+
+        self::assertSame([], $this->sheet()['pointBudgets']);
+    }
+
+    #[Test]
+    public function budgetsArePutByKeyReplacedInPlaceAndDeleted(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', edit: $this->withLuck(...));
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/attributes', ['expectedVersion' => 1, 'label' => 'Attribute points', 'total' => 100, 'fields' => ['pow'], 'min' => 1]);
+        self::assertResponseStatusCodeSame(200);
+        $sheet = $this->json();
+        self::assertSame(2, $sheet['version']);
+        self::assertSame([['key' => 'attributes', 'label' => 'Attribute points', 'total' => 100, 'fields' => ['pow'], 'min' => 1, 'max' => null]], $sheet['pointBudgets']);
+        self::assertSame(['label' => 'Attribute points', 'total' => 100, 'fields' => ['pow'], 'min' => 1, 'max' => null], $sheet['pointBudget'], 'One budget is also the single budget.');
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/skills', ['expectedVersion' => 2, 'label' => 'Skill points', 'total' => 8, 'fields' => ['luck'], 'max' => 3]);
+        self::assertResponseStatusCodeSame(200);
+        $sheet = $this->json();
+        self::assertSame(['attributes', 'skills'], array_column((array) $sheet['pointBudgets'], 'key'));
+        self::assertNull($sheet['pointBudget'], 'Several budgets have no single budget.');
+        self::assertSame($sheet, $this->sheet());
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/attributes', ['expectedVersion' => 3, 'label' => 'Attributes', 'total' => 90, 'fields' => ['pow']]);
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame([['attributes', 'Attributes', 90], ['skills', 'Skill points', 8]], array_map(static fn (mixed $budget): array => [((array) $budget)['key'], ((array) $budget)['label'], ((array) $budget)['total']], (array) $this->json()['pointBudgets']), 'The budget is replaced whole, in its place.');
+
+        $this->client->request('DELETE', self::BASE.'/mine/sheet/point-budgets/attributes?expectedVersion=4');
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame(['skills'], array_column((array) $this->json()['pointBudgets'], 'key'));
+        self::assertSame(5, $this->json()['version']);
+
+        $this->client->request('DELETE', self::BASE.'/mine/sheet/point-budgets/skills?expectedVersion=5');
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame([], $this->json()['pointBudgets']);
+        self::assertNull($this->json()['pointBudget']);
+    }
+
+    #[Test]
+    public function aLegacyBudgetIsTheKeyPoints(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budget', ['expectedVersion' => 1, 'label' => 'Points', 'total' => 100, 'fields' => ['pow']]);
+
+        self::assertSame([['key' => 'points', 'label' => 'Points', 'total' => 100, 'fields' => ['pow'], 'min' => null, 'max' => null]], $this->sheet()['pointBudgets']);
+
+        $this->client->request('DELETE', self::BASE.'/mine/sheet/point-budgets/points?expectedVersion=2');
+        self::assertResponseStatusCodeSame(200);
+        self::assertNull($this->json()['pointBudget']);
+    }
+
+    /**
+     * @return iterable<string, array{string, array<string, mixed>, non-empty-string}> the budget key, the body without its version and where the 422 points
+     */
+    public static function invalidBudgetEntries(): iterable
+    {
+        yield 'no label' => ['skills', ['total' => 8, 'fields' => ['luck']], 'sheet.pointBudgets[1].label'];
+        yield 'a blank label' => ['skills', ['label' => ' ', 'total' => 8, 'fields' => ['luck']], 'sheet.pointBudgets[1].label'];
+        yield 'a label that is not text' => ['skills', ['label' => 5, 'total' => 8, 'fields' => ['luck']], 'sheet.pointBudgets[1].label'];
+        yield 'no total' => ['skills', ['label' => 'Skills', 'fields' => ['luck']], 'sheet.pointBudgets[1].total'];
+        yield 'a total that is not a number' => ['skills', ['label' => 'Skills', 'total' => 'many', 'fields' => ['luck']], 'sheet.pointBudgets[1].total'];
+        yield 'no fields' => ['skills', ['label' => 'Skills', 'total' => 8], 'sheet.pointBudgets[1].fields'];
+        yield 'an unknown field' => ['skills', ['label' => 'Skills', 'total' => 8, 'fields' => ['nowhere']], 'sheet.pointBudgets[1].fields[0]'];
+        yield 'a field that is not a number' => ['skills', ['label' => 'Skills', 'total' => 8, 'fields' => ['hp']], 'sheet.pointBudgets[1].fields[0]'];
+        yield 'a field that is not a key' => ['skills', ['label' => 'Skills', 'total' => 8, 'fields' => [7]], 'sheet.pointBudgets[1].fields[0]'];
+        yield 'a field already in another budget' => ['skills', ['label' => 'Skills', 'total' => 8, 'fields' => ['luck', 'pow']], 'sheet.pointBudgets[1].fields[1]: field "pow" is already in budget "attributes"'];
+        yield 'min above max' => ['skills', ['label' => 'Skills', 'total' => 8, 'fields' => ['luck'], 'min' => 5, 'max' => 3], 'sheet.pointBudgets[1].max'];
+        yield 'a total below the lowest values' => ['skills', ['label' => 'Skills', 'total' => 1, 'fields' => ['luck'], 'min' => 2], 'sheet.pointBudgets[1].total'];
+        yield 'an unknown property' => ['skills', ['label' => 'Skills', 'total' => 8, 'fields' => ['luck'], 'step' => 1], 'sheet.pointBudgets[1].step'];
+        yield 'a key in the body' => ['skills', ['key' => 'other', 'label' => 'Skills', 'total' => 8, 'fields' => ['luck']], 'sheet.pointBudgets[1].key'];
+        yield 'a key that is not a key' => ['Bad_Key', ['label' => 'Skills', 'total' => 8, 'fields' => ['luck']], 'sheet.pointBudgets[1].key'];
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     * @param non-empty-string     $path
+     */
+    #[Test]
+    #[DataProvider('invalidBudgetEntries')]
+    public function anInvalidBudgetEntryIsUnprocessableOnItsPathAndChangesNothing(string $budgetKey, array $body, string $path): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', edit: $this->withLuck(...));
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/attributes', ['expectedVersion' => 1, 'label' => 'Attributes', 'total' => 100, 'fields' => ['pow']]);
+        $before = $this->sheet();
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/'.$budgetKey, ['expectedVersion' => 2, ...$body]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringStartsWith($path, $this->error());
+        self::assertSame($before, $this->sheet());
+    }
+
+    #[Test]
+    public function aLabelLessLegacyBudgetCannotJoinASecondOneUntilItIsLabelled(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', edit: $this->withLuck(...));
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budget', ['expectedVersion' => 1, 'total' => 100, 'fields' => ['pow']]);
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/skills', ['expectedVersion' => 2, 'label' => 'Skills', 'total' => 8, 'fields' => ['luck']]);
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringStartsWith('sheet.pointBudgets[0].label', $this->error());
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/points', ['expectedVersion' => 2, 'label' => 'Attributes', 'total' => 100, 'fields' => ['pow']]);
+        self::assertResponseStatusCodeSame(200);
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/skills', ['expectedVersion' => 3, 'label' => 'Skills', 'total' => 8, 'fields' => ['luck']]);
+        self::assertResponseStatusCodeSame(200);
+    }
+
+    #[Test]
+    public function deletingAnUnknownBudgetIsNotFoundAndChangesNothing(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $before = $this->sheet();
+
+        $this->client->request('DELETE', self::BASE.'/mine/sheet/point-budgets/skills?expectedVersion=1');
+
+        self::assertResponseStatusCodeSame(404);
+        self::assertStringContainsString('skills', $this->error());
+        self::assertSame($before, $this->sheet());
+    }
+
+    #[Test]
+    public function theSingleBudgetRoutesAnswerSeveralPointBudgetsWithACode(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', edit: $this->withLuck(...));
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/attributes', ['expectedVersion' => 1, 'label' => 'Attributes', 'total' => 100, 'fields' => ['pow']]);
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/skills', ['expectedVersion' => 2, 'label' => 'Skills', 'total' => 8, 'fields' => ['luck']]);
+        $before = $this->sheet();
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budget', ['expectedVersion' => 3, 'total' => 5, 'fields' => ['pow']]);
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('several_point_budgets', $this->json()['code']);
+        self::assertNotSame('', $this->error());
+
+        $this->client->request('DELETE', self::BASE.'/mine/sheet/point-budget?expectedVersion=3');
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('several_point_budgets', $this->json()['code']);
+        self::assertSame($before, $this->sheet());
+    }
+
+    #[Test]
+    public function aConcurrentSaveOfABudgetIsAConflictWithItsCode(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/attributes', ['expectedVersion' => 1, 'label' => 'Attributes', 'total' => 100, 'fields' => ['pow']]);
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/attributes', ['expectedVersion' => 1, 'label' => 'Stale', 'total' => 50, 'fields' => ['pow']]);
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('modified_concurrently', $this->json()['code']);
+
+        $this->client->request('DELETE', self::BASE.'/mine/sheet/point-budgets/attributes?expectedVersion=1');
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('modified_concurrently', $this->json()['code']);
+    }
+
+    #[Test]
+    public function aFieldOfAnyBudgetCannotBeDeletedOrRenamed(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', edit: $this->withLuck(...));
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/attributes', ['expectedVersion' => 1, 'label' => 'Attributes', 'total' => 100, 'fields' => ['pow']]);
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/skills', ['expectedVersion' => 2, 'label' => 'Skills', 'total' => 8, 'fields' => ['luck']]);
+        $before = $this->sheet();
+
+        $this->client->request('DELETE', self::BASE.'/mine/sheet/fields/luck?expectedVersion=3');
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(['sheet.pointBudgets[1].fields[0]'], $this->json()['paths']);
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/fields/luck', ['expectedVersion' => 3, 'field' => ['key' => 'luck', 'label' => 'Luck', 'type' => 'text']]);
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringStartsWith('sheet.pointBudgets[1].fields[0]', $this->error());
+        self::assertSame($before, $this->sheet());
+    }
+
+    #[Test]
+    public function aBudgetListSurvivesAReloadOfTheWholeDraft(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', edit: $this->withLuck(...));
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/attributes', ['expectedVersion' => 1, 'label' => 'Attributes', 'total' => 100, 'fields' => ['pow'], 'min' => 1]);
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/point-budgets/skills', ['expectedVersion' => 2, 'label' => 'Skills', 'total' => 8, 'fields' => ['luck'], 'max' => 3]);
+        $written = $this->json();
+
+        self::getContainer()->get(EntityManagerInterface::class)->clear();
+
+        self::assertSame($written, $this->sheet());
+    }
+
+    #[Test]
     public function aFieldOfThePointBudgetCannotBeDeletedOrRenamed(): void
     {
         $this->signIn('ann@example.com', ['GAME_MANAGER']);
@@ -588,6 +794,14 @@ final class GameSystemSheetApiTest extends WebTestCase
         yield 'DELETE budget expectedVersion not a number' => ['DELETE '.$budgetPath.'?expectedVersion=abc', null, null];
         yield 'DELETE budget expectedVersion an array' => ['DELETE '.$budgetPath.'?expectedVersion[]=1', null, null];
 
+        $entryPath = '/mine/sheet/point-budgets/skills';
+        yield 'budget entry not a JSON object' => ['PUT '.$entryPath, '[1]', null];
+        yield 'budget entry not JSON' => ['PUT '.$entryPath, '{"total":', null];
+        yield 'budget entry no expectedVersion' => ['PUT '.$entryPath, null, ['label' => 'Skills', 'total' => 100, 'fields' => ['pow']]];
+        yield 'budget entry expectedVersion a string' => ['PUT '.$entryPath, null, ['expectedVersion' => '1', 'label' => 'Skills', 'total' => 100, 'fields' => ['pow']]];
+        yield 'DELETE budget entry without expectedVersion' => ['DELETE '.$entryPath, null, null];
+        yield 'DELETE budget entry expectedVersion an array' => ['DELETE '.$entryPath.'?expectedVersion[]=1', null, null];
+
         yield 'DELETE layout without expectedVersion' => ['DELETE '.$layout, null, null];
         yield 'DELETE layout expectedVersion not a number' => ['DELETE '.$layout.'?expectedVersion=abc', null, null];
         yield 'DELETE layout expectedVersion an array' => ['DELETE '.$layout.'?expectedVersion[]=1', null, null];
@@ -625,7 +839,7 @@ final class GameSystemSheetApiTest extends WebTestCase
         $this->signIn('ann@example.com', ['GAME_MANAGER']);
         $this->draft('mine');
 
-        foreach ([['POST', '/mine/sheet/fields'], ['PUT', '/mine/sheet/fields/pow'], ['POST', '/mine/sheet/fields/pow/move'], ['PUT', '/mine/sheet/layout'], ['POST', '/mine/sheet/layout/declare'], ['PUT', '/mine/sheet/point-budget']] as [$method, $path]) {
+        foreach ([['POST', '/mine/sheet/fields'], ['PUT', '/mine/sheet/fields/pow'], ['POST', '/mine/sheet/fields/pow/move'], ['PUT', '/mine/sheet/layout'], ['POST', '/mine/sheet/layout/declare'], ['PUT', '/mine/sheet/point-budget'], ['PUT', '/mine/sheet/point-budgets/skills']] as [$method, $path]) {
             $this->client->request($method, self::BASE.$path, server: ['CONTENT_TYPE' => 'text/plain'], content: 'field');
 
             self::assertResponseStatusCodeSame(415, $method.' '.$path);
@@ -677,6 +891,8 @@ final class GameSystemSheetApiTest extends WebTestCase
             ['DELETE', '/mine/sheet/layout?expectedVersion=1', []],
             ['PUT', '/mine/sheet/point-budget', ['expectedVersion' => 1, 'total' => 100, 'fields' => ['pow']]],
             ['DELETE', '/mine/sheet/point-budget?expectedVersion=1', []],
+            ['PUT', '/mine/sheet/point-budgets/skills', ['expectedVersion' => 1, 'label' => 'Skills', 'total' => 100, 'fields' => ['pow']]],
+            ['DELETE', '/mine/sheet/point-budgets/skills?expectedVersion=1', []],
         ] as [$method, $path, $body]) {
             $this->client->jsonRequest($method, self::BASE.$path, $body);
 

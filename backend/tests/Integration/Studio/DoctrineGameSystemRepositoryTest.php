@@ -277,6 +277,30 @@ final class DoctrineGameSystemRepositoryTest extends KernelTestCase
     }
 
     #[Test]
+    public function aPointBudgetSaveRoundTripsTheWholeDocument(): void
+    {
+        $source = ReleaseContent::fromArray(ReleaseArrays::fixture('valid/v2-minimal'))->toArray();
+        $this->gameSystems->add(GameSystem::createFromRelease(GameSystemId::fromString(self::FIRST_ID), 'budgeted', 'Budgeted', null, self::OWNER, $source, new \DateTimeImmutable('2026-10-15T10:00:00')));
+        $this->entityManager->clear();
+        $loaded = $this->gameSystems->ofKey('budgeted');
+        self::assertNotNull($loaded);
+        $now = new \DateTimeImmutable('2026-10-16T10:00:00');
+
+        $loaded->saveSheetField(null, ['key' => 'str', 'label' => 'Strength', 'type' => 'number', 'min' => 1, 'max' => 5], $now);
+        $loaded->saveSheetField(null, ['key' => 'lore', 'label' => 'Lore', 'type' => 'number', 'min' => 0, 'max' => 5], $now);
+        $loaded->saveSheetPointBudgetEntry('attributes', ['label' => 'Attribute points', 'total' => 12, 'fields' => ['str']], $now);
+        $loaded->saveSheetPointBudgetEntry('skills', ['label' => 'Skill points', 'total' => 8, 'fields' => ['lore'], 'max' => 3], $now);
+        $this->gameSystems->save($loaded);
+        $this->entityManager->clear();
+
+        $reloaded = $this->gameSystems->ofKey('budgeted');
+        self::assertNotNull($reloaded);
+        self::assertEquals($loaded, $reloaded);
+        self::assertSame(['attributes', 'skills'], array_column((array) ((array) $reloaded->document()['sheet'])['pointBudgets'], 'key'));
+        ReleaseContent::checkItemRules($reloaded->document());
+    }
+
+    #[Test]
     public function aNarrativeItemSaveRoundTripsTheWholeDocument(): void
     {
         $source = ReleaseContent::fromArray(ReleaseArrays::fixture('valid/v2-every-part'))->toArray();

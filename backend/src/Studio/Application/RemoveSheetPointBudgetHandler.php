@@ -8,6 +8,7 @@ use App\Shared\Application\Bus\CommandHandler;
 use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
 use App\Studio\Domain\GameSystem\GameSystemRepository;
+use App\Studio\Domain\GameSystem\SeveralPointBudgets;
 use App\Studio\Domain\Release\InvalidReleaseContent;
 
 /**
@@ -26,6 +27,7 @@ final readonly class RemoveSheetPointBudgetHandler implements CommandHandler
     /**
      * @throws GameSystemNotFound             when the user has no such GameSystem
      * @throws GameSystemModifiedConcurrently when $expectedVersion is not the draft's version, or another request saved it meanwhile
+     * @throws SeveralPointBudgets            when the sheet has several budgets: the keyed commands address one
      * @throws InvalidReleaseContent          naming the offending path, also for a schema version 1 draft; nothing changes
      */
     public function __invoke(RemoveSheetPointBudget $command): void

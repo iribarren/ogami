@@ -27,6 +27,9 @@ final class GameSystem
     /** The group declaring a layout gives the fields that have none. */
     private const string DEFAULT_SHEET_GROUP = 'General';
 
+    /** The key a legacy single `pointBudget` goes by in the keyed point budget commands (ADR 0043). */
+    private const string LEGACY_BUDGET_KEY = 'points';
+
     /**
      * Concurrency token, owned by the persistence adapter: it counts saves so that a save of a
      * stale copy is refused (GameSystemModifiedConcurrently). The model never changes it.
@@ -571,34 +574,89 @@ final class GameSystem
     /**
      * Replaces the whole point budget of the sheet (ADR 0040), the rules being the release's: a
      * total, distinct number fields to spend it on, and optional creation-only bounds for them.
+     * Writes the legacy single `pointBudget`, dropping a list of one budget.
      *
      * @param array<array-key, mixed> $budget "label", "total", "fields", "min" and "max" as in a release document
      *
      * @throws InvalidReleaseContent when the draft is schema version 1, or the budget breaks the release contract (the path starts with "sheet.pointBudget"); nothing changes
+     * @throws SeveralPointBudgets   when the sheet has several budgets, which only a keyed command can address
      */
     public function saveSheetPointBudget(array $budget, \DateTimeImmutable $now): void
     {
         $this->refuseOnPack('save a sheet point budget');
         $this->sheetFields();
-        $this->replaceSheet([...$this->sheet(), 'pointBudget' => $budget], $now);
+        $sheet = $this->sheet();
+        $this->refuseSeveralPointBudgets($sheet);
+        unset($sheet['pointBudgets']);
+        $this->replaceSheet([...$sheet, 'pointBudget' => $budget], $now);
     }
 
     /**
      * Drops the point budget: Characters are created without one.
      *
      * @throws InvalidReleaseContent when the draft is schema version 1, the sheet has no point budget, or the draft would break the item rules
+     * @throws SeveralPointBudgets   when the sheet has several budgets, which only a keyed command can address
      */
     public function removeSheetPointBudget(\DateTimeImmutable $now): void
     {
         $this->refuseOnPack('remove a sheet point budget');
         $this->sheetFields();
         $sheet = $this->sheet();
-        if (!isset($sheet['pointBudget'])) {
+        $this->refuseSeveralPointBudgets($sheet);
+        if ([] === $this->pointBudgetList($sheet)) {
             throw InvalidReleaseContent::at('sheet.pointBudget', 'no point budget, there is nothing to remove');
         }
 
-        unset($sheet['pointBudget']);
+        unset($sheet['pointBudget'], $sheet['pointBudgets']);
         $this->replaceSheet($sheet, $now);
+    }
+
+    /**
+     * Puts the point budget with this key (ADR 0043): replaces it in place, else appends it. The
+     * whole list is stored as `pointBudgets`; a legacy `pointBudget` is the budget "points" and is
+     * moved into the list.
+     *
+     * @param array<array-key, mixed> $budget "label", "total", "fields", "min" and "max" as in a release document, without a "key": that is $budgetKey
+     *
+     * @throws InvalidReleaseContent when the draft is schema version 1, or the list would break the release contract (the path starts with "sheet.pointBudgets[i]"); nothing changes
+     */
+    public function saveSheetPointBudgetEntry(string $budgetKey, array $budget, \DateTimeImmutable $now): void
+    {
+        $this->refuseOnPack('save a sheet point budget');
+        $this->sheetFields();
+        $sheet = $this->sheet();
+        $list = $this->pointBudgetList($sheet);
+        $position = array_find_key($list, static fn (mixed $listed): bool => \is_array($listed) && ($listed['key'] ?? null) === $budgetKey);
+        $position ??= \count($list);
+        if (\array_key_exists('key', $budget)) {
+            throw InvalidReleaseContent::at(\sprintf('sheet.pointBudgets[%d].key', $position), 'the key is the budget\'s, not part of its content');
+        }
+
+        $list[$position] = ['key' => $budgetKey, ...$budget];
+
+        unset($sheet['pointBudget']);
+        $this->replaceSheet([...$sheet, 'pointBudgets' => $list], $now);
+    }
+
+    /**
+     * Deletes the point budget with this key; the last one removes the property.
+     *
+     * @throws SheetPointBudgetNotFound when the sheet has no budget with this key
+     * @throws InvalidReleaseContent    when the draft is schema version 1 or the draft would break the item rules
+     */
+    public function removeSheetPointBudgetEntry(string $budgetKey, \DateTimeImmutable $now): void
+    {
+        $this->refuseOnPack('remove a sheet point budget');
+        $this->sheetFields();
+        $sheet = $this->sheet();
+        $list = $this->pointBudgetList($sheet);
+        $position = array_find_key($list, static fn (mixed $listed): bool => \is_array($listed) && ($listed['key'] ?? null) === $budgetKey);
+        if (null === $position) {
+            throw SheetPointBudgetNotFound::withKey($budgetKey);
+        }
+
+        unset($list[$position], $sheet['pointBudget'], $sheet['pointBudgets']);
+        $this->replaceSheet([] === $list ? $sheet : [...$sheet, 'pointBudgets' => array_values($list)], $now);
     }
 
     /**
@@ -831,6 +889,44 @@ final class GameSystem
         }
 
         return $sheet;
+    }
+
+    /**
+     * The draft's point budgets as a keyed list: `pointBudgets` as stored, else a legacy
+     * `pointBudget` as the budget "points" (its label kept, possibly none); none without either.
+     *
+     * @param array<array-key, mixed> $sheet
+     *
+     * @return list<mixed>
+     *
+     * @throws InvalidReleaseContent when the stored "pointBudgets" is not a list
+     */
+    private function pointBudgetList(array $sheet): array
+    {
+        $listed = $sheet['pointBudgets'] ?? null;
+        $legacy = $sheet['pointBudget'] ?? null;
+        if (null !== $listed && [] !== $listed) {
+            if (null !== $legacy) {
+                throw InvalidReleaseContent::at('sheet.pointBudgets', 'a sheet declares pointBudget or pointBudgets, not both');
+            }
+
+            return ReleaseFields::list($listed, 'sheet.pointBudgets');
+        }
+
+        return \is_array($legacy) ? [['key' => self::LEGACY_BUDGET_KEY, ...$legacy]] : [];
+    }
+
+    /**
+     * @param array<array-key, mixed> $sheet
+     *
+     * @throws SeveralPointBudgets
+     */
+    private function refuseSeveralPointBudgets(array $sheet): void
+    {
+        $count = \count($this->pointBudgetList($sheet));
+        if ($count > 1) {
+            throw SeveralPointBudgets::in($count);
+        }
     }
 
     /**

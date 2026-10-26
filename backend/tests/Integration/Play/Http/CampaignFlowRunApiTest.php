@@ -119,14 +119,14 @@ final class CampaignFlowRunApiTest extends WebTestCase
      */
     public static function currentSteps(): iterable
     {
-        $step = static fn (string $key, string $kind, string $title, array $fields = []): array => array_replace(['key' => $key, 'kind' => $kind, 'title' => $title, 'prompt' => null, 'tip' => null, 'mandatory' => false, 'oracle' => null, 'likelihood' => null, 'table' => null, 'dice' => null, 'options' => [], 'pick' => null, 'fills' => [], 'check' => null, 'difficulty' => null, 'difficultyFixed' => false, 'characters' => [], 'inspiration' => [], 'pending' => null], $fields);
+        $step = static fn (string $key, string $kind, string $title, array $fields = []): array => array_replace(['key' => $key, 'kind' => $kind, 'title' => $title, 'prompt' => null, 'tip' => null, 'mandatory' => false, 'oracle' => null, 'likelihood' => null, 'table' => null, 'dice' => null, 'options' => [], 'pick' => null, 'fills' => [], 'check' => null, 'difficulty' => null, 'difficultyFixed' => false, 'characters' => [], 'inspiration' => [], 'changesSheet' => false, 'pending' => null], $fields);
 
         yield 'a prompt' => ['intro', 1, 'Setup: Push your luck', $step('intro', 'prompt', 'Who walks in?', ['prompt' => 'Describe the first person.', 'inspiration' => ['omens']])];
         yield 'a roll' => ['dice', 2, 'Setup: Read the omen', $step('dice', 'roll', 'Push your luck', ['dice' => '1d6'])];
         yield 'a table' => ['omen', 3, 'Setup: Is the gate open?', $step('omen', 'table', 'Read the omen', ['table' => 'omens', 'prompt' => 'After —, what do the signs say?'])];
         yield 'an oracle the player picks the likelihood of' => ['ask', 4, 'Setup: Is it guarded?', $step('ask', 'oracle', 'Is the gate open?', ['oracle' => 'fate'])];
         yield 'an oracle at a fixed likelihood' => ['ask-even', 5, 'Setup: Which way?', $step('ask-even', 'oracle', 'Is it guarded?', ['oracle' => 'fate', 'likelihood' => 'even'])];
-        yield 'a choice' => ['fork', 6, 'Open play', $step('fork', 'choice', 'Which way?', ['options' => [['key' => 'left', 'label' => 'Go left'], ['key' => 'right', 'label' => 'Go right']]])];
+        yield 'a choice' => ['fork', 6, 'Open play', $step('fork', 'choice', 'Which way?', ['options' => [['key' => 'left', 'label' => 'Go left', 'changesSheet' => false], ['key' => 'right', 'label' => 'Go right', 'changesSheet' => false]]])];
     }
 
     /**

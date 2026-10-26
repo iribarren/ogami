@@ -31,4 +31,12 @@ final readonly class ChoiceStep extends Step
 
         return null;
     }
+
+    /**
+     * Whether any option changes a Character's sheet (a skip never does, the release forbids it).
+     */
+    public function changesSheet(): bool
+    {
+        return array_any($this->options, static fn (ChoiceOption $option): bool => $option->changesSheet());
+    }
 }

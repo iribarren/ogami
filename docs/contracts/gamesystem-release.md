@@ -321,7 +321,7 @@ A **sheet effect** changes a Character's `number`, `track` or `conditions` field
 - **Order.** Effects apply in list order with the step, all or nothing.
 - **Track start.** A track starts full. A `character` step's effect sets a different start, e.g. `{kind: sheet, field: sanity, op: set, value: {formula: "{pow}"}}`.
 
-Play's translator refuses a sheet effect on a choice option or a prompt step, a `checks` set and a `tableBySceneType` until the slices of `rules-flow-choices` that play them, so a release using one can be published but not played yet. (It refused the `sheet` kind before `preset-real-system` slice 7.) It keeps refusing `mark` and `clear` (unknown sheet operation) until Play plays conditions ([ADR 0041](../adr/0041-dice-pools-pushes-and-conditions.md)).
+Play plays the sheet effects of a choice option and a prompt step: the answer names the Character (`characterId`, required when the picked option or the prompt has sheet effects, refused otherwise; the step response flags it with `changesSheet`), and the translator refuses a sheet effect on the option the `skip` names. Its translator refuses a `checks` set and a `tableBySceneType` until the slices of `rules-flow-choices` that play them, so a release using one can be published but not played yet. (It refused the `sheet` kind before `preset-real-system` slice 7.) It keeps refusing `mark` and `clear` (unknown sheet operation) until Play plays conditions ([ADR 0041](../adr/0041-dice-pools-pushes-and-conditions.md)).
 
 ### Checks (additive in schema version 2)
 

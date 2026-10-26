@@ -11789,7 +11789,8 @@
             "FlowStepOptionResponse": {
                 "required": [
                     "key",
-                    "label"
+                    "label",
+                    "changesSheet"
                 ],
                 "properties": {
                     "key": {
@@ -11799,6 +11800,10 @@
                     "label": {
                         "type": "string",
                         "example": "Yes"
+                    },
+                    "changesSheet": {
+                        "description": "Whether picking the option changes a Character's sheet: the answer must then name the Character with \"characterId\".",
+                        "type": "boolean"
                     }
                 },
                 "type": "object"
@@ -11950,6 +11955,7 @@
                     "difficultyFixed",
                     "characters",
                     "inspiration",
+                    "changesSheet",
                     "pending"
                 ],
                 "properties": {
@@ -12069,6 +12075,10 @@
                             "type": "string",
                             "example": "nouns"
                         }
+                    },
+                    "changesSheet": {
+                        "description": "Whether completing the step changes a Character's sheet, so the answer must name the Character with \"characterId\" (prompt step); false for the other kinds. A choice step says it for each option instead.",
+                        "type": "boolean"
                     },
                     "pending": {
                         "oneOf": [
@@ -13582,7 +13592,7 @@
                         "nullable": true
                     },
                     "characterId": {
-                        "description": "Character step: the id of a Character of the campaign (check step: the Character who rolls, in the Scene or, outside one, the session party). Must be omitted or null for the other kinds.",
+                        "description": "Character step: the id of a Character of the campaign (check step: the Character who rolls, in the Scene or, outside one, the session party). Choice step: the Character the picked option's sheet effects change, required when the option has some (its changesSheet). Prompt step: the Character its sheet effects change, required when the step has some (its changesSheet). Must be omitted or null for the other kinds and for a choice option or prompt without sheet effects.",
                         "type": "string",
                         "example": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9701",
                         "nullable": true

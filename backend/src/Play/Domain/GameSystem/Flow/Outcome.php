@@ -19,4 +19,12 @@ final readonly class Outcome
         public array $effects = [],
     ) {
     }
+
+    /**
+     * Whether any of its effects changes a Character's sheet, which the player then names.
+     */
+    public function changesSheet(): bool
+    {
+        return array_any($this->effects, static fn (Effect $effect): bool => $effect instanceof SheetEffect);
+    }
 }

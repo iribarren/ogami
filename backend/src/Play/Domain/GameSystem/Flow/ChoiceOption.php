@@ -12,4 +12,12 @@ final readonly class ChoiceOption
         public Outcome $outcome,
     ) {
     }
+
+    /**
+     * Whether picking the option changes a Character's sheet: the player names the Character.
+     */
+    public function changesSheet(): bool
+    {
+        return $this->outcome->changesSheet();
+    }
 }

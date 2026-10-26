@@ -49,6 +49,7 @@ export function SheetPreview({
             template={template}
             drafts={drafts}
             derived={derived}
+            showFormula
             onChange={samples.setSample}
           />
         )}

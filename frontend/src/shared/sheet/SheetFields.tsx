@@ -35,13 +35,15 @@ const fieldSpans: Record<number, string> = {
  * group without fields renders nothing. Without one, consecutive fields with the same group sit
  * together under the group's name. The drafts are the form's state, kept by the caller. A field
  * with an entry in `notes` is shown read-only with that text instead of a control: the server
- * sets it when the Character is created.
+ * sets it when the Character is created. A derived field's formula is shown only with
+ * `showFormula`: Studio authors read it, players read the game's words instead.
  */
 export function SheetFields({
   template,
   drafts,
   derived,
   notes = {},
+  showFormula = false,
   onChange,
 }: {
   template: SheetTemplateView
@@ -50,6 +52,8 @@ export function SheetFields({
   derived: Record<string, DerivedResult>
   /** Read-only text by field key, shown in place of the field's control. */
   notes?: Record<string, string>
+  /** Show each derived field's formula under its value. */
+  showFormula?: boolean
   onChange: (key: string, draft: Draft) => void
 }) {
   const control = (field: SheetFieldView) => (
@@ -59,6 +63,7 @@ export function SheetFields({
       draft={drafts[field.key] ?? toDraft(field, undefined)}
       derived={derived[field.key]}
       note={notes[field.key]}
+      showFormula={showFormula}
       onChange={(draft) => {
         onChange(field.key, draft)
       }}
@@ -153,12 +158,14 @@ function FieldControl({
   draft,
   derived,
   note,
+  showFormula,
   onChange,
 }: {
   field: SheetFieldView
   draft: Draft
   derived: DerivedResult | undefined
   note: string | undefined
+  showFormula: boolean
   onChange: (draft: Draft) => void
 }) {
   const id = useId()
@@ -204,9 +211,11 @@ function FieldControl({
           )}
         </output>
         {hint}
-        <p className="text-xs text-muted-foreground">
-          <code>{field.formula}</code>
-        </p>
+        {showFormula && (
+          <p className="text-xs text-muted-foreground">
+            <code>{field.formula}</code>
+          </p>
+        )}
       </div>
     )
   }

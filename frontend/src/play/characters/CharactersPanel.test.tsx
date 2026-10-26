@@ -285,13 +285,13 @@ describe('the Characters panel', () => {
       return { user, panel }
     }
 
-    it('shows the value, the hint and the formula, and recomputes as the player types', async () => {
+    it('shows the value and the hint, not the formula, and recomputes as the player types', async () => {
       renderCharacters(withDerived('{reflexes} + {body}'))
 
       const { user, panel } = await editVi()
       expect(panel.getByLabelText('Initiative')).toHaveTextContent('13')
       expect(panel.getByText('Reflexes plus body.')).toBeInTheDocument()
-      expect(panel.getByText('{reflexes} + {body}')).toBeInTheDocument()
+      expect(panel.queryByText('{reflexes} + {body}')).not.toBeInTheDocument()
       await user.clear(panel.getByLabelText('Reflexes'))
       await user.type(panel.getByLabelText('Reflexes'), '8')
       expect(panel.getByLabelText('Initiative')).toHaveTextContent('14')

@@ -5,7 +5,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { draft, sheet, sheetUngrouped, validDraft } from '../fixtures'
+import { draft, sheet, sheetUngrouped, sheetWithConditions, validDraft } from '../fixtures'
 import { replaceText, typeText } from '@/test/typeText'
 
 const base = '/api/studio/game-systems/my-draft'
@@ -598,5 +598,156 @@ describe('the formula of a derived field', () => {
     })
     expect(await inDialog().findByText('unknown field "ghost"')).toBeVisible()
     expect(inDialog().getByLabelText('Formula')).toHaveAttribute('aria-invalid', 'true')
+  })
+})
+
+describe('a conditions field', () => {
+  async function newConditionsField(handlers: Record<string, FakeHandler> = {}) {
+    const opened = await openSheet(handlers)
+    await addField(opened.user)
+    await typeText(opened.user, inDialog().getByLabelText('Key'), 'physical')
+    await typeText(opened.user, inDialog().getByLabelText('Label'), 'Physical')
+    await chooseOption(opened.user, 'Type', 'conditions', inDialog())
+    return opened
+  }
+
+  it('starts with one option to fill in, and drops the inputs of the other types', async () => {
+    const { user } = await newConditionsField()
+
+    expect(inDialog().getByLabelText('Option 1 key')).toHaveValue('')
+    expect(inDialog().getByLabelText('Option 1 label')).toHaveValue('')
+    expect(inDialog().queryByLabelText('Min')).not.toBeInTheDocument()
+    expect(inDialog().getByRole('button', { name: 'Remove option 1' })).toBeDisabled()
+    await chooseOption(user, 'Type', 'number', inDialog())
+    expect(inDialog().queryByLabelText('Option 1 key')).not.toBeInTheDocument()
+  })
+
+  it('sends the options in order, each key following its label until it is typed', async () => {
+    const { sent, handler } = recorder(Response.json(sheet, { status: 201 }))
+    const { user } = await newConditionsField({ [`POST ${base}/sheet/fields`]: handler })
+
+    await typeText(user, inDialog().getByLabelText('Option 1 label'), 'Badly Hurt')
+    expect(inDialog().getByLabelText('Option 1 key')).toHaveValue('badly-hurt')
+    await user.click(inDialog().getByRole('button', { name: 'Add option' }))
+    await typeText(user, inDialog().getByLabelText('Option 2 label'), 'Tired')
+    await replaceText(user, inDialog().getByLabelText('Option 2 key'), 'weary')
+    await replaceText(user, inDialog().getByLabelText('Option 2 label'), 'Very tired')
+    expect(inDialog().getByLabelText('Option 2 key')).toHaveValue('weary')
+    await user.click(inDialog().getByRole('button', { name: 'Add option' }))
+    await typeText(user, inDialog().getByLabelText('Option 3 label'), 'Shaken')
+    await user.click(inDialog().getByRole('button', { name: 'Move up option 3' }))
+    await user.click(inDialog().getByRole('button', { name: 'Remove option 1' }))
+    await user.click(inDialog().getByRole('button', { name: 'Create field' }))
+
+    await waitFor(() => {
+      expect(sent[0]?.field).toEqual({
+        key: 'physical',
+        label: 'Physical',
+        group: 'Stats',
+        type: 'conditions',
+        options: [
+          { key: 'shaken', label: 'Shaken' },
+          { key: 'weary', label: 'Very tired' },
+        ],
+      })
+    })
+  })
+
+  it('flags a blank, repeated or too long option and sends nothing', async () => {
+    const { sent, handler } = recorder(Response.json(sheet, { status: 201 }))
+    const { user } = await newConditionsField({ [`POST ${base}/sheet/fields`]: handler })
+
+    await user.click(inDialog().getByRole('button', { name: 'Create field' }))
+    expect(await inDialog().findByText('Give the option a key.')).toBeVisible()
+    expect(inDialog().getByText('Give the option a label.')).toBeVisible()
+
+    await typeText(user, inDialog().getByLabelText('Option 1 label'), 'Hurt')
+    await user.click(inDialog().getByRole('button', { name: 'Add option' }))
+    await typeText(user, inDialog().getByLabelText('Option 2 label'), 'Hurt')
+    await user.click(inDialog().getByRole('button', { name: 'Add option' }))
+    await typeText(user, inDialog().getByLabelText('Option 3 label'), 'x'.repeat(61))
+    await user.click(inDialog().getByRole('button', { name: 'Create field' }))
+
+    expect(
+      await inDialog().findByText('The key "hurt" is used by an earlier option.'),
+    ).toBeVisible()
+    expect(inDialog().getByText('The label is at most 60 characters.')).toBeVisible()
+    expect(sent).toEqual([])
+  })
+
+  it('stops adding at twenty options', async () => {
+    const { user } = await newConditionsField()
+
+    for (let at = 0; at < 19; at += 1) {
+      await user.click(inDialog().getByRole('button', { name: 'Add option' }))
+    }
+
+    expect(inDialog().getByLabelText('Option 20 key')).toBeVisible()
+    expect(inDialog().getByRole('button', { name: 'Add option' })).toBeDisabled()
+  })
+
+  it('edits a stored conditions field in place and shows its options on the list', async () => {
+    const { sent, handler } = recorder(Response.json({ ...sheetWithConditions, version: 10 }))
+    const { user } = await openSheet({
+      [`GET ${base}/sheet`]: json(sheetWithConditions),
+      [`PUT ${base}/sheet/fields/physical`]: handler,
+    })
+
+    expect(await screen.findByText('Options: Hurt, Tired')).toBeVisible()
+    await user.click(await screen.findByRole('button', { name: 'Edit physical' }))
+    expect(inDialog().getByLabelText('Option 1 key')).toHaveValue('hurt')
+    expect(inDialog().getByLabelText('Option 2 label')).toHaveValue('Tired')
+    await replaceText(user, inDialog().getByLabelText('Option 2 label'), 'Exhausted')
+    await user.click(inDialog().getByRole('button', { name: 'Save field' }))
+
+    await waitFor(() => {
+      expect(sent[0]?.field).toMatchObject({
+        type: 'conditions',
+        options: [
+          { key: 'hurt', label: 'Hurt' },
+          { key: 'tired', label: 'Exhausted' },
+        ],
+      })
+    })
+  })
+
+  it('shows the publisher refusal of an option on its input', async () => {
+    const { user } = await newConditionsField({
+      [`POST ${base}/sheet/fields`]: json(
+        { error: 'sheet.fields[4].options[1].key: duplicate option key "hurt"' },
+        422,
+      ),
+    })
+    await typeText(user, inDialog().getByLabelText('Option 1 label'), 'Hurt')
+    await user.click(inDialog().getByRole('button', { name: 'Add option' }))
+    await typeText(user, inDialog().getByLabelText('Option 2 label'), 'Harm')
+    await user.click(inDialog().getByRole('button', { name: 'Create field' }))
+
+    expect(await inDialog().findByText('duplicate option key "hurt"')).toBeVisible()
+    expect(inDialog().getByLabelText('Option 2 key')).toHaveAttribute('aria-invalid', 'true')
+    expect(inDialog().getByLabelText('Option 1 key')).not.toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('lists the effects that mark an option the save would remove', async () => {
+    const { user } = await openSheet({
+      [`GET ${base}/sheet`]: json(sheetWithConditions),
+      [`PUT ${base}/sheet/fields/physical`]: json(
+        {
+          error:
+            'The option "hurt" of the sheet field "physical" is used at checks[0].push.effects[0].',
+          paths: ['checks[0].push.effects[0]'],
+        },
+        422,
+      ),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit physical' }))
+    await user.click(inDialog().getByRole('button', { name: 'Remove option 1' }))
+    await user.click(inDialog().getByRole('button', { name: 'Save field' }))
+
+    expect(await inDialog().findByRole('alert')).toHaveTextContent(
+      'The option "hurt" of the sheet field "physical" is used at checks[0].push.effects[0]. Used by checks[0].push.effects[0].',
+    )
+    expect(inDialog().getByLabelText('Option 1 key')).toHaveValue('tired')
   })
 })

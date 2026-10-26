@@ -4,6 +4,8 @@ export interface SheetFieldAnswer {
   fields: Record<string, string>
   /** What belongs to no input: shown with the form, path and all. */
   form: string | null
+  /** The messages of an option's inputs, by its position; only when the publisher named one. */
+  options?: Partial<Record<number, Partial<Record<'key' | 'label', string>>>>
 }
 
 /** The properties the dialog has an input for. */
@@ -23,6 +25,7 @@ const inputs = [
   'formula',
   'roll',
   'startMax',
+  'options',
 ]
 
 /**
@@ -33,6 +36,11 @@ const inputs = [
 export function sheetFieldAnswer(text: string, index: number): SheetFieldAnswer {
   const prefix = `sheet.fields[${String(index)}].`
   if (text.startsWith(prefix)) {
+    const option = /^options\[(\d+)\]\.(key|label): (.*)$/s.exec(text.slice(prefix.length))
+    const [, at, input, found] = option ?? []
+    if (at !== undefined && input !== undefined && found !== undefined) {
+      return { fields: {}, form: null, options: { [Number(at)]: { [input]: found } } }
+    }
     const match = /^(\w+)(?:\.\w+)?: (.*)$/s.exec(text.slice(prefix.length))
     const [, property, message] = match ?? []
     if (property !== undefined && message !== undefined && inputs.includes(property)) {

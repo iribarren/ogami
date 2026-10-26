@@ -26,7 +26,18 @@ describe('the step pickers', () => {
           },
           { key: 'luck', label: 'Luck', bands: ['win'], difficulty: null },
         ],
-        fields: [{ key: 'hands', label: 'Hands' }],
+        fields: [
+          { key: 'hands', label: 'Hands' },
+          { key: 'bar', label: 'Bar', options: null },
+          {
+            key: 'physical',
+            label: 'Physical',
+            options: [
+              { key: 'hurt', label: 'Hurt' },
+              { key: 'tired', label: 'Tired' },
+            ],
+          },
+        ],
       },
     })
 
@@ -52,7 +63,19 @@ describe('the step pickers', () => {
       { key: 'client', name: 'Client', type: 'text' },
       { key: 'odd', name: 'odd', type: 'text' },
     ])
-    expect(context.sheetFields).toEqual([{ key: 'hands', name: 'Hands' }])
+    // A conditions field carries its options for the effect to mark or clear; a number or track has none.
+    expect(context.sheetFields).toEqual([
+      { key: 'hands', name: 'Hands' },
+      { key: 'bar', name: 'Bar' },
+      {
+        key: 'physical',
+        name: 'Physical',
+        options: [
+          { key: 'hurt', name: 'Hurt' },
+          { key: 'tired', name: 'Tired' },
+        ],
+      },
+    ])
     expect(context.trackers.map((tracker) => tracker.key)).toEqual(['heat', 'alarm', 'mood'])
   })
 })

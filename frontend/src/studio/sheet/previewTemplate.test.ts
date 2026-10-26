@@ -115,4 +115,37 @@ describe('the preview template', () => {
 
     expect(previewTemplate(stored, invalid)).toEqual(previewTemplate(stored, null))
   })
+
+  it('reads the options of a conditions field and none for the others', () => {
+    const fields = [
+      { key: 'pow', label: 'Power', type: 'number' },
+      {
+        key: 'physical',
+        label: 'Physical',
+        type: 'conditions',
+        options: [
+          { key: 'hurt', label: 'Hurt' },
+          { key: 'x' },
+          'junk',
+          { key: 'tired', label: 'Tired' },
+        ],
+      },
+      { key: 'mental', label: 'Mental', type: 'conditions', options: 'none' },
+    ]
+
+    const template = previewTemplate({ ...stored, fields, groups: null }, null)
+
+    expect(template.fields.map((field) => [field.key, field.type, field.options])).toEqual([
+      ['pow', 'number', null],
+      [
+        'physical',
+        'conditions',
+        [
+          { key: 'hurt', label: 'Hurt' },
+          { key: 'tired', label: 'Tired' },
+        ],
+      ],
+      ['mental', 'conditions', []],
+    ])
+  })
 })

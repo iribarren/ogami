@@ -1,6 +1,9 @@
 import {
   blankField,
+  editOptionKey,
+  editOptionLabel,
   moveTarget,
+  newOption,
   readField,
   sheetSections,
   writeField,
@@ -278,5 +281,95 @@ describe('where a field moves to', () => {
     expect(moveTarget(fields, 2, 'down', false)).toBe(3)
     expect(moveTarget(fields, 0, 'up', false)).toBeNull()
     expect(moveTarget(fields, 3, 'down', false)).toBeNull()
+  })
+})
+
+describe('a conditions field', () => {
+  const stored = {
+    key: 'physical',
+    label: 'Physical',
+    type: 'conditions',
+    options: [
+      { key: 'hurt', label: 'Hurt' },
+      { key: 'tired', label: 'Tired' },
+    ],
+  }
+
+  it('reads its options in order and writes them back as stored', () => {
+    const draft = readField(stored)
+
+    expect(draft?.options.map(({ key, label }) => [key, label])).toEqual([
+      ['hurt', 'Hurt'],
+      ['tired', 'Tired'],
+    ])
+    expect(writeField(draft ?? blankField(null), null)).toEqual({ field: stored })
+  })
+
+  it.each([
+    ['no options', { ...stored, options: undefined }],
+    ['options that are not a list', { ...stored, options: 'hurt' }],
+    ['an option that is not an object', { ...stored, options: ['hurt'] }],
+    ['an option without a string label', { ...stored, options: [{ key: 'hurt' }] }],
+    ['an option with another property', { ...stored, options: [{ key: 'a', label: 'A', x: 1 }] }],
+  ])('cannot be edited with %s', (_name, field) => {
+    expect(readField(field)).toBeNull()
+  })
+
+  it('leaves the options of another type alone, and a conditions field has no other property', () => {
+    expect(readField({ key: 'a', label: 'A', type: 'number', options: 'x' })?.options).toEqual([])
+    expect(
+      writeField(
+        filled({ type: 'conditions', max: '4', options: [{ key: 'a', label: 'A' }] }),
+        null,
+      ),
+    ).toEqual({
+      field: {
+        key: 'luck',
+        label: 'Luck',
+        type: 'conditions',
+        options: [{ key: 'a', label: 'A' }],
+      },
+    })
+  })
+
+  it('follows the label with the key until the key is typed', () => {
+    const typed = editOptionLabel(newOption(), 'Badly Hurt!')
+    expect(typed).toMatchObject({ key: 'badly-hurt', label: 'Badly Hurt!' })
+
+    const own = editOptionLabel(editOptionKey(typed, 'bad'), 'Worse')
+    expect(own).toMatchObject({ key: 'bad', label: 'Worse' })
+  })
+
+  it('asks for 1 to 20 options, each with a key (never repeated) and a label up to 60', () => {
+    const errors = (options: { key: string; label: string }[]) => {
+      const result = writeField(filled({ type: 'conditions', options }), null)
+      return 'errors' in result ? result.errors : null
+    }
+
+    expect(errors([])).toEqual({ options: 'A conditions field has 1 to 20 options.' })
+    expect(
+      errors(Array.from({ length: 21 }, (_, at) => ({ key: `k${String(at)}`, label: 'L' }))),
+    ).toEqual({ options: 'A conditions field has 1 to 20 options.' })
+    expect(errors([{ key: ' ', label: '' }])).toEqual({
+      option: { 0: { key: 'Give the option a key.', label: 'Give the option a label.' } },
+    })
+    expect(
+      errors([
+        { key: 'a', label: 'A' },
+        { key: ' a ', label: 'x'.repeat(61) },
+      ]),
+    ).toEqual({
+      option: {
+        1: {
+          key: 'The key "a" is used by an earlier option.',
+          label: 'The label is at most 60 characters.',
+        },
+      },
+    })
+    expect(
+      errors(
+        Array.from({ length: 20 }, (_, at) => ({ key: `k${String(at)}`, label: 'x'.repeat(60) })),
+      ),
+    ).toBeNull()
   })
 })

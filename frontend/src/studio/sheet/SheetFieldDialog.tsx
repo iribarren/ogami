@@ -15,12 +15,14 @@ import type { SheetFieldView } from '@/shared/sheet/types'
 
 import { TextField } from '../narrative/TextField'
 import { StudioError } from '../useGameSystems'
+import { ConditionOptionsEditor } from './ConditionOptionsEditor'
 import { formulaDiagnostics, type FormulaDiagnostics } from './formulaDiagnostics'
 import { FormulaInput, type ReferenceOption } from './FormulaInput'
 import {
   blankField,
   fieldTypes,
   maxModes,
+  newOption,
   readField,
   typeProperties,
   writeField,
@@ -28,6 +30,7 @@ import {
   type FieldErrors,
   type FieldType,
   type MaxMode,
+  type OptionErrors,
 } from './sheetDraft'
 import { sheetFieldAnswer } from './sheetError'
 import {
@@ -96,6 +99,7 @@ const typeLabels: Record<FieldType, string> = {
   text: 'Text',
   list: 'List',
   track: 'Track',
+  conditions: 'Conditions',
   derived: 'Derived',
 }
 
@@ -146,7 +150,10 @@ function FieldForm({
             ? ` Used by ${error.paths.join(', ')}.`
             : ''
         }`
-  const shown: Record<string, string | undefined> = { ...errors, ...answer?.fields }
+  const { option: optionErrors, ...inputErrors } = errors
+  const shown: Record<string, string | undefined> = { ...inputErrors, ...answer?.fields }
+  // The client's messages about an option, and the publisher's after a refused save: the later wins.
+  const shownOptions = { ...optionErrors, ...answer?.options }
   const renamed = original !== null && draft.key.trim() !== original
   const publishedRename = renamed && base.publishedFieldKeys.includes(original)
   const columns = base.groups?.find((group) => group.name === draft.group)?.columns ?? 1
@@ -275,6 +282,8 @@ function FieldForm({
           change({
             ...Object.fromEntries(typeProperties.map((name) => [name, blank[name]])),
             type: type as FieldType,
+            // A conditions field needs an option: start with an empty one to fill in.
+            ...(type === 'conditions' ? { options: [newOption()] } : {}),
           })
         }}
         options={fieldTypes.map((type) => ({ value: type, label: typeLabels[type] }))}
@@ -321,6 +330,7 @@ function FieldForm({
         draft={draft}
         change={change}
         errors={shown}
+        optionErrors={shownOptions}
         diagnostics={diagnostics}
         references={references}
         startReferences={startReferences}
@@ -354,6 +364,7 @@ function TypeFields({
   draft,
   change,
   errors,
+  optionErrors,
   diagnostics,
   references,
   startReferences,
@@ -361,13 +372,15 @@ function TypeFields({
   draft: FieldDraft
   change: (changes: Partial<FieldDraft>) => void
   errors: Record<string, string | undefined>
+  /** The messages of each option's inputs, by position. */
+  optionErrors: Partial<Record<number, OptionErrors>>
   diagnostics: FormulaDiagnostics | null
   references: ReferenceOption[]
   /** What a start max formula may read: number and derived fields. */
   startReferences: ReferenceOption[]
 }) {
   const multilineId = useId()
-  const text = (label: string, name: keyof FieldDraft) => (
+  const text = (label: string, name: Exclude<keyof FieldDraft, 'options'>) => (
     <TextField
       label={label}
       value={String(draft[name])}
@@ -446,6 +459,17 @@ function TypeFields({
           )}
         </>
       )
+    case 'conditions':
+      return (
+        <ConditionOptionsEditor
+          options={draft.options}
+          onChange={(options) => {
+            change({ options })
+          }}
+          error={errors.options}
+          errors={optionErrors}
+        />
+      )
     case 'derived':
       return (
         <FormulaInput
@@ -462,13 +486,15 @@ function TypeFields({
   }
 }
 
-/** What a derived field may read among `others`: number, track and derived fields, track maxes, Trackers. */
+/** What a derived field may read among `others`: number, track, conditions (the count marked) and derived fields, track maxes, Trackers. */
 function readableReferences(others: SheetFieldView[], sheet: GameSystemSheet): ReferenceOption[] {
   const fields = others.flatMap(({ key, label, type }): ReferenceOption[] => {
     switch (type) {
       case 'number':
       case 'derived':
         return [{ reference: key, label }]
+      case 'conditions':
+        return [{ reference: key, label: `${label} (marked)` }]
       case 'track':
         return [
           { reference: key, label },

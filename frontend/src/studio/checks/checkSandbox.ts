@@ -17,7 +17,8 @@ const openTrackMax = 999
 
 /** What the sandbox reads: the form's check, the sample values and what was typed beside them. */
 export interface SandboxState {
-  catalog: Pick<GameSystemChecks, 'fields' | 'trackers'>
+  catalog: Pick<GameSystemChecks, 'fields' | 'trackers'> &
+    Partial<Pick<GameSystemChecks, 'conditions'>>
   /** The sheet's fields with their defaults and ranges; empty while the sheet is not known. */
   template: SheetFieldView[]
   /** What was typed for the fields, shared with the Sheet tab. */
@@ -29,6 +30,8 @@ export interface SandboxState {
   /** What was typed for the difficulty; null until the person types, which shows the default. */
   difficultyText: string | null
   situationalText: string
+  /** What was typed for each conditions field: how many of its options are marked; formulas read the count. */
+  conditionTexts?: Record<string, string>
   bands: BandDraft[]
   /** The form's pool, or null (or absent) for a dice check. */
   pool?: PoolDraft | null
@@ -169,6 +172,33 @@ export function resolveSandbox(state: SandboxState): Sandbox {
     ]
   })
 
+  // A conditions field reads as how many of its options are marked, 0 to the number of options.
+  const marked = new Map<string, number>()
+  const conditions = (catalog.conditions ?? []).map((field): SandboxInput => {
+    const typed = state.conditionTexts?.[field.key] ?? ''
+    let error: string | null = null
+    let value = 0
+    if (typed.trim() !== '') {
+      const parsed = whole(typed, 0, field.options.length)
+      if ('error' in parsed) {
+        error = parsed.error
+      } else {
+        value = parsed.value
+        request.sheet[field.key] = parsed.value
+      }
+    }
+    flag(error)
+    marked.set(field.key, value)
+    numbers.set(field.key, value)
+    return {
+      key: field.key,
+      label: `${field.label} (marked, 0 to ${String(field.options.length)})`,
+      value: typed,
+      placeholder: '0',
+      error,
+    }
+  })
+
   const trackerValues = new Map<string, number | undefined>()
   const trackers = catalog.trackers.map((tracker): SandboxInput => {
     const typed = trackerSamples[tracker.key] ?? ''
@@ -243,6 +273,9 @@ export function resolveSandbox(state: SandboxState): Sandbox {
         current: value === undefined ? '' : String(value),
         max: String(field.max ?? value ?? 0),
       }
+    } else if (field.type === 'conditions') {
+      const options = (catalog.conditions ?? []).find(({ key }) => key === field.key)?.options ?? []
+      drafts[field.key] = options.slice(0, marked.get(field.key) ?? 0).map(({ key }) => key)
     }
   }
   const readings = [...trackerValues].flatMap(([key, value]): TrackerReading[] =>
@@ -279,7 +312,7 @@ export function resolveSandbox(state: SandboxState): Sandbox {
         )
 
   return {
-    fields,
+    fields: [...fields, ...conditions],
     trackers,
     difficulty: difficultyInput,
     situational: {

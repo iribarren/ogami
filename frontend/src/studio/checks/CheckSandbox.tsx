@@ -52,7 +52,8 @@ export function CheckSandbox({
   ensureSaved,
 }: {
   gameSystemKey: string
-  catalog: Pick<GameSystemChecks, 'fields' | 'trackers'>
+  catalog: Pick<GameSystemChecks, 'fields' | 'trackers'> &
+    Partial<Pick<GameSystemChecks, 'conditions'>>
   /** The bands as the form holds them. */
   bands: BandDraft[]
   /** The difficulty the form declares, or null. */
@@ -72,6 +73,8 @@ export function CheckSandbox({
   )
   const [difficultyText, setDifficultyText] = useState<string | null>(null)
   const [situationalText, setSituationalText] = useState('0')
+  // How many options of each conditions field a roll counts as marked; the Sheet tab's preview marks options instead.
+  const [conditionTexts, setConditionTexts] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const history = useRollHistory<SandboxRoll>()
@@ -86,6 +89,7 @@ export function CheckSandbox({
     difficulty,
     difficultyText,
     situationalText,
+    conditionTexts,
     bands,
     pool,
   })
@@ -165,6 +169,10 @@ export function CheckSandbox({
                   key={input.key}
                   input={input}
                   onChange={(value) => {
+                    if (catalog.conditions?.some(({ key }) => key === input.key) === true) {
+                      setConditionTexts((held) => ({ ...held, [input.key]: value }))
+                      return
+                    }
                     const field = catalog.fields.find(({ key }) => key === input.key)
                     // The max of a track is shared with the Sheet preview: keep the one typed there.
                     const held = sampleValues.samples[input.key]?.draft

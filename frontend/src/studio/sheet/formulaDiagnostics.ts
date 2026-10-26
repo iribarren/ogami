@@ -22,8 +22,8 @@ export interface FormulaDiagnostics {
   result: DerivedResult | null
 }
 
-/** The sheet field types a derived field's formula may read as `{key}`, as the publisher. */
-const readable = ['number', 'track', 'derived']
+/** The sheet field types a derived field's formula may read as `{key}`, as the publisher (a conditions field reads as the count marked). */
+const readable = ['number', 'track', 'conditions', 'derived']
 
 /** Why a derived field cannot read `reference`, or null when it can: the publisher's rules. */
 export function referenceProblem(
@@ -48,7 +48,7 @@ export function referenceProblem(
   }
   return readable.includes(type)
     ? null
-    : `field "${reference.key}" is a ${type} field, a formula reads number, track and derived fields only`
+    : `field "${reference.key}" is a ${type} field, a formula reads number, track, conditions and derived fields only`
 }
 
 /** Where the formula first writes `reference`, 1-based in its trimmed text. */

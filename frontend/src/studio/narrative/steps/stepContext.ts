@@ -54,6 +54,13 @@ export function stepContext(narrative: GameSystemNarrative): StepContext {
       name: typeof definition.label === 'string' ? definition.label : key,
       type: typeof definition.type === 'string' ? definition.type : 'text',
     })),
-    sheetFields: narrative.catalog.fields.map(({ key, label }) => ({ key, name: label })),
+    // Only a conditions field has options: the effect marks or clears one of them.
+    sheetFields: narrative.catalog.fields.map(({ key, label, options }) => ({
+      key,
+      name: label,
+      ...(options === null || options === undefined
+        ? {}
+        : { options: options.map((option) => ({ key: option.key, name: option.label })) }),
+    })),
   }
 }

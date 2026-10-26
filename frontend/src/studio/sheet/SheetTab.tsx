@@ -3,6 +3,7 @@ import {
   ArrowUp,
   Hash,
   List,
+  ListChecks,
   Pencil,
   Plus,
   Sigma,
@@ -240,6 +241,7 @@ function FieldRow({
   }
 
   const editable = readField(field) !== null
+  const hint = rangeHint(field) ?? optionsHint(field)
   const up = moveTarget(sheet.fields, index, 'up', sheet.groups !== null)
   const down = moveTarget(sheet.fields, index, 'down', sheet.groups !== null)
 
@@ -253,7 +255,7 @@ function FieldRow({
           <Badge variant="secondary">{typeof type === 'string' ? type : 'unknown type'}</Badge>
           {!editable && <Badge variant="outline">Can&apos;t be edited here</Badge>}
         </p>
-        {rangeHint(field) !== null && <p className="hint">{rangeHint(field)}</p>}
+        {hint !== null && <p className="hint">{hint}</p>}
       </div>
       <SheetFieldDialog
         gameSystemKey={gameSystemKey}
@@ -300,6 +302,22 @@ const typeIcons: Record<string, ReactNode> = {
   number: <Hash />,
   derived: <Sigma />,
   list: <List />,
+  conditions: <ListChecks />,
+}
+
+/** "Hurt, Exhausted" for a conditions field: its options in order, those that are not labelled left out. */
+function optionsHint({ type, options }: StoredField): string | null {
+  if (type !== 'conditions' || !Array.isArray(options)) {
+    return null
+  }
+  const labels = (options as unknown[]).flatMap((option) =>
+    typeof option === 'object' &&
+    option !== null &&
+    typeof (option as Record<string, unknown>).label === 'string'
+      ? [(option as Record<string, string>).label]
+      : [],
+  )
+  return labels.length > 0 ? `Options: ${labels.join(', ')}` : null
 }
 
 /** "−1 to 3" for a field with bounds; legacy fields without min or max say nothing. */

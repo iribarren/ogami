@@ -28,7 +28,7 @@ test('a game manager authors a check with two bands, rolls it in the sandbox and
   const form = page.getByRole('form', { name: 'New check' })
   await form.getByLabel('Key', { exact: true }).fill('e2e-skill')
   await form.getByLabel('Label', { exact: true }).fill('E2E skill')
-  await form.getByLabel('Dice').fill('1d6')
+  await form.getByLabel('Dice', { exact: true }).fill('1d6')
   await form.getByLabel('Modifier').fill('2')
 
   // A new check starts with one band: add a second, so the first one needs a bound.

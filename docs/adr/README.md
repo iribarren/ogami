@@ -20,7 +20,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0014 | [Campaigns stay pinned to their GameSystem release](0014-campaigns-pinned-to-their-release.md) | Accepted |
 | 0015 | [Sequential slice delivery to main](0015-sequential-slice-delivery.md) | Accepted |
 | 0016 | [The flow is presented in the journal, with an optional focus mode](0016-flow-presentation-journal-with-focus-mode.md) | Accepted, amended by 0017 |
-| 0017 | [The NarrativeFlow model](0017-narrativeflow-model.md) | Accepted, amended by 0018, 0022, 0023, 0024, 0026 and 0027 |
+| 0017 | [The NarrativeFlow model](0017-narrativeflow-model.md) | Accepted, amended by 0018, 0022, 0023, 0024, 0026, 0027 and 0042 |
 | 0018 | [NarrativeFlow control flow and cast](0018-narrativeflow-control-flow-and-cast.md) | Accepted, amended by 0020 |
 | 0019 | [Random events from fate-question doubles](0019-random-events-from-fate-question-doubles.md) | Accepted |
 | 0020 | [The scene pick waits after a scene](0020-scene-pick-waits-after-a-scene.md) | Accepted |
@@ -30,21 +30,22 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0024 | [Structured checks without scripting](0024-structured-checks-without-scripting.md) | Accepted, amended by 0041 |
 | 0025 | [Items and shops after the MVP](0025-items-and-shops-after-the-mvp.md) | Accepted |
 | 0026 | [Prompt inspiration tables and phase descriptions](0026-prompt-inspiration-and-phase-descriptions.md) | Accepted |
-| 0027 | [Sheet effects](0027-sheet-effects.md) | Accepted, amended by 0040 and 0041 |
+| 0027 | [Sheet effects](0027-sheet-effects.md) | Accepted, amended by 0040, 0041 and 0042 |
 | 0028 | [Studio GameSystem drafts](0028-studio-gamesystem-drafts.md) | Accepted, amended by 0036 and 0038 |
 | 0029 | [Studio oracle editor](0029-studio-oracle-editor.md) | Accepted |
-| 0030 | [Studio flow editor](0030-studio-flow-editor.md) | Accepted |
+| 0030 | [Studio flow editor](0030-studio-flow-editor.md) | Accepted, amended by 0042 |
 | 0031 | [Sheet layout and Studio sheet builder](0031-sheet-layout-and-studio-sheet-builder.md) | Accepted |
 | 0032 | [Studio check editor and test-roll sandbox](0032-studio-check-editor.md) | Accepted, amended by 0041 |
 | 0033 | [Studio library packs](0033-studio-library-packs.md) | Accepted |
 | 0034 | [Admin user management, invitations and password reset](0034-admin-user-management.md) | Accepted |
-| 0035 | [Campaign release upgrade](0035-campaign-release-upgrade.md) | Accepted, amended by 0040 and 0041 |
+| 0035 | [Campaign release upgrade](0035-campaign-release-upgrade.md) | Accepted, amended by 0040, 0041 and 0042 |
 | 0036 | [Export releases as preset files](0036-export-releases-as-preset-files.md) | Accepted |
 | 0037 | [API error codes](0037-api-error-codes.md) | Accepted |
 | 0038 | [Studio release view](0038-studio-release-view.md) | Accepted |
 | 0039 | [Release diff](0039-release-diff.md) | Accepted |
 | 0040 | [Structured character creation](0040-structured-character-creation.md) | Accepted |
 | 0041 | [Dice pools, pushed rolls and conditions](0041-dice-pools-pushes-and-conditions.md) | Accepted |
+| 0042 | [Sheet effects on choices and prompts, check sets and tables by scene type](0042-flow-choices-check-sets-and-scene-tables.md) | Accepted |
 
 ## Template
 

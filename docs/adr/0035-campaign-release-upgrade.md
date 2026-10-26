@@ -1,6 +1,6 @@
 # 0035. Campaign release upgrade
 
-- **Status:** Accepted, amended by [0040](0040-structured-character-creation.md) and [0041](0041-dice-pools-pushes-and-conditions.md)
+- **Status:** Accepted, amended by [0040](0040-structured-character-creation.md) , [0041](0041-dice-pools-pushes-and-conditions.md) and [0042](0042-flow-choices-check-sets-and-scene-tables.md)
 - **Date:** 2026-10-18
 
 ## Context

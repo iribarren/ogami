@@ -4,8 +4,9 @@ import type { CompleteFlowStepRequest, FlowStep } from './useFlowRun'
 
 /**
  * The control of a `check` step: the player picks the Character who rolls (one of those the
- * server lists, preselected when there is just one), the Check difficulty unless the step fixes
- * it, and a Situational modifier. The step fails closed when the check is not in the campaign's
+ * server lists, preselected when there is just one), the check when the step offers a set (none
+ * preselected, ADR 0042), the Check difficulty unless the step fixes it, and a Situational
+ * modifier. The step fails closed when a check is not in the campaign's
  * release, no Character can roll it, or the difficulty it fixes cannot be worked out right now. A refusal comes back as the answer's error.
  */
 export function CheckStepForm({
@@ -19,12 +20,15 @@ export function CheckStepForm({
   pending: boolean
   onRoll: (fields: Omit<CompleteFlowStepRequest, 'stepKey'>) => void
 }) {
-  const check = campaign.checks.find(({ key }) => key === step.check)
+  // A set step lists its checks; a single-check step names one.
+  const keys = step.checks.length > 0 ? step.checks : step.check === null ? [] : [step.check]
+  const checks = keys.flatMap((key) => campaign.checks.filter((check) => check.key === key))
+  const missing = keys.find((key) => !campaign.checks.some((check) => check.key === key))
 
-  if (check === undefined) {
+  if (checks.length === 0 || missing !== undefined) {
     return (
       <p role="alert" className="text-sm text-destructive">
-        This step rolls the check “{step.check}”, which the release does not define.
+        This step rolls the check “{missing ?? step.check}”, which the release does not define.
       </p>
     )
   }
@@ -49,12 +53,19 @@ export function CheckStepForm({
     <CheckForm
       // Each check step starts from its own values, not the previous step's edits.
       key={step.key}
-      checks={[check]}
+      checks={checks}
+      pickCheck={step.checks.length > 0}
       characters={step.characters}
       fixedDifficulty={step.difficulty}
       pending={pending}
-      onSubmit={({ character, difficulty, situational }) => {
-        onRoll({ characterId: character, difficulty, situational })
+      onSubmit={({ check, character, difficulty, situational }) => {
+        onRoll({
+          characterId: character,
+          difficulty,
+          situational,
+          // A set step is answered with the check picked; a single check is the step's own.
+          ...(step.checks.length > 0 ? { checkKey: check } : {}),
+        })
       }}
     />
   )

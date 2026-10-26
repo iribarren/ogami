@@ -312,7 +312,7 @@ describe('newEntry', () => {
       key: 'mood',
       name: 'Mood',
       entries: [{ weight: 3, text: 'Calm' }],
-    } as OracleTable)
+    })
     expect(newEntry(weighted, 4)).toMatchObject({ id: 4, weight: '1', min: '', max: '' })
   })
 })

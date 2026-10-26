@@ -702,6 +702,35 @@ describe('a pool check', () => {
     expect(source.push?.effects).toHaveLength(1)
   })
 
+  it('keeps a stored null push on a pool check until the check is given one', () => {
+    const nulled: StoredCheck = { ...pooled, push: null }
+    const draft = drafted(nulled)
+
+    expect(draft.push).toBeNull()
+    expect(writeCheck(draft)).toEqual({ check: nulled })
+
+    const given = writeCheck({ ...draft, push: { label: 'Pay', effects: [] } })
+    expect(given).toHaveProperty('check.push', { label: 'Pay' })
+    expect(writeCheck(switchMode(draft, 'dice'))).not.toHaveProperty('check.push')
+  })
+
+  it('writes no push for a pool check that had none stored', () => {
+    const bare = { ...pooled, push: undefined }
+    expect(writeCheck(drafted(bare))).not.toHaveProperty('check.push')
+  })
+
+  it('lets a push cost mark without an option, the player picks it', () => {
+    const draft = drafted(pooled)
+    draft.push = {
+      label: 'Pay',
+      effects: effectsToDrafts([{ kind: 'sheet', field: 'physical', op: 'mark' }]),
+    }
+
+    expect(writeCheck(draft)).toHaveProperty('check.push.effects', [
+      { kind: 'sheet', field: 'physical', op: 'mark' },
+    ])
+  })
+
   it('leaves a dice check as it was, with no pool or push written', () => {
     const result = writeCheck(drafted(stored))
 

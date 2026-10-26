@@ -4115,9 +4115,9 @@ export interface components {
              */
             label: string;
             /** @description The cost: sheet and tracker effect objects as the release contract defines them (at most 10). A mark without an option lets the player pick one. */
-            effects: {
+            effects?: {
                 [key: string]: unknown;
-            }[];
+            }[] | null;
         };
         /** @description Integers between -1,000 and 1,000 with min <= default <= max. */
         GameSystemCheckDifficulty: {
@@ -4745,6 +4745,8 @@ export interface components {
             key: string;
             /** @example Hands */
             label: string;
+            /** @description The options a mark or clear effect picks from; only on a conditions field. */
+            options?: components["schemas"]["CheckConditionOptionResponse"][] | null;
         };
         NarrativeCatalogResponse: {
             tables: components["schemas"]["NarrativeCatalogTableResponse"][];
@@ -4822,9 +4824,9 @@ export interface components {
              */
             sceneType?: string | null;
             /** @description What selecting this entry does to the campaign: effect objects as the release contract defines them. Not edited by the oracle editor. */
-            effects: {
+            effects?: {
                 [key: string]: unknown;
-            }[];
+            }[] | null;
         };
         /** @description A ranged table has "dice" and entries with "min" and "max" that do not overlap; a weighted table has no "dice", entries with an optional "weight" and rolls 1dW for total weight W. */
         GameSystemOracleTable: {

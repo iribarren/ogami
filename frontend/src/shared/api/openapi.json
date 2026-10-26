@@ -15489,8 +15489,7 @@
             "GameSystemCheckPush": {
                 "description": "Only on a check with a pool. A push is offered when a die failed.",
                 "required": [
-                    "label",
-                    "effects"
+                    "label"
                 ],
                 "properties": {
                     "label": {
@@ -15507,6 +15506,7 @@
                             "type": "object",
                             "additionalProperties": true
                         },
+                        "nullable": true,
                         "maxItems": 10
                     }
                 },
@@ -16692,6 +16692,14 @@
                     "label": {
                         "type": "string",
                         "example": "Hands"
+                    },
+                    "options": {
+                        "description": "The options a mark or clear effect picks from; only on a conditions field.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CheckConditionOptionResponse"
+                        },
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -16816,9 +16824,6 @@
             },
             "GameSystemOracleTableEntry": {
                 "description": "Ranged entries have \"min\" and \"max\"; weighted entries may have a \"weight\" (1 by default). An entry needs a \"text\" unless it nests a \"table\". \"key\", \"sceneType\" and \"effects\" are schema version 2 fields: kept as given, refused on a version 1 draft.",
-                "required": [
-                    "effects"
-                ],
                 "properties": {
                     "min": {
                         "description": "Lowest total this entry covers, on a ranged table.",
@@ -16871,7 +16876,8 @@
                         "items": {
                             "type": "object",
                             "additionalProperties": true
-                        }
+                        },
+                        "nullable": true
                     }
                 },
                 "type": "object"

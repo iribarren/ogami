@@ -231,6 +231,9 @@ final class CheckTestRollPoolTest extends TestCase
         yield 'a blank push label' => [['push' => ['label' => ' ']]];
         yield 'a push label that is not a string' => [['push' => ['label' => 3]]];
         yield 'push effects that are not a list' => [['push' => ['label' => 'Pay', 'effects' => 'none']]];
+        yield 'a push label above a hundred characters' => [['push' => ['label' => str_repeat('x', 101)]]];
+        yield 'more than ten push effects' => [['push' => ['label' => 'Pay', 'effects' => array_fill(0, 11, ['kind' => 'sheet'])]]];
+        yield 'a push effect that is not an object' => [['push' => ['label' => 'Pay', 'effects' => ['stress']]]];
     }
 
     /**
@@ -287,6 +290,7 @@ final class CheckTestRollPoolTest extends TestCase
         yield 'neither dice nor a pool' => [static fn (): CheckTestRoll => new CheckTestRoll('c', null, null, null, $bands)];
         yield 'a modifier with a pool' => [static fn (): CheckTestRoll => new CheckTestRoll('c', null, Formula::fromString('{hands}'), null, $bands, $pool)];
         yield 'a push without a pool' => [static fn (): CheckTestRoll => new CheckTestRoll('c', $dice, null, null, $bands, null, new CheckTestPush('Pay'))];
+        yield 'a blank push label' => [static fn (): CheckTestRoll => new CheckTestRoll('c', null, null, null, $bands, $pool, new CheckTestPush(' '))];
     }
 
     /**

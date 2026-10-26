@@ -475,6 +475,42 @@ const raidHandlers = (extra: Record<string, FakeHandler> = {}) => ({
 const pushPath = `POST ${base}/checks/raid/test-rolls/push`
 const raidRoll = `POST ${base}/checks/raid/test-rolls`
 
+describe('the test roll sandbox with a conditions field', () => {
+  const conditionsChecks = {
+    ...checks,
+    conditions: [
+      {
+        key: 'physical',
+        label: 'Physical',
+        options: [
+          { key: 'hurt', label: 'Hurt' },
+          { key: 'tired', label: 'Tired' },
+        ],
+      },
+    ],
+  }
+
+  it('offers the count marked as a number input bounded by its options, and sends it', async () => {
+    const { sent, record } = calls()
+    const { user, sandbox } = await editCheck('skill', {
+      [`GET ${base}/checks`]: json(conditionsChecks),
+      [rollPath]: record('roll', Response.json(rolled)),
+    })
+    const marked = sandbox.getByLabelText('Physical (marked, 0 to 2)')
+    expect(marked).toHaveAttribute('placeholder', '0')
+
+    await user.type(marked, '3')
+    expect(sandbox.getByText('Must be between 0 and 2.')).toBeVisible()
+    expect(roll(sandbox)).toBeDisabled()
+
+    await replaceText(user, marked, '2')
+    await user.click(roll(sandbox))
+
+    await sandbox.findByRole('list', { name: 'Test roll results' })
+    expect(sent[0]?.body).toMatchObject({ sheet: { physical: 2 } })
+  })
+})
+
 describe('the test roll sandbox of a pool check', () => {
   it('tells the pool the samples give, live, from the count formula', async () => {
     const { user, sandbox } = await editCheck('raid', raidHandlers())
@@ -540,8 +576,9 @@ describe('the test roll sandbox of a pool check', () => {
     expect(pushed).toHaveTextContent('3 successes')
     expect(pushed).toHaveTextContent('6 (success)re-rolled')
     expect(pushed).toHaveTextContent('2 (no success)')
-    // Only the first roll can still be pushed.
-    expect(sandbox.getAllByRole('button', { name: 'Push the roll' })).toHaveLength(1)
+    // Neither the pushed roll nor the roll it came from can be pushed again.
+    expect(sandbox.queryByRole('button', { name: 'Push the roll' })).toBeNull()
+    expect(rolled).not.toHaveTextContent('Push the roll')
     // The roll stays in the history as it was.
     expect(rolled).toHaveTextContent('1 success')
   })

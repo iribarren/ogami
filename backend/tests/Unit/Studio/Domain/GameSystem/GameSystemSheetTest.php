@@ -326,6 +326,87 @@ final class GameSystemSheetTest extends TestCase
     }
 
     #[Test]
+    public function anOptionAnEffectMarksCannotBeRemovedOrRenamedAndTheRefusalNamesIt(): void
+    {
+        $gameSystem = $this->conditionsDraft();
+        $document = $gameSystem->document();
+        $field = $this->fieldNamed($gameSystem, 'physical');
+
+        foreach ([
+            'removed' => [['key' => 'exhausted', 'label' => 'Exhausted']],
+            'renamed' => [['key' => 'wounded', 'label' => 'Hurt'], ['key' => 'exhausted', 'label' => 'Exhausted']],
+        ] as $change => $options) {
+            try {
+                $gameSystem->saveSheetField('physical', [...$field, 'options' => $options], $this->now);
+                self::fail('Expected SheetFieldInUse when an option is '.$change);
+            } catch (SheetFieldInUse $inUse) {
+                self::assertSame(['sceneTypes[0].play[0].outcomes[0].effects[0]', 'sceneTypes[0].play[0].outcomes[1].effects[1]', 'checks[0].push.effects[0]'], $inUse->paths());
+                self::assertSame('The option "hurt" of the sheet field "physical" is used at sceneTypes[0].play[0].outcomes[0].effects[0], sceneTypes[0].play[0].outcomes[1].effects[1], checks[0].push.effects[0].', $inUse->getMessage());
+            }
+        }
+
+        $this->assertUntouched($gameSystem, $document);
+    }
+
+    #[Test]
+    public function aConditionsFieldCannotBecomeAnotherTypeWhileAnEffectMarksOrClearsItWhateverTheOption(): void
+    {
+        $gameSystem = $this->conditionsDraft();
+        $document = $gameSystem->document();
+
+        // "mental" has no option an effect names: its only effect clears all, and the push marks "physical" without an option.
+        foreach (['mental' => 'sceneTypes[0].play[0].outcomes[1].effects[0]', 'physical' => 'checks[0].push.effects[0]'] as $key => $path) {
+            try {
+                $gameSystem->saveSheetField($key, ['key' => $key, 'label' => 'Changed', 'type' => 'number', 'min' => 0, 'max' => 5, 'default' => 0], $this->now);
+                self::fail('Expected SheetFieldInUse for '.$key);
+            } catch (SheetFieldInUse $inUse) {
+                self::assertContains($path, $inUse->paths());
+                self::assertStringStartsWith(\sprintf('The conditions field "%s" is used at ', $key), $inUse->getMessage());
+            }
+        }
+
+        $this->assertUntouched($gameSystem, $document);
+    }
+
+    #[Test]
+    public function anOptionNoEffectMarksCanBeRemovedAndTheOthersAddedRelabelledOrReordered(): void
+    {
+        $gameSystem = $this->conditionsDraft();
+        $field = $this->fieldNamed($gameSystem, 'physical');
+
+        // No effect names "exhausted": the mark and clears of the release name "hurt" or clear all.
+        $gameSystem->saveSheetField('physical', [...$field, 'options' => [['key' => 'hurt', 'label' => 'Wounded'], ['key' => 'dazed', 'label' => 'Dazed']]], $this->now);
+
+        self::assertSame(
+            [['key' => 'hurt', 'label' => 'Wounded'], ['key' => 'dazed', 'label' => 'Dazed']],
+            $this->fieldNamed($gameSystem, 'physical')['options'],
+        );
+
+        $gameSystem->saveSheetField('physical', [...$field, 'options' => [['key' => 'dazed', 'label' => 'Dazed'], ['key' => 'hurt', 'label' => 'Hurt']]], $this->now);
+
+        /** @var list<array<string, string>> $options */
+        $options = $this->fieldNamed($gameSystem, 'physical')['options'];
+        self::assertSame(['dazed', 'hurt'], array_column($options, 'key'));
+    }
+
+    #[Test]
+    public function aConditionsFieldAnEffectNamesCannotBeDeleted(): void
+    {
+        $gameSystem = $this->conditionsDraft();
+        $document = $gameSystem->document();
+
+        try {
+            $gameSystem->deleteSheetField('physical', $this->now);
+            self::fail('Expected SheetFieldInUse');
+        } catch (SheetFieldInUse $inUse) {
+            self::assertContains('checks[0].push.effects[0]', $inUse->paths());
+            self::assertContains('sceneTypes[0].play[0].outcomes[1].effects[1]', $inUse->paths());
+        }
+
+        $this->assertUntouched($gameSystem, $document);
+    }
+
+    #[Test]
     public function aReferencedFieldCannotBeDeleted(): void
     {
         $gameSystem = $this->draft('valid/v2-checks');
@@ -471,5 +552,25 @@ final class GameSystemSheetTest extends TestCase
         }
 
         self::assertSame($document, $gameSystem->document());
+    }
+
+    /**
+     * The dice pools release: its outcomes mark and clear "hurt", and here the sneak push marks it too.
+     */
+    private function conditionsDraft(): GameSystem
+    {
+        /** @var array{checks: list<array{push: array{effects: list<array<string, mixed>>}}>} $source */
+        $source = ReleaseContent::fromArray(ReleaseArrays::fixture('valid/v2-dice-pools'))->toArray();
+        $source['checks'][0]['push']['effects'][0] = ['kind' => 'sheet', 'field' => 'physical', 'op' => 'mark', 'value' => 'hurt'];
+
+        return GameSystem::createFromRelease(GameSystemId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a72'), 'my-copy', 'My copy', null, 'user-1', $source, $this->created);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fieldNamed(GameSystem $gameSystem, string $key): array
+    {
+        return array_find($this->fields($gameSystem), static fn (array $field): bool => $key === $field['key']) ?? self::fail('No field '.$key);
     }
 }

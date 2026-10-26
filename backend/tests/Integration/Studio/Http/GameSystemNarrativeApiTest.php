@@ -240,7 +240,21 @@ final class GameSystemNarrativeApiTest extends WebTestCase
         self::assertSame(['fail', 'success', 'crit'], self::at($catalog, 'checks.0.bands'));
         self::assertSame(['default' => 13, 'min' => 9, 'max' => 29], self::at($catalog, 'checks.0.difficulty'));
         self::assertNull(self::at($catalog, 'checks.1.difficulty'));
-        self::assertSame([['key' => 'hands', 'label' => 'Hands']], self::at($catalog, 'fields'));
+        self::assertSame([['key' => 'hands', 'label' => 'Hands', 'options' => null]], self::at($catalog, 'fields'));
+    }
+
+    #[Test]
+    public function theCatalogServesAConditionsFieldWithItsOptionsAndNullForTheOthers(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('pools', 'valid/v2-dice-pools');
+
+        $fields = (array) self::at($this->narrative('pools'), 'catalog.fields');
+
+        self::assertSame(['agility', 'stealth', 'physical', 'mental'], array_column($fields, 'key'));
+        self::assertNull(self::at($fields, '0.options'));
+        self::assertSame([['key' => 'hurt', 'label' => 'Hurt'], ['key' => 'exhausted', 'label' => 'Exhausted']], self::at($fields, '2.options'));
+        self::assertStringContainsString('"key":"agility","label":"Agility","options":null', (string) $this->client->getResponse()->getContent());
     }
 
     #[Test]

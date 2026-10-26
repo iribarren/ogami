@@ -34,7 +34,7 @@ final readonly class GameSystemOracleTableEntry
         public ?string $key,
         #[OA\Property(description: 'The Scene Type this entry opens. Not edited by the oracle editor.', example: 'firefight')]
         public ?string $sceneType,
-        #[OA\Property(description: 'What selecting this entry does to the campaign: effect objects as the release contract defines them. Not edited by the oracle editor.', type: 'array', items: new OA\Items(type: 'object', additionalProperties: true))]
+        #[OA\Property(description: 'What selecting this entry does to the campaign: effect objects as the release contract defines them. Not edited by the oracle editor.', type: 'array', items: new OA\Items(type: 'object', additionalProperties: true), nullable: true)]
         public ?array $effects,
     ) {
     }

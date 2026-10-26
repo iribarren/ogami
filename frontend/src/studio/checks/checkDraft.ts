@@ -77,6 +77,8 @@ export interface CheckDraft {
   pool: PoolDraft | null
   /** Null while the check cannot be pushed; only a pool check has one. */
   push: PushDraft | null
+  /** The stored check had `push: null`, which a save writes back as it was while there is no push. */
+  storedNullPush?: boolean
   /** Null while the check has no difficulty. */
   difficulty: DifficultyDraft | null
   bands: BandDraft[]
@@ -243,6 +245,7 @@ export function switchMode(draft: CheckDraft, mode: CheckMode): CheckDraft {
     ...draft,
     pool: mode === 'pool' ? { count: '', sides: '', successAt: '' } : null,
     push: null,
+    storedNullPush: false,
   }
 }
 
@@ -405,6 +408,7 @@ export function readCheck(stored: StoredCheck): CheckDraft | null {
     modifier: typeof modifier === 'string' ? modifier : '',
     pool: read,
     push: readPushed,
+    ...(push === null ? { storedNullPush: true } : {}),
     difficulty: declared,
     bands: readBands as BandDraft[],
   }
@@ -480,6 +484,8 @@ export function writeCheck(draft: CheckDraft): { check: StoredCheck } | { errors
       if (push !== null) {
         check.push = push
       }
+    } else if (draft.storedNullPush === true) {
+      check.push = null
     }
   }
 
@@ -587,14 +593,15 @@ function writePush(push: PushDraft, errors: CheckErrors): Record<string, unknown
     errors.pushLabel = `The label is at most ${String(maxPushLabel)} characters.`
   }
 
-  // The whole numbers the effects editor refuses come keyed `push.effects.<n>.value`.
+  // The refusals of the effects editor come keyed `push.effects.<n>.value`; one that does not
+  // match is kept as a refusal of the whole list, so the form never sends while one stands.
   const refused: Record<string, string> = {}
-  const effects = effectsToStored(push.effects, 'push.effects', refused)
-  const found = Object.entries(refused).flatMap(([path, message]) => {
+  const effects = effectsToStored(push.effects, 'push.effects', refused, true)
+  const found: StepError[] = Object.entries(refused).map(([path, message]) => {
     const [, effect, field] = /^push\.effects\.(\d+)\.(\w+)$/.exec(path) ?? []
     return effect === undefined || field === undefined
-      ? []
-      : [{ index: null, band: null, effect: Number(effect), field, message }]
+      ? { index: null, band: null, effect: null, field: 'effects', message }
+      : { index: null, band: null, effect: Number(effect), field, message }
   })
   if (found.length > 0) {
     errors.pushEffects = found

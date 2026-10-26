@@ -469,6 +469,45 @@ final class GameSystemSheetApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aConditionsOptionAnEffectMarksCannotBeRemovedOrRenamedButAFreeOneCan(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', 'valid/v2-dice-pools');
+        $before = $this->sheet();
+        $physical = array_find((array) $before['fields'], static fn (mixed $field): bool => \is_array($field) && 'physical' === $field['key']);
+        self::assertIsArray($physical);
+        $field = ['key' => 'physical', 'label' => $physical['label'], 'type' => 'conditions'];
+
+        foreach ([[['key' => 'exhausted', 'label' => 'Exhausted']], [['key' => 'wounded', 'label' => 'Hurt'], ['key' => 'exhausted', 'label' => 'Exhausted']]] as $options) {
+            $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/fields/physical', ['expectedVersion' => 1, 'field' => [...$field, 'options' => $options]]);
+            self::assertResponseStatusCodeSame(422);
+            self::assertStringStartsWith('The option "hurt" of the sheet field "physical" is used at ', $this->error());
+            self::assertContains('sceneTypes[0].play[0].outcomes[0].effects[0]', (array) $this->json()['paths']);
+        }
+
+        self::assertSame($before, $this->sheet());
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/fields/physical', ['expectedVersion' => 1, 'field' => [...$field, 'options' => [['key' => 'hurt', 'label' => 'Wounded'], ['key' => 'dazed', 'label' => 'Dazed']]]]);
+        self::assertResponseIsSuccessful();
+    }
+
+    #[Test]
+    public function aConditionsFieldCannotBecomeAnotherTypeWhileAnEffectMarksOrClearsIt(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', 'valid/v2-dice-pools');
+        $before = $this->sheet();
+
+        // A step clears "mental" without naming an option.
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/fields/mental', ['expectedVersion' => 1, 'field' => ['key' => 'mental', 'label' => 'Mental', 'type' => 'number', 'min' => 0, 'max' => 5, 'default' => 0]]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringStartsWith('The conditions field "mental" is used at ', $this->error());
+        self::assertContains('sceneTypes[0].play[0].outcomes[1].effects[0]', (array) $this->json()['paths']);
+        self::assertSame($before, $this->sheet());
+    }
+
+    #[Test]
     public function aLibraryPackRefusesThePointBudgetCommands(): void
     {
         $this->signIn('ann@example.com', ['GAME_MANAGER']);

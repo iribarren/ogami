@@ -683,6 +683,25 @@ export const sheet = {
   pointBudget: null,
 }
 
+/** The sheet with a conditions field, Physical, marked from Hurt and Tired. */
+export const sheetWithConditions = {
+  ...sheet,
+  version: 9,
+  fields: [
+    ...sheet.fields,
+    {
+      key: 'physical',
+      label: 'Physical',
+      group: 'Health',
+      type: 'conditions',
+      options: [
+        { key: 'hurt', label: 'Hurt' },
+        { key: 'tired', label: 'Tired' },
+      ],
+    },
+  ],
+}
+
 /** The sheet with a point budget over Power and Dexterity, spent within 5 to 15 at creation. */
 export const sheetWithPointBudget = {
   ...sheet,

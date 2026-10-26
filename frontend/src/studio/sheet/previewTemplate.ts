@@ -10,6 +10,21 @@ const inner = (value: unknown, property: string) =>
   typeof value === 'object' && value !== null && property in value
     ? text((value as Record<string, unknown>)[property])
     : null
+/** The `{key, label}` options of a conditions field; an item that is not one is left out. */
+const optionsOf = (value: unknown): { key: string; label: string }[] =>
+  Array.isArray(value)
+    ? (value as unknown[]).flatMap((option) => {
+        const key =
+          typeof option === 'object' && option !== null
+            ? (option as Record<string, unknown>).key
+            : null
+        const label =
+          typeof option === 'object' && option !== null
+            ? (option as Record<string, unknown>).label
+            : null
+        return typeof key === 'string' && typeof label === 'string' ? [{ key, label }] : []
+      })
+    : []
 const count = (value: unknown) => (Number.isInteger(value) ? (value as number) : null)
 
 /**
@@ -62,6 +77,7 @@ export function previewTemplate(
       roll: inner(stored.roll, 'dice'),
       startMax: inner(stored.startMax, 'formula'),
       span: count(stored.span) ?? 1,
+      options: type === 'conditions' ? optionsOf(stored.options) : null,
     })
   }
 

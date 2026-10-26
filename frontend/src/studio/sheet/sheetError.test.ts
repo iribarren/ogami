@@ -119,3 +119,28 @@ describe('reading a refusal for the point budget', () => {
     expect(sheetPointBudgetAnswer(text)).toEqual({ inputs: {}, fields: null, form: text })
   })
 })
+
+describe('reading a refusal of an option of a conditions field', () => {
+  it.each(['key', 'label'])('gives the %s of an option to its input by position', (input) => {
+    expect(
+      sheetFieldAnswer(`sheet.fields[2].options[1].${input}: duplicate option key "hurt"`, 2),
+    ).toEqual({
+      fields: {},
+      form: null,
+      options: { 1: { [input]: 'duplicate option key "hurt"' } },
+    })
+  })
+
+  it('gives the list of options to the options input', () => {
+    expect(sheetFieldAnswer('sheet.fields[2].options: must have at least 1 item', 2)).toEqual({
+      fields: { options: 'must have at least 1 item' },
+      form: null,
+    })
+  })
+
+  it('keeps the options of another field with the form', () => {
+    expect(sheetFieldAnswer('sheet.fields[1].options[0].key: bad', 2).form).toBe(
+      'sheet.fields[1].options[0].key: bad',
+    )
+  })
+})

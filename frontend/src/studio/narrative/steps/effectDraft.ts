@@ -234,12 +234,21 @@ export function sheetWithField(
 const given = (fields: Record<string, string | string[]>) =>
   Object.fromEntries(Object.entries(fields).filter(([, value]) => value.length > 0))
 
-function effectToStored(effect: EffectDraft, path: string, errors: FieldErrors): unknown {
+function effectToStored(
+  effect: EffectDraft,
+  path: string,
+  errors: FieldErrors,
+  allowPick: boolean,
+): unknown {
   if (effect.kind === 'stored') {
     return effect.stored
   }
   const { extra, kind } = effect
   if (effect.kind === 'sheet' && 'option' in effect) {
+    // Only a push cost lets the player pick the option to mark; anywhere else a mark names it.
+    if (effect.op === 'mark' && effect.option === '' && !allowPick) {
+      errors[`${path}.value`] = 'Pick the option to mark.'
+    }
     return {
       ...extra,
       kind,
@@ -279,9 +288,19 @@ function effectToStored(effect: EffectDraft, path: string, errors: FieldErrors):
   }
 }
 
-/** The effects to save; values that are not whole numbers are keyed `<path>.<n>.value`. */
-export function effectsToStored(effects: EffectDraft[], path: string, errors: FieldErrors) {
-  return effects.map((effect, index) => effectToStored(effect, `${path}.${String(index)}`, errors))
+/**
+ * The effects to save; values that are not whole numbers, and a mark without an option where
+ * `allowPick` is not set, are keyed `<path>.<n>.value`.
+ */
+export function effectsToStored(
+  effects: EffectDraft[],
+  path: string,
+  errors: FieldErrors,
+  allowPick = false,
+) {
+  return effects.map((effect, index) =>
+    effectToStored(effect, `${path}.${String(index)}`, errors, allowPick),
+  )
 }
 
 /**

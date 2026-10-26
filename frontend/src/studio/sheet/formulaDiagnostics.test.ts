@@ -23,15 +23,30 @@ const field = (
   span: 1,
 })
 
+const conditions = {
+  ...field('wounds', 'conditions'),
+  options: [
+    { key: 'a', label: 'A' },
+    { key: 'b', label: 'B' },
+  ],
+}
+
 const fields = [
   field('pow', 'number'),
   field('hp', 'track'),
   field('notes', 'text'),
   field('items', 'list'),
+  conditions,
   field('bonus', 'derived', '{pow} + 1'),
   field('other', 'derived', '{bonus} * 2'),
 ]
-const drafts = { pow: '7', hp: { current: '5', max: '12' }, notes: '', items: [] }
+const drafts = {
+  pow: '7',
+  hp: { current: '5', max: '12' },
+  notes: '',
+  items: [],
+  wounds: ['a', 'b'],
+}
 
 /** The diagnostics of `formula` as the formula of `key`, over the fixture sheet. */
 const diagnose = (formula: string, key = 'bonus', sheetFields = fields) =>
@@ -49,6 +64,13 @@ describe('formula diagnostics', () => {
     expect(diagnose('{pow} * 2')).toEqual({ error: null, result: { value: 14 } })
     expect(diagnose('{hp} + {hp.max} + {tracker:heat}').result).toEqual({ value: 20 })
     expect(diagnose('{other}', 'fresh').result).toEqual({ value: 16 })
+  })
+
+  it('reads a conditions field as the count marked', () => {
+    expect(diagnose('{wounds} * 2 + {pow}')).toEqual({ error: null, result: { value: 11 } })
+    expect(diagnose('{wounds.max}').error?.message).toContain(
+      'field "wounds" is a conditions field, only a track field has a max',
+    )
   })
 
   it('computes the typed formula instead of the stored one, also for a new field', () => {
@@ -87,12 +109,12 @@ describe('formula diagnostics', () => {
     ['{pow} + {ghost}', '{ghost}: unknown field "ghost"', 9],
     [
       '{notes}',
-      '{notes}: field "notes" is a text field, a formula reads number, track and derived fields only',
+      '{notes}: field "notes" is a text field, a formula reads number, track, conditions and derived fields only',
       1,
     ],
     [
       '1 + {items}',
-      '{items}: field "items" is a list field, a formula reads number, track and derived fields only',
+      '{items}: field "items" is a list field, a formula reads number, track, conditions and derived fields only',
       5,
     ],
     ['{pow.max}', '{pow.max}: field "pow" is a number field, only a track field has a max', 1],

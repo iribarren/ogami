@@ -21,7 +21,7 @@ final readonly class GameSystemCheckPush
     public function __construct(
         #[OA\Property(description: 'What the push costs, in the words of the check.', example: 'Take a Condition', maxLength: 100, minLength: 1)]
         public string $label,
-        #[OA\Property(description: 'The cost: sheet and tracker effect objects as the release contract defines them (at most 10). A mark without an option lets the player pick one.', type: 'array', items: new OA\Items(type: 'object', additionalProperties: true), maxItems: 10)]
+        #[OA\Property(description: 'The cost: sheet and tracker effect objects as the release contract defines them (at most 10). A mark without an option lets the player pick one.', type: 'array', items: new OA\Items(type: 'object', additionalProperties: true), nullable: true, maxItems: 10)]
         public ?array $effects,
     ) {
     }

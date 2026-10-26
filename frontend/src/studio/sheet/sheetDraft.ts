@@ -1,5 +1,7 @@
 import type { components } from '@/shared/api/schema'
 
+import { slugOf } from '../checks/checkDraft'
+
 /** A declared group of the sheet: its name, and how many columns of fields it has. */
 export type SheetGroup = Pick<
   components['schemas']['SheetGroupResponse2'],
@@ -9,12 +11,38 @@ export type SheetGroup = Pick<
 /** A field as stored in the draft: the publisher validates it, the editor keeps nothing else. */
 export type StoredField = Record<string, unknown>
 
-export const fieldTypes = ['number', 'text', 'list', 'track', 'derived'] as const
+export const fieldTypes = ['number', 'text', 'list', 'track', 'conditions', 'derived'] as const
 export type FieldType = (typeof fieldTypes)[number]
 
 /** How a track's max is set (ADR 0040): a fixed number, by each Character, or by a formula when the Character is created. */
 export const maxModes = ['fixed', 'perCharacter', 'startFormula'] as const
 export type MaxMode = (typeof maxModes)[number]
+
+/** The limits of a conditions field's options, as the publisher. */
+export const optionLimits = { count: 20, label: 60 }
+
+/** One option of a conditions field; while `follow` is set its key follows its label. */
+export interface OptionDraft {
+  key: string
+  label: string
+  follow?: boolean
+}
+
+/** An option added in the form: its key follows its label until the key is typed. */
+export const newOption = (): OptionDraft => ({ key: '', label: '', follow: true })
+
+/** The option with a new label; the key follows it while the option has not had its key typed. */
+export function editOptionLabel(option: OptionDraft, label: string): OptionDraft {
+  return option.follow === true ? { ...option, label, key: slugOf(label) } : { ...option, label }
+}
+
+/** The option with a key typed by hand, which stops it following the label. */
+export function editOptionKey(option: OptionDraft, key: string): OptionDraft {
+  return { ...option, key, follow: false }
+}
+
+/** The messages of one option's inputs. */
+export type OptionErrors = Partial<Record<'key' | 'label', string>>
 
 /** The form state of one field: every input is text, and what is empty is not sent. */
 export interface FieldDraft {
@@ -39,10 +67,14 @@ export interface FieldDraft {
   startMax: string
   /** Which of a track's `max` and `startMax` is written; neither for each Character. */
   maxMode: MaxMode
+  /** A conditions field's options, in order. */
+  options: OptionDraft[]
 }
 
-/** A message per input, keyed like the draft. */
-export type FieldErrors = Partial<Record<keyof FieldDraft, string>>
+/** A message per input, keyed like the draft; `option` holds those of each option's inputs, by position. */
+export type FieldErrors = Partial<Record<keyof FieldDraft, string>> & {
+  option?: Record<number, OptionErrors>
+}
 
 export function blankField(groups: SheetGroup[] | null): FieldDraft {
   return {
@@ -63,6 +95,7 @@ export function blankField(groups: SheetGroup[] | null): FieldDraft {
     roll: '',
     startMax: '',
     maxMode: 'fixed',
+    options: [],
   }
 }
 
@@ -79,6 +112,7 @@ export const typeProperties = [
   'roll',
   'startMax',
   'maxMode',
+  'options',
 ] as const
 
 /** The stored properties each type writes besides the common ones. */
@@ -86,6 +120,7 @@ const propertiesOf: Record<
   FieldType,
   readonly Exclude<(typeof typeProperties)[number], 'maxMode'>[]
 > = {
+  conditions: ['options'],
   number: ['min', 'max', 'default', 'roll'],
   text: ['multiline', 'maxLength'],
   list: ['itemLabel', 'maxItems'],
@@ -148,7 +183,14 @@ export function readField(stored: StoredField): FieldDraft | null {
   }
   integer('span')
   for (const name of propertiesOf[draft.type]) {
-    if (name === 'multiline') {
+    if (name === 'options') {
+      const options = readOptions(stored.options)
+      if (options === null) {
+        readable = false
+      } else {
+        draft.options = options
+      }
+    } else if (name === 'multiline') {
       if (typeof stored.multiline === 'boolean') {
         draft.multiline = stored.multiline
       } else if (stored.multiline !== undefined && stored.multiline !== null) {
@@ -171,6 +213,59 @@ export function readField(stored: StoredField): FieldDraft | null {
   }
 
   return readable && draft.key !== '' && draft.label !== '' ? draft : null
+}
+
+/** The stored options as form state, or null when they are not a list of `{key, label}` objects. */
+function readOptions(stored: unknown): OptionDraft[] | null {
+  if (!Array.isArray(stored)) {
+    return null
+  }
+  const options: OptionDraft[] = []
+  for (const option of stored as unknown[]) {
+    if (typeof option !== 'object' || option === null || Array.isArray(option)) {
+      return null
+    }
+    const { key, label, ...rest } = option as Record<string, unknown>
+    if (typeof key !== 'string' || typeof label !== 'string' || Object.keys(rest).length > 0) {
+      return null
+    }
+    options.push({ key, label, follow: false })
+  }
+  return options
+}
+
+/** The options to send, or null with the messages found: 1 to 20, each a key (unique) and a label up to 60. */
+function writeOptions(
+  options: OptionDraft[],
+  errors: FieldErrors,
+): { key: string; label: string }[] | null {
+  if (options.length < 1 || options.length > optionLimits.count) {
+    errors.options = `A conditions field has 1 to ${String(optionLimits.count)} options.`
+  }
+  const found: Record<number, OptionErrors> = {}
+  const written = options.map(({ key, label }, index) => {
+    const trimmedKey = key.trim()
+    const trimmedLabel = label.trim()
+    const mine: OptionErrors = {}
+    if (trimmedKey === '') {
+      mine.key = 'Give the option a key.'
+    } else if (options.findIndex((other) => other.key.trim() === trimmedKey) !== index) {
+      mine.key = `The key "${trimmedKey}" is used by an earlier option.`
+    }
+    if (trimmedLabel === '') {
+      mine.label = 'Give the option a label.'
+    } else if (trimmedLabel.length > optionLimits.label) {
+      mine.label = `The label is at most ${String(optionLimits.label)} characters.`
+    }
+    if (Object.keys(mine).length > 0) {
+      found[index] = mine
+    }
+    return { key: trimmedKey, label: trimmedLabel }
+  })
+  if (Object.keys(found).length > 0) {
+    errors.option = found
+  }
+  return errors.options === undefined && errors.option === undefined ? written : null
 }
 
 const wholeNumber = /^-?\d+$/
@@ -228,6 +323,13 @@ export function writeField(
       ((name === 'max' && draft.maxMode !== 'fixed') ||
         (name === 'startMax' && draft.maxMode !== 'startFormula'))
     ) {
+      continue
+    }
+    if (name === 'options') {
+      const options = writeOptions(draft.options, errors)
+      if (options !== null) {
+        field.options = options
+      }
       continue
     }
     const value = draft[name]

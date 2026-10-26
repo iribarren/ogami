@@ -12,6 +12,7 @@ import {
 } from '../../fixtures'
 import { StepListEditor } from './StepListEditor'
 import { stepKinds, stepsToDrafts, stepsToItems } from './stepDraft'
+import type { StepContext } from './stepContext'
 import { clientStepErrors, mapStepError, type StepError } from './stepError'
 import { chooseOption, listOptions } from '@/test/chooseOption'
 import { replaceText, typeText } from '@/test/typeText'
@@ -19,12 +20,20 @@ import { replaceText, typeText } from '@/test/typeText'
 /** The editor as a screen holds it: the drafts in state, the written steps exposed for checks. */
 const latest: { written: unknown } = { written: null }
 
-function Harness({ stored, errors }: { stored: unknown[]; errors?: StepError[] }) {
+function Harness({
+  stored,
+  errors,
+  context = stepPickers,
+}: {
+  stored: unknown[]
+  errors?: StepError[]
+  context?: StepContext
+}) {
   const [steps, setSteps] = useState(() => stepsToDrafts(stored))
   useEffect(() => {
     latest.written = stepsToItems(steps)
   })
-  return <StepListEditor steps={steps} context={stepPickers} errors={errors} onChange={setSteps} />
+  return <StepListEditor steps={steps} context={context} errors={errors} onChange={setSteps} />
 }
 
 /** The step at `index` as it would be saved. */
@@ -579,6 +588,28 @@ describe('the step list editor', () => {
     expect(card(1).getByText('no bands here')).toBeInTheDocument()
   })
 
+  it('refuses a mark with no option next to its option, and sends nothing', async () => {
+    const user = userEvent.setup()
+    render(
+      <Saver
+        stored={[
+          {
+            key: 'a',
+            kind: 'character',
+            title: 'A',
+            effects: [{ kind: 'sheet', field: 'hands', op: 'mark' }],
+          },
+        ]}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(sent.steps).toBeNull()
+    expect(
+      within(card(1).getByRole('group', { name: 'Effects' })).getByText('Pick the option to mark.'),
+    ).toBeInTheDocument()
+  })
+
   it('shows a value that is not a whole number next to it and sends nothing', async () => {
     const user = userEvent.setup()
     render(<Saver stored={stepList} />)
@@ -638,6 +669,47 @@ describe('the step list editor', () => {
           'New effect kind',
         ),
       ).not.toHaveTextContent('sheet')
+    })
+
+    it('marks and clears a conditions field of the sheet in a character step, an option or all', async () => {
+      const user = userEvent.setup()
+      const context: StepContext = {
+        ...stepPickers,
+        sheetFields: [
+          ...stepPickers.sheetFields,
+          {
+            key: 'physical',
+            name: 'Physical',
+            options: [
+              { key: 'hurt', name: 'Hurt' },
+              { key: 'tired', name: 'Tired' },
+            ],
+          },
+        ],
+      }
+      render(<Harness context={context} stored={[{ key: 'a', kind: 'character', title: 'A' }]} />)
+      const effects = effectsOf(1)
+
+      await chooseOption(user, 'New effect kind', 'sheet', effects)
+      await user.click(effects.getByRole('button', { name: 'Add effect' }))
+      const effect = within(effects.getByRole('group', { name: 'Effect 1' }))
+      await chooseOption(user, 'Sheet field', 'physical', effect)
+      // The flow editor lets no player pick: a mark names its option.
+      expect(
+        (await listOptions(user, effect.getByRole('combobox', { name: 'Option' }))).map(
+          (option) => option.label,
+        ),
+      ).toEqual(['Pick an option', 'Hurt', 'Tired'])
+      await chooseOption(user, 'Option', 'Tired', effect)
+      expect(saved(0)).toMatchObject({
+        effects: [{ kind: 'sheet', field: 'physical', op: 'mark', value: 'tired' }],
+      })
+
+      await chooseOption(user, 'Operation', 'clear', effect)
+      await chooseOption(user, 'Option', 'All options', effect)
+      expect(saved(0)).toMatchObject({
+        effects: [{ kind: 'sheet', field: 'physical', op: 'clear' }],
+      })
     })
 
     it('shows effect errors on their card, and drops them when effects move', async () => {

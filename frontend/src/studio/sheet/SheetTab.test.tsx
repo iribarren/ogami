@@ -281,7 +281,10 @@ describe('deleting a field', () => {
   it('lists the places that read the field when the delete is refused', async () => {
     const { user } = await openSheet({
       [`DELETE ${base}/sheet/fields/pow`]: json(
-        { error: 'The field "pow" is in use.', paths: ['sheet.fields[3].formula', 'checks[0]'] },
+        {
+          error: 'The sheet field "pow" is used at sheet.fields[3].formula, checks[0].',
+          paths: ['sheet.fields[3].formula', 'checks[0]'],
+        },
         422,
       ),
     })
@@ -290,7 +293,7 @@ describe('deleting a field', () => {
     await user.click(inDialog().getByRole('button', { name: 'Delete the field' }))
 
     expect(await inDialog().findByRole('alert')).toHaveTextContent(
-      'The field "pow" is in use. Used by sheet.fields[3].formula, checks[0].',
+      /^The sheet field "pow" is used at sheet\.fields\[3\]\.formula, checks\[0\]\.$/,
     )
   })
 

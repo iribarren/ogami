@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Studio\Infrastructure\Http;
 
+use App\Studio\Application\CheckConditionOptionView;
 use App\Studio\Application\NarrativeCatalogView;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
@@ -43,7 +44,7 @@ final readonly class NarrativeCatalogResponse
                 $check['bands'],
                 null === $check['difficulty'] ? null : new NarrativeCatalogDifficultyResponse($check['difficulty']['default'], $check['difficulty']['min'], $check['difficulty']['max']),
             ), $view->checks),
-            array_map(static fn (array $field): NarrativeCatalogFieldResponse => new NarrativeCatalogFieldResponse($field['key'], $field['label']), $view->fields),
+            array_map(static fn (array $field): NarrativeCatalogFieldResponse => new NarrativeCatalogFieldResponse($field['key'], $field['label'], null === $field['options'] ? null : array_map(static fn (array $option): CheckConditionOptionResponse => CheckConditionOptionResponse::fromView(new CheckConditionOptionView($option['key'], $option['label'])), $field['options'])), $view->fields),
         );
     }
 }

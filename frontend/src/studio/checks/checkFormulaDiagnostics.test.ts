@@ -80,6 +80,28 @@ describe('checkFormulaDiagnostics', () => {
     expect(read('{hp}', defaults).result).toEqual({ value: 0 })
   })
 
+  it('reads a conditions field directly at the sandbox value, else 0', () => {
+    const withConditions = {
+      ...catalog,
+      conditions: [{ key: 'wounds', label: 'Wounds', options: [{ key: 'hurt', label: 'Hurt' }] }],
+    }
+    const read = (defaults?: Record<string, number>) =>
+      checkFormulaDiagnostics({
+        formula: '{pow} - {wounds}',
+        scope: 'modifier',
+        catalog: { ...withConditions, defaults },
+        difficulty: null,
+      })
+
+    expect(read()).toEqual({ error: null, result: { value: 0 } })
+    expect(read({ pow: 4, wounds: 1 }).result).toEqual({ value: 3 })
+    expect(checkReads('{wounds}', withConditions)).toEqual(['Wounds'])
+    expect(checkReferences(withConditions, 'modifier', false)).toContainEqual({
+      reference: 'wounds',
+      label: 'Wounds',
+    })
+  })
+
   it('has no cycle check: a derived field reads fine, with no value', () => {
     expect(run('{edge}')).toEqual({ error: null, result: { reason: 'incomplete value' } })
   })

@@ -95,8 +95,21 @@ final class GameSystemNarrativeHandlersTest extends TestCase
             ['key' => 'skill', 'label' => 'Skill check', 'bands' => ['fail', 'success', 'crit'], 'difficulty' => ['default' => 13, 'min' => 9, 'max' => 29]],
             ['key' => 'luck', 'label' => 'Luck', 'bands' => ['bad', 'ok', 'good'], 'difficulty' => null],
         ], $checks->checks);
-        self::assertSame([['key' => 'hands', 'label' => 'Hands']], $checks->fields);
-        self::assertSame([['key' => 'pow', 'label' => 'Power'], ['key' => 'hp', 'label' => 'Hit points'], ['key' => 'sanity', 'label' => 'Sanity']], $this->narrative('ann', 'my-sheet')->catalog->fields);
+        self::assertSame([['key' => 'hands', 'label' => 'Hands', 'options' => null]], $checks->fields);
+        self::assertSame([['key' => 'pow', 'label' => 'Power', 'options' => null], ['key' => 'hp', 'label' => 'Hit points', 'options' => null], ['key' => 'sanity', 'label' => 'Sanity', 'options' => null]], $this->narrative('ann', 'my-sheet')->catalog->fields);
+    }
+
+    #[Test]
+    public function theCatalogListsAConditionsFieldWithItsOptionsBesideTheNumberAndTrackFields(): void
+    {
+        $this->draft('my-pools', 'valid/v2-dice-pools');
+
+        self::assertSame([
+            ['key' => 'agility', 'label' => 'Agility', 'options' => null],
+            ['key' => 'stealth', 'label' => 'Stealth', 'options' => null],
+            ['key' => 'physical', 'label' => 'Physical conditions', 'options' => [['key' => 'hurt', 'label' => 'Hurt'], ['key' => 'exhausted', 'label' => 'Exhausted']]],
+            ['key' => 'mental', 'label' => 'Mental conditions', 'options' => [['key' => 'shaken', 'label' => 'Shaken']]],
+        ], $this->narrative('ann', 'my-pools')->catalog->fields);
     }
 
     #[Test]
@@ -121,7 +134,7 @@ final class GameSystemNarrativeHandlersTest extends TestCase
         $document = ReleaseArrays::with($document, 'tags', ['a' => 1]);
         $document = ReleaseArrays::with($document, 'oracles', ['tables' => ['x', ['key' => 'big', 'name' => 3, 'entries' => [['key' => 'a'], 'y', ['text' => 'no key']]]], 'likelihood' => [['key' => 'l', 'levels' => 'z'], 4]]);
         $document = ReleaseArrays::with($document, 'checks', [['key' => 'c', 'label' => 'C', 'bands' => [['key' => 'b'], 1], 'difficulty' => 'hard'], 'z', ['label' => 'No key']]);
-        $document = ReleaseArrays::with($document, 'sheet', ['fields' => [['key' => 'f', 'label' => 'F', 'type' => 'number'], ['key' => 'g', 'type' => 'track'], 'x', ['type' => 'number']]]);
+        $document = ReleaseArrays::with($document, 'sheet', ['fields' => [['key' => 'f', 'label' => 'F', 'type' => 'number'], ['key' => 'g', 'type' => 'track'], 'x', ['type' => 'number'], ['key' => 'h', 'type' => 'conditions', 'options' => [['key' => 'o', 'label' => 'O'], ['key' => 'p', 'label' => 3], 'z', ['label' => 'No key']]], ['key' => 'i', 'type' => 'conditions', 'options' => 'none'], ['key' => 'j', 'type' => 'conditions']]]);
         $draft->restore($document, $this->clock->now());
 
         $view = $this->narrative('ann', 'broken');
@@ -131,7 +144,13 @@ final class GameSystemNarrativeHandlersTest extends TestCase
         self::assertSame([['key' => 'big', 'name' => '', 'entries' => ['a']]], $view->catalog->tables);
         self::assertSame([['key' => 'l', 'name' => '', 'levels' => []]], $view->catalog->likelihood);
         self::assertSame([['key' => 'c', 'label' => 'C', 'bands' => ['b'], 'difficulty' => null]], $view->catalog->checks);
-        self::assertSame([['key' => 'f', 'label' => 'F'], ['key' => 'g', 'label' => '']], $view->catalog->fields);
+        self::assertSame([
+            ['key' => 'f', 'label' => 'F', 'options' => null],
+            ['key' => 'g', 'label' => '', 'options' => null],
+            ['key' => 'h', 'label' => '', 'options' => [['key' => 'o', 'label' => 'O'], ['key' => 'p', 'label' => '']]],
+            ['key' => 'i', 'label' => '', 'options' => []],
+            ['key' => 'j', 'label' => '', 'options' => []],
+        ], $view->catalog->fields);
     }
 
     #[Test]

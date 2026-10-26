@@ -262,6 +262,30 @@ final class DraftReferences
     }
 
     /**
+     * The sheet effects that mark or clear this option of a conditions field: every effect holder,
+     * including the cost of a check's push, with "field" the key, "value" the option and op
+     * `mark` or `clear` (a `clear` without a value clears all and names no option).
+     *
+     * @param array<string, mixed> $document
+     * @param string|null          $option   null lists every `mark` and `clear` of the field, whatever its option
+     *
+     * @return list<string>
+     */
+    public static function conditionOptionPathsTo(array $document, string $field, ?string $option = null): array
+    {
+        $paths = [];
+        foreach (self::effectHolders($document) as $path => $holder) {
+            foreach (self::objects($holder['effects'] ?? null) as $index => $effect) {
+                if ('sheet' === ($effect['kind'] ?? null) && $field === ($effect['field'] ?? null) && (null === $option || $option === ($effect['value'] ?? null)) && \in_array($effect['op'] ?? null, ['mark', 'clear'], true)) {
+                    $paths[] = \sprintf('%s.effects[%d]', $path, $index);
+                }
+            }
+        }
+
+        return $paths;
+    }
+
+    /**
      * The check steps that name this check: the "check" of each, in Scene Type parts and flow
      * phase hooks.
      *

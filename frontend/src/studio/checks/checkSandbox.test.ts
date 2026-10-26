@@ -334,6 +334,70 @@ describe('the pool size of a pool check', () => {
   })
 })
 
+describe('the sandbox with a conditions field', () => {
+  const conditions = [
+    {
+      key: 'wounds',
+      label: 'Wounds',
+      options: [
+        { key: 'a', label: 'A' },
+        { key: 'b', label: 'B' },
+        { key: 'c', label: 'C' },
+      ],
+    },
+  ]
+  const withConditions = (changes: Partial<SandboxState> = {}) =>
+    state({
+      catalog: { ...catalog, conditions },
+      template: [
+        ...template,
+        field('wounds', { type: 'conditions', options: conditions[0]?.options }),
+      ],
+      ...changes,
+    })
+
+  const sized = (count: string, changes: Partial<SandboxState>) =>
+    resolveSandbox(withConditions({ pool: { count, sides: '6', successAt: '5' }, ...changes }))
+      .poolSize
+
+  it('lists it as a count from 0 to its options, sent only when typed', () => {
+    const empty = resolveSandbox(withConditions())
+    expect(empty.fields.find((input) => input.key === 'wounds')).toEqual({
+      key: 'wounds',
+      label: 'Wounds (marked, 0 to 3)',
+      value: '',
+      placeholder: '0',
+      error: null,
+    })
+    expect(empty.request?.sheet).toEqual({})
+
+    const typedTwo = resolveSandbox(withConditions({ conditionTexts: { wounds: '2' } }))
+    expect(typedTwo.request?.sheet).toEqual({ wounds: 2 })
+  })
+
+  it('refuses a count outside 0..options or not whole, and sends nothing', () => {
+    for (const text of ['4', '-1', '1.5', 'x']) {
+      const sandbox = resolveSandbox(withConditions({ conditionTexts: { wounds: text } }))
+      expect(sandbox.request).toBeNull()
+      expect(sandbox.fields.find((input) => input.key === 'wounds')?.error).toBeTruthy()
+    }
+  })
+
+  it('reads as the count in a pool count formula, a band bound and a derived field', () => {
+    const marked = { wounds: '2' }
+    expect(sized('{pow} + {wounds}', { conditionTexts: marked })).toBe(2)
+    expect(sized('4 - {wounds}', { conditionTexts: marked })).toBe(2)
+
+    const { bounds } = resolveSandbox(
+      withConditions({
+        conditionTexts: marked,
+        bands: [band({ kind: 'formula', value: '{wounds} + 1' }), last],
+      }),
+    )
+    expect(bounds[0]).toEqual({ kind: 'value', value: 3 })
+  })
+})
+
 describe('sampleDefaults', () => {
   it('gives each number field the value the sandbox starts it at, held within its range', () => {
     expect(

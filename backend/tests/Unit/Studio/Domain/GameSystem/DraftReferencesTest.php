@@ -445,6 +445,34 @@ final class DraftReferencesTest extends TestCase
     }
 
     #[Test]
+    public function aConditionOptionIsReferencedByTheMarksAndClearsThatNameItAnywhere(): void
+    {
+        $document = $this->sheetDocument();
+        $document['sheet'] = [];
+        $document['sceneTypes'] = [['setup' => [['effects' => [
+            ['kind' => 'sheet', 'field' => 'hurt', 'op' => 'mark', 'value' => 'bruised'],
+            ['kind' => 'sheet', 'field' => 'hurt', 'op' => 'mark', 'value' => 'cut'],
+        ]]]]];
+        $document['oracles'] = ['tables' => [['key' => 't', 'entries' => [['key' => 'a', 'effects' => [
+            ['kind' => 'sheet', 'field' => 'hurt', 'op' => 'clear', 'value' => 'bruised'],
+        ]]]]], 'likelihood' => []];
+        $document['checks'] = [['key' => 'raid', 'pool' => ['count' => 3, 'sides' => 6, 'successAt' => 5], 'push' => ['label' => 'Pay', 'effects' => [
+            ['kind' => 'sheet', 'field' => 'hurt', 'op' => 'mark', 'value' => 'bruised'],
+            ['kind' => 'sheet', 'field' => 'tired', 'op' => 'mark', 'value' => 'bruised'],
+            ['kind' => 'sheet', 'field' => 'hurt', 'op' => 'mark'],
+            ['kind' => 'sheet', 'field' => 'hurt', 'op' => 'clear'],
+            ['kind' => 'sheet', 'field' => 'hurt', 'op' => 'set', 'value' => 'bruised'],
+        ]]]];
+
+        self::assertSame(
+            ['sceneTypes[0].setup[0].effects[0]', 'oracles.tables[0].entries[0].effects[0]', 'checks[0].push.effects[0]'],
+            DraftReferences::conditionOptionPathsTo($document, 'hurt', 'bruised'),
+        );
+        self::assertSame(['sceneTypes[0].setup[0].effects[1]'], DraftReferences::conditionOptionPathsTo($document, 'hurt', 'cut'));
+        self::assertSame([], DraftReferences::conditionOptionPathsTo($document, 'hurt', 'unused'));
+    }
+
+    #[Test]
     public function aMalformedPoolOrPushReadsNothing(): void
     {
         $document = $this->sheetDocument();

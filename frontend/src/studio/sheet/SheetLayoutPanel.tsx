@@ -44,13 +44,6 @@ const ignoreDraft = () => undefined
 
 const reloadFailed = "Couldn't reload the latest version. Try again."
 
-/** What a refusal says, with the places that read the thing when the API names them. */
-function refusal(error: Error) {
-  return error instanceof SheetError && error.paths.length > 0
-    ? `${error.message} Used by ${error.paths.join(', ')}.`
-    : error.message
-}
-
 /**
  * The sheet's layout: declare it from the fields' groups, or edit and remove the declared one.
  * Fields keep their own group and order either way. While the edit dialog is open, `onDraftChange`
@@ -198,7 +191,7 @@ function RemoveLayoutDialog({
         </DialogHeader>
         {remove.error && (
           <p role="alert" className="text-sm text-destructive">
-            {refusal(remove.error)}
+            {remove.error.message}
           </p>
         )}
         {remove.error instanceof StudioError && remove.error.status === 409 ? (
@@ -329,7 +322,7 @@ function LayoutForm({
       ? null
       : answer
         ? answer.form
-        : refusal(error)) ??
+        : error.message) ??
     ''
   const columnsError = errors?.columns ?? answer?.columns ?? undefined
 

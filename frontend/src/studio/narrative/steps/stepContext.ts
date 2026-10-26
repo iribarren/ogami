@@ -19,8 +19,11 @@ export interface StepContext {
   /** For the effect pickers; absent means none to pick yet. */
   sceneTypes?: { key: string; name: string }[]
   factSlots?: { key: string; name: string; type: string }[]
-  /** The number and track fields of the sheet, which a sheet effect may change. */
-  sheetFields?: { key: string; name: string }[]
+  /**
+   * The sheet fields a sheet effect may change: number and track fields, and conditions fields,
+   * which carry their `options` (the effect marks or clears one of them).
+   */
+  sheetFields?: { key: string; name: string; options?: { key: string; name: string }[] }[]
 }
 
 /** The pickers' options from the narrative read model (tables from the catalog, the rest from the sections). */

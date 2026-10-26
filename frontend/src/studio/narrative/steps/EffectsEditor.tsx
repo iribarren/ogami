@@ -9,6 +9,7 @@ import { answerHint, AnswerHint } from './answerHint'
 import { ValueInput } from './BandsEditor'
 import { moveItem } from './draftParts'
 import {
+  conditionOps,
   effectFields,
   effectGuides,
   effectKinds,
@@ -16,11 +17,14 @@ import {
   newEffect,
   sheetForms,
   sheetOps,
+  sheetWithField,
+  sheetWithOp,
   trackerForms,
   trackerOps,
   type EditedEffect,
   type EffectDraft,
   type EffectKind,
+  type SheetOp,
 } from './effectDraft'
 import { Area, CheckList, PickField } from './fields'
 import type { StepContext } from './stepContext'
@@ -40,7 +44,10 @@ function OpField({
       aria-label="Operation"
       value={value}
       onChange={(event) => {
-        onChange(event.target.value)
+        // The select reports an empty value while its options are swapped (the field changed family).
+        if (ops.includes(event.target.value)) {
+          onChange(event.target.value)
+        }
       }}
     >
       {ops.map((op) => (
@@ -56,13 +63,17 @@ function OpField({
 function EffectFields({
   effect,
   context,
+  allowPick,
   problem,
   set,
+  replace,
 }: {
   effect: EditedEffect
   context: StepContext
+  allowPick: boolean
   problem: (field: string) => string | undefined
   set: (patch: Partial<EditedEffect>) => void
+  replace: (effect: EditedEffect) => void
 }) {
   const { sceneTypes = [], factSlots = [], sheetFields = [] } = context
   // Where the step has an answer, the text of an effect can use it.
@@ -189,38 +200,66 @@ function EffectFields({
         </>
       )
     }
-    case 'sheet':
+    case 'sheet': {
+      const picked = sheetFields.find((field) => field.key === effect.field)
+      const conditions = effect.op === 'mark' || effect.op === 'clear'
+      const onConditions = picked?.options !== undefined || conditions
       return (
         <>
           <PickField
             label="Sheet field"
             value={effect.field}
             options={sheetFields}
-            placeholder="Pick a number or track field"
+            placeholder={
+              sheetFields.some((field) => field.options !== undefined)
+                ? 'Pick a sheet field'
+                : 'Pick a number or track field'
+            }
             error={problem('field')}
             onChange={(field) => {
-              set({ field })
+              const options = sheetFields.find((candidate) => candidate.key === field)?.options
+              replace(sheetWithField(effect, field, options !== undefined))
             }}
           />
           <OpField
             value={effect.op}
-            ops={sheetOps}
+            ops={onConditions ? conditionOps : sheetOps}
             onChange={(op) => {
-              set({ op } as Partial<EditedEffect>)
+              replace(sheetWithOp(effect, op as SheetOp))
             }}
           />
-          <ValueInput
-            label="Value"
-            value={effect.value}
-            forms={sheetForms}
-            trackers={[]}
-            error={problem('value')}
-            onChange={(value) => {
-              set({ value })
-            }}
-          />
+          {'option' in effect ? (
+            <PickField
+              label="Option"
+              value={effect.option}
+              options={picked?.options ?? []}
+              placeholder={
+                effect.op === 'clear'
+                  ? 'All options'
+                  : allowPick
+                    ? 'The player picks'
+                    : 'Pick an option'
+              }
+              error={problem('value')}
+              onChange={(option) => {
+                replace({ ...effect, option })
+              }}
+            />
+          ) : (
+            <ValueInput
+              label="Value"
+              value={effect.value}
+              forms={sheetForms}
+              trackers={[]}
+              error={problem('value')}
+              onChange={(value) => {
+                set({ value })
+              }}
+            />
+          )}
         </>
       )
+    }
     case 'endPhase':
     case 'closeThread':
       return <p className="text-sm text-muted-foreground">This effect has no fields.</p>
@@ -234,6 +273,7 @@ function EffectCard({
   guide,
   errors,
   context,
+  allowPick,
   onChange,
   onMove,
   onDelete,
@@ -244,6 +284,7 @@ function EffectCard({
   guide?: string
   errors: StepError[]
   context: StepContext
+  allowPick: boolean
   onChange: (effect: EffectDraft) => void
   onMove: (by: number) => void
   onDelete: () => void
@@ -314,10 +355,12 @@ function EffectCard({
         <EffectFields
           effect={effect}
           context={context}
+          allowPick={allowPick}
           problem={(field) => errors.find((error) => error.field === field)?.message}
           set={(patch) => {
             onChange({ ...effect, ...patch } as EffectDraft)
           }}
+          replace={onChange}
         />
       )}
       {guide && <p className="text-sm text-destructive">{guide}</p>}
@@ -333,7 +376,9 @@ function EffectCard({
 /**
  * An ordered list of effect cards, edited in place: add (the kind is chosen first), delete, move,
  * at most ten. A sheet effect is offered only where `allowSheet`; one stored elsewhere stays,
- * flagged. `errors` are the server's messages about these effects (`effect` is their position).
+ * flagged. `kinds` narrows the kinds offered (the cost of a push takes sheet and tracker effects
+ * only); `allowPick` lets a mark on a conditions field leave its option to the player, which only
+ * the cost of a push does. `errors` are the server's messages about these effects (`effect` is their position).
  * `onRestructure` tells the owner of the messages that effects moved or went.
  */
 export function EffectsEditor({
@@ -341,6 +386,8 @@ export function EffectsEditor({
   effects,
   context,
   allowSheet,
+  kinds,
+  allowPick = false,
   errors,
   onChange,
   onRestructure,
@@ -349,12 +396,17 @@ export function EffectsEditor({
   effects: EffectDraft[]
   context: StepContext
   allowSheet: boolean
+  kinds?: readonly EffectKind[]
+  allowPick?: boolean
   errors: StepError[]
   onChange: (effects: EffectDraft[]) => void
   onRestructure?: () => void
 }) {
   const [kind, setKind] = useState<EffectKind>('tracker')
-  const offered = effectKinds.filter((option) => allowSheet || option !== 'sheet')
+  const offered = effectKinds.filter(
+    (option) =>
+      (allowSheet || option !== 'sheet') && (kinds === undefined || kinds.includes(option)),
+  )
   const guides = effectGuides(effects, allowSheet)
   const full = effects.length >= MAX_EFFECTS
 
@@ -382,6 +434,7 @@ export function EffectsEditor({
               guide={guides[index]}
               errors={errors.filter((error) => error.effect === index)}
               context={context}
+              allowPick={allowPick}
               onChange={(changed) => {
                 onChange(effects.map((current, at) => (at === index ? changed : current)))
               }}

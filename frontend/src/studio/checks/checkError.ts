@@ -1,3 +1,4 @@
+import type { StepError } from '../narrative/steps/stepError'
 import type { CheckErrors } from './checkDraft'
 
 /** Where a refused save of a check belongs in its editor. */
@@ -19,6 +20,7 @@ const inputs: Record<string, keyof CheckErrors> = {
   'pool.count.formula': 'poolCount',
   'pool.sides': 'poolSides',
   'pool.successAt': 'poolSuccessAt',
+  'push.label': 'pushLabel',
   difficulty: 'difficulty',
   'difficulty.label': 'difficultyLabel',
   'difficulty.default': 'difficultyDefault',
@@ -40,6 +42,26 @@ function bandAnswer(path: string, message: string): CheckAnswer | null {
 }
 
 /**
+ * The push effects a path below `push.effects` names: the list (`push.effects`), an effect
+ * (`push.effects[1]`) or one of its fields (`push.effects[1].value.formula`).
+ */
+function pushAnswer(path: string, message: string): CheckAnswer | null {
+  const match = /^push\.effects(?:\[(\d+)\]((?:\.\w+)*))?$/.exec(path)
+  if (match === null) {
+    return null
+  }
+  const [, position, rest = ''] = match
+  const error: StepError = {
+    index: null,
+    band: null,
+    effect: position === undefined ? null : Number(position),
+    field: position === undefined ? 'effects' : (rest.split('.')[1] ?? null),
+    message,
+  }
+  return { fields: { pushEffects: [error] }, form: null }
+}
+
+/**
  * Reads the publisher's `path: message` for the check at `index` of the draft's checks
  * (`checks[2].dice: …`). A path of another check or of a property the form has no
  * input for comes back whole as a form message.
@@ -57,6 +79,10 @@ export function checkAnswer(text: string, index: number): CheckAnswer {
       const band = bandAnswer(path, message)
       if (band !== null) {
         return band
+      }
+      const push = pushAnswer(path, message)
+      if (push !== null) {
+        return push
       }
     }
   }

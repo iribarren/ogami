@@ -1,3 +1,6 @@
+import { effectsToDrafts, effectsToStored, type EffectDraft } from '../narrative/steps/effectDraft'
+import type { StepError } from '../narrative/steps/stepError'
+
 /** A check as stored in the draft: the publisher validates it, the editor keeps nothing else. */
 export type StoredCheck = Record<string, unknown>
 
@@ -43,6 +46,18 @@ export interface PoolDraft {
   successAt: string
 }
 
+/** The most characters a push's cost label may have, as the publisher. */
+const maxPushLabel = 100
+
+/**
+ * The form state of a push: what it costs in words and the effects of the cost. An effect the
+ * shared editor cannot read stays as stored in the list.
+ */
+export interface PushDraft {
+  label: string
+  effects: EffectDraft[]
+}
+
 /** How a check rolls: its dice notation and modifier, or a pool of dice counted for successes. */
 export type CheckMode = 'dice' | 'pool'
 
@@ -60,11 +75,8 @@ export interface CheckDraft {
   modifier: string
   /** Null for a dice check. */
   pool: PoolDraft | null
-  /**
-   * The check's push as stored, kept whole and sent back unchanged: its editor comes later. Only a
-   * pool check has one.
-   */
-  push?: unknown
+  /** Null while the check cannot be pushed; only a pool check has one. */
+  push: PushDraft | null
   /** Null while the check has no difficulty. */
   difficulty: DifficultyDraft | null
   bands: BandDraft[]
@@ -116,6 +128,7 @@ export type CheckErrors = Partial<
     | 'poolCount'
     | 'poolSides'
     | 'poolSuccessAt'
+    | 'pushLabel'
     | 'difficulty'
     | 'difficultyLabel'
     | 'difficultyDefault'
@@ -126,6 +139,8 @@ export type CheckErrors = Partial<
 > & {
   /** The messages of each band's inputs, by the band's position. */
   band?: BandErrorMap
+  /** The messages about the effects of the push, as the effects editor takes them. */
+  pushEffects?: StepError[]
 }
 
 export const blankDifficulty = (): DifficultyDraft => ({
@@ -207,6 +222,7 @@ export function blankCheck(): CheckDraft {
     dice: '',
     modifier: '',
     pool: null,
+    push: null,
     difficulty: null,
     bands: [{ key: 'outcome', label: 'Outcome', upTo: { kind: 'none' } }],
   }
@@ -217,15 +233,17 @@ export const modeOf = (draft: CheckDraft): CheckMode => (draft.pool === null ? '
 
 /**
  * The draft in another mode. Dice drops the pool and its push, which go together; a pool starts
- * empty. Choosing the mode the draft is in changes nothing.
+ * empty and with no push. Choosing the mode the draft is in changes nothing.
  */
 export function switchMode(draft: CheckDraft, mode: CheckMode): CheckDraft {
   if (modeOf(draft) === mode) {
     return draft
   }
-  const next = { ...draft, pool: mode === 'pool' ? { count: '', sides: '', successAt: '' } : null }
-  delete next.push
-  return next
+  return {
+    ...draft,
+    pool: mode === 'pool' ? { count: '', sides: '', successAt: '' } : null,
+    push: null,
+  }
 }
 
 /**
@@ -244,6 +262,7 @@ export function duplicateCheck(source: CheckDraft, existingKeys: string[]): Chec
     key,
     label: `${source.label} (copy)`,
     pool: source.pool === null ? null : { ...source.pool },
+    push: source.push === null ? null : { ...source.push, effects: [...source.push.effects] },
     difficulty: source.difficulty === null ? null : { ...source.difficulty },
     bands: source.bands.map((band) => ({ ...band, upTo: { ...band.upTo } })),
   }
@@ -310,6 +329,18 @@ function readPool(pool: unknown): PoolDraft | null {
   return { count: counted, sides: String(sides), successAt: String(successAt) }
 }
 
+/** The stored push as form state, or null when it is not exactly a label and a list of effects. */
+function readPush(push: unknown): PushDraft | null {
+  if (!isObject(push) || Object.keys(push).some((name) => !['label', 'effects'].includes(name))) {
+    return null
+  }
+  const { label, effects } = push
+  if (typeof label !== 'string' || (effects !== undefined && !Array.isArray(effects))) {
+    return null
+  }
+  return { label, effects: effectsToDrafts((effects ?? []) as unknown[]) }
+}
+
 /** The stored check as form state, or null when a property has a shape the form cannot hold. */
 export function readCheck(stored: StoredCheck): CheckDraft | null {
   const { key, label, hint, dice, modifier, difficulty, bands, pool, push } = stored
@@ -327,6 +358,10 @@ export function readCheck(stored: StoredCheck): CheckDraft | null {
     return null
   }
   if (push !== undefined && !pooled) {
+    return null
+  }
+  const readPushed = push === undefined || push === null ? null : readPush(push)
+  if (push !== undefined && push !== null && readPushed === null) {
     return null
   }
   const optionalText = (value: unknown) =>
@@ -369,7 +404,7 @@ export function readCheck(stored: StoredCheck): CheckDraft | null {
     dice: typeof dice === 'string' ? dice : '',
     modifier: typeof modifier === 'string' ? modifier : '',
     pool: read,
-    ...(push === undefined ? {} : { push }),
+    push: readPushed,
     difficulty: declared,
     bands: readBands as BandDraft[],
   }
@@ -440,8 +475,11 @@ export function writeCheck(draft: CheckDraft): { check: StoredCheck } | { errors
     if (pool !== null) {
       check.pool = pool
     }
-    if (draft.push !== undefined) {
-      check.push = draft.push
+    if (draft.push !== null) {
+      const push = writePush(draft.push, errors)
+      if (push !== null) {
+        check.push = push
+      }
     }
   }
 
@@ -534,6 +572,36 @@ function writePool(pool: PoolDraft, errors: CheckErrors): Record<string, unknown
     errors.poolSides === undefined &&
     errors.poolSuccessAt === undefined
     ? written
+    : null
+}
+
+/**
+ * The push to send, or null with the errors found: a label of 1 to 100 characters, and the effects
+ * of the cost, left out when there are none. The publisher checks each effect.
+ */
+function writePush(push: PushDraft, errors: CheckErrors): Record<string, unknown> | null {
+  const label = push.label.trim()
+  if (label === '') {
+    errors.pushLabel = 'Give the push a cost label.'
+  } else if (label.length > maxPushLabel) {
+    errors.pushLabel = `The label is at most ${String(maxPushLabel)} characters.`
+  }
+
+  // The whole numbers the effects editor refuses come keyed `push.effects.<n>.value`.
+  const refused: Record<string, string> = {}
+  const effects = effectsToStored(push.effects, 'push.effects', refused)
+  const found = Object.entries(refused).flatMap(([path, message]) => {
+    const [, effect, field] = /^push\.effects\.(\d+)\.(\w+)$/.exec(path) ?? []
+    return effect === undefined || field === undefined
+      ? []
+      : [{ index: null, band: null, effect: Number(effect), field, message }]
+  })
+  if (found.length > 0) {
+    errors.pushEffects = found
+  }
+
+  return errors.pushLabel === undefined && found.length === 0
+    ? { label, ...(effects.length > 0 ? { effects } : {}) }
     : null
 }
 

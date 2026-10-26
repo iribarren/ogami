@@ -269,3 +269,50 @@ export const PoolCheck: Story = {
     await expect(sandbox.getByText('The cost is not applied in a test roll.')).toBeVisible()
   },
 }
+
+/** The push cost of a pool check: its label and effects, marking a conditions field of the sheet. */
+export const PushCost: Story = {
+  parameters: {
+    api: {
+      [`GET ${base}/checks`]: json({
+        ...checks,
+        checks: [
+          {
+            ...pool,
+            push: {
+              label: 'Take a Condition',
+              effects: [
+                { kind: 'sheet', field: 'physical', op: 'mark' },
+                { kind: 'tracker', tracker: 'heat', op: 'add', value: 1 },
+              ],
+            },
+          },
+        ],
+        conditions: [
+          {
+            key: 'physical',
+            label: 'Physical',
+            options: [
+              { key: 'hurt', label: 'Hurt' },
+              { key: 'exhausted', label: 'Exhausted' },
+            ],
+          },
+        ],
+      }),
+      [`GET ${base}/sheet`]: json(sheet),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit sneak' }))
+    await expect(canvas.getByLabelText('Can be pushed')).toBeChecked()
+    await expect(canvas.getByLabelText('Cost label')).toHaveValue('Take a Condition')
+    const mark = within(canvas.getByRole('group', { name: 'Effect 1' }))
+    await expect(mark.getByRole('combobox', { name: 'Option' })).toHaveTextContent(
+      'The player picks',
+    )
+    await expect(
+      within(canvas.getByRole('group', { name: 'Effect 2' })).getByText('tracker'),
+    ).toBeVisible()
+  },
+}

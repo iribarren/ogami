@@ -4,7 +4,10 @@ import {
   effectsToStored,
   MAX_EFFECTS,
   newEffect,
+  sheetWithField,
+  sheetWithOp,
   type EffectDraft,
+  type SheetEffect,
 } from './effectDraft'
 import { every } from './effectFixtures'
 
@@ -133,5 +136,86 @@ describe('an effect draft', () => {
     ])
     expect(effectGuides(effects, true)).toEqual([undefined, undefined])
     expect(MAX_EFFECTS).toBe(10)
+  })
+})
+
+describe('a sheet effect on a conditions field', () => {
+  const sheet = (effect: unknown): SheetEffect => {
+    const [draft] = effectsToDrafts([effect])
+    if (draft?.kind !== 'sheet') {
+      throw new Error('Expected a sheet effect.')
+    }
+    return draft
+  }
+
+  it.each<[string, { kind: string; field: string; op: string; value?: string; note?: string }]>([
+    ['a mark of an option', { kind: 'sheet', field: 'physical', op: 'mark', value: 'hurt' }],
+    ['a mark with no option', { kind: 'sheet', field: 'physical', op: 'mark' }],
+    ['a clear of an option', { kind: 'sheet', field: 'physical', op: 'clear', value: 'hurt' }],
+    ['a clear of all', { kind: 'sheet', field: 'physical', op: 'clear', note: 'x' }],
+  ])('gives %s back as it was stored', (_name, stored) => {
+    expect(round([stored])).toEqual({ effects: [stored], errors: {} })
+    expect(sheet(stored)).toMatchObject({ op: stored.op, option: stored.value ?? '' })
+  })
+
+  it('reads an explicit null option as none, and keeps an option that is not a key as stored', () => {
+    expect(sheet({ kind: 'sheet', field: 'physical', op: 'mark', value: null })).toMatchObject({
+      option: '',
+    })
+    expect(effectsToDrafts([{ kind: 'sheet', field: 'physical', op: 'mark', value: 3 }])).toEqual([
+      { kind: 'stored', stored: { kind: 'sheet', field: 'physical', op: 'mark', value: 3 } },
+    ])
+  })
+
+  it('switches between the ops of the two families, starting the value of the one it goes to', () => {
+    const number = sheet({ kind: 'sheet', field: 'agility', op: 'subtract', value: 2 })
+
+    const marked = sheetWithOp(number, 'mark')
+    expect(marked).toMatchObject({ field: 'agility', op: 'mark', option: '' })
+    expect(marked).not.toHaveProperty('value')
+    expect(sheetWithOp(sheetWithOp(marked, 'clear'), 'clear')).toMatchObject({ op: 'clear' })
+    expect(sheetWithOp(marked, 'add')).toMatchObject({
+      op: 'add',
+      value: { form: 'integer', text: '1' },
+    })
+    expect(sheetWithOp(number, 'set')).toMatchObject({
+      op: 'set',
+      value: { form: 'integer', text: '2' },
+    })
+  })
+
+  it('follows the field: a conditions field takes mark or clear and forgets the old option', () => {
+    const number = sheet({ kind: 'sheet', field: 'agility', op: 'add', value: 1 })
+    const onConditions = sheetWithField(number, 'physical', true)
+    expect(onConditions).toMatchObject({ field: 'physical', op: 'mark', option: '' })
+
+    const picked = { ...onConditions, op: 'clear' as const, option: 'hurt' }
+    expect(sheetWithField(picked, 'mental', true)).toMatchObject({
+      field: 'mental',
+      op: 'clear',
+      option: '',
+    })
+    expect(sheetWithField(picked, 'agility', false)).toMatchObject({
+      field: 'agility',
+      op: 'add',
+      value: { form: 'integer', text: '1' },
+    })
+    expect(sheetWithField(number, 'stress', false)).toMatchObject({
+      field: 'stress',
+      op: 'add',
+      value: { form: 'integer', text: '1' },
+    })
+  })
+
+  it('writes an option only when there is one', () => {
+    const mark = sheet({ kind: 'sheet', field: 'physical', op: 'mark' })
+
+    expect(effectsToStored([mark], 'effects', {})).toEqual([
+      { kind: 'sheet', field: 'physical', op: 'mark' },
+    ])
+    const named = sheet({ kind: 'sheet', field: 'physical', op: 'mark', value: 'hurt' })
+    expect(effectsToStored([named], 'effects', {})).toEqual([
+      { kind: 'sheet', field: 'physical', op: 'mark', value: 'hurt' },
+    ])
   })
 })

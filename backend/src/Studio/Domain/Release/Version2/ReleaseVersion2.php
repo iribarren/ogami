@@ -188,7 +188,7 @@ final class ReleaseVersion2
         $stepsValid = true;
         foreach ($sceneTypeList as $index => $sceneType) {
             foreach (self::SCENE_TYPE_PARTS as $part) {
-                $steps = $stages->run(static fn (): array => Steps::list($sceneType[$part], \sprintf('sceneTypes[%d].%s', $index, $part), $catalog));
+                $steps = $stages->run(static fn (): array => Steps::list($sceneType[$part], \sprintf('sceneTypes[%d].%s', $index, $part), $catalog, 'setup' === $part));
                 if (null === $steps) {
                     $stepsValid = false;
                 } else {

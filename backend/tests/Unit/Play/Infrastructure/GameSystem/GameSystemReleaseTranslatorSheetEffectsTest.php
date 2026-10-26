@@ -81,7 +81,7 @@ final class GameSystemReleaseTranslatorSheetEffectsTest extends TestCase
         yield 'an option that breaks the key rule' => [self::FAIL_EFFECT, $effect('wounds', 'mark', ...['value' => 'Hurt']), $at.'.value: must be 1 to 64 characters among a-z, 0-9 and "-".'];
         yield 'a mark without an option, a push-cost pick' => [self::FAIL_EFFECT, $effect('wounds', 'mark'), $at.'.value: a mark without an option is allowed only in a push cost, where the player picks the option.'];
         yield 'a mark with an explicit null option' => [self::FAIL_EFFECT, $effect('wounds', 'mark', ...['value' => null]), $at.'.value: a mark without an option is allowed only in a push cost, where the player picks the option.'];
-        yield 'a mark in a check step\'s own effects' => ['sceneTypes.0.play.0.effects', [$effect('wounds', 'clear')], 'sceneTypes[0].play[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step.'];
+        yield 'a mark in a check step\'s own effects' => ['sceneTypes.0.play.0.effects', [$effect('wounds', 'clear')], 'sceneTypes[0].play[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step, in the effects of a character or prompt step and in the effects of a choice option (not the skip option).'];
     }
 
     #[Test]
@@ -167,7 +167,7 @@ final class GameSystemReleaseTranslatorSheetEffectsTest extends TestCase
     {
         $at = 'sceneTypes[0].play[0].outcomes[0].effects[0]';
         $sheet = ['kind' => 'sheet', 'field' => 'sanity', 'op' => 'subtract', 'value' => 1];
-        $placement = 'a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step.';
+        $placement = 'a sheet effect is allowed only in the outcomes of a check step, in the effects of a character or prompt step and in the effects of a choice option (not the skip option).';
 
         yield 'an unknown field' => [self::FAIL_EFFECT.'.field', 'ghost', $at.'.field: unknown sheet field "ghost".'];
         yield 'a derived field' => [self::FAIL_EFFECT.'.field', 'bonus', $at.'.field: field "bonus" is a derived field, a sheet effect changes number and track fields only.'];

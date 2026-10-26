@@ -10,7 +10,7 @@ use OpenApi\Attributes as OA;
 /**
  * One option of a choice step. What picking it does (effects, branches) stays on the server.
  */
-#[OA\Schema(required: ['key', 'label'])]
+#[OA\Schema(required: ['key', 'label', 'changesSheet'])]
 final readonly class FlowStepOptionResponse
 {
     private function __construct(
@@ -18,11 +18,13 @@ final readonly class FlowStepOptionResponse
         public string $key,
         #[OA\Property(example: 'Yes')]
         public string $label,
+        #[OA\Property(description: 'Whether picking the option changes a Character\'s sheet: the answer must then name the Character with "characterId".')]
+        public bool $changesSheet,
     ) {
     }
 
     public static function of(ChoiceOption $option): self
     {
-        return new self($option->key, $option->label);
+        return new self($option->key, $option->label, $option->changesSheet());
     }
 }

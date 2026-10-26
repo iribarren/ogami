@@ -20,4 +20,12 @@ final readonly class PromptStep extends Step
     ) {
         parent::__construct($key, $title, $prompt, $tip, $mandatory, $next, $effects);
     }
+
+    /**
+     * Whether completing the step changes a Character's sheet: the player names the Character.
+     */
+    public function changesSheet(): bool
+    {
+        return array_any($this->effects, static fn (Effect $effect): bool => $effect instanceof SheetEffect);
+    }
 }

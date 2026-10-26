@@ -2289,6 +2289,8 @@ export interface components {
             key: string;
             /** @example Yes */
             label: string;
+            /** @description Whether picking the option changes a Character's sheet: the answer must then name the Character with "characterId". */
+            changesSheet: boolean;
         };
         PickTagResponse: {
             /** @example leader */
@@ -2418,6 +2420,8 @@ export interface components {
             characters: components["schemas"]["ItemRefResponse"][];
             /** @description The keys of the oracle tables the prompt step offers as inspiration, in order; empty for the other kinds and for a prompt that offers none. The player may roll them; they never change the step. */
             inspiration: string[];
+            /** @description Whether completing the step changes a Character's sheet, so the answer must name the Character with "characterId" (prompt step); false for the other kinds. A choice step says it for each option instead. */
+            changesSheet: boolean;
             /** @description The roll the check step waits on until the player keeps or pushes it (ADR 0041); null while none does, and for the other kinds. While a roll pends, every other FlowRun command is refused. */
             pending: components["schemas"]["FlowStepPendingResponse"] | null;
         };
@@ -3131,7 +3135,7 @@ export interface components {
             /** @description Pick step in mode choose: the ids of the candidates chosen, between the step's minimum and maximum, none twice; an empty list when nothing matches. Must be omitted or null in mode random. */
             pickedIds?: string[] | null;
             /**
-             * @description Character step: the id of a Character of the campaign (check step: the Character who rolls, in the Scene or, outside one, the session party). Must be omitted or null for the other kinds.
+             * @description Character step: the id of a Character of the campaign (check step: the Character who rolls, in the Scene or, outside one, the session party). Choice step: the Character the picked option's sheet effects change, required when the option has some (its changesSheet). Prompt step: the Character its sheet effects change, required when the step has some (its changesSheet). Must be omitted or null for the other kinds and for a choice option or prompt without sheet effects.
              * @example 0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9701
              */
             characterId?: string | null;

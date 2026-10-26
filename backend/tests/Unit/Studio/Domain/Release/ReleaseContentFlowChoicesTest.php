@@ -26,6 +26,10 @@ final class ReleaseContentFlowChoicesTest extends TestCase
 
     private const array SHEET = ['kind' => 'sheet', 'field' => 'xp', 'op' => 'add', 'value' => 1];
 
+    private const array PROMPT_WITH_SHEET = ['key' => 'ask', 'kind' => 'prompt', 'title' => 'Ask', 'effects' => [self::SHEET]];
+
+    private const array CHOICE_WITH_SHEET = ['key' => 'pick', 'kind' => 'choice', 'title' => 'Pick', 'skip' => 'no', 'options' => [['key' => 'yes', 'label' => 'Yes', 'effects' => [self::SHEET]], ['key' => 'no', 'label' => 'No']]];
+
     #[Test]
     public function theNewShapesAreValidAndKeepTheirCanonicalForm(): void
     {
@@ -93,6 +97,8 @@ final class ReleaseContentFlowChoicesTest extends TestCase
         yield 'a check that is not a key' => ['sceneTypes.0.play.2.checks', ['grit', 3], $at.'[2].checks[1]: must be a string'];
         yield 'a difficulty for checks that declare none' => ['sceneTypes.0.play.2.difficulty', 3, $at.'[2].difficulty: check "grit" declares no difficulty'];
         yield 'a band no check of the set has' => ['sceneTypes.0.play.2.outcomes.0.band', 'bad', $at.'[2].outcomes[0].band: unknown band "bad" of checks "grit", "wits"'];
+        yield 'a prompt sheet effect in a Scene Type setup' => ['sceneTypes.0.setup', [self::PROMPT_WITH_SHEET], 'sceneTypes[0].setup[0].effects[0]: a sheet effect is allowed only in '];
+        yield 'a choice option sheet effect in a Scene Type setup' => ['sceneTypes.0.setup', [self::CHOICE_WITH_SHEET], 'sceneTypes[0].setup[0].options[0].effects[0]: a sheet effect is allowed only in '];
         yield 'an empty table map' => ['sceneTypes.0.play.3.tableBySceneType', [], $at.'[3].tableBySceneType: at least 1 Scene Type, 0 given'];
         yield 'a table map that is a list' => ['sceneTypes.0.play.3.tableBySceneType', ['wild-trouble'], $at.'[3].tableBySceneType: must be an object'];
         yield 'an unknown Scene Type in the map' => ['sceneTypes.0.play.3.tableBySceneType', ['ghost' => 'wild-trouble'], $at.'[3].tableBySceneType.ghost: unknown Scene Type "ghost"'];
@@ -118,6 +124,33 @@ final class ReleaseContentFlowChoicesTest extends TestCase
         } catch (InvalidReleaseContent $exception) {
             self::assertStringStartsWith($expectedMessage, $exception->getMessage());
         }
+    }
+
+    #[Test]
+    public function promptAndChoiceSheetEffectsAreAllowedInHooksAndPlayAndClosingButNotInSetup(): void
+    {
+        $flow = ['key' => 'main', 'name' => 'Main', 'defaultView' => 'journal', 'oracles' => [], 'trackers' => [], 'phases' => [['key' => 'only', 'name' => 'Only', 'mode' => 'loop', 'selection' => ['rule' => 'player', 'sceneTypes' => ['town']], 'sessionOpening' => [self::PROMPT_WITH_SHEET, [...self::CHOICE_WITH_SHEET, 'key' => 'pick']]]]];
+        $release = ReleaseArrays::with(ReleaseArrays::fixture(self::FIXTURE), 'flows', [$flow]);
+        $release = ReleaseArrays::with($release, 'sceneTypes.0.closing', [self::PROMPT_WITH_SHEET]);
+
+        /** @var array{flows: list<array{phases: list<array{sessionOpening: list<array<string, mixed>>}>}>} $canonical */
+        $canonical = ReleaseContent::fromArray($release)->toArray();
+
+        self::assertSame([self::SHEET], $canonical['flows'][0]['phases'][0]['sessionOpening'][0]['effects']);
+    }
+
+    #[Test]
+    public function theChecksOfASetShareTheirBandKeysInAnyOrder(): void
+    {
+        $bands = [['key' => 'miss', 'label' => 'Miss', 'upTo' => 6], ['key' => 'weak', 'label' => 'Weak', 'upTo' => 8], ['key' => 'strong', 'label' => 'Strong', 'upTo' => 10], ['key' => 'hit', 'label' => 'Hit']];
+        $reordered = [$bands[0], $bands[2], $bands[1], $bands[3]];
+        $reordered[1]['upTo'] = 8;
+        $reordered[2]['upTo'] = 10;
+        $release = ReleaseArrays::with(ReleaseArrays::fixture(self::FIXTURE), 'checks.0.bands', $bands);
+        $release = ReleaseArrays::with($release, 'checks.1.bands', $reordered);
+        $release = ReleaseArrays::with($release, 'sceneTypes.0.play.2.outcomes', [['band' => 'miss', 'next' => 'end']]);
+
+        self::assertNotSame('', ReleaseContent::fromArray($release)->hash());
     }
 
     #[Test]

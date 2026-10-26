@@ -41,7 +41,7 @@ final readonly class CompleteFlowStepRequest
             nullable: true,
         )]
         public ?array $pickedIds,
-        #[OA\Property(description: 'Character step: the id of a Character of the campaign (check step: the Character who rolls, in the Scene or, outside one, the session party). Must be omitted or null for the other kinds.', example: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9701', nullable: true)]
+        #[OA\Property(description: 'Character step: the id of a Character of the campaign (check step: the Character who rolls, in the Scene or, outside one, the session party). Choice step: the Character the picked option\'s sheet effects change, required when the option has some (its changesSheet). Prompt step: the Character its sheet effects change, required when the step has some (its changesSheet). Must be omitted or null for the other kinds and for a choice option or prompt without sheet effects.', example: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9701', nullable: true)]
         public ?string $characterId,
         #[OA\Property(description: 'Check step: the Check difficulty, within the min and max of the check; omitted or null for its default. Must be omitted or null when the step fixes one or the check declares none.', example: 15, nullable: true)]
         public ?int $difficulty,

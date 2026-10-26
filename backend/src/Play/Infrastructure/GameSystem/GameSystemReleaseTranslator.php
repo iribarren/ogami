@@ -652,10 +652,6 @@ final readonly class GameSystemReleaseTranslator
 
             $keys[$key] = true;
             $kind = $this->string($view, $step['kind'] ?? null, $stepPath.'.kind');
-            if ('prompt' === $kind) {
-                $this->refuseUnplayedSheetEffects($view, $step['effects'] ?? null, $stepPath.'.effects');
-            }
-
             // Studio publishes a table by Scene Type (ADR 0042) but Play does not roll one yet.
             if ('table' === $kind && isset($step['tableBySceneType'])) {
                 throw $this->invalid($view, $stepPath.'.tableBySceneType', 'a table by Scene Type is not played yet.');
@@ -668,8 +664,8 @@ final readonly class GameSystemReleaseTranslator
                 'tip' => $this->optionalString($view, $step['tip'] ?? null, $stepPath.'.tip'),
                 'mandatory' => $this->flag($view, $step['mandatory'] ?? null, $stepPath.'.mandatory'),
                 'next' => $this->optionalString($view, $step['next'] ?? null, $stepPath.'.next'),
-                // A character step completes with a Character, so its own effects may change the sheet.
-                'effects' => $this->effects($view, $step['effects'] ?? [], $stepPath.'.effects', 'character' === $kind),
+                // A character step and a prompt step complete with a Character the player picks, so their own effects may change the sheet.
+                'effects' => $this->effects($view, $step['effects'] ?? [], $stepPath.'.effects', \in_array($kind, ['character', 'prompt'], true)),
             ];
             $snapshots[] = match ($kind) {
                 'prompt' => new PromptStep(...$common, inspiration: $this->keys($view, $step['inspiration'] ?? [], $stepPath.'.inspiration')),
@@ -688,8 +684,8 @@ final readonly class GameSystemReleaseTranslator
                 'roll' => new RollStep(...$common, dice: $this->string($view, $step['dice'] ?? null, $stepPath.'.dice'), bands: $this->bands($view, $step['bands'] ?? [], $stepPath.'.bands')),
                 'choice' => new ChoiceStep(
                     ...$common,
-                    options: $this->options($view, $step['options'] ?? null, $stepPath.'.options'),
-                    skip: $this->optionalString($view, $step['skip'] ?? null, $stepPath.'.skip'),
+                    options: $this->options($view, $step['options'] ?? null, $stepPath.'.options', $skip = $this->optionalString($view, $step['skip'] ?? null, $stepPath.'.skip')),
+                    skip: $skip,
                 ),
                 'condition' => $this->conditionStep($view, $common, $step, $stepPath),
                 'pick' => $this->pickStep($view, $common, $step, $stepPath),
@@ -1614,36 +1610,26 @@ final readonly class GameSystemReleaseTranslator
     }
 
     /**
+     * @param ?string $skip the key of the option a skip follows: it completes without a Character, so its effects hold no sheet effect
+     *
      * @return list<ChoiceOption>
      */
-    private function options(PublishedReleaseView $view, mixed $options, string $path): array
+    private function options(PublishedReleaseView $view, mixed $options, string $path, ?string $skip): array
     {
         $snapshots = [];
         foreach ($this->list($view, $options, $path) as $index => $option) {
             $optionPath = \sprintf('%s[%d]', $path, $index);
             $fields = $this->object($view, $option, $optionPath);
-            $this->refuseUnplayedSheetEffects($view, $fields['effects'] ?? null, $optionPath.'.effects');
+            $key = $this->string($view, $fields['key'] ?? null, $optionPath.'.key');
+            // The player picks the Character a picked option's sheet effects change (ADR 0042).
             $snapshots[] = new ChoiceOption(
-                $this->string($view, $fields['key'] ?? null, $optionPath.'.key'),
+                $key,
                 $this->string($view, $fields['label'] ?? null, $optionPath.'.label'),
-                $this->outcome($view, $option, $optionPath),
+                $this->outcome($view, $option, $optionPath, $key !== $skip),
             );
         }
 
         return $snapshots;
-    }
-
-    /**
-     * Studio allows sheet effects on a choice option and a prompt step (ADR 0042); Play does not
-     * apply them yet, as neither result names a Character.
-     */
-    private function refuseUnplayedSheetEffects(PublishedReleaseView $view, mixed $effects, string $path): void
-    {
-        foreach (\is_array($effects) ? $effects : [] as $index => $effect) {
-            if (\is_array($effect) && 'sheet' === ($effect['kind'] ?? null)) {
-                throw $this->invalid($view, \sprintf('%s[%s]', $path, $index), 'a sheet effect on a choice option or a prompt step is not played yet.');
-            }
-        }
     }
 
     /**
@@ -1678,7 +1664,7 @@ final readonly class GameSystemReleaseTranslator
             $sceneType = fn (): string => $this->string($view, $effect['sceneType'] ?? null, $effectPath.'.sceneType');
             $kind = $this->string($view, $effect['kind'] ?? null, $effectPath.'.kind');
             if ('sheet' === $kind && !$sheet) {
-                throw $this->invalid($view, $effectPath, 'a sheet effect is allowed only in the outcomes of a check step and in the effects of a character step.');
+                throw $this->invalid($view, $effectPath, 'a sheet effect is allowed only in the outcomes of a check step, in the effects of a character or prompt step and in the effects of a choice option (not the skip option).');
             }
 
             $snapshots[] = match ($kind) {

@@ -292,6 +292,7 @@ final class FlowRun
         $rolledEffects = [];
         if ($step instanceof ChoiceStep) {
             $option = $step->option($answer) ?? throw InvalidStepResult::unknownOption($step->key, $answer);
+            $this->assertSheetCharacter($step, $option->changesSheet(), $result->characterId, $context);
             [$outcome, $answer] = [$option->outcome, $option->label];
         } elseif ($step instanceof TableStep) {
             $rolled = $result->table?->steps() ?? [];
@@ -340,8 +341,12 @@ final class FlowRun
 
                 return [];
             }
-        } elseif ($step instanceof PromptStep && '' === $answer) {
-            throw InvalidStepResult::blankAnswer($step->key);
+        } elseif ($step instanceof PromptStep) {
+            if ('' === $answer) {
+                throw InvalidStepResult::blankAnswer($step->key);
+            }
+
+            $this->assertSheetCharacter($step, $step->changesSheet(), $result->characterId, $context);
         }
 
         $this->answers[$step->key] = $answer;
@@ -359,7 +364,7 @@ final class FlowRun
             }
         }
 
-        // A character step's Character and a check step's checked Character are the ones sheet Effects change.
+        // A character step's Character, a check step's checked Character and the Character the player names for a choice option's or a prompt's sheet Effects are the ones they change.
         return $this->finish($step, $outcome, [...$step->effects, ...$rolledEffects, ...$outcome->effects ?? []], $answer, $context, $result->characterId);
     }
 
@@ -949,6 +954,28 @@ final class FlowRun
     }
 
     /**
+     * A choice option or a prompt that changes a sheet completes with a Character of the campaign;
+     * any other result names none.
+     *
+     * @throws InvalidStepResult
+     */
+    private function assertSheetCharacter(Step $step, bool $changesSheet, ?string $characterId, FlowRunContext $context): void
+    {
+        if (!$changesSheet) {
+            if (null !== $characterId) {
+                throw InvalidStepResult::unexpectedField($step->key, StepKind::of($step), 'characterId');
+            }
+
+            return;
+        }
+
+        $characterId ?? throw InvalidStepResult::missingField($step->key, StepKind::of($step), 'characterId');
+        if (null === $context->characterName($characterId)) {
+            throw InvalidStepResult::unknownCharacter($step->key, $characterId);
+        }
+    }
+
+    /**
      * @throws FlowRunNotActive
      * @throws FlowRunPositionMismatch
      */
@@ -1139,7 +1166,7 @@ final class FlowRun
      *
      * @param list<Effect> $effects
      * @param ?string      $answer      the step's answer text, which "{answer}" stands for
-     * @param ?string      $characterId the Character sheet Effects change; only a character or check step names one
+     * @param ?string      $characterId the Character sheet Effects change; a character or check step, a choice option or a prompt with sheet Effects names one
      *
      * @return list<SheetChange> what the sheet Effects changed, in apply order
      */

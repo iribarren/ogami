@@ -15,7 +15,7 @@ use App\Randomness\Domain\Roll;
 /**
  * What the player brings to complete a step, typed by step kind: a prompt's answer, a roll, a
  * table result, a likelihood answer, a choice option, the items a pick step picked, the Character a
- * character step names or the check a check step performed for a Character. "answer" is the step's answer text kept for
+ * character step names, the Character a choice option's or a prompt's sheet effects change, or the check a check step performed for a Character. "answer" is the step's answer text kept for
  * placeholders: the prompt text, the roll total, the entry texts, the answer label, the option key
  * (the FlowRun keeps the option's label) or the picked names joined with ", " (empty when nothing was
  * picked) or the label of the band a check landed in, so "{answer}" reads its outcome.
@@ -38,9 +38,12 @@ final readonly class StepResult
     ) {
     }
 
-    public static function prompt(string $text): self
+    /**
+     * @param ?string $characterId the Character a prompt with sheet effects changes; null when the step has none
+     */
+    public static function prompt(string $text, ?string $characterId = null): self
     {
-        return new self(StepKind::Prompt, trim($text));
+        return new self(StepKind::Prompt, trim($text), characterId: $characterId);
     }
 
     public static function roll(Roll $roll): self
@@ -95,8 +98,11 @@ final readonly class StepResult
         return new self(StepKind::Check, $result->band->label, characterId: $characterId, check: $result);
     }
 
-    public static function choice(string $optionKey): self
+    /**
+     * @param ?string $characterId the Character the picked option's sheet effects change; null when it has none
+     */
+    public static function choice(string $optionKey, ?string $characterId = null): self
     {
-        return new self(StepKind::Choice, $optionKey);
+        return new self(StepKind::Choice, $optionKey, characterId: $characterId);
     }
 }

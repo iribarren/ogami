@@ -147,7 +147,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
      */
     private function sheetChangeContent(StepResult $result, Campaign $campaign, array $changes): SheetChangeContent
     {
-        // Only a character or check step changes the sheet, and both name their Character.
+        // Only a step that changes the sheet gets here, and each names its Character.
         $id = $result->characterId ?? throw new \LogicException('A sheet change without a Character.');
 
         return SheetChangeContent::of($id, $campaign->itemNames(ItemKind::Character, [$id])[0] ?? '', array_map(static fn (SheetChange $change): array => $change->toArray(), $changes));
@@ -159,11 +159,11 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
     private function resultOf(CompleteFlowStep $command, Step $step, Campaign $campaign, GameSystemSnapshot $release, \DateTimeImmutable $at): array
     {
         return match (true) {
-            $step instanceof PromptStep => $this->prompt($command, $step),
+            $step instanceof PromptStep => $this->prompt($command, $step, $campaign),
             $step instanceof RollStep => $this->roll($command, $step),
             $step instanceof TableStep => $this->table($command, $step, $release),
             $step instanceof OracleStep => $this->oracle($command, $step, $campaign, $release),
-            $step instanceof ChoiceStep => $this->choice($command, $step),
+            $step instanceof ChoiceStep => $this->choice($command, $step, $campaign),
             $step instanceof PickStep => $this->pick($command, $step, $campaign),
             $step instanceof CharacterStep => $this->character($command, $step, $campaign),
             $step instanceof CheckStep => $this->check($command, $step, $campaign, $release, $at),
@@ -174,10 +174,11 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
     /**
      * @return array{StepResult, JournalEntryContent}
      */
-    private function prompt(CompleteFlowStep $command, PromptStep $step): array
+    private function prompt(CompleteFlowStep $command, PromptStep $step, Campaign $campaign): array
     {
-        $this->refuseFieldsOtherThan($command, $step, 'text');
-        $result = StepResult::prompt($command->text ?? throw InvalidStepResult::missingField($step->key, StepKind::Prompt, 'text'));
+        $this->refuseFieldsOtherThan($command, $step, 'text', 'characterId');
+        $text = $command->text ?? throw InvalidStepResult::missingField($step->key, StepKind::Prompt, 'text');
+        $result = StepResult::prompt($text, $this->sheetCharacter($command, $step, $step->changesSheet(), $campaign));
         if ('' === $result->answer) {
             throw InvalidStepResult::blankAnswer($step->key);
         }
@@ -228,13 +229,37 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
     /**
      * @return array{StepResult, JournalEntryContent}
      */
-    private function choice(CompleteFlowStep $command, ChoiceStep $step): array
+    private function choice(CompleteFlowStep $command, ChoiceStep $step, Campaign $campaign): array
     {
-        $this->refuseFieldsOtherThan($command, $step, 'optionKey');
+        $this->refuseFieldsOtherThan($command, $step, 'optionKey', 'characterId');
         $key = $command->optionKey ?? throw InvalidStepResult::missingField($step->key, StepKind::Choice, 'optionKey');
         $option = $step->option($key) ?? throw InvalidStepResult::unknownOption($step->key, $key);
 
-        return [StepResult::choice($key), ChoiceContent::of($step->title, $key, $option->label)];
+        return [StepResult::choice($key, $this->sheetCharacter($command, $step, $option->changesSheet(), $campaign)), ChoiceContent::of($step->title, $key, $option->label)];
+    }
+
+    /**
+     * The Character a choice option or a prompt that changes a sheet completes with: required and in
+     * the campaign when it does, refused when it does not.
+     *
+     * @throws InvalidStepResult
+     */
+    private function sheetCharacter(CompleteFlowStep $command, Step $step, bool $changesSheet, Campaign $campaign): ?string
+    {
+        if (!$changesSheet) {
+            if (null !== $command->characterId) {
+                throw InvalidStepResult::unexpectedField($step->key, StepKind::of($step), 'characterId');
+            }
+
+            return null;
+        }
+
+        $id = $command->characterId ?? throw InvalidStepResult::missingField($step->key, StepKind::of($step), 'characterId');
+        if (null === ($campaign->itemNames(ItemKind::Character, [$id])[0] ?? null)) {
+            throw InvalidStepResult::unknownCharacter($step->key, $id);
+        }
+
+        return $id;
     }
 
     /**

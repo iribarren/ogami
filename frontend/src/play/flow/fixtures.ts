@@ -40,6 +40,7 @@ function step(fields: Partial<FlowStep> & Pick<FlowStep, 'key' | 'kind' | 'title
     difficultyFixed: false,
     characters: [],
     inspiration: [],
+    changesSheet: false,
     pending: null,
     ...fields,
   }
@@ -78,9 +79,26 @@ export const choiceStep = step({
   kind: 'choice',
   title: 'Which way?',
   options: [
-    { key: 'left', label: 'Go left' },
-    { key: 'right', label: 'Go right' },
+    { key: 'left', label: 'Go left', changesSheet: false },
+    { key: 'right', label: 'Go right', changesSheet: false },
   ],
+})
+/** A `choice` step whose option "Learned" adds experience: the player names the Character. */
+export const sheetChoiceStep = step({
+  key: 'learned',
+  kind: 'choice',
+  title: 'Did you learn something?',
+  options: [
+    { key: 'learned', label: 'Learned', changesSheet: true },
+    { key: 'nothing', label: 'Nothing', changesSheet: false },
+  ],
+})
+/** A `prompt` step whose answer costs a Character hit points: the player names the Character. */
+export const sheetPromptStep = step({
+  key: 'cost',
+  kind: 'prompt',
+  title: 'What did it cost you?',
+  changesSheet: true,
 })
 
 /** A `character` step: the player picks a Character of the campaign, or creates one. */

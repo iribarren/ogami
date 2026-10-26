@@ -205,7 +205,7 @@ final class Effects
                 break;
             case 'sheet':
                 if (!$sheet) {
-                    throw InvalidReleaseContent::at($path, 'a sheet effect is allowed only in the outcomes of a check step, in the effects of a character or prompt step, in the effects of a choice option (not the skip option) and in the cost of a check push');
+                    throw InvalidReleaseContent::at($path, 'a sheet effect is allowed only in the outcomes of a check step, in the effects of a character or prompt step, in the effects of a choice option (not the skip option) and in the cost of a check push, never in a Scene Type\'s setup list (prompt steps and choice options there have no Character)');
                 }
 
                 $effect = self::sheetEffect($effect, $path, $catalog, $push);

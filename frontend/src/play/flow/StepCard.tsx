@@ -14,7 +14,8 @@ import { CheckStepForm } from './CheckStepForm'
 import { InspirationRolls } from './InspirationRolls'
 import { PendingCheckForm } from './PendingCheckForm'
 import { PickForm } from './PickForm'
-import type { FlowRunCommand, FlowStep } from './useFlowRun'
+import { SheetCharacterSelect } from './SheetCharacterSelect'
+import type { CompleteFlowStepRequest, FlowRunCommand, FlowStep } from './useFlowRun'
 
 const kindLabels: Record<FlowStep['kind'], string> = {
   prompt: 'Prompt',
@@ -112,9 +113,11 @@ function StepForm({ campaign, step, pending, onCommand }: StepProps) {
     case 'prompt':
       return (
         <PromptForm
+          campaign={campaign}
+          changesSheet={step.changesSheet}
           pending={pending}
-          onSubmit={(text) => {
-            answer({ text })
+          onSubmit={(text, characterId) => {
+            answer(characterId === undefined ? { text } : { text, characterId })
           }}
         />
       )
@@ -156,23 +159,7 @@ function StepForm({ campaign, step, pending, onCommand }: StepProps) {
         </Button>
       )
     case 'choice':
-      return (
-        <div role="group" aria-label="Options" className="flex flex-wrap gap-2">
-          {step.options.map((option) => (
-            <Button
-              key={option.key}
-              type="button"
-              variant="outline"
-              disabled={pending}
-              onClick={() => {
-                answer({ optionKey: option.key })
-              }}
-            >
-              {option.label}
-            </Button>
-          ))}
-        </div>
-      )
+      return <ChoiceForm campaign={campaign} step={step} pending={pending} onAnswer={answer} />
     case 'pick':
       return (
         <PickForm
@@ -214,13 +201,87 @@ function StepForm({ campaign, step, pending, onCommand }: StepProps) {
   }
 }
 
-function PromptForm({ pending, onSubmit }: { pending: boolean; onSubmit: (text: string) => void }) {
+/** The Character preselected for a step that changes a sheet: the only one, else none. */
+function onlyCharacterId(campaign: Campaign): string {
+  return campaign.characters.length === 1 ? (campaign.characters[0]?.id ?? '') : ''
+}
+
+/** The options as buttons; one that changes a sheet asks for the Character before it answers. */
+function ChoiceForm({
+  campaign,
+  step,
+  pending,
+  onAnswer,
+}: {
+  campaign: Campaign
+  step: FlowStep
+  pending: boolean
+  onAnswer: (fields: Omit<CompleteFlowStepRequest, 'stepKey'>) => void
+}) {
+  const [picked, setPicked] = useState<string | null>(null)
+  const [characterId, setCharacterId] = useState(() => onlyCharacterId(campaign))
+  const option = step.options.find(({ key }) => key === picked)
+
+  return (
+    <div className="space-y-2">
+      <div role="group" aria-label="Options" className="flex flex-wrap gap-2">
+        {step.options.map((candidate) => (
+          <Button
+            key={candidate.key}
+            type="button"
+            variant={candidate.key === picked ? 'default' : 'outline'}
+            aria-pressed={candidate.changesSheet ? candidate.key === picked : undefined}
+            disabled={pending}
+            onClick={() => {
+              if (candidate.changesSheet) {
+                setPicked(candidate.key)
+              } else {
+                setPicked(null)
+                onAnswer({ optionKey: candidate.key })
+              }
+            }}
+          >
+            {candidate.label}
+          </Button>
+        ))}
+      </div>
+      {option !== undefined && (
+        <form
+          className="space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            onAnswer({ optionKey: option.key, characterId })
+          }}
+        >
+          <SheetCharacterSelect campaign={campaign} value={characterId} onChange={setCharacterId} />
+          <Button type="submit" disabled={pending || characterId === ''}>
+            Confirm
+          </Button>
+        </form>
+      )}
+    </div>
+  )
+}
+
+/** The answer's text; a prompt that changes a sheet also asks for the Character. */
+function PromptForm({
+  campaign,
+  changesSheet,
+  pending,
+  onSubmit,
+}: {
+  campaign: Campaign
+  changesSheet: boolean
+  pending: boolean
+  onSubmit: (text: string, characterId: string | undefined) => void
+}) {
   const [text, setText] = useState('')
+  const [characterId, setCharacterId] = useState(() => onlyCharacterId(campaign))
   const textId = useId()
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
-    onSubmit(text)
+    onSubmit(text, changesSheet ? characterId : undefined)
   }
 
   return (
@@ -233,7 +294,13 @@ function PromptForm({ pending, onSubmit }: { pending: boolean; onSubmit: (text: 
           setText(event.target.value)
         }}
       />
-      <Button type="submit" disabled={pending || text.trim() === ''}>
+      {changesSheet && (
+        <SheetCharacterSelect campaign={campaign} value={characterId} onChange={setCharacterId} />
+      )}
+      <Button
+        type="submit"
+        disabled={pending || text.trim() === '' || (changesSheet && characterId === '')}
+      >
         Record
       </Button>
     </form>

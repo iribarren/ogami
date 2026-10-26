@@ -126,6 +126,7 @@ export function CheckSandbox({
         check,
         request,
         result: await pushCheck.mutateAsync({ check, request: { ...request, faces } }),
+        before: result,
       })
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Pushing the roll failed.')
@@ -260,6 +261,7 @@ export function CheckSandbox({
               >
                 <RollResult
                   result={entry.result}
+                  before={entry.before}
                   busy={busy}
                   onPush={() => {
                     void push(entry)
@@ -315,29 +317,28 @@ interface SandboxRoll {
   check: string
   request: SandboxRequest
   result: CheckTestRoll
+  /** On a pushed roll: the roll that was pushed, whose band the server computed before the push. */
+  before?: CheckTestRoll
 }
 
 type TestPool = NonNullable<CheckTestRoll['pool']>
 
-/** The band a number of successes reaches: the first whose bound is at least the number, else the last. */
-function bandOf(bands: CheckTestRoll['bands'], successes: number) {
-  return bands.find((band) => band.bound === null || successes <= band.bound)
-}
-
 /** One test roll: the total and the band reached, the dice and modifiers, every band with the reached one marked. */
 function RollResult({
   result,
+  before,
   busy,
   onPush,
 }: {
   result: CheckTestRoll
+  before: CheckTestRoll | undefined
   busy: boolean
   onPush: () => void
 }) {
   const { dice, pool, push } = result
   const reached = result.bands.find((band) => band.key === result.band)
-  const rolled =
-    result.rolledSuccesses === null ? undefined : bandOf(result.bands, result.rolledSuccesses)
+  // The band the roll reached before the push, as the server rolled it.
+  const rolled = before?.bands.find((band) => band.key === before.band)
   // A pushed roll cannot be pushed again; before a push, a failed die is what a push re-rolls.
   const pushable =
     pool !== null &&

@@ -92,7 +92,8 @@ final readonly class DoctrineJournalEntryRepository implements JournalEntryRepos
         $loaded = $this->ofId($pushed->id()) ?? throw new \LogicException(\sprintf('Journal entry "%s" is not kept.', $pushed->id()->toString()));
         $connection = $this->entityManager->getConnection();
         if ($asLatest) {
-            $connection->fetchOne('SELECT 1 FROM play_campaign WHERE id = :campaign FOR UPDATE', ['campaign' => $loaded->campaignId()->toString()]);
+            // Already held when the pusher locked the campaign before saving it; kept as a guard for any other caller.
+            $this->lockCampaignForPush($loaded->campaignId());
         }
 
         $updated = $connection->executeStatement(
@@ -111,6 +112,20 @@ final readonly class DoctrineJournalEntryRepository implements JournalEntryRepos
         }
 
         throw CheckAlreadyPushed::entry($pushed->id());
+    }
+
+    /**
+     * SELECT ... FOR UPDATE on the campaign row. Taken before the Campaign save (which takes
+     * FOR NO KEY UPDATE), so the push never upgrades a lock it holds: an upgrade can deadlock with a
+     * concurrent record, which inserts an entry (FOR KEY SHARE on the campaign) and then updates the campaign.
+     */
+    public function lockCampaignForPush(CampaignId $campaignId): void
+    {
+        if (!Uuid::isValid($campaignId->toString())) {
+            return;
+        }
+
+        $this->entityManager->getConnection()->fetchOne('SELECT 1 FROM play_campaign WHERE id = :campaign FOR UPDATE', ['campaign' => $campaignId->toString()]);
     }
 
     public function ofId(JournalEntryId $id): ?JournalEntry

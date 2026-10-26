@@ -247,6 +247,34 @@ final class CheckTestRollPoolTest extends TestCase
     }
 
     /**
+     * @return iterable<string, array{array<array-key, mixed>, string}> the change to a valid pool check and the label of the error
+     */
+    public static function otherUnreadableParts(): iterable
+    {
+        yield 'a band without a string key' => [['bands' => [['key' => 4, 'label' => 'Only']]], 'has a band 0 without a string key and label'];
+        yield 'a bound formula that does not parse' => [['bands' => [['key' => 'a', 'label' => 'A', 'upTo' => ['formula' => '{']], ['key' => 'b', 'label' => 'B']]], 'has a formula that does not parse'];
+        yield 'a difficulty without an integer default' => [['difficulty' => ['default' => 'hard']], 'has a difficulty without an integer default, min and max'];
+        yield 'a count formula that does not parse' => [['pool' => ['count' => ['formula' => '{'], 'sides' => 6, 'successAt' => 5]], 'has a formula that does not parse'];
+        yield 'a pool outside the kernel bounds' => [['pool' => ['count' => 0, 'sides' => 6, 'successAt' => 5]], 'has a pool that breaks the contract'];
+    }
+
+    /**
+     * @param array<array-key, mixed> $change
+     */
+    #[Test]
+    #[DataProvider('otherUnreadableParts')]
+    public function anErrorOutsideThePoolKeepsItsOwnLabel(array $change, string $label): void
+    {
+        try {
+            CheckTestRoll::fromStored([...$this->stored(), ...$change]);
+            self::fail('An unreadable check was read.');
+        } catch (CheckTestRollFailed $failed) {
+            self::assertStringContainsString($label, $failed->getMessage());
+            self::assertSame(str_contains($label, 'pool'), str_contains($failed->getMessage(), 'pool that breaks the contract'));
+        }
+    }
+
+    /**
      * @return iterable<string, array{\Closure(): CheckTestRoll}>
      */
     public static function impossibleChecks(): iterable

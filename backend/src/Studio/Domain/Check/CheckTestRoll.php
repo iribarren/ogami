@@ -102,8 +102,6 @@ final readonly class CheckTestRoll
                 null === $pool ? null : self::readPool($pool, $where),
                 null === $push ? null : self::readPush($push, $where),
             );
-        } catch (\InvalidArgumentException $invalid) {
-            throw CheckTestRollFailed::unreadable(\sprintf('%s has a pool that breaks the contract: %s', $where, rtrim($invalid->getMessage(), '.')), $invalid);
         } catch (InvalidDiceExpression|InvalidFormula $invalid) {
             throw CheckTestRollFailed::unreadable(\sprintf('%s has %s that does not parse: %s', $where, $invalid instanceof InvalidDiceExpression ? 'dice' : 'a formula', rtrim($invalid->getMessage(), '.')), $invalid);
         }
@@ -303,7 +301,16 @@ final readonly class CheckTestRoll
             $count = Formula::fromString(\is_string($formula) ? $formula : throw CheckTestRollFailed::unreadable($where.' has a pool count without a formula'));
         }
 
-        return new CheckTestPool(\is_int($count) || $count instanceof Formula ? $count : throw CheckTestRollFailed::unreadable($where.' has a pool count that is neither an integer nor a formula'), $sides, $successAt);
+        if (!\is_int($count) && !$count instanceof Formula) {
+            throw CheckTestRollFailed::unreadable($where.' has a pool count that is neither an integer nor a formula');
+        }
+
+        // Only the pool's own bounds are reported as a pool that breaks the contract: any other error keeps its own label.
+        try {
+            return new CheckTestPool($count, $sides, $successAt);
+        } catch (\InvalidArgumentException $invalid) {
+            throw CheckTestRollFailed::unreadable(\sprintf('%s has a pool that breaks the contract: %s', $where, rtrim($invalid->getMessage(), '.')), $invalid);
+        }
     }
 
     private static function readPush(mixed $stored, string $where): CheckTestPush

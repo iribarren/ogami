@@ -66,6 +66,11 @@ final class InMemoryJournalEntryRepository implements JournalEntryRepository
         $this->entries[$pushed->id()->toString()] = $pushed;
     }
 
+    public function lockCampaignForPush(CampaignId $campaignId): void
+    {
+        // Nothing to lock: no concurrent transactions.
+    }
+
     public function latestOfCampaign(CampaignId $campaignId): ?JournalEntry
     {
         $entries = $this->ofCampaign($campaignId);

@@ -561,6 +561,44 @@ describe('the test roll sandbox of a pool check', () => {
     expect(await sandbox.findByText('Rolled Partial, still Partial')).toBeVisible()
   })
 
+  it('saves an edit of the pool first, then rolls the saved check', async () => {
+    const { sent, record } = calls()
+    const edited = { ...raid, pool: { ...raid.pool, sides: 8 } }
+    const { user, sandbox, form } = await editCheck(
+      'raid',
+      raidHandlers({
+        [`PUT ${base}/checks/raid`]: record(
+          'save',
+          Response.json({ ...checks, version: 6, checks: [edited] }),
+        ),
+        [raidRoll]: record('roll', Response.json(poolRolled)),
+      }),
+    )
+    await replaceText(user, form.getByLabelText('Pool sides'), '8')
+
+    await user.click(roll(sandbox))
+
+    await sandbox.findByRole('list', { name: 'Test roll results' })
+    expect(sent.map(({ call }) => call)).toEqual(['save', 'roll'])
+    expect(sent[0]?.body).toMatchObject({ expectedVersion: 5, check: { pool: edited.pool } })
+  })
+
+  it('shows the band the server gave the pushed roll, not one worked out from its successes', async () => {
+    const { user, sandbox } = await editCheck(
+      'raid',
+      raidHandlers({
+        // The successes alone (1) would reach Partial; the server's band for the roll is Fail.
+        [raidRoll]: json({ ...poolRolled, band: 'fail' }),
+        [pushPath]: json(poolPushed),
+      }),
+    )
+    await user.click(roll(sandbox))
+
+    await user.click(await sandbox.findByRole('button', { name: 'Push the roll' }))
+
+    expect(await sandbox.findByText('Rolled Fail, pushed to Win')).toBeVisible()
+  })
+
   it('offers no push without a failed die, without a declared push, or for dice', async () => {
     const allWon = {
       ...poolRolled,

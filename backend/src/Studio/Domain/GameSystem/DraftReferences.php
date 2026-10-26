@@ -267,15 +267,16 @@ final class DraftReferences
      * `mark` or `clear` (a `clear` without a value clears all and names no option).
      *
      * @param array<string, mixed> $document
+     * @param string|null          $option   null lists every `mark` and `clear` of the field, whatever its option
      *
      * @return list<string>
      */
-    public static function conditionOptionPathsTo(array $document, string $field, string $option): array
+    public static function conditionOptionPathsTo(array $document, string $field, ?string $option = null): array
     {
         $paths = [];
         foreach (self::effectHolders($document) as $path => $holder) {
             foreach (self::objects($holder['effects'] ?? null) as $index => $effect) {
-                if ('sheet' === ($effect['kind'] ?? null) && $field === ($effect['field'] ?? null) && $option === ($effect['value'] ?? null) && \in_array($effect['op'] ?? null, ['mark', 'clear'], true)) {
+                if ('sheet' === ($effect['kind'] ?? null) && $field === ($effect['field'] ?? null) && (null === $option || $option === ($effect['value'] ?? null)) && \in_array($effect['op'] ?? null, ['mark', 'clear'], true)) {
                     $paths[] = \sprintf('%s.effects[%d]', $path, $index);
                 }
             }

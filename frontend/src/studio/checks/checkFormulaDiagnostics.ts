@@ -8,6 +8,7 @@ import {
 } from '@/shared/lib/formula'
 
 import type { ReferenceOption } from '../sheet/FormulaInput'
+import type { SheetFieldView } from '@/shared/sheet/types'
 import { positionOf, referenceProblem, type FormulaDiagnostics } from '../sheet/formulaDiagnostics'
 import { integer } from '@/shared/sheet/derivedValues'
 
@@ -17,10 +18,11 @@ import type { GameSystemChecks } from './useGameSystemChecks'
 /** Where a formula sits in a check: the modifier never reads `{check:…}`, a band bound may. */
 export type CheckFormulaScope = 'modifier' | 'band'
 
-export type Catalog = Pick<GameSystemChecks, 'fields' | 'trackers'> & {
-  /** The value a number field reads when nobody typed a sample: the sandbox's start; 0 without one. */
-  defaults?: Record<string, number>
-}
+export type Catalog = Pick<GameSystemChecks, 'fields' | 'trackers'> &
+  Partial<Pick<GameSystemChecks, 'conditions'>> & {
+    /** The value a number or conditions field reads when nobody typed a sample: the sandbox's start; 0 without one. */
+    defaults?: Record<string, number>
+  }
 
 /** The difficulty a check declares, as far as the form says: its default, when that is a whole number. */
 export interface DeclaredDifficulty {
@@ -87,7 +89,14 @@ export function checkFormulaDiagnostics({
     return { error: { message: error.message, position: error.position }, result: null }
   }
 
-  const types = new Map(catalog.fields.map((field) => [field.key, field.type]))
+  // A conditions field is not among the catalog's fields: the formula reads it as a count.
+  const types = new Map<string, SheetFieldView['type']>([
+    ...catalog.fields.map((field): [string, SheetFieldView['type']] => [field.key, field.type]),
+    ...(catalog.conditions ?? []).map((field): [string, SheetFieldView['type']] => [
+      field.key,
+      'conditions',
+    ]),
+  ])
   const trackerKeys = catalog.trackers.map((tracker) => tracker.key)
   for (const reference of formula.references) {
     const reason =
@@ -111,6 +120,9 @@ export function checkFormulaDiagnostics({
     }
     if (reference.kind === 'tracker') {
       return catalog.trackers.find(({ key }) => key === reference.key)?.initial ?? undefined
+    }
+    if (catalog.conditions?.some(({ key }) => key === reference.key) === true) {
+      return reference.kind === 'field' ? (catalog.defaults?.[reference.key] ?? 0) : undefined
     }
     const field = catalog.fields.find(({ key }) => key === reference.key)
     if (field?.type === 'number') {
@@ -148,6 +160,7 @@ export function checkReferences(
         ? [{ reference: `${field.key}.max`, label: `${field.label} max` }]
         : []),
     ]),
+    ...(catalog.conditions ?? []).map((field) => ({ reference: field.key, label: field.label })),
     ...catalog.trackers.map((tracker) => ({
       reference: `tracker:${tracker.key}`,
       label: tracker.label,

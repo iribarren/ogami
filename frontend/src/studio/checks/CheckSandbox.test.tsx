@@ -576,8 +576,9 @@ describe('the test roll sandbox of a pool check', () => {
     expect(pushed).toHaveTextContent('3 successes')
     expect(pushed).toHaveTextContent('6 (success)re-rolled')
     expect(pushed).toHaveTextContent('2 (no success)')
-    // Only the first roll can still be pushed.
-    expect(sandbox.getAllByRole('button', { name: 'Push the roll' })).toHaveLength(1)
+    // Neither the pushed roll nor the roll it came from can be pushed again.
+    expect(sandbox.queryByRole('button', { name: 'Push the roll' })).toBeNull()
+    expect(rolled).not.toHaveTextContent('Push the roll')
     // The roll stays in the history as it was.
     expect(rolled).toHaveTextContent('1 success')
   })

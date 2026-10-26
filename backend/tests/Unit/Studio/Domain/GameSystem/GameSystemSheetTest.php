@@ -349,6 +349,26 @@ final class GameSystemSheetTest extends TestCase
     }
 
     #[Test]
+    public function aConditionsFieldCannotBecomeAnotherTypeWhileAnEffectMarksOrClearsItWhateverTheOption(): void
+    {
+        $gameSystem = $this->conditionsDraft();
+        $document = $gameSystem->document();
+
+        // "mental" has no option an effect names: its only effect clears all, and the push marks "physical" without an option.
+        foreach (['mental' => 'sceneTypes[0].play[0].outcomes[1].effects[0]', 'physical' => 'checks[0].push.effects[0]'] as $key => $path) {
+            try {
+                $gameSystem->saveSheetField($key, ['key' => $key, 'label' => 'Changed', 'type' => 'number', 'min' => 0, 'max' => 5, 'default' => 0], $this->now);
+                self::fail('Expected SheetFieldInUse for '.$key);
+            } catch (SheetFieldInUse $inUse) {
+                self::assertContains($path, $inUse->paths());
+                self::assertStringStartsWith(\sprintf('The conditions field "%s" is used at ', $key), $inUse->getMessage());
+            }
+        }
+
+        $this->assertUntouched($gameSystem, $document);
+    }
+
+    #[Test]
     public function anOptionNoEffectMarksCanBeRemovedAndTheOthersAddedRelabelledOrReordered(): void
     {
         $gameSystem = $this->conditionsDraft();

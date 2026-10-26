@@ -80,7 +80,7 @@ export function ConditionOptionsEditor({
                 <OptionInput
                   label={`${name} key`}
                   placeholder="Key"
-                  className="w-32 flex-1"
+                  className="w-44 flex-[2]"
                   mono
                   describedBy={keyHintId}
                   value={option.key}
@@ -92,7 +92,7 @@ export function ConditionOptionsEditor({
                 <OptionInput
                   label={`${name} label`}
                   placeholder="Label"
-                  className="w-40 flex-[2]"
+                  className="w-48 flex-[3]"
                   value={option.label}
                   onChange={(label) => {
                     edit(index, (held) => editOptionLabel(held, label))

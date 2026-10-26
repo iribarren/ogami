@@ -492,6 +492,22 @@ final class GameSystemSheetApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aConditionsFieldCannotBecomeAnotherTypeWhileAnEffectMarksOrClearsIt(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', 'valid/v2-dice-pools');
+        $before = $this->sheet();
+
+        // A step clears "mental" without naming an option.
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/fields/mental', ['expectedVersion' => 1, 'field' => ['key' => 'mental', 'label' => 'Mental', 'type' => 'number', 'min' => 0, 'max' => 5, 'default' => 0]]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringStartsWith('The conditions field "mental" is used at ', $this->error());
+        self::assertContains('sceneTypes[0].play[0].outcomes[1].effects[0]', (array) $this->json()['paths']);
+        self::assertSame($before, $this->sheet());
+    }
+
+    #[Test]
     public function aLibraryPackRefusesThePointBudgetCommands(): void
     {
         $this->signIn('ann@example.com', ['GAME_MANAGER']);

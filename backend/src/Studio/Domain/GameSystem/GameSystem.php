@@ -271,7 +271,7 @@ final class GameSystem
      *
      * @throws SheetFieldNotFound    when the original key names no field
      * @throws SheetFieldKeyTaken    when the new key belongs to another field
-     * @throws SheetFieldInUse       when a renamed field is referenced outside itself, or an option it no longer has (removed or renamed) is marked or cleared by an effect
+     * @throws SheetFieldInUse       when a renamed field is referenced outside itself, or an option it no longer has (removed or renamed) or the conditions type itself is marked or cleared by an effect
      * @throws InvalidReleaseContent when the draft is schema version 1, the draft would break the item rules, or the sheet is not well-formed
      */
     public function saveSheetField(?string $originalKey, array $field, \DateTimeImmutable $now): void
@@ -916,12 +916,22 @@ final class GameSystem
      * An option is identified by its key, so renaming one is a drop plus an add: the effects that
      * mark or clear a dropped option are listed, and nothing cascades.
      *
+     * A conditions field replaced by another type keeps no options at all, so every effect that marks
+     * or clears it is listed, including the ones that name no option (a push cost, a clear of all).
+     *
      * @param array<array-key, mixed> $new
      *
-     * @throws SheetFieldInUse when an option of the stored field is missing from the new one and an effect names it
+     * @throws SheetFieldInUse when an option of the stored field is missing from the new one and an effect names it, or the field is no longer a conditions field and an effect marks or clears it
      */
     private function refuseWhenConditionOptionsAreReferenced(string $field, mixed $stored, array $new): void
     {
+        if (\is_array($stored) && 'conditions' === ($stored['type'] ?? null) && 'conditions' !== ($new['type'] ?? null)) {
+            $paths = DraftReferences::conditionOptionPathsTo($this->document, $field);
+            if ([] !== $paths) {
+                throw SheetFieldInUse::at(\sprintf('The conditions field "%s"', $field), $paths);
+            }
+        }
+
         $kept = $this->optionKeys($new);
         foreach ($this->optionKeys(\is_array($stored) ? $stored : []) as $option) {
             if (\in_array($option, $kept, true)) {

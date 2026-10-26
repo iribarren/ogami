@@ -145,11 +145,10 @@ function FieldForm({
   const message =
     error === null
       ? ''
-      : `${answer ? (answer.form ?? '') : error.message}${
-          error instanceof SheetError && error.paths.length > 0
-            ? ` Used by ${error.paths.join(', ')}.`
-            : ''
-        }`
+      : // An in-use message already says where ("… is used at X."): the paths are not repeated.
+        answer
+        ? (answer.form ?? '')
+        : error.message
   const { option: optionErrors, ...inputErrors } = errors
   const shown: Record<string, string | undefined> = { ...inputErrors, ...answer?.fields }
   // The client's messages about an option, and the publisher's after a refused save: the later wins.

@@ -16824,9 +16824,6 @@
             },
             "GameSystemOracleTableEntry": {
                 "description": "Ranged entries have \"min\" and \"max\"; weighted entries may have a \"weight\" (1 by default). An entry needs a \"text\" unless it nests a \"table\". \"key\", \"sceneType\" and \"effects\" are schema version 2 fields: kept as given, refused on a version 1 draft.",
-                "required": [
-                    "effects"
-                ],
                 "properties": {
                     "min": {
                         "description": "Lowest total this entry covers, on a ranged table.",
@@ -16879,7 +16876,8 @@
                         "items": {
                             "type": "object",
                             "additionalProperties": true
-                        }
+                        },
+                        "nullable": true
                     }
                 },
                 "type": "object"

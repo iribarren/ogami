@@ -35,7 +35,6 @@ import { SheetPreview } from './SheetPreview'
 import { useSheetSamples, type SampleValues, type SheetSamples } from './useSheetSamples'
 import { moveTarget, readField, sheetSections, type StoredField } from './sheetDraft'
 import {
-  SheetError,
   useDeleteSheetField,
   useGameSystemSheet,
   useMoveSheetField,
@@ -373,9 +372,6 @@ function DeleteFieldDialog({
         {remove.error && (
           <p role="alert" className="text-sm text-destructive">
             {remove.error.message}
-            {remove.error instanceof SheetError && remove.error.paths.length > 0
-              ? ` Used by ${remove.error.paths.join(', ')}.`
-              : ''}
           </p>
         )}
         {reloadFailed && (

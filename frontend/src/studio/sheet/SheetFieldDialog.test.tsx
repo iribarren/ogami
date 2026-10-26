@@ -365,7 +365,10 @@ describe('a refused save', () => {
   it('lists the places that read a field being renamed', async () => {
     const { user } = await openSheet({
       [`PUT ${base}/sheet/fields/pow`]: json(
-        { error: 'The field "pow" is in use.', paths: ['sheet.fields[3].formula'] },
+        {
+          error: 'The sheet field "pow" is used at sheet.fields[3].formula.',
+          paths: ['sheet.fields[3].formula'],
+        },
         422,
       ),
     })
@@ -373,8 +376,9 @@ describe('a refused save', () => {
     await user.click(await screen.findByRole('button', { name: 'Edit pow' }))
     await user.click(inDialog().getByRole('button', { name: 'Save field' }))
 
+    // The message already says where: the paths are not listed a second time.
     expect(await inDialog().findByRole('alert')).toHaveTextContent(
-      'The field "pow" is in use. Used by sheet.fields[3].formula.',
+      /^The sheet field "pow" is used at sheet\.fields\[3\]\.formula\.$/,
     )
   })
 
@@ -746,7 +750,7 @@ describe('a conditions field', () => {
     await user.click(inDialog().getByRole('button', { name: 'Save field' }))
 
     expect(await inDialog().findByRole('alert')).toHaveTextContent(
-      'The option "hurt" of the sheet field "physical" is used at checks[0].push.effects[0]. Used by checks[0].push.effects[0].',
+      /^The option "hurt" of the sheet field "physical" is used at checks\[0\]\.push\.effects\[0\]\.$/,
     )
     expect(inDialog().getByLabelText('Option 1 key')).toHaveValue('tired')
   })

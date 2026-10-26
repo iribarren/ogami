@@ -99,6 +99,7 @@ describe('the sheet preview', () => {
       />,
     )
     expect(preview().getByLabelText('Risk')).toHaveTextContent('0')
+    expect(preview().getByText('{tracker:heat} * 2')).toBeInTheDocument()
 
     await replaceText(user, preview().getByLabelText('Heat'), '4')
     expect(preview().getByLabelText('Risk')).toHaveTextContent('8')

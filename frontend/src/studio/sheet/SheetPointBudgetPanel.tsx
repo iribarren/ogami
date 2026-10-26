@@ -90,10 +90,13 @@ type BudgetInputs = Partial<Record<'key' | 'label' | 'total' | 'min' | 'max', st
 function writeBudget(
   draft: BudgetDraft,
   numberKeys: string[],
+  takenKeys: string[],
 ): { request: PointBudgetRequest } | { errors: BudgetInputs } {
   const errors: BudgetInputs = {}
   if (!keyRule.test(draft.key)) {
     errors.key = 'Use 1 to 64 lower case letters, digits and hyphens.'
+  } else if (takenKeys.includes(draft.key)) {
+    errors.key = 'Another budget uses this key.'
   }
   if (draft.label.trim() === '') {
     errors.label = 'Enter the label.'
@@ -323,6 +326,8 @@ function BudgetForm({
     const result = writeBudget(
       draft,
       numbers.map(({ key }) => key),
+      // An edit keeps its own key; an add must not replace a budget the keyed PUT would overwrite.
+      budget === null ? sheet.pointBudgets.map(({ key }) => key) : [],
     )
     if ('errors' in result) {
       setErrors(result.errors)

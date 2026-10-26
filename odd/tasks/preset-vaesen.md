@@ -1,7 +1,7 @@
 # Feature: preset-vaesen
 
 - **Locator:** `odd/tasks/preset-vaesen.md` · Engram topic `odd/preset-vaesen/tasks`
-- **Issue:** #294 · **Branch:** `feat/preset-vaesen-3-budgets-ui` · **Status:** in progress (slice 3)
+- **Issue:** #294 · **Branch:** `feat/preset-vaesen-4-skill-budget` · **Status:** in progress (slice 4)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B9 (after `rules-dice-pools`, [ADR 0041](../../docs/adr/0041-dice-pools-pushes-and-conditions.md), and `rules-flow-choices`, [ADR 0042](../../docs/adr/0042-flow-choices-check-sets-and-scene-tables.md))
@@ -79,9 +79,9 @@ Point budget map (explorer, 2026-10-26): publisher `Studio/Domain/Release/Versio
 | T5 | 2 | ADR: several point budgets per sheet (amends ADR 0040): shape, hash and legacy single budget, a field in one budget only, roll-or-points rule, Studio routes; contract doc | delegated writer (Opus, design; preparation trigger: code reading for the design) | [x] | 35c7f86 |
 | T6 | 2 | Contract, publisher and Studio backend: schema, validation, draft commands, in-use guards, views and API; tests; `make api` | delegated writer (Sonnet) | [x] | 01bde98, 4b816a3 |
 | T7 | 2 | Play backend: translator reads both shapes, `SheetTemplate` budgets, `CharacterCreation` per budget, pinned release response; tests | delegated writer (Sonnet) | [x] | 8cd0e3a |
-| T8 | 3 | Studio sheet: a list of budgets (add, edit, remove), error paths; tests and story | delegated writer (Sonnet) | [x] | |
-| T9 | 3 | Play character form: one counter per budget, submit blocked when any is over; tests | delegated writer (Sonnet) | [x] | |
-| T10 | 3 | S27: the effect-kind select shows every kind (no clipped tenth row); test | delegated writer (Sonnet) | [x] | |
+| T8 | 3 | Studio sheet: a list of budgets (add, edit, remove), error paths; tests and story | delegated writer (Sonnet) | [x] | c656d70 |
+| T9 | 3 | Play character form: one counter per budget, submit blocked when any is over; tests | delegated writer (Sonnet) | [x] | f2b77c5 |
+| T10 | 3 | S27: the effect-kind select shows every kind (no clipped tenth row); test | delegated writer (Sonnet) | [x] | af9d94d |
 | T11 | 4 | Remove the single-budget Studio endpoints (`PUT` / `DELETE …/sheet/point-budget`, commands, `several_point_budgets`), the Studio view's `pointBudget` and Play's pinned `pointBudget` (ADR 0043); slice 2 finding A-S goes with them; `make api` | delegated writer | [ ] | |
 | T12 | 4 | Lanterns: skill budget (8, at most 3) in Studio, publish, re-export unedited; `PresetsTest` update | parent (browser) + delegated writer | [ ] | |
 | T13 | 4 | Flow unit test (Clues and Nightfall, Nightfall ends the phase, a pushed step marks a Condition, Respite clears) and e2e spec (credits, a pool roll in the journal) | delegated writer | [ ] | |
@@ -148,6 +148,7 @@ Played 2026-10-26 by a Claude in Chrome worker as `mire-author@ogami.test`: camp
 - 2026-10-26: T8 done (writer, Sonnet): `SheetPointBudgetPanel` lists `pointBudgets` (label, key, total, fields, range) with add, edit and remove through `useSaveSheetPointBudgetEntry` / `useRemoveSheetPointBudgetEntry` only; the single-budget hooks are deleted (nothing else used them). A new budget's key follows its label with `slugOf` (as conditions options do) until typed, checked against the key rule client side; the key is read-only on edit; label required (a label-less legacy `points` budget is converted by editing it). `sheetPointBudgetAnswer(text, index)` maps `sheet.pointBudgets[i].<key|label|total|min|max|fields>` (edit: its index, add: the last); 409 keeps `ReloadLatest`. Tests (panel 21, `sheetError` 15) were written after the code, so no RED; `vitest run src/studio/sheet` 292 passed. Story shows two budgets.
 - 2026-10-26: T9 done (writer, Sonnet): `creationPlan` takes `pinnedRelease.pointBudgets` (no more `pointBudget` read in `CharactersPanel`, `CharacterStepForm`, `CharacterForm`): rollable = covers a dice field, method choice only when some budget is rollable, roll skips rollable budgets (fields read "Rolled at creation", bounds kept) and spends the others, points spends all; one `aria-live` counter per spent budget, each field bounded by its own budget, Save disabled while any spent budget is over or the method is unchosen. Tests (6 new with a Lore skill budget fixture `twoBudgetCampaign`, 5 existing moved to `pointBudgets`) were written after the code, so no RED (one test of mine failed once on a wrong sum, fixed); `vitest run src/play` 576 passed.
 - 2026-10-26: T10 done (writer, Sonnet): the panel capped at `max-h 20rem` (~320px) is shorter than ten rows (~340px), so the tenth kind hid behind a scroll. `Select` gains a `contentClassName` prop and the effect-kind select of `EffectsEditor` passes `max-h-[min(24rem,…available-height)]`; other selects keep 20rem. jsdom measures no height, so the test checks that all ten kinds are options (in order) and that the panel carries the 24rem cap. RED: the class assertion failed before the change; GREEN after. Chrome check of the real height is left to the slice's Chrome pass.
+- 2026-10-27: Slice 3 finding W fixed (writer, Sonnet): Add refuses a key another budget already uses ("Another budget uses this key."), edit keeps its read-only key. RED: the new panel test failed before the change, GREEN after (panel 23).
 
 ## Reviews
 
@@ -155,7 +156,8 @@ Played 2026-10-26 by a Claude in Chrome worker as `mire-author@ogami.test`: camp
 |---|---|---|---|---|
 | 1 | — | ed44865, 43ab5a1 | Review on 43ab5a1 offered, skipped by the user; no findings | [#295](https://github.com/iribarren/ogami/pull/295) |
 | 2 | `review-87aecb3c8f1fd2f6` (35c7f86–01bde98), `review-47259e8074827396` (8cd0e3a–4b816a3) | 35c7f86, 01bde98, 8cd0e3a, 4b816a3 | Both parts approved and acknowledged; ~3,060 lines (user-approved oversize). Findings: A-W `GameSystemSheetPointBudgetsTest.php:205-210` the malformed-list test throws in its fixture, the guard is untested (fixed in slice 3); A-S `GameSystem.php:588-591` the single `PUT` renames a keyed one-entry budget to `points` (goes with the endpoint in T11); B-W `GetCampaignHandler.php:59` a several-budget release is playable but the Play form reads only `pointBudget` (fixed by T9); B-S `SheetTemplate.php:56-57` a field repeated in one budget gives a misleading message, untested (fixed in slice 3) | [#296](https://github.com/iribarren/ogami/pull/296) |
+| 3 | `review-8145f8989b106d27` | e598ed0, c656d70, f2b77c5, af9d94d | Approved and acknowledged; ~965 lines. Finding: W `SheetPointBudgetPanel.tsx:95-97` Add checks only the key format, not whether the key is taken, so the keyed `PUT` silently replaces an existing budget (label "Points" gives key `points`, the legacy budget) (fixed in slice 4). Open: S27 list height in Chrome (slice 4 Chrome pass) | [#297](https://github.com/iribarren/ogami/pull/297) |
 
 ## Next step
 
-Slice 3 review, then push and PR; slice 4 (T11–T14).
+Slice 4: slice 3 fix, T11 removal, T12 skill budget (Studio in Chrome, re-export), T13 tests, T14 wrap-up; review, PR, closing doc commit.

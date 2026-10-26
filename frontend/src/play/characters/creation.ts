@@ -3,13 +3,13 @@ import type { SheetFieldView } from '@/shared/sheet/types'
 
 import type { Campaign } from '../campaigns/useCampaigns'
 
-/** How a Character is created when the sheet offers a choice (ADR 0040). */
+/** How a Character is created when the sheet offers a choice (ADR 0040, 0043). */
 export type CreationMethod = 'roll' | 'points'
-export type PointBudget = NonNullable<Campaign['pinnedRelease']['pointBudget']>
+export type PointBudget = Campaign['pinnedRelease']['pointBudgets'][number]
 
 /** What the creation form asks of the player and leaves to the server, for the chosen method. */
 export interface CreationPlan {
-  /** The player picks the method: the budget covers a field with a dice default. */
+  /** The player picks the method: some budget covers a field with a dice default. */
   choice: boolean
   /** Whether the form may be submitted as far as the method goes. */
   ready: boolean
@@ -17,40 +17,45 @@ export interface CreationPlan {
   method: CreationMethod | null
   /** The fields the server sets (rolled numbers, start max tracks) and what the form says about each. */
   setAtCreation: Map<string, string>
-  /** The budget fields the player gives a value, bounded by the budget. */
-  bounded: Set<string>
-  /** Whether the player spends the budget: the points counter applies. */
-  spent: boolean
+  /** The budget fields the player gives a value, each with the budget that bounds it. */
+  bounded: Map<string, PointBudget>
+  /** The budgets the player spends, in list order: each has a points counter. */
+  spent: PointBudget[]
 }
 
 const rolls = (field: SheetFieldView | undefined) => (field?.roll ?? null) !== null
 
 /**
- * Which fields of a new Character the player sets and which the server does. By roll the server
- * rolls every dice default; the player only sets the budget fields without one. By points the
- * player spends the whole budget and the server rolls the dice fields outside it. A budget with
- * nothing to roll is spent without a choice. Until the player chooses, the form reads as by roll.
+ * Which fields of a new Character the player sets and which the server does. A budget is
+ * *rollable* when it covers a dice field. The player picks a method only when some budget is
+ * rollable. By roll the server rolls every dice default and the player spends only the budgets
+ * that are not rollable (a rollable budget's other fields are set inside its bounds, with no
+ * total); by points the player spends every budget and the server rolls the dice fields outside
+ * them. With nothing to roll the method is points without a choice. Until the player chooses,
+ * the form reads as by roll.
  */
 export function creationPlan(
   fields: SheetFieldView[],
-  budget: PointBudget | null,
+  budgets: PointBudget[],
   chosen: CreationMethod | null,
 ): CreationPlan {
   const byKey = new Map(fields.map((field) => [field.key, field]))
-  const choice = budget?.fields.some((key) => rolls(byKey.get(key))) === true
-  const method: CreationMethod | null = budget === null ? null : choice ? chosen : 'points'
-  const spent = method === 'points'
+  const rollable = (budget: PointBudget) => budget.fields.some((key) => rolls(byKey.get(key)))
+  const choice = budgets.some(rollable)
+  const method: CreationMethod | null = budgets.length === 0 ? null : choice ? chosen : 'points'
+  const spent = budgets.filter((budget) => method === 'points' || !rollable(budget))
+  const spentKeys = new Set(spent.flatMap((budget) => budget.fields))
 
   const setAtCreation = new Map<string, string>()
-  const bounded = new Set<string>()
+  const bounded = new Map<string, PointBudget>()
   for (const field of fields) {
-    const inBudget = budget?.fields.includes(field.key) === true
-    if (field.type === 'number' && rolls(field) && !(spent && inBudget)) {
+    const budget = budgets.find(({ fields: covered }) => covered.includes(field.key))
+    if (field.type === 'number' && rolls(field) && !spentKeys.has(field.key)) {
       setAtCreation.set(field.key, `Rolled at creation: ${field.roll ?? ''}`)
     } else if (field.type === 'track' && (field.startMax ?? null) !== null) {
       setAtCreation.set(field.key, `Set at creation: ${field.startMax ?? ''}`)
-    } else if (inBudget) {
-      bounded.add(field.key)
+    } else if (budget !== undefined) {
+      bounded.set(field.key, budget)
     }
   }
 

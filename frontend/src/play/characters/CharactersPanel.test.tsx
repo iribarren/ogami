@@ -11,6 +11,7 @@ import {
   creationBudget,
   creationCampaign,
   creationSheet,
+  twoBudgetCampaign,
   initiativeField,
   lostMineWithCharacters,
   nightJobCampaign,
@@ -630,7 +631,7 @@ describe('creating a Character by the rules of the sheet', () => {
         pinnedRelease: {
           ...creationCampaign.pinnedRelease,
           sheet: plain,
-          pointBudget: { ...creationBudget, label: null },
+          pointBudgets: [{ key: 'points', ...creationBudget, label: null }],
         },
       },
       sent,
@@ -675,12 +676,135 @@ describe('creating a Character by the rules of the sheet', () => {
     expect(bodyOf(sent).values).not.toHaveProperty('str')
   })
 
+  it('gives each budget its own counter, spending only the unrollable one by roll', async () => {
+    const sent: unknown[] = []
+    const { user, panel } = await addCharacter(twoBudgetCampaign, sent)
+
+    await user.click(panel.getByRole('radio', { name: 'Roll' }))
+    // The characteristics budget is rollable: rolled, no counter. Skill points are still spent.
+    expect(panel.getByLabelText('Strength')).toHaveTextContent('Rolled at creation: 3d6*5')
+    expect(panel.queryByText(/Characteristic points:/)).not.toBeInTheDocument()
+    expect(panel.getByText('Skill points: 0 / 8')).toBeInTheDocument()
+    const lore = panel.getByLabelText('Lore')
+    expect(lore).toHaveAttribute('max', '3')
+    await user.clear(lore)
+    await user.type(lore, '3')
+    expect(panel.getByText('Skill points: 3 / 8')).toBeInTheDocument()
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(bodyOf(sent)).toMatchObject({ method: 'roll', values: { lore: 3 } })
+    })
+    expect(bodyOf(sent).values).not.toHaveProperty('str')
+  })
+
+  it('spends every budget by points, each bounded by its own budget', async () => {
+    const sent: unknown[] = []
+    const { user, panel } = await addCharacter(twoBudgetCampaign, sent)
+
+    await user.click(panel.getByRole('radio', { name: 'Spend points' }))
+    expect(panel.getByText('Characteristic points: 30 / 100')).toBeInTheDocument()
+    expect(panel.getByText('Skill points: 0 / 8')).toBeInTheDocument()
+    expect(panel.getByLabelText('Strength')).toHaveAttribute('max', '90')
+    expect(panel.getByLabelText('Lore')).toHaveAttribute('max', '3')
+    expect(panel.getByLabelText('Lore')).not.toHaveAttribute('min', '15')
+    await user.clear(panel.getByLabelText('Lore'))
+    await user.type(panel.getByLabelText('Lore'), '2')
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(bodyOf(sent)).toMatchObject({
+        method: 'points',
+        values: { str: 15, con: 15, lore: 2 },
+      })
+    })
+  })
+
+  it('blocks Save while a budget is over, by points', async () => {
+    const { user, panel } = await addCharacter(twoBudgetCampaign)
+
+    await user.click(panel.getByRole('radio', { name: 'Spend points' }))
+    await user.clear(panel.getByLabelText('Strength'))
+    await user.type(panel.getByLabelText('Strength'), '90')
+    await user.clear(panel.getByLabelText('Constitution'))
+    await user.type(panel.getByLabelText('Constitution'), '20')
+    expect(panel.getByText('Characteristic points: 110 / 100 (over budget)')).toHaveClass(
+      'text-destructive',
+    )
+    expect(panel.getByText('Skill points: 0 / 8')).not.toHaveClass('text-destructive')
+    expect(panel.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await user.clear(panel.getByLabelText('Constitution'))
+    await user.type(panel.getByLabelText('Constitution'), '15')
+    expect(panel.getByText('Characteristic points: 105 / 100 (over budget)')).toBeInTheDocument()
+    expect(panel.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await user.clear(panel.getByLabelText('Strength'))
+    await user.type(panel.getByLabelText('Strength'), '85')
+    expect(panel.getByText('Characteristic points: 100 / 100')).toBeInTheDocument()
+    expect(panel.getByRole('button', { name: 'Save' })).toBeEnabled()
+  })
+
+  it('blocks Save while the unrollable budget is over, by roll', async () => {
+    const campaign: typeof twoBudgetCampaign = {
+      ...twoBudgetCampaign,
+      pinnedRelease: {
+        ...twoBudgetCampaign.pinnedRelease,
+        pointBudgets: [
+          { key: 'points', ...creationBudget },
+          {
+            key: 'skills',
+            label: 'Skill points',
+            total: 2,
+            fields: ['lore'],
+            min: null,
+            max: null,
+          },
+        ],
+      },
+    }
+    const { user, panel } = await addCharacter(campaign)
+
+    await user.click(panel.getByRole('radio', { name: 'Roll' }))
+    await user.clear(panel.getByLabelText('Lore'))
+    await user.type(panel.getByLabelText('Lore'), '3')
+
+    expect(panel.getByText('Skill points: 3 / 2 (over budget)')).toBeInTheDocument()
+    expect(panel.getByRole('button', { name: 'Save' })).toBeDisabled()
+  })
+
+  it('needs a method before it can be saved when only one budget is rollable', async () => {
+    const { panel } = await addCharacter(twoBudgetCampaign)
+
+    expect(panel.getByRole('radiogroup')).toBeVisible()
+    expect(panel.getByRole('button', { name: 'Save' })).toBeDisabled()
+  })
+
+  it('has no method choice when no budget is rollable, and spends every budget', async () => {
+    const sent: unknown[] = []
+    const plain = twoBudgetCampaign.pinnedRelease.sheet.map((field) => ({ ...field, roll: null }))
+    const { user, panel } = await addCharacter(
+      {
+        ...twoBudgetCampaign,
+        pinnedRelease: { ...twoBudgetCampaign.pinnedRelease, sheet: plain },
+      },
+      sent,
+    )
+
+    expect(panel.queryByRole('radiogroup')).not.toBeInTheDocument()
+    expect(panel.getByText('Characteristic points: 30 / 100')).toBeInTheDocument()
+    expect(panel.getByText('Skill points: 0 / 8')).toBeInTheDocument()
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(bodyOf(sent)).toMatchObject({ method: 'points' })
+    })
+  })
+
   it('creates a sheet without a budget as before, with no method, but still leaves rolled fields to the server', async () => {
     const sent: unknown[] = []
     const { user, panel } = await addCharacter(
       {
         ...creationCampaign,
-        pinnedRelease: { ...creationCampaign.pinnedRelease, pointBudget: null },
+        pinnedRelease: { ...creationCampaign.pinnedRelease, pointBudgets: [] },
       },
       sent,
     )

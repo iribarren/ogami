@@ -38,9 +38,9 @@ function startingDraft(field: SheetFieldView, budget: PointBudget): Draft {
  * form keeps what was typed. Derived fields are shown read-only, recomputed as the player types
  * from the drafts and the Campaign's `trackers`; they are never submitted.
  *
- * Adding follows the sheet's creation rules (ADR 0040, see `creationPlan`): the player picks Roll
- * or Spend points when the `pointBudget` covers a dice field, spends the points against a counter,
- * and never sends a value for what the server sets (rolled numbers, start max tracks). Editing
+ * Adding follows the sheet's creation rules (ADR 0040 and 0043, see `creationPlan`): the player
+ * picks Roll or Spend points when a point budget covers a dice field, spends the points of each
+ * budget against its own counter, and never sends a value for what the server sets (rolled numbers, start max tracks). Editing
  * ignores all of it.
  */
 export function CharacterForm({
@@ -48,7 +48,7 @@ export function CharacterForm({
   sheet,
   trackers,
   releaseTags,
-  pointBudget = null,
+  pointBudgets = [],
   pending,
   error,
   onSubmit,
@@ -59,8 +59,8 @@ export function CharacterForm({
   sheet: SheetTemplateView
   trackers: Tracker[]
   releaseTags: ReleaseTag[]
-  /** The sheet's point budget; used only when adding a Character. */
-  pointBudget?: PointBudget | null
+  /** The sheet's point budgets; used only when adding a Character. */
+  pointBudgets?: PointBudget[]
   pending: boolean
   error: string | undefined
   onSubmit: (fields: CharacterFields) => void
@@ -72,28 +72,35 @@ export function CharacterForm({
   // A field the Character has no value for starts as its default.
   const stored = storedFields(sheet.fields)
   const [chosen, setChosen] = useState<CreationMethod | null>(null)
-  const plan = character === null ? creationPlan(sheet.fields, pointBudget, chosen) : null
+  const plan = character === null ? creationPlan(sheet.fields, pointBudgets, chosen) : null
   const [drafts, setDrafts] = useState<Record<string, Draft>>(() =>
     Object.fromEntries(
-      stored.map((field) => [
-        field.key,
-        character === null && pointBudget?.fields.includes(field.key) === true
-          ? startingDraft(field, pointBudget)
-          : toDraft(field, character?.values[field.key]),
-      ]),
+      stored.map((field) => {
+        const budget = pointBudgets.find(({ fields }) => fields.includes(field.key))
+        return [
+          field.key,
+          character === null && budget !== undefined
+            ? startingDraft(field, budget)
+            : toDraft(field, character?.values[field.key]),
+        ]
+      }),
     ),
   )
   const shown: SheetTemplateView =
-    plan === null || pointBudget === null
+    plan === null
       ? sheet
       : {
           ...sheet,
-          fields: sheet.fields.map((field) =>
-            plan.bounded.has(field.key) ? withBudgetBounds(field, pointBudget) : field,
-          ),
+          fields: sheet.fields.map((field) => {
+            const budget = plan.bounded.get(field.key)
+            return budget === undefined ? field : withBudgetBounds(field, budget)
+          }),
         }
-  const spent = plan?.spent === true && pointBudget !== null ? pointsSpent(pointBudget, drafts) : 0
-  const overBudget = plan?.spent === true && pointBudget !== null && spent > pointBudget.total
+  const counters = (plan?.spent ?? []).map((budget) => ({
+    budget,
+    spent: pointsSpent(budget, drafts),
+  }))
+  const overBudget = counters.some(({ budget, spent }) => spent > budget.total)
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -160,15 +167,16 @@ export function CharacterForm({
             ))}
           </div>
         )}
-        {plan?.spent === true && pointBudget !== null && (
+        {counters.map(({ budget, spent }) => (
           <p
+            key={budget.key}
             aria-live="polite"
-            className={overBudget ? 'text-sm font-medium text-destructive' : 'text-sm'}
+            className={spent > budget.total ? 'text-sm font-medium text-destructive' : 'text-sm'}
           >
-            {pointBudget.label ?? 'Points'}: {spent} / {pointBudget.total}
-            {overBudget && ' (over budget)'}
+            {budget.label ?? 'Points'}: {spent} / {budget.total}
+            {spent > budget.total && ' (over budget)'}
           </p>
-        )}
+        ))}
         <SheetFields
           template={shown}
           drafts={drafts}

@@ -4115,9 +4115,9 @@ export interface components {
              */
             label: string;
             /** @description The cost: sheet and tracker effect objects as the release contract defines them (at most 10). A mark without an option lets the player pick one. */
-            effects: {
+            effects?: {
                 [key: string]: unknown;
-            }[];
+            }[] | null;
         };
         /** @description Integers between -1,000 and 1,000 with min <= default <= max. */
         GameSystemCheckDifficulty: {

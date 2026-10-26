@@ -104,6 +104,9 @@ final readonly class CheckTestRoll
             );
         } catch (InvalidDiceExpression|InvalidFormula $invalid) {
             throw CheckTestRollFailed::unreadable(\sprintf('%s has %s that does not parse: %s', $where, $invalid instanceof InvalidDiceExpression ? 'dice' : 'a formula', rtrim($invalid->getMessage(), '.')), $invalid);
+        } catch (\InvalidArgumentException $invalid) {
+            // Whatever invariant of the check or its parts a stored draft breaks: unreadable, never a 500.
+            throw CheckTestRollFailed::unreadable(\sprintf('%s breaks the contract: %s', $where, rtrim($invalid->getMessage(), '.')), $invalid);
         }
     }
 
@@ -320,10 +323,18 @@ final readonly class CheckTestRoll
             throw CheckTestRollFailed::unreadable($where.' has a push without a label');
         }
 
+        if (mb_strlen($label) > CheckTestPush::MAX_LABEL) {
+            throw CheckTestRollFailed::unreadable(\sprintf('%s has a push that breaks the contract: the label is longer than %d characters', $where, CheckTestPush::MAX_LABEL));
+        }
+
         // The cost is never applied in a test roll, but a push that is not an object with a list of effects is not a push.
         $effects = $stored['effects'] ?? [];
         if (!\is_array($effects) || !array_is_list($effects)) {
             throw CheckTestRollFailed::unreadable($where.' has push effects that are not a list');
+        }
+
+        if (\count($effects) > CheckTestPush::MAX_EFFECTS || array_any($effects, static fn (mixed $effect): bool => !\is_array($effect) || array_is_list($effect))) {
+            throw CheckTestRollFailed::unreadable(\sprintf('%s has a push that breaks the contract: at most %d effects, each an object', $where, CheckTestPush::MAX_EFFECTS));
         }
 
         return new CheckTestPush($label);

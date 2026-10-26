@@ -11,9 +11,9 @@ import {
 } from './effectDraft'
 import { every } from './effectFixtures'
 
-function round(stored: unknown[]) {
+function round(stored: unknown[], allowPick = true) {
   const errors = {}
-  const effects = effectsToStored(effectsToDrafts(stored), 'effects', errors)
+  const effects = effectsToStored(effectsToDrafts(stored), 'effects', errors, allowPick)
   return { effects, errors }
 }
 
@@ -210,12 +210,31 @@ describe('a sheet effect on a conditions field', () => {
   it('writes an option only when there is one', () => {
     const mark = sheet({ kind: 'sheet', field: 'physical', op: 'mark' })
 
-    expect(effectsToStored([mark], 'effects', {})).toEqual([
+    expect(effectsToStored([mark], 'effects', {}, true)).toEqual([
       { kind: 'sheet', field: 'physical', op: 'mark' },
     ])
     const named = sheet({ kind: 'sheet', field: 'physical', op: 'mark', value: 'hurt' })
     expect(effectsToStored([named], 'effects', {})).toEqual([
       { kind: 'sheet', field: 'physical', op: 'mark', value: 'hurt' },
     ])
+  })
+
+  it('refuses a mark with no option unless the player may pick, keyed like a publisher path', () => {
+    const mark = sheet({ kind: 'sheet', field: 'physical', op: 'mark' })
+
+    const errors: Record<string, string> = {}
+    effectsToStored([mark], 'steps.0.effects', errors)
+    expect(errors).toEqual({ 'steps.0.effects.0.value': 'Pick the option to mark.' })
+
+    const allowed: Record<string, string> = {}
+    effectsToStored([mark], 'steps.0.effects', allowed, true)
+    expect(allowed).toEqual({})
+  })
+
+  it('never refuses a clear of all, or a mark that names its option', () => {
+    expect(round([{ kind: 'sheet', field: 'physical', op: 'clear' }], false).errors).toEqual({})
+    expect(
+      round([{ kind: 'sheet', field: 'physical', op: 'mark', value: 'hurt' }], false).errors,
+    ).toEqual({})
   })
 })

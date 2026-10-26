@@ -15489,8 +15489,7 @@
             "GameSystemCheckPush": {
                 "description": "Only on a check with a pool. A push is offered when a die failed.",
                 "required": [
-                    "label",
-                    "effects"
+                    "label"
                 ],
                 "properties": {
                     "label": {
@@ -15507,6 +15506,7 @@
                             "type": "object",
                             "additionalProperties": true
                         },
+                        "nullable": true,
                         "maxItems": 10
                     }
                 },

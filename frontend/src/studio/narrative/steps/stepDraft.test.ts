@@ -364,6 +364,20 @@ describe('a step draft', () => {
     })
   })
 
+  it('refuses a mark with no option in an outcome, where only a push cost lets the player pick', () => {
+    const marking = {
+      ...check,
+      outcomes: [
+        { band: 'success', effects: [{ kind: 'sheet', field: 'stress', op: 'mark' }] },
+        { band: 'fail', next: 'end' },
+      ],
+    }
+
+    expect(round(marking)).toEqual({
+      errors: { '0.outcomes.0.effects.0.value': 'Pick the option to mark.' },
+    })
+  })
+
   it('writes the outcome of a band in the check band order, keeping where each had been', () => {
     const bands = ['fail', 'partial', 'success']
     const { outcomes } = draftOf(check, 'check')

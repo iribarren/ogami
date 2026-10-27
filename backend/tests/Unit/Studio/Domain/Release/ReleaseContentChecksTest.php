@@ -128,7 +128,7 @@ final class ReleaseContentChecksTest extends TestCase
         yield 'neither dice nor a pool' => [static fn (array $release): array => ReleaseArrays::without($release, 'checks.0.pool'), 'checks[0].dice: required unless the check declares a pool'];
         yield 'a modifier with a pool' => [$set('checks.0.modifier', '{agility}'), 'checks[0].modifier: a pool check has no modifier, its count formula sizes the pool'];
         yield 'a pool that is not an object' => [$set('checks.0.pool', 6), 'checks[0].pool: must be an object'];
-        yield 'a pool with an unknown property' => [$set('checks.0.pool', ['count' => 1, 'sides' => 6, 'successAt' => 6, 'hunger' => 1]), 'checks[0].pool.hunger: unknown property'];
+        yield 'a pool with an unknown property' => [$set('checks.0.pool', ['count' => 1, 'sides' => 6, 'successAt' => 6, 'explode' => 1]), 'checks[0].pool.explode: unknown property'];
         yield 'a pool without a count' => [$set('checks.0.pool', ['sides' => 6, 'successAt' => 6]), 'checks[0].pool.count: required'];
         yield 'a pool without sides' => [$set('checks.0.pool', ['count' => 1, 'successAt' => 6]), 'checks[0].pool.sides: required'];
         yield 'a pool without successAt' => [$set('checks.0.pool', ['count' => 1, 'sides' => 6]), 'checks[0].pool.successAt: required'];

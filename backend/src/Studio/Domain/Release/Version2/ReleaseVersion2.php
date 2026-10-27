@@ -55,7 +55,10 @@ final class ReleaseVersion2
     /** Fields of "gameSystem" in schema version 2, in schema order: name => required. */
     public const array GAME_SYSTEM = ['key' => true, 'name' => true, 'description' => false, 'credits' => false];
 
-    private const array CREDITS = ['notice' => true, 'license' => false, 'url' => false];
+    private const array CREDITS = ['notice' => true, 'license' => false, 'url' => false, 'badge' => false];
+
+    /** The publisher logos credits may name; the SPA ships each image (ADR 0044). */
+    public const array BADGES = ['dark-pack'];
 
     /** Top-level fields of schema version 2, in schema order: name => required. */
     public const array RELEASE = [
@@ -233,10 +236,10 @@ final class ReleaseVersion2
     }
 
     /**
-     * The optional credits of the GameSystem (ADR 0021): a notice and, when given, a license name
-     * and an absolute https:// URL. Returned in schema order without null fields.
+     * The optional credits of the GameSystem (ADR 0021): a notice and, when given, a license name,
+     * an absolute https:// URL and a badge (ADR 0044). Returned in schema order without null fields.
      *
-     * @return array{notice: string, license?: string, url?: string}
+     * @return array{notice: string, license?: string, url?: string, badge?: string}
      */
     public static function credits(mixed $value): array
     {
@@ -254,6 +257,10 @@ final class ReleaseVersion2
             }
 
             $checked['url'] = $url;
+        }
+
+        if (isset($credits['badge'])) {
+            $checked['badge'] = ReleaseFields::oneOf($credits['badge'], $path.'.badge', self::BADGES);
         }
 
         return $checked;

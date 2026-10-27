@@ -154,6 +154,7 @@ final class DraftReferencesTest extends TestCase
         yield 'derived sheet field' => ['tracker', 'heat', ['sheet' => ['fields' => [['key' => 'hp', 'type' => 'number'], ['key' => 'cool', 'type' => 'derived', 'formula' => '10 - {tracker:heat}']]]], ['sheet.fields[1]']];
         yield 'check modifier' => ['tracker', 'heat', ['checks' => [['key' => 'shoot', 'modifier' => '{agility} - {tracker:heat}']]], ['checks[0]']];
         yield 'check pool count formula' => ['tracker', 'heat', ['checks' => [['key' => 'raid', 'pool' => ['count' => ['formula' => '{agility} + {tracker:heat}'], 'sides' => 6, 'successAt' => 5]]]], ['checks[0].pool.count.formula']];
+        yield 'check Hunger count formula' => ['tracker', 'heat', ['checks' => [['key' => 'feed', 'pool' => ['count' => 3, 'sides' => 10, 'successAt' => 6, 'hunger' => ['count' => ['formula' => '{tracker:heat}']]]]]], ['checks[0].pool.hunger.count.formula']];
         yield 'check push tracker effect' => ['tracker', 'heat', ['checks' => [['key' => 'raid', 'push' => ['label' => 'Pay', 'effects' => [['kind' => 'sheet', 'field' => 'hp', 'op' => 'add', 'value' => 1], ['kind' => 'tracker', 'tracker' => 'heat', 'op' => 'add', 'value' => 1]]]]]], ['checks[0].push.effects[1]']];
         yield 'check push effect value formula' => ['tracker', 'heat', ['checks' => [['key' => 'raid', 'push' => ['label' => 'Pay', 'effects' => [['kind' => 'sheet', 'field' => 'hp', 'op' => 'subtract', 'value' => ['formula' => '{tracker:heat}']]]]]]], ['checks[0].push.effects[0]']];
         yield 'check band bound' => ['tracker', 'heat', ['checks' => [['key' => 'shoot', 'bands' => [['key' => 'miss', 'upTo' => ['tracker' => 'heat']], ['key' => 'hit', 'upTo' => ['formula' => '{tracker:heat} + 3']], ['key' => 'crit']]]]], ['checks[0].bands[0]', 'checks[0].bands[1]']];
@@ -420,7 +421,7 @@ final class DraftReferencesTest extends TestCase
     }
 
     #[Test]
-    public function aSheetFieldIsReferencedByAPoolCountFormulaAndTheCostOfAPush(): void
+    public function aSheetFieldIsReferencedByAPoolOrHungerCountFormulaAndTheCostOfAPush(): void
     {
         $document = $this->sheetDocument();
         $document['sheet'] = [];
@@ -433,11 +434,12 @@ final class DraftReferencesTest extends TestCase
                 ['kind' => 'sheet', 'field' => 'hp', 'op' => 'add', 'value' => ['formula' => '{pow.max}']],
                 ['kind' => 'sheet', 'field' => 'hurt', 'op' => 'mark'],
             ]]],
-            ['key' => 'fixed', 'pool' => ['count' => 3, 'sides' => 6, 'successAt' => 5]],
+            ['key' => 'fixed', 'pool' => ['count' => 3, 'sides' => 6, 'successAt' => 5, 'hunger' => ['count' => 1]]],
+            ['key' => 'feed', 'pool' => ['count' => 3, 'sides' => 10, 'successAt' => 6, 'hunger' => ['count' => ['formula' => 'min({pow}, 3)']]]],
         ];
 
         self::assertSame(
-            ['checks[1].pool.count.formula', 'checks[1].push.effects[1]', 'checks[1].push.effects[2]'],
+            ['checks[1].pool.count.formula', 'checks[3].pool.hunger.count.formula', 'checks[1].push.effects[1]', 'checks[1].push.effects[2]'],
             DraftReferences::sheetFieldPathsTo($document, 'pow'),
         );
         self::assertSame(['checks[1].push.effects[2]'], DraftReferences::sheetFieldPathsTo($document, 'hp'));

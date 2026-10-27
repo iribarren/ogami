@@ -8,9 +8,10 @@ namespace App\Studio\Domain\Release\Version2;
  * The keys a schema version 2 release declares, so steps, effects, bands and selections can check
  * that what they name exists.
  *
- * The shape of a check, as steps see it: the difficulty range it declares (null: no difficulty) and its band keys.
+ * The shape of a check, as steps see it: the difficulty range it declares (null: no difficulty), its band keys
+ * and the special results it can produce (ADR 0044).
  *
- * @phpstan-type CheckShape array{difficulty: array{min: int|null, max: int|null}|null, bands: array<string, true>}
+ * @phpstan-type CheckShape array{difficulty: array{min: int|null, max: int|null}|null, bands: array<string, true>, specials: array<string, true>}
  *
  * @internal
  */

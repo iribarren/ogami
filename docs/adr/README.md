@@ -47,6 +47,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0041 | [Dice pools, pushed rolls and conditions](0041-dice-pools-pushes-and-conditions.md) | Accepted |
 | 0042 | [Sheet effects on choices and prompts, check sets and tables by scene type](0042-flow-choices-check-sets-and-scene-tables.md) | Accepted |
 | 0043 | [Several point budgets per sheet](0043-several-point-budgets.md) | Accepted |
+| 0044 | [Hunger dice, critical pairs and special results](0044-hunger-dice-criticals-and-special-results.md) | Accepted |
 
 ## Template
 

@@ -132,7 +132,7 @@ final class DraftReferences
      * The places that name this tracker: flow "trackers", "tracker" effects and their values, a
      * condition's tracker, band bounds, check step difficulties, {tracker:key} placeholders, a
      * likelihood oracle's chaos, table entry effects, derived sheet fields and checks (modifier,
-     * pool count formula, bands and the effects of a push).
+     * pool and Hunger count formulas, bands and the effects of a push).
      *
      * @param array<string, mixed> $document
      *
@@ -212,7 +212,7 @@ final class DraftReferences
 
     /**
      * The places that name this sheet field key: derived field formulas, start max formulas, the
-     * point budget's field lists, check modifiers, pool count formulas and band
+     * point budget's field lists, check modifiers, pool and Hunger count formulas and band
      * formulas reading {key} or {key.max}, and sheet effects whose "field" is the key or whose
      * {formula} value reads it, in steps, outcomes, table entries and the cost of a check's push. Flow formulas read trackers
      * only, so they never name a field.
@@ -254,6 +254,7 @@ final class DraftReferences
             $paths += self::sheetFormulaPaths($check['modifier'] ?? null, $key, $path.'.modifier');
             $count = \is_array($check['pool'] ?? null) ? $check['pool']['count'] ?? null : null;
             $paths += self::sheetFormulaPaths(\is_array($count) ? $count['formula'] ?? null : null, $key, $path.'.pool.count.formula');
+            $paths += self::sheetFormulaPaths(self::hungerFormula($check), $key, $path.'.pool.hunger.count.formula');
             foreach (self::objects($check['bands'] ?? null) as $bandIndex => $band) {
                 $upTo = $band['upTo'] ?? null;
                 $paths += self::sheetFormulaPaths(\is_array($upTo) ? $upTo['formula'] ?? null : null, $key, \sprintf('%s.bands[%d].upTo.formula', $path, $bandIndex));
@@ -431,6 +432,7 @@ final class DraftReferences
             yield from self::formulaReferences($check['modifier'] ?? null, $path);
             $count = \is_array($check['pool'] ?? null) ? $check['pool']['count'] ?? null : null;
             yield from self::formulaReferences(\is_array($count) ? $count['formula'] ?? null : null, $path.'.pool.count.formula');
+            yield from self::formulaReferences(self::hungerFormula($check), $path.'.pool.hunger.count.formula');
             if (\is_array($check['push'] ?? null)) {
                 yield from self::effectsReferences($check['push'], $path.'.push');
             }
@@ -652,6 +654,19 @@ final class DraftReferences
                 yield \sprintf('checks[%d].push', $index) => $check['push'];
             }
         }
+    }
+
+    /**
+     * The formula of a check pool's Hunger count (ADR 0044), if it has one.
+     *
+     * @param array<array-key, mixed> $check
+     */
+    private static function hungerFormula(array $check): mixed
+    {
+        $hunger = \is_array($check['pool'] ?? null) ? $check['pool']['hunger'] ?? null : null;
+        $count = \is_array($hunger) ? $hunger['count'] ?? null : null;
+
+        return \is_array($count) ? $count['formula'] ?? null : null;
     }
 
     /**

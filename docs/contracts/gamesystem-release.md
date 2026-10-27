@@ -161,7 +161,7 @@ A step list (`setup`, `play`, `closing` and each hook) holds at most 50 steps.
 | `condition` | exactly one of `tracker` or `count: {of: npc \| thread \| character, tags?: [key] (≤5)}`, plus `bands: [Band]` (1–20) | The tracker exists, or the tags exist and are unique. A `count` compares the number of open NPCs or Threads, or of Characters, carrying all the tags to the bands. Never `mandatory`; never skipped; writes no journal entry |
 | `pick` | `of: npc \| thread \| character`, `tags?: [key]` (≤5), `mode: random \| choose`, `count?: {min, max}`, `branches?: {found?, none?}` | Tags exist and are unique; `1 ≤ min ≤ max ≤ 10`, default `{min: 1, max: 1}`; branches are `{next?, effects?}`. `mandatory` allowed. Picks open items (every Character) carrying all the tags: `random` draws, `choose` lets the player select |
 | `character` | — | Completes with a Character of the Campaign (see [Sheet](#sheet-additive-in-schema-version-2)). `mandatory`, `next` and `effects` as for `prompt`; no branches. `{step:key}` may name it |
-| `check` | exactly one of `check` (check key) or `checks` (2–10 check keys, [ADR 0042](../adr/0042-flow-choices-check-sets-and-scene-tables.md)), `difficulty?: int \| {tracker: key} \| {formula: string}`, `outcomes?: [{band, next?, effects?}]` (≤10) | The check exists. In `checks` each key is a known check, once, and every check has the same band keys, in any order (the player picks the check when rolling). `difficulty` only for a check (every check of a set) that declares one: an integer within its `min..max` of each, or a tracker or [flow formula](#formulas-adr-0023). Each `band` names a band of the check (the shared bands of a set), once; a band without an outcome continues. See [Checks](#checks-additive-in-schema-version-2) |
+| `check` | exactly one of `check` (check key) or `checks` (2–10 check keys, [ADR 0042](../adr/0042-flow-choices-check-sets-and-scene-tables.md)), `difficulty?: int \| {tracker: key} \| {formula: string}`, `outcomes?: [{band, next?, effects?} \| {special, next?, effects?}]` (≤13) | The check exists. In `checks` each key is a known check, once, and every check has the same band keys, in any order (the player picks the check when rolling). `difficulty` only for a check (every check of a set) that declares one: an integer within its `min..max` of each, or a tracker or [flow formula](#formulas-adr-0023). Each outcome names exactly one of `band` or `special` (≤13 entries). Each `band` names a band of the check (the shared bands of a set), once; a band without an outcome continues. Each `special` (`critical`, `messyCritical`, `bestialFailure`) appears once and only when the check (every check of a set) can produce it; it wins over the band's outcome ([special results](#special-results-adr-0044)). See [Checks](#checks-additive-in-schema-version-2) |
 
 Every `next` (of a step, band, branch, option, `otherwise`, `pick` branch or check outcome) follows the forward-only rule of the step list it is in. Branches and `otherwise` are `{next?, effects?}`.
 
@@ -235,12 +235,13 @@ A release may carry **credits** ([ADR 0021](adr/0021-release-credits-for-fan-pre
 
 | Part | Shape | Rules |
 |---|---|---|
-| `gameSystem.credits` | optional object, or `null` | Exactly `notice`, `license`, `url`; any other property is rejected |
+| `gameSystem.credits` | optional object, or `null` | Exactly `notice`, `license`, `url`, `badge`; any other property is rejected |
 | `credits.notice` | required string | 1–2000 characters, not blank once trimmed |
 | `credits.license` | optional string, or `null` | At most 200 characters. The name of the license or policy |
 | `credits.url` | optional string, or `null` | At most 500 characters, an absolute `https://` URL with a host (`http://` and relative URLs are rejected) |
+| `credits.badge` | optional string, or `null` | `dark-pack` ([ADR 0044](../adr/0044-hunger-dice-criticals-and-special-results.md)): a publisher logo the SPA ships and shows beside the notice. Any other value is rejected; a release never carries an image |
 
-Adding it is additive and only in schema version 2; a schema version 1 `gameSystem` still rejects `credits`. Null fields are omitted from the canonical form, so a release without credits keeps its hash. Play's translator reads credits into the snapshot, a release stored without them reads as no credits, and the API carries them as `credits` on each game system of the catalog and as `pinnedRelease.credits` on a Campaign (`null` without credits).
+Adding it is additive and only in schema version 2; a schema version 1 `gameSystem` still rejects `credits`. Null fields are omitted from the canonical form, so a release without credits, or without a badge, keeps its hash. Play's translator refuses `badge` until `preset-vtm-chronicle` slice 3 plays it. It reads credits into the snapshot, a release stored without them reads as no credits, and the API carries them as `credits` on each game system of the catalog and as `pinnedRelease.credits` on a Campaign (`null` without credits).
 
 ### Sheet (additive in schema version 2)
 
@@ -323,7 +324,7 @@ A **sheet effect** changes a Character's `number`, `track` or `conditions` field
 - **Order.** Effects apply in list order with the step, all or nothing.
 - **Track start.** A track starts full. A `character` step's effect sets a different start, e.g. `{kind: sheet, field: sanity, op: set, value: {formula: "{pow}"}}`.
 
-Play plays the sheet effects of a choice option and a prompt step: the answer names the Character (`characterId`, required when the picked option or the prompt has sheet effects, refused otherwise; the step response flags it with `changesSheet`), and the translator refuses a sheet effect on the option the `skip` names. Its translator refuses a `checks` set and a `tableBySceneType` until the slices of `rules-flow-choices` that play them, so a release using one can be published but not played yet. (It refused the `sheet` kind before `preset-real-system` slice 7.) It keeps refusing `mark` and `clear` (unknown sheet operation) until Play plays conditions ([ADR 0041](../adr/0041-dice-pools-pushes-and-conditions.md)).
+Play plays the sheet effects of a choice option and a prompt step: the answer names the Character (`characterId`, required when the picked option or the prompt has sheet effects, refused otherwise; the step response flags it with `changesSheet`), and the translator refuses a sheet effect on the option the `skip` names. Its translator reads `checks` sets, `tableBySceneType` ([ADR 0042](../adr/0042-flow-choices-check-sets-and-scene-tables.md)) and the `mark` and `clear` operations ([ADR 0041](../adr/0041-dice-pools-pushes-and-conditions.md)). (It refused the `sheet` kind before `preset-real-system` slice 7.)
 
 ### Checks (additive in schema version 2)
 
@@ -363,14 +364,18 @@ A check may roll a **pool** instead of a dice expression, and a pool check may b
 
 | Part | Shape | Rules |
 |---|---|---|
-| `pool` | `{count, sides, successAt}`, exactly these properties | `count` is an integer from 1 to 100 or a `{formula}` (1–200 characters) in the sheet scope of a `modifier`. `sides` is an integer from 2 to 1,000. `successAt` is an integer from 1 to `sides`: a die succeeds when its face is at least `successAt`. The check total is the number of successes; bands and difficulty work on it as before |
-| `push` | `{label (1–100), effects? (0–10)}` | Only on a check with a `pool`. `label` names the cost. `effects` are `sheet` and `tracker` effects, applied with the push; sheet effects there follow the [sheet effect](#sheet-effects-adr-0027) rules (the rolling Character, the sheet formula scope) and may `mark` without an option |
+| `pool` | `{count, sides, successAt, criticals?, hunger?}`, no other property | `count` is an integer from 1 to 100 or a `{formula}` (1–200 characters) in the sheet scope of a `modifier`. `sides` is an integer from 2 to 1,000. `successAt` is an integer from 1 to `sides`: a die succeeds when its face is at least `successAt`. The check total is the number of successes; bands and difficulty work on it as before |
+| `pool.criticals` | `{bonus}` | `bonus` is an integer from 1 to 10. Every pair of dice showing the top face (`sides`), in any group, adds `bonus` successes ([ADR 0044](../adr/0044-hunger-dice-criticals-and-special-results.md)) |
+| `pool.hunger` | `{count}` | `count` is an integer from 0 to 100 or a `{formula}` in the scope of `pool.count`. That many dice of the sized pool, clamped to 0..size, are Hunger dice: same `successAt`, never pushed ([ADR 0044](../adr/0044-hunger-dice-criticals-and-special-results.md)) |
+| `push` | `{label (1–100), effects? (0–10), maxDice?}` | Only on a check with a `pool`. `label` names the cost. `effects` are `sheet` and `tracker` effects, applied with the push; sheet effects there follow the [sheet effect](#sheet-effects-adr-0027) rules (the rolling Character, the sheet formula scope) and may `mark` without an option. A push re-rolls failed regular dice, never Hunger dice. `maxDice` (1–100) caps them at the first N failed regular dice in roll order; without it every failed regular die re-rolls |
 
 Domain checks, each failing with its path, such as `checks[0].pool.successAt` or `checks[0].push.effects[1].value`:
 
 - Both or neither of `dice` and `pool` is an error (`checks[0]`, `checks[0].dice`), and so is a `modifier` with a `pool` (`checks[0].modifier`): the count formula sizes the pool.
 - `successAt` is at most `sides`; a `count` formula reads only what a `modifier` may.
 - `push` without a `pool` is an error (`checks[0].push`); push effects of any kind but `sheet` and `tracker` are an error (`checks[0].push.effects[0].kind`).
+- A `hunger.count` formula reads only what `pool.count` may (`checks[0].pool.hunger.count.formula`).
+- A step outcome naming a special result its check cannot produce is an error (`sceneTypes[0].play[0].outcomes[1].special`), and so is an outcome naming both or neither of `band` and `special`.
 
 Example:
 
@@ -383,11 +388,34 @@ Example:
 }
 ```
 
-The fixture `valid/v2-dice-pools.json` has the whole release. Play's translator refuses `pool`, `push`, the `conditions` field type and the `mark` and `clear` operations (unknown property, unknown field type, unknown sheet operation) until the slices that play them, so a release using them can be published but not played yet.
+The fixture `valid/v2-dice-pools.json` has the whole release. Play's translator reads `pool`, `push` and the `conditions` field type, and re-checks every rule above.
+
+#### Special results (ADR 0044)
+
+A pool roll has at most one special result, computed from its dice after the bonus of critical pairs ([ADR 0044](../adr/0044-hunger-dice-criticals-and-special-results.md)):
+
+| Special | When | Needs |
+|---|---|---|
+| `bestialFailure` | The roll fails and a Hunger die shows 1 | `pool.hunger` |
+| `messyCritical` | The roll does not fail and a critical pair holds a Hunger die | `pool.criticals` and `pool.hunger` |
+| `critical` | The roll does not fail and has a critical pair (and is not a messy critical) | `pool.criticals` |
+
+A roll **fails** when its total is below its difficulty, for a check that declares one; otherwise when its outcome is the first band of a check with two bands or more. Pairs take Hunger dice first, then regular dice, each in roll order. A push recomputes the total, the band and the special result from the dice after the re-roll. Journalled dice carry the group `pool` (regular) or `hunger`.
+
+```json
+"pool": {"count": {"formula": "{wits} + {streetwise}"}, "sides": 10, "successAt": 6, "criticals": {"bonus": 2}, "hunger": {"count": {"formula": "{hunger}"}}},
+"push": {"label": "Spend Willpower", "maxDice": 3, "effects": [{"kind": "sheet", "field": "willpower", "op": "subtract", "value": 1}]}
+```
+
+```json
+"outcomes": [{"band": "fail", "next": "retreat"}, {"special": "bestialFailure", "next": "compulsion"}]
+```
+
+The fixture `valid/v2-hunger-dice.json` has the whole release. Play's translator refuses `criticals`, `hunger` and `maxDice` until `preset-vtm-chronicle` slice 2, and `special` outcomes until slice 3, so a release using them can be published but not played yet.
 
 ### Formulas (ADR 0023)
 
-A **formula** is a string of 1–200 characters in seven places: a `derived` field's `formula`, a band's `upTo: {formula}`, a tracker effect's `value: {formula}`, a sheet effect's `value: {formula}`, a check's `modifier`, a pool's `count: {formula}` and a check band's `upTo: {formula}`; a check step's `difficulty: {formula}` is a flow formula. The JSON Schema checks the shape (a `{formula}` object has exactly the property `formula`); the Studio validator parses it with the Formula kernel and checks what the schema cannot. Syntax summary (full grammar in [ADR 0023](../adr/0023-formula-kernel-and-derived-values.md), terms in the [glossary](../domain/glossary.md)):
+A **formula** is a string of 1–200 characters in eight places: a `derived` field's `formula`, a band's `upTo: {formula}`, a tracker effect's `value: {formula}`, a sheet effect's `value: {formula}`, a check's `modifier`, a pool's `count: {formula}` and `hunger.count: {formula}`, and a check band's `upTo: {formula}`; a check step's `difficulty: {formula}` is a flow formula. The JSON Schema checks the shape (a `{formula}` object has exactly the property `formula`); the Studio validator parses it with the Formula kernel and checks what the schema cannot. Syntax summary (full grammar in [ADR 0023](../adr/0023-formula-kernel-and-derived-values.md), terms in the [glossary](../domain/glossary.md)):
 
 - Integers from 0 to 1,000,000, `+ - * /` with parentheses and unary minus, `min(a, b, …)` and `max(…)` with 2–10 arguments. Division rounds down. Intermediate results stay within ±1,000,000,000.
 - References are braced: `{key}` reads a field, `{key.max}` a `track` field's max, `{tracker:key}` a tracker's current value and `{check:difficulty}` a check's difficulty. Keys follow the key rule.
@@ -395,7 +423,7 @@ A **formula** is a string of 1–200 characters in seven places: a `derived` fie
 | Scope | Where | Rules |
 |---|---|---|
 | Sheet | `derived` field `formula`, sheet effect `value` | `{key}` names a `number`, `track`, `conditions` or `derived` field (a `conditions` field reads as the number of options marked); `{key.max}` a `track` field; `{tracker:key}` a tracker of the release. `text` and `list` fields, unknown keys and `.max` on a non-track field (a `conditions` field included) are rejected. Derived fields never depend on each other in a cycle, a field reading itself included; the error names the first field of the cycle |
-| Check | check `modifier`, check `pool.count`, check band `upTo` | The sheet scope: the references a `derived` formula may read. A band formula may also read `{check:difficulty}`, only when its check declares a `difficulty`; the modifier never reads a `{check:…}` reference, and no other check key exists |
+| Check | check `modifier`, check `pool.count` and `pool.hunger.count`, check band `upTo` | The sheet scope: the references a `derived` formula may read. A band formula may also read `{check:difficulty}`, only when its check declares a `difficulty`; the modifier never reads a `{check:…}` reference, and no other check key exists |
 | Flow | band `upTo`, tracker effect `value`, check step `difficulty` | Only `{tracker:key}` references, to trackers of the release (and, as for `{tracker: key}`, of the flow); `{key}` and `{key.max}` are rejected because a flow formula reads trackers only |
 
 A syntax error is reported at the formula's path with the kernel's message. A `derived` field shares the key namespace and the `group` layout of the other field types. A `{formula}` band `upTo` still counts as an `upTo` for the "every band but the last" rule. Counter `levels` keep literal `upTo` only. A formula that fails at play time (division by zero, overflow) is an evaluation error, not a content error: it is Play's concern: a band or effect formula refuses the action with a 422 and the campaign stays as it was.

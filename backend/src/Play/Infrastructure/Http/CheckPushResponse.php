@@ -10,7 +10,7 @@ use OpenApi\Attributes as OA;
 /**
  * The push of a pool check: what a player reads before pushing, and which choices to offer.
  */
-#[OA\Schema(required: ['label', 'picks'])]
+#[OA\Schema(required: ['label', 'picks', 'maxDice'])]
 final readonly class CheckPushResponse
 {
     /**
@@ -25,11 +25,13 @@ final readonly class CheckPushResponse
             items: new OA\Items(type: 'string', example: 'physical'),
         )]
         public array $picks,
+        #[OA\Property(description: 'The most failed regular dice a push re-rolls, the first ones in roll order (Hunger dice are never re-rolled); null when it re-rolls every failed regular die (ADR 0044).', example: 3, nullable: true)]
+        public ?int $maxDice,
     ) {
     }
 
     public static function fromView(CheckPushView $view): self
     {
-        return new self($view->label, $view->picks);
+        return new self($view->label, $view->picks, $view->maxDice);
     }
 }

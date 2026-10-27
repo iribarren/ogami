@@ -19,6 +19,7 @@ use App\Play\Domain\GameSystem\Check\CheckBand;
 use App\Play\Domain\GameSystem\Check\CheckPush;
 use App\Play\Domain\GameSystem\Check\CheckResult;
 use App\Play\Domain\GameSystem\Check\PoolResult;
+use App\Play\Domain\GameSystem\Check\SpecialResult;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\Band;
@@ -337,9 +338,9 @@ final class FlowRun
                 throw InvalidStepResult::fixedDifficulty($step->key, $fixed);
             }
 
-            $outcome = $step->outcomeFor($check->band->key);
+            $outcome = $step->outcomeFor($check->band->key, $check->special);
             if ($this->pushable($checkKey, $check, $context)) {
-                $this->pendingCheck = new PendingCheck($step->key, $entryId ?? throw new \LogicException(\sprintf('The roll of check step "%s" pends without its journal entry.', $step->key)), (string) $result->characterId, $check->difficulty, $check->band->key, $step->isSet() ? $checkKey : null);
+                $this->pendingCheck = new PendingCheck($step->key, $entryId ?? throw new \LogicException(\sprintf('The roll of check step "%s" pends without its journal entry.', $step->key)), (string) $result->characterId, $check->difficulty, $check->band->key, $step->isSet() ? $checkKey : null, $check->special);
 
                 return [];
             }
@@ -398,7 +399,8 @@ final class FlowRun
      * the band of the pushed roll (Push). The answer is the band's label, and the step's Effects and
      * the band's Outcome apply as for a roll that completes the step at once.
      *
-     * @param ?string $pushedBandKey the band of the pushed roll; null keeps the rolled one
+     * @param ?string        $pushedBandKey the band of the pushed roll; null keeps the rolled one
+     * @param ?SpecialResult $pushedSpecial the special result of the pushed roll (none when the push left none); ignored on Keep, which keeps the rolled one
      *
      * @return list<SheetChange> what its sheet Effects changed, in apply order
      *
@@ -409,7 +411,7 @@ final class FlowRun
      *
      * @phpstan-impure
      */
-    public function resolvePendingCheck(string $stepKey, ?string $pushedBandKey, FlowRunContext $context): array
+    public function resolvePendingCheck(string $stepKey, ?string $pushedBandKey, FlowRunContext $context, ?SpecialResult $pushedSpecial = null): array
     {
         $pending = $this->pendingCheckAt($stepKey, $context);
         $step = $this->currentStep($context->release, $context->flow);
@@ -422,7 +424,8 @@ final class FlowRun
         $band = array_find($check->bands, static fn (CheckBand $band): bool => $band->key === $bandKey) ?? throw new \LogicException(\sprintf('Check "%s" has no band "%s".', $check->key, $bandKey));
         $this->pendingCheck = null;
         $this->answers[$step->key] = $band->label;
-        $outcome = $step->outcomeFor($band->key);
+        // A push recomputes the special result with the band (ADR 0044); Keep keeps the rolled one.
+        $outcome = $step->outcomeFor($band->key, null === $pushedBandKey ? $pending->special : $pushedSpecial);
 
         return $this->finish($step, $outcome, [...$step->effects, ...$outcome->effects ?? []], $band->label, $context, $pending->characterId);
     }

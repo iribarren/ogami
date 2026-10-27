@@ -95,6 +95,7 @@ final class CampaignFlowCheckPushApiTest extends WebTestCase
     {
         yield 'every die succeeded' => ['gritty', [5, 6, 5]];
         yield 'a check without a push' => ['steady', [1, 5, 2]];
+        yield 'only Hunger dice failed' => ['thirsty', [5, 1, 2]];
     }
 
     /**
@@ -111,6 +112,22 @@ final class CampaignFlowCheckPushApiTest extends WebTestCase
 
         self::assertResponseIsSuccessful();
         self::assertSame(['key' => 'after', 'pending' => null], $this->stepOf($this->json()));
+    }
+
+    #[Test]
+    public function pushingARollWhoseOnlyFailedDiceAreHungerDiceIsAConflict(): void
+    {
+        $this->inScene('thirsty');
+        $this->random->script(5, 1, 2);
+        $this->answer(['stepKey' => 'roll-it', 'characterId' => 'char-ada']);
+        self::assertResponseIsSuccessful();
+        $before = $this->state();
+
+        $this->push(['stepKey' => 'roll-it']);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => 'No roll of a check step waits for Keep or Push.'], $this->json());
+        self::assertSame($before, $this->state());
     }
 
     #[Test]
@@ -145,6 +162,57 @@ final class CampaignFlowCheckPushApiTest extends WebTestCase
         self::assertSame(['strong', 'Strong', 3, 3], [self::at($content, 'bandKey'), self::at($content, 'bandLabel'), self::at($content, 'total'), self::at($content, 'pool', 'push', 'successes')]);
         // The cost: 1 stress and the picked Condition; the step and the pushed band: 3 dread.
         self::assertSame([1, ['exhausted'], 3], [$this->values()['stress'] ?? null, $this->values()['physical'] ?? null, $this->dread()]);
+    }
+
+    #[Test]
+    public function keepBranchesOnTheBestialFailureOfTheRollAheadOfItsBand(): void
+    {
+        $this->inScene('beastly');
+        $this->random->script(1, 1, 1, 1);
+        $this->answer(['stepKey' => 'roll-it', 'characterId' => 'char-ada']);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['key' => 'roll-it', 'pending' => ['entryId' => $this->journal()[0]['id'], 'characterId' => 'char-ada']], $this->stepOf($this->campaign()));
+        self::assertSame(0, $this->dread());
+
+        $this->keep(['stepKey' => 'roll-it']);
+
+        self::assertResponseIsSuccessful();
+        // The step adds 1 dread and the bestial failure 5; the "miss" band's 3 does not apply.
+        self::assertSame(['key' => 'compulsion', 'pending' => null], $this->stepOf($this->json()));
+        self::assertSame(6, $this->dread());
+        self::assertSame('bestialFailure', self::at($this->journal()[0], 'content', 'special'));
+    }
+
+    #[Test]
+    public function aPushBranchesOnTheSpecialResultOfThePushedRoll(): void
+    {
+        $this->inScene('beastly');
+        $this->random->script(1, 1, 1, 1);
+        $this->answer(['stepKey' => 'roll-it', 'characterId' => 'char-ada']);
+        // The cap is 1: the first failed regular die is re-rolled, to a 6. One success is no failure any more, so no bestial failure.
+        $this->random->script(6);
+
+        $this->push(['stepKey' => 'roll-it']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['key' => 'after', 'pending' => null], $this->stepOf($this->json()));
+        self::assertNull(self::at($this->journal()[0], 'content', 'special'));
+        self::assertSame(1, $this->dread());
+    }
+
+    #[Test]
+    public function aPushThatStillFailsWithAHungerOneStaysABestialFailure(): void
+    {
+        $this->inScene('beastly');
+        $this->random->script(1, 1, 1, 1);
+        $this->answer(['stepKey' => 'roll-it', 'characterId' => 'char-ada']);
+        $this->random->script(2);
+
+        $this->push(['stepKey' => 'roll-it']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['key' => 'compulsion', 'pending' => null], $this->stepOf($this->json()));
+        self::assertSame(['bestialFailure', 6], [self::at($this->journal()[0], 'content', 'special'), $this->dread()]);
     }
 
     #[Test]
@@ -453,6 +521,8 @@ final class CampaignFlowCheckPushApiTest extends WebTestCase
                 ['kind' => 'sheet', 'field' => 'physical', 'op' => 'mark'],
             ]]],
             ['key' => 'steady', 'label' => 'Steady', 'pool' => $pool, 'bands' => $bands],
+            ['key' => 'bloodlust', 'label' => 'Bloodlust', 'pool' => ['count' => 4, 'criticals' => ['bonus' => 2], 'hunger' => ['count' => 1], 'sides' => 6, 'successAt' => 5], 'bands' => $bands, 'push' => ['label' => 'Spend Willpower', 'maxDice' => 1]],
+            ['key' => 'thirst', 'label' => 'Thirst', 'pool' => ['hunger' => ['count' => 2]] + $pool, 'bands' => $bands, 'push' => ['label' => 'Push']],
             ['key' => 'cursed', 'label' => 'Cursed', 'pool' => $pool, 'bands' => $bands, 'push' => ['label' => 'Pay', 'effects' => [['kind' => 'sheet', 'field' => 'stress', 'op' => 'set', 'value' => ['formula' => '{agility} / ({zero} - 1)']]]]],
         ]);
         $dread = static fn (int $by): array => ['kind' => 'tracker', 'tracker' => 'dread', 'op' => 'add', 'value' => $by];
@@ -464,9 +534,16 @@ final class CampaignFlowCheckPushApiTest extends WebTestCase
         $sceneTypes = [
             'gritty' => $step('grit', [['band' => 'weak', 'effects' => [$stress(2)]], ['band' => 'strong', 'effects' => [$dread(2)]]]),
             'steady' => $step('steady'),
+            'thirsty' => $step('thirst'),
             'cursed' => $step('cursed'),
             'fragile' => $step('grit', [['band' => 'strong', 'effects' => [$stress(['formula' => '{agility} / ({zero} - 1)'], 'set')]]]),
             'brittle' => $step('grit', [['band' => 'weak', 'effects' => [$stress(['formula' => '{agility} / ({zero} - 1)'], 'set')]]]),
+        ];
+        // The step branches on a bestial failure ahead of the band, to "compulsion", the last step.
+        $sceneTypes['beastly'] = [
+            ['key' => 'roll-it', 'kind' => 'check', 'title' => 'Roll it', 'check' => 'bloodlust', 'effects' => [$dread(1)], 'outcomes' => [['band' => 'miss', 'effects' => [$dread(3)]], ['special' => 'bestialFailure', 'next' => 'compulsion', 'effects' => [$dread(5)]]]],
+            ['key' => 'after', 'kind' => 'prompt', 'title' => 'After'],
+            ['key' => 'compulsion', 'kind' => 'prompt', 'title' => 'The Beast takes over'],
         ];
         $content = ReleaseArrays::with($content, 'sceneTypes', array_map(
             static fn (string $key, array $play): array => ['key' => $key, 'name' => ucfirst($key), 'purpose' => 'A '.$key.' scene.', 'oracles' => [], 'setup' => [], 'play' => $play, 'closing' => []],

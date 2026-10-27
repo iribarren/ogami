@@ -10,13 +10,28 @@ export function pushOf(campaign: Campaign, entry: JournalEntry) {
   return campaign.checks.find(({ key }) => key === content.checkKey)?.push ?? null
 }
 
-/** Whether the entry is a pool roll that was not pushed yet, has a die that failed, and its check declares a push. */
+type Pool = NonNullable<Extract<JournalEntry['content'], { kind: 'check' }>['pool']>
+
+/** How many regular dice failed: the only ones a push re-rolls, never the Hunger dice (ADR 0044). */
+export function failedRegularDice(pool: Pool) {
+  return pool.dice.filter(({ group, success }) => group === 'pool' && !success).length
+}
+
+/** Whether the roll has Hunger dice. */
+export function hasHungerDice(pool: Pool) {
+  return pool.dice.some(({ group }) => group === 'hunger')
+}
+
+/**
+ * Whether the entry is a pool roll that was not pushed yet, has a regular die that failed, and its
+ * check declares a push. A roll whose only failed dice are Hunger dice has nothing to re-roll.
+ */
 export function canPush(campaign: Campaign, entry: JournalEntry) {
   const pool = entry.content.kind === 'check' ? entry.content.pool : null
   return (
     pool !== null &&
     pool.push === null &&
-    pool.successes < pool.size &&
+    failedRegularDice(pool) > 0 &&
     pushOf(campaign, entry) !== null
   )
 }

@@ -2,14 +2,17 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import { onTheme } from '@/shared/theme/themeStories'
 import {
+  bestialFailureEntry,
   flowOutcomeEntry,
   gateNote,
   keepThreeRoll,
   lockedDoorAnswer,
   luckCheckEntry,
+  messyCriticalEntry,
   pickedNothing,
   pickedTwo,
   plainAnswer,
+  pushedBestialEntry,
   skillCheckEntry,
   stormyWeather,
 } from './fixtures'
@@ -50,6 +53,13 @@ export const PickNoMatch: Story = { args: { entry: pickedNothing } }
 export const CheckAgainstDifficulty: Story = { args: { entry: skillCheckEntry } }
 
 export const CheckWithoutModifiersOrDifficulty: Story = { args: { entry: luckCheckEntry } }
+
+/** Hunger dice in a second colour, and a special result as text (ADR 0044). */
+export const HungerBestialFailure: Story = { args: { entry: bestialFailureEntry } }
+
+export const HungerMessyCritical: Story = { args: { entry: messyCriticalEntry } }
+
+export const HungerPushedToACritical: Story = { args: { entry: pushedBestialEntry } }
 
 export const FlowOutcome: Story = { args: { entry: flowOutcomeEntry } }
 

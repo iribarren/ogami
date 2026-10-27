@@ -1,10 +1,12 @@
 import { ClipboardList, Eye, Feather, Flag, Split, Users } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
 
+import { cn } from '@/shared/lib/utils'
 import { Badge } from '@/shared/ui/badge'
 import { IconTile } from '@/shared/ui/icon-tile'
 
 import { DiceGroups } from '../dice/DiceGroups'
+import { specialResultLabels } from './specialResults'
 import { DieShape } from '@/shared/ui/die-shape'
 import type {
   CheckContent,
@@ -221,13 +223,18 @@ function CheckView({ content, sheet }: { content: CheckContent; sheet: FieldLabe
         <span className="sr-only">Outcome:</span>
         <span className="text-2xl font-bold">{content.bandLabel}</span>
       </p>
+      {content.special !== null && (
+        <p className="text-sm">
+          <span>Special result:</span> <strong>{specialResultLabels[content.special]}</strong>
+        </p>
+      )}
       {push !== null && (
         <p className="text-sm">
           <strong>Pushed: {push.label}</strong>
           {' · '}
           {push.rolledBandKey === content.bandKey
-            ? `Rolled ${push.rolledBandLabel}, still ${content.bandLabel}`
-            : `Rolled ${push.rolledBandLabel}, pushed to ${content.bandLabel}`}
+            ? `Rolled ${rolledAs(content, push.rolledBandLabel)}, still ${content.bandLabel}`
+            : `Rolled ${rolledAs(content, push.rolledBandLabel)}, pushed to ${content.bandLabel}`}
         </p>
       )}
       {content.groups.length > 0 && (
@@ -274,12 +281,21 @@ function CheckView({ content, sheet }: { content: CheckContent; sheet: FieldLabe
 
 type CheckPool = NonNullable<CheckContent['pool']>
 
+/** The first roll of a pushed check: its band, with its special result when it had one. */
+function rolledAs(content: CheckContent, bandLabel: string) {
+  const special = content.pool?.special ?? null
+  return special === null
+    ? bandLabel
+    : `${bandLabel} (${specialResultLabels[special].toLowerCase()})`
+}
+
 /**
  * Every die of a pool roll, after the push when it was pushed; a success is told by text for
- * assistive tech and by weight and a ring, and a die the push re-rolled by text too, not by colour alone.
+ * assistive tech and by weight and a ring, a die the push re-rolled by text too, and a Hunger die
+ * (ADR 0044) by a second colour and its label, not by colour alone.
  */
 function PoolDice({ pool }: { pool: CheckPool }) {
-  const dice: { face: number; success: boolean; rerolled?: boolean }[] =
+  const dice: { group: 'pool' | 'hunger'; face: number; success: boolean; rerolled?: boolean }[] =
     pool.push?.dice ?? pool.dice
   return (
     <div className="rounded-md bg-well p-2 shadow-well">
@@ -288,14 +304,22 @@ function PoolDice({ pool }: { pool: CheckPool }) {
           <li
             // A pool can show the same face many times; the position is the identity.
             key={index}
-            className={
+            data-group={die.group}
+            className={cn(
+              'min-w-8 rounded-md px-1.5 py-0.5 text-center',
               die.success
-                ? 'min-w-8 rounded-md border-2 border-foreground px-1.5 py-0.5 text-center font-bold'
-                : 'min-w-8 rounded-md border border-dashed border-muted-foreground px-1.5 py-0.5 text-center text-muted-foreground'
-            }
+                ? 'border-2 border-foreground font-bold'
+                : 'border border-dashed border-muted-foreground text-muted-foreground',
+              // The second colour of the Hunger dice; the label below says it in text too.
+              die.group === 'hunger' &&
+                'border-destructive bg-destructive/10 text-destructive dark:bg-destructive/20',
+            )}
           >
             {die.face}
             <span className="sr-only">{die.success ? ' (success)' : ' (no success)'}</span>
+            {die.group === 'hunger' && (
+              <span className="block text-xs font-normal">Hunger die</span>
+            )}
             {die.rerolled === true && <span className="block text-xs font-normal">re-rolled</span>}
           </li>
         ))}

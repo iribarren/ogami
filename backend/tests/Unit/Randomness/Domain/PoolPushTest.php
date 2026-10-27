@@ -80,6 +80,18 @@ final class PoolPushTest extends TestCase
         self::assertSame(1, $roll->failures());
     }
 
+    #[Test]
+    public function aRollIsRebuiltFromFacesWhoseKeysAreNotAList(): void
+    {
+        $pool = new DicePool(3, 6, 5, 1);
+
+        // The keys are not 0..2 (e.g. a filtered array): the dice take their places in the order given.
+        $roll = PoolRoll::ofFaces($pool, [7 => 6, 3 => 2, 9 => 5]);
+
+        self::assertEquals($pool->roll(new ScriptedRandomNumberGenerator(6, 2, 5)), $roll);
+        self::assertSame(['pool', 'pool', 'hunger'], array_map(static fn (PoolDie $die): string => $die->group()->value, $roll->dice()));
+    }
+
     /**
      * @param list<int> $faces
      */

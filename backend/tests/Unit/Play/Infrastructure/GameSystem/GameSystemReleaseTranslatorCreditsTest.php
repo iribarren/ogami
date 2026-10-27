@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Play\Infrastructure\GameSystem;
 
 use App\Play\Domain\GameSystem\Credits;
+use App\Play\Domain\GameSystem\CreditsBadge;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
@@ -21,6 +22,7 @@ use PHPUnit\Framework\TestCase;
  */
 #[CoversClass(GameSystemReleaseTranslator::class)]
 #[CoversClass(Credits::class)]
+#[CoversClass(CreditsBadge::class)]
 final class GameSystemReleaseTranslatorCreditsTest extends TestCase
 {
     /**
@@ -62,6 +64,26 @@ final class GameSystemReleaseTranslatorCreditsTest extends TestCase
     }
 
     #[Test]
+    public function itReadsTheBadgeOfTheCredits(): void
+    {
+        $credits = $this->translate(ReleaseViews::fixtureContent('valid/v2-hunger-dice'))->credits();
+
+        self::assertInstanceOf(Credits::class, $credits);
+        self::assertSame(CreditsBadge::DarkPack, $credits->badge);
+        self::assertSame('Dark Pack Agreement', $credits->license);
+    }
+
+    #[Test]
+    public function aNullOrMissingBadgeReadsAsNone(): void
+    {
+        $withNull = $this->translate($this->withCredits(['notice' => 'x', 'badge' => null]))->credits();
+
+        self::assertInstanceOf(Credits::class, $withNull);
+        self::assertNull($withNull->badge);
+        self::assertNull($this->translate(ReleaseViews::fixtureContent('valid/v2-credits'))->credits()?->badge);
+    }
+
+    #[Test]
     public function aNoticeAloneIsEnough(): void
     {
         self::assertEquals(new Credits('Fan content.'), $this->translate(ReleaseViews::fixtureContent('valid/v2-credits-notice-only'))->credits());
@@ -95,6 +117,8 @@ final class GameSystemReleaseTranslatorCreditsTest extends TestCase
         yield 'notice over the limit' => [['notice' => str_repeat('n', 2001)], 'gameSystem.credits.notice: must be at most 2000 characters.'];
         yield 'license over the limit' => [['notice' => 'x', 'license' => str_repeat('l', 201)], 'gameSystem.credits.license: must be at most 200 characters.'];
         yield 'url over the limit' => [['notice' => 'x', 'url' => 'https://example.com/'.str_repeat('u', 481)], 'gameSystem.credits.url: must be at most 500 characters.'];
+        yield 'an unknown badge' => [['notice' => 'x', 'badge' => 'gold'], 'gameSystem.credits.badge: unknown badge "gold" (ADR 0044).'];
+        yield 'a badge that is no string' => [['notice' => 'x', 'badge' => 3], 'gameSystem.credits.badge: must be a string.'];
         yield 'unknown property' => [['notice' => 'x', 'author' => 'me'], 'gameSystem.credits.author: unknown property.'];
     }
 

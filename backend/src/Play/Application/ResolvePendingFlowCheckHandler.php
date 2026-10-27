@@ -78,12 +78,14 @@ final readonly class ResolvePendingFlowCheckHandler implements CommandHandler
 
         $pushed = null;
         $bandKey = null;
+        $special = null;
         if ($command->push) {
             [$pushed, $result] = $this->pusher->push($campaign, $release, $entry, $command->picks, fromTheSheet: false);
             $bandKey = $result->band->key;
+            $special = $result->special;
         }
 
-        $changes = $campaign->resolvePendingFlowCheck($command->stepKey, $bandKey, $release, $at, $this->random);
+        $changes = $campaign->resolvePendingFlowCheck($command->stepKey, $bandKey, $release, $at, $this->random, $special);
         $sheetEntry = [] === $changes ? null : $this->journal->following($entry, $this->entryIds->generate()->toString(), $this->sheetChangeContent($campaign, $pending->characterId, $changes));
         $outcomeEntry = $this->journal->flowOutcome($this->entryIds, $campaign, $sheetEntry ?? $entry);
         // The campaign is saved first (CheckPusher::keep() saves it with the push), as in CompleteFlowStepHandler.

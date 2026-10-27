@@ -4,10 +4,17 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { gritCheck, skillCheck } from '../campaigns/fixtures'
+import { gritCheck, persuadeCheck, skillCheck } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { conditionsField, nightJobCampaign, sheet, viCharacter } from '../characters/fixtures'
-import { gritEntry, pushedGritEntry, recordedEntry, skillCheckEntry } from '../journal/fixtures'
+import {
+  bestialFailureEntry,
+  gritEntry,
+  hungerOnlyFailedEntry,
+  pushedGritEntry,
+  recordedEntry,
+  skillCheckEntry,
+} from '../journal/fixtures'
 
 const path = `/api/campaigns/${nightJobCampaign.id}`
 
@@ -59,6 +66,60 @@ async function rollGrit(user: ReturnType<typeof userEvent.setup>) {
   await user.click(dialog.getByRole('button', { name: 'Roll' }))
   return dialog
 }
+
+/** Vi's campaign whose only check is the Hunger check "Persuade" (a push capped at 3 dice, or none). */
+function hungry(check = persuadeCheck): Campaign {
+  return { ...nightJobCampaign, checks: [check] }
+}
+
+async function rollPersuade(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('button', { name: 'Roll a check for Vi' }))
+  const dialog = within(await screen.findByRole('dialog', { name: 'Roll a check for Vi' }))
+  await user.click(dialog.getByRole('button', { name: 'Roll' }))
+  return dialog
+}
+
+describe('a Hunger roll in the "Roll a check" dialog', () => {
+  it('shows the special result and the cap of the push, and counts the failed regular dice only', async () => {
+    const user = userEvent.setup()
+    renderPush(hungry(), () => Response.json(bestialFailureEntry, { status: 201 }))
+
+    const dialog = await rollPersuade(user)
+
+    expect(await dialog.findByText('Special result:')).toBeInTheDocument()
+    expect(dialog.getByText('Special result:').parentElement).toHaveTextContent('Bestial failure')
+    expect(dialog.getByText('Re-roll up to 3 failed dice.')).toBeInTheDocument()
+    expect(dialog.getByText(/Hunger dice are never re-rolled/)).toBeInTheDocument()
+    expect(dialog.getByRole('button', { name: 'Push' })).toBeEnabled()
+  })
+
+  it('closes at once when only Hunger dice failed: there is no push to offer', async () => {
+    const user = userEvent.setup()
+    renderPush(hungry(), () => Response.json(hungerOnlyFailedEntry, { status: 201 }))
+
+    await rollPersuade(user)
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
+  it('stays open on a special result that cannot be pushed, to read it', async () => {
+    const user = userEvent.setup()
+    renderPush(hungry({ ...persuadeCheck, push: null }), () =>
+      Response.json(bestialFailureEntry, { status: 201 }),
+    )
+
+    const dialog = await rollPersuade(user)
+
+    expect(await dialog.findByText('Special result:')).toBeInTheDocument()
+    expect(dialog.queryByRole('button', { name: 'Push' })).not.toBeInTheDocument()
+    await user.click(dialog.getByRole('button', { name: 'Done' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+})
 
 describe('pushing a pool check from the "Roll a check" dialog', () => {
   it('stays open on the result and offers the cost with a select of the options still unmarked', async () => {
@@ -117,7 +178,7 @@ describe('pushing a pool check from the "Roll a check" dialog', () => {
     const user = userEvent.setup()
     const twoPicks = {
       ...gritCheck,
-      push: { label: 'Take two Conditions', picks: ['wounds', 'wounds'] },
+      push: { label: 'Take two Conditions', picks: ['wounds', 'wounds'], maxDice: null },
     }
     const sent = renderPush({ ...pushable([]), checks: [twoPicks] }, rolledGrit)
 

@@ -356,6 +356,123 @@ function gritContent({
   }
 }
 
+type PoolDie = NonNullable<CheckEntryContent['pool']>['dice'][number]
+
+/**
+ * A Hunger roll of `persuadeCheck` for Vi: 5d10, a success on 6+, a difficulty of 3; the first three
+ * dice are regular, the last two Hunger dice (ADR 0044). By default the regular dice show 2, 3 and 7
+ * and the Hunger dice 1 and 4: one success, below the difficulty, with a Hunger 1, a bestial failure.
+ */
+function hungerContent({
+  regular = [2, 3, 7],
+  hunger = [1, 4],
+  poolSpecial = null,
+  push = null,
+  ...over
+}: Partial<CheckEntryContent> & {
+  regular?: number[]
+  hunger?: number[]
+  /** The special result of the first roll, which `special` is too unless the roll was pushed. */
+  poolSpecial?: NonNullable<CheckEntryContent['pool']>['special']
+  push?: NonNullable<CheckEntryContent['pool']>['push']
+} = {}): CheckEntryContent {
+  const die = (group: PoolDie['group'], face: number): PoolDie => ({
+    group,
+    face,
+    success: face >= 6,
+  })
+  const dice = [
+    ...regular.map((face) => die('pool', face)),
+    ...hunger.map((face) => die('hunger', face)),
+  ]
+  const successes = dice.filter(({ success }) => success).length
+  return {
+    kind: 'check',
+    characterId: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9001',
+    characterName: 'Vi',
+    checkKey: 'persuade',
+    checkLabel: 'Persuade',
+    expression: '5d10',
+    groups: [],
+    diceTotal: successes,
+    modifier: 0,
+    situational: 0,
+    difficulty: 3,
+    total: successes,
+    bandKey: successes >= 3 ? 'win' : 'fail',
+    bandLabel: successes >= 3 ? 'Win' : 'Failure',
+    hint: null,
+    modifierFormula: null,
+    modifierTerms: [],
+    pool: {
+      count: 5,
+      countFormula: null,
+      terms: [],
+      size: 5,
+      sides: 10,
+      successAt: 6,
+      dice,
+      successes,
+      criticalsBonus: 2,
+      special: poolSpecial,
+      push,
+    },
+    special: null,
+    ...over,
+  }
+}
+
+/** A failed Hunger roll with a Hunger 1 and a regular die that failed: a bestial failure that can be pushed. */
+export const bestialFailureEntry: JournalEntry = recordedEntry(
+  hungerContent({ special: 'bestialFailure', poolSpecial: 'bestialFailure' }),
+  '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7101',
+)
+
+/** The Hunger dice failed (1 and 2), every regular die succeeded: nothing a push can re-roll. */
+export const hungerOnlyFailedEntry: JournalEntry = recordedEntry(
+  hungerContent({ regular: [7, 8, 6], hunger: [1, 2] }),
+  '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7102',
+)
+
+/** A pair of tens, one on a Hunger die: a messy critical (the pair adds 2 to the 2 successes). */
+export const messyCriticalEntry: JournalEntry = recordedEntry(
+  hungerContent({
+    regular: [10, 3, 2],
+    hunger: [10, 4],
+    total: 4,
+    special: 'messyCritical',
+    poolSpecial: 'messyCritical',
+  }),
+  '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7103',
+)
+
+/** `bestialFailureEntry` pushed: the 2 and the 3 re-rolled to two tens, a critical; the first roll was a bestial failure. */
+export const pushedBestialEntry: JournalEntry = recordedEntry(
+  hungerContent({
+    total: 5,
+    bandKey: 'win',
+    bandLabel: 'Win',
+    special: 'critical',
+    poolSpecial: 'bestialFailure',
+    push: {
+      label: 'Spend Willpower',
+      dice: [
+        { group: 'pool', face: 10, success: true, rerolled: true },
+        { group: 'pool', face: 10, success: true, rerolled: true },
+        { group: 'pool', face: 7, success: true, rerolled: false },
+        { group: 'hunger', face: 1, success: false, rerolled: false },
+        { group: 'hunger', face: 4, success: false, rerolled: false },
+      ],
+      successes: 3,
+      rolledBandKey: 'fail',
+      rolledBandLabel: 'Failure',
+      changes: [],
+      special: 'critical',
+    },
+  }),
+  '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7104',
+)
+
 /** The journal of `lostMineCampaign`: every kind, in recorded order. */
 export const lostMineJournal: JournalEntry[] = [
   gateNote,

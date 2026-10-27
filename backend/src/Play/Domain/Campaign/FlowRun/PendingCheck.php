@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign\FlowRun;
 
+use App\Play\Domain\GameSystem\Check\SpecialResult;
 use App\Play\Domain\GameSystem\Flow\CheckStep;
 
 /**
@@ -12,7 +13,8 @@ use App\Play\Domain\GameSystem\Flow\CheckStep;
  * FlowRun keeps what completing the step needs: the Character who rolled, the Check difficulty
  * that applied (a push bands the new successes at it) and the band the roll landed in (Keep). A roll
  * of a check set (ADR 0042) also keeps the check the player picked; a single-check step's roll keeps
- * none, as do rows stored before check sets, so they read the step's own check.
+ * none, as do rows stored before check sets, so they read the step's own check. The special result
+ * of the roll (ADR 0044) is kept too, so Keep branches on it; rows stored before it have none.
  */
 final readonly class PendingCheck
 {
@@ -26,6 +28,7 @@ final readonly class PendingCheck
         public ?int $difficulty,
         public string $bandKey,
         public ?string $checkKey = null,
+        public ?SpecialResult $special = null,
     ) {
         foreach (['stepKey' => $stepKey, 'entryId' => $entryId, 'characterId' => $characterId, 'bandKey' => $bandKey, 'checkKey' => $checkKey ?? '-'] as $field => $value) {
             if ('' === trim($value)) {

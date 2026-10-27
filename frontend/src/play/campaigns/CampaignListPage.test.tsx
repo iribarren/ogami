@@ -337,7 +337,7 @@ describe('the Play campaign list', () => {
     })
 
     it('shows the license as plain text when the release gives no link', async () => {
-      const credits = { notice: 'Fan content.', license: 'A policy', url: null }
+      const credits = { notice: 'Fan content.', license: 'A policy', url: null, badge: null }
       const form = await openForm([{ ...fanPreset, credits }])
 
       const about = within(within(form).getByRole('region', { name: 'About this game' }))

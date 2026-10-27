@@ -98,7 +98,7 @@ final class CampaignApiTest extends WebTestCase
         $latest = $this->json()[0] ?? null;
         self::assertIsArray($latest);
         self::assertSame(
-            ['notice' => 'Fan content.', 'license' => null, 'url' => null],
+            ['notice' => 'Fan content.', 'license' => null, 'url' => null, 'badge' => null],
             $latest['credits'] ?? null,
             'The latest release (notice only) is listed, with null for the fields it leaves out.',
         );
@@ -190,9 +190,37 @@ final class CampaignApiTest extends WebTestCase
                 'notice' => 'Night Job is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games.',
                 'license' => 'R. Talsorian Games Homebrew Content Policy',
                 'url' => 'https://rtalsoriangames.com/homebrew-content-policy/',
+                'badge' => null,
             ],
             $pinned['credits'] ?? null,
         );
+    }
+
+    #[Test]
+    public function theCreditsBadgeIsListedAndPinnedWithTheRelease(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6015', ReleaseViews::fixtureContent('valid/v2-hunger-dice'), false));
+
+        $this->client->request('GET', '/api/play/game-systems');
+
+        self::assertResponseIsSuccessful();
+        $listed = $this->json()[0] ?? null;
+        self::assertIsArray($listed);
+        self::assertIsArray($listed['credits'] ?? null);
+        self::assertSame('dark-pack', $listed['credits']['badge'] ?? null);
+        $this->client->jsonRequest('POST', '/api/campaigns', ['name' => 'Night court', 'gameSystemKey' => 'hunger-dice']);
+        self::assertResponseStatusCodeSame(201);
+        $id = $this->json()['id'] ?? null;
+        self::assertIsString($id);
+
+        $this->client->request('GET', '/api/campaigns/'.$id);
+
+        self::assertResponseIsSuccessful();
+        $pinned = $this->json()['pinnedRelease'] ?? null;
+        self::assertIsArray($pinned);
+        self::assertIsArray($pinned['credits'] ?? null);
+        self::assertSame('dark-pack', $pinned['credits']['badge'] ?? null);
     }
 
     #[Test]

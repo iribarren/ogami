@@ -123,6 +123,17 @@ final class CheckHungerDiceTest extends TestCase
     }
 
     #[Test]
+    public function aHungerFormulaBelowZeroRollsNoHungerDiceAndNeverFails(): void
+    {
+        $check = $this->check(new CheckPool(3, 10, 6, 2, Formula::fromString('{hunger} - 3')));
+
+        $result = $check->perform(new ScriptedRandomNumberGenerator(10, 1, 10), self::sheetOf(['hunger' => 1]), null, 0);
+
+        self::assertSame(['pool', 'pool', 'pool'], array_map(static fn (PoolDie $die): string => $die->group()->value, $result->pool?->roll->dice() ?? []));
+        self::assertSame(SpecialResult::Critical, $result->special);
+    }
+
+    #[Test]
     public function aHungerFormulaThatFailsRefusesTheCheck(): void
     {
         $check = $this->check(new CheckPool(3, 10, 6, null, Formula::fromString('{hunger} / {zero}')));

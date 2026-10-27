@@ -181,6 +181,23 @@ final readonly class Check
     }
 
     /**
+     * Whether a roll of this check can have the special result (ADR 0044): a critical needs critical
+     * pairs, a bestial failure Hunger dice, a messy critical both. A dice check produces none, and a
+     * literal Hunger count of 0 rolls no Hunger dice (a formula might).
+     */
+    public function canProduce(SpecialResult $special): bool
+    {
+        $criticals = $this->pool instanceof CheckPool && null !== $this->pool->criticals;
+        $hunger = $this->pool instanceof CheckPool && null !== $this->pool->hunger && 0 !== $this->pool->hunger;
+
+        return match ($special) {
+            SpecialResult::Critical => $criticals,
+            SpecialResult::MessyCritical => $criticals && $hunger,
+            SpecialResult::BestialFailure => $hunger,
+        };
+    }
+
+    /**
      * The special result of a roll (ADR 0044). A roll fails when its total is below the difficulty, if
      * the check declares one, else when its band is the first of a check with two bands or more; a
      * check with a single band never fails. A failed roll with a Hunger 1 is a bestial failure; one

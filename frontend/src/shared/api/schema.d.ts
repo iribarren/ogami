@@ -1924,6 +1924,12 @@ export interface components {
              * @example https://rtalsoriangames.com/homebrew-content-policy/
              */
             url: string | null;
+            /**
+             * @description The logo to show beside the notice, one the SPA ships (ADR 0044); null when the release names none.
+             * @example dark-pack
+             * @enum {string|null}
+             */
+            badge: "dark-pack" | null;
         };
         ConditionOptionResponse: {
             /**
@@ -2585,6 +2591,11 @@ export interface components {
             label: string;
             /** @description The sheet field of each option the player picks when pushing (the cost marks an option of it), in cost order; empty when the cost needs no pick. A field with every option marked needs no pick. */
             picks: string[];
+            /**
+             * @description The most failed regular dice a push re-rolls, the first ones in roll order (Hunger dice are never re-rolled); null when it re-rolls every failed regular die (ADR 0044).
+             * @example 3
+             */
+            maxDice: number | null;
         };
         CheckDifficultyResponse: {
             /**

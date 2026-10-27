@@ -1,6 +1,6 @@
 # 0025. Items and shops after the MVP
 
-- **Status:** Accepted
+- **Status:** Accepted, settled by [0045](0045-gear-inventories-currency-and-shops.md): gear, inventories, a currency and shops
 - **Date:** 2026-10-14
 
 ## Context

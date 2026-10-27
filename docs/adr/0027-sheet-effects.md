@@ -1,6 +1,6 @@
 # 0027. Sheet effects
 
-- **Status:** Accepted, amended by [0040](0040-structured-character-creation.md) , [0041](0041-dice-pools-pushes-and-conditions.md) and [0042](0042-flow-choices-check-sets-and-scene-tables.md)
+- **Status:** Accepted, amended by [0040](0040-structured-character-creation.md) , [0041](0041-dice-pools-pushes-and-conditions.md), [0042](0042-flow-choices-check-sets-and-scene-tables.md) and [0045](0045-gear-inventories-currency-and-shops.md) (a voluntary spend of the currency refuses instead of clamping)
 - **Date:** 2026-10-15
 
 ## Context

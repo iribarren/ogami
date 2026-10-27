@@ -334,7 +334,8 @@ function readPool(pool: unknown): PoolDraft | null {
     return null
   }
   const read: PoolDraft = { count: counted, sides: String(sides), successAt: String(successAt) }
-  if (criticals !== undefined) {
+  // The contract documents these as nullable, so a stored null reads as absent.
+  if (criticals !== undefined && criticals !== null) {
     if (
       !isObject(criticals) ||
       Object.keys(criticals).length !== 1 ||
@@ -345,7 +346,7 @@ function readPool(pool: unknown): PoolDraft | null {
     }
     read.criticalsBonus = String(criticals.bonus)
   }
-  if (hunger !== undefined) {
+  if (hunger !== undefined && hunger !== null) {
     const hungry =
       isObject(hunger) && Object.keys(hunger).length === 1 ? readCount(hunger.count) : null
     if (hungry === null) {
@@ -379,7 +380,9 @@ function readPush(push: unknown): PushDraft | null {
   if (
     typeof label !== 'string' ||
     (effects !== undefined && !Array.isArray(effects)) ||
-    (maxDice !== undefined && !(typeof maxDice === 'number' && Number.isInteger(maxDice)))
+    (maxDice !== undefined &&
+      maxDice !== null &&
+      !(typeof maxDice === 'number' && Number.isInteger(maxDice)))
   ) {
     return null
   }

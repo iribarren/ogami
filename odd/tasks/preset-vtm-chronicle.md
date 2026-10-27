@@ -1,7 +1,7 @@
 # Feature: preset-vtm-chronicle
 
 - **Locator:** `odd/tasks/preset-vtm-chronicle.md` · Engram topic `odd/preset-vtm-chronicle/tasks`
-- **Issue:** #301 · **Branch:** `feat/preset-vtm-chronicle-4-studio-checks` · **Status:** in progress (slice 4)
+- **Issue:** #301 · **Branch:** `feat/preset-vtm-chronicle-5-studio-flow` · **Status:** in progress (slice 5)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B10 (after `rules-dice-pools`, [ADR 0041](../../docs/adr/0041-dice-pools-pushes-and-conditions.md))
@@ -97,10 +97,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T6 | 3 | Play UI: Hunger dice in a second colour, the special result in the roll dialog and the journal, push offer counts regular dice and shows the cap; fixtures and tests | delegated writer (Sonnet) | [x] | c5769a6 |
 | T7 | 3 | Flow: `check` step outcomes on a special (translator, `CheckStep::outcomeFor`, `FlowRun`, pending check Keep/Push); tests | delegated writer (Sonnet) | [x] | 7a2ba3d (slice 2 fixes 2837504) |
 | T8 | 3 | Credits badge in Play: translator, `Credits`, responses, the Dark Pack logo asset, `CreditsNotice`; tests | delegated writer (Sonnet) | [x] | 019a728 |
-| T9 | 4 | Studio check editor: criticals, Hunger count, push cap; error paths; tests and story | delegated writer (Sonnet) | [x] | |
-| T10 | 4 | Studio sandbox: Hunger dice, criticals, special result, capped push (backend, views, API, UI); tests | delegated writer (Sonnet) | [x] | |
-| T11 | 5 | Studio flow editor: check step outcomes on a special; tests | delegated writer | [ ] | |
-| T12 | 5 | Studio metadata: credits badge; tests | delegated writer | [ ] | |
+| T9 | 4 | Studio check editor: criticals, Hunger count, push cap; error paths; tests and story | delegated writer (Sonnet) | [x] | bd7e739 (slice 3 fix f6c9ade) |
+| T10 | 4 | Studio sandbox: Hunger dice, criticals, special result, capped push (backend, views, API, UI); tests | delegated writer (Sonnet) | [x] | 9ec7929 |
+| T11 | 5 | Studio flow editor: check step outcomes on a special; tests | delegated writer (Sonnet; writer trigger: 2+ non-trivial files) | [ ] | |
+| T12 | 5 | Studio metadata: credits badge; tests | delegated writer (Sonnet; same writer) | [ ] | |
 | T13 | 6 | Author `vtm-night-court` in Studio from the outline, sandbox-roll Hunger and criticals, publish; log Studio findings | parent (browser, worker) | [ ] | |
 | T14 | 6 | Play a session (Session Zero, two nights, a world turn, a bestial failure branch, the masquerade roll-under); fix content and republish; log Play findings | parent (browser, worker) | [ ] | |
 | T15 | 6 | Export to `backend/presets/vtm-night-court.json` unedited; `PresetsTest`; flow unit test; e2e spec (credits badge, a Hunger roll in the journal) | delegated writer | [ ] | |
@@ -135,6 +135,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-27: slice 4 commit 1 (slice 3 review finding): `CreditsNotice` looks the badge up by any string and shows the notice without a logo for one this build does not know. RED: the Vitest case crashed on the undefined entry, then GREEN.
 - 2026-10-27: T9 Studio check editor: `PoolDraft.criticalsBonus` / `hunger` and `PushDraft.maxDice` are optional text inputs (empty or never set stays absent, so stored checks without them save byte-identical); `readPool`/`readPush` accept the new keys, `writePool`/`writePush` enforce 1..10, 0..100 or a formula, and 1..100; `checkError` maps `pool.criticals(.bonus)`, `pool.hunger.count(.formula)` and `push.maxDice`; the pool editor gains "Critical pairs bonus" and a "Hunger dice" formula input, `PushEditor` a "Dice cap"; `GameSystemCheckPool` / `GameSystemCheckPush` document the fields, `make api`. The checks GET already returns the stored JSON as is. Vitest and the API tests were written with the code (the publisher already accepted the shapes); story `HungerAndCriticals`.
 - 2026-10-27: T10 Studio sandbox: `CheckTestPool` reads `criticals.bonus` and `hunger.count` (number or formula, evaluated on the samples like `count`; the kernel clamps it, so a negative formula rolls no Hunger die), `CheckTestPush` reads `maxDice`; malformed values are `CheckTestRollFailed::unreadable`. `perform` builds the Hunger-aware `DicePool` and totals with `PoolRoll::total()`; `CheckTestSpecialResult` (backed enum, pure `of(PoolRoll, bool $failed)`) mirrors Play's precedence, and `CheckTestRoll::specialOf` its "fails" rule (below the difficulty, else the first of 2+ bands). The stateless push rebuilds the roll with Hunger dice last, re-rolls at most `maxDice` failed regular dice, recomputes the special and tells the first roll's (`push.rolledSpecial`); a roll whose only failed dice are Hunger dice is the 409 "no regular die failed". Responses: die `group`, pool `hunger`/`hungerFormula`/`criticalsBonus`, roll `special` (OpenAPI enum), push `maxDice`/`rolledSpecial`; `rolledSuccesses` is now the first roll's total. `make api`. UI: Hunger dice in the second colour with a "Hunger die" label, "Special result: …", the push line names the first roll's special, the push offer counts failed regular dice and says "Re-roll up to N failed dice." Unit and API tests were written with the code (the new API cases passed on first run against it); the existing JSON assertions were the RED signal for the new fields.
+- 2026-10-27: slice 5 commit 1 (slice 4 review findings): `readPool` / `readPush` read a stored `null` criticals, Hunger or push cap as absent and the write leaves it out (RED: the check was unreadable, then GREEN). `CheckTestPool` already took 0 as "no critical pairs" (the default) and the reader refuses a stored 0, so its message now says "0 for none or in 1..10" (RED: the old message, then GREEN).
 
 ## Reviews
 
@@ -143,7 +144,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 1 | `review-32fb84966e5a47d6` | d100598, 3318de9 | approved, acknowledged | R3 warning: a literal `hunger.count` 0 still accepts `bestialFailure` / `messyCritical` step outcomes (`Checks.php:147-150`); fixed in slice 2. Note: Studio's sandbox (`CheckTestRoll::readPool`) ignores criticals and Hunger until slice 4 | [#302](https://github.com/iribarren/ogami/pull/302) |
 | 2 | `review-92d91f85ad4060fc` (main..ce45510), `review-095722f7f9626921` (ce45510..1f58d52); 1,936 lines, size accepted by the user | a219e5d, ce45510, 55fd791, 1f58d52 | approved, acknowledged (both) | No test for a negative Hunger formula (the pool clamps it to 0; must not 500); no flow-level test that a roll whose only failed dice are Hunger dice is not pushable on a pending step (`FlowRun::pushable`); `PoolRoll::ofFaces` dropped `array_values` (list contract); optional: `Checks.php:195` literal Hunger `> 0` where the schema already refuses negatives. Fixed in slice 3 | [#303](https://github.com/iribarren/ogami/pull/303) |
 | 3 | `review-742c3094e8c4a81d` | 2837504, 7a2ba3d, 019a728, c5769a6 | approved, acknowledged | R3 suggestion: `CreditsNotice.tsx:17` crashes when the API sends a badge this SPA build does not know (`creditsBadges` lookup undefined); fall back to no logo, with a test. Fixed in slice 4 | [#304](https://github.com/iribarren/ogami/pull/304) |
+| 4 | `review-8f746d03d236f101` | f6c9ade, bd7e739, 9ec7929 | approved, acknowledged | Warning: `checkDraft.ts` `readPool` / `readPush` refuse a stored explicit `null` for `criticals`, `hunger` or `maxDice`, which the contract documents as nullable and the sandbox reads as absent. Suggestion: `CheckTestPool.php:41` accepts a critical bonus of 0..10 but its message says 1..10. Fixed in slice 5 | [#305](https://github.com/iribarren/ogami/pull/305) |
 
 ## Next step
 
-Slice 4: the writer fixes slice 3's review finding (unknown credits badge), then Studio's check editor (T9) and sandbox (T10) for criticals, Hunger dice, special results and the push cap.
+Slice 5: the writer fixes slice 4's review findings (stored `null` pool parts in the check editor, the sandbox's criticals bonus range), then Studio's flow editor special outcomes (T11) and the metadata credits badge (T12).

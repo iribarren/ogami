@@ -27,7 +27,10 @@ final readonly class Catalog
      * @param array<string, CheckShape>                              $checks           what steps may name of each check, by check key
      * @param array<string, list<string>>                            $tagScopes        the entity kinds of each tag limited to some (a tag with no entry applies to all)
      * @param array<string, array<string, true>>                     $conditionOptions the option keys of each conditions field, by field key
-     * @param array<string, string>                                  $fieldTypes       the type of every sheet field by key (number, text, list, track, derived or conditions)
+     * @param array<string, string>                                  $fieldTypes       the type of every sheet field by key (number, text, list, track, derived, conditions or inventory)
+     * @param array<string, string|null>                             $gear             the category of each gear catalog entry by key, null without one (ADR 0045)
+     * @param array<string, list<string>|null>                       $inventories      the categories each inventory field accepts, by field key in sheet order (null: every entry)
+     * @param string|null                                            $currency         the sheet's currency field, null without one
      */
     public function __construct(
         public array $trackers,
@@ -40,6 +43,9 @@ final readonly class Catalog
         public array $fieldTypes = [],
         public array $tagScopes = [],
         public array $conditionOptions = [],
+        public array $gear = [],
+        public array $inventories = [],
+        public ?string $currency = null,
     ) {
     }
 
@@ -48,7 +54,7 @@ final readonly class Catalog
      */
     public function withChecks(array $checks): self
     {
-        return new self($this->trackers, $this->tableEntryKeys, $this->likelihoodLevels, $this->sceneTypes, $this->tags, $this->factSlots, $checks, $this->fieldTypes, $this->tagScopes, $this->conditionOptions);
+        return new self($this->trackers, $this->tableEntryKeys, $this->likelihoodLevels, $this->sceneTypes, $this->tags, $this->factSlots, $checks, $this->fieldTypes, $this->tagScopes, $this->conditionOptions, $this->gear, $this->inventories, $this->currency);
     }
 
     /**
@@ -73,6 +79,24 @@ final readonly class Catalog
     public function hasConditionOption(string $field, string $option): bool
     {
         return isset($this->conditionOptions[$field][$option]);
+    }
+
+    /**
+     * The categories of the gear catalog.
+     *
+     * @return array<string, true>
+     */
+    public function gearCategories(): array
+    {
+        return array_fill_keys(array_filter($this->gear, static fn (?string $category): bool => null !== $category), true);
+    }
+
+    /**
+     * Whether some inventory field of the sheet accepts gear of this category (null: none).
+     */
+    public function hasInventoryFor(?string $category): bool
+    {
+        return array_any($this->inventories, static fn (?array $accepted): bool => Gear::accepts($accepted, $category));
     }
 
     public function hasTracker(string $key): bool

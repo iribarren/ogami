@@ -187,6 +187,7 @@ final readonly class GameSystemReleaseTranslator
     private function fromSchemaVersion2(PublishedReleaseView $view): GameSystemSnapshot
     {
         $content = $view->content;
+        $this->refuseUnplayed($view, $content, '', 'gear', 'a gear catalog is');
         $gameSystem = $this->object($view, $content['gameSystem'] ?? null, 'gameSystem');
         $oracles = $this->object($view, $content['oracles'] ?? null, 'oracles');
         $tables = $this->list($view, $oracles['tables'] ?? null, 'oracles.tables');
@@ -713,6 +714,10 @@ final readonly class GameSystemReleaseTranslator
 
             $keys[$key] = true;
             $kind = $this->string($view, $step['kind'] ?? null, $stepPath.'.kind');
+            if ('shop' === $kind) {
+                throw $this->invalid($view, $stepPath.'.kind', 'shop steps are not played yet (ADR 0045).');
+            }
+
             $common = [
                 'key' => $key,
                 'title' => $this->string($view, $step['title'] ?? null, $stepPath.'.title'),
@@ -957,6 +962,7 @@ final readonly class GameSystemReleaseTranslator
     private function sheet(PublishedReleaseView $view, mixed $value, array $trackerKeys): SheetTemplate
     {
         $sheet = $this->object($view, $value ?? [], 'sheet');
+        $this->refuseUnplayed($view, $sheet, 'sheet', 'currency', 'a currency is');
         foreach (array_keys($sheet) as $name) {
             if (!\in_array($name, ['fields', 'columns', 'groups', 'pointBudget', 'pointBudgets'], true)) {
                 throw $this->invalid($view, 'sheet.'.$name, 'unknown property.');
@@ -1541,6 +1547,19 @@ final readonly class GameSystemReleaseTranslator
     }
 
     /**
+     * Refuses a part of ADR 0045 Studio publishes but Play does not play yet (play-items-economy
+     * slices 2 and 3), present even as null, so a release using it fails closed instead of playing without it.
+     *
+     * @param array<array-key, mixed> $object
+     */
+    private function refuseUnplayed(PublishedReleaseView $view, array $object, string $path, string $name, string $what): void
+    {
+        if (\array_key_exists($name, $object)) {
+            throw $this->invalid($view, '' === $path ? $name : $path.'.'.$name, $what.' not played yet (ADR 0045).');
+        }
+    }
+
+    /**
      * @param array<mixed> $object
      * @param list<string> $allowed
      */
@@ -1567,6 +1586,10 @@ final readonly class GameSystemReleaseTranslator
     {
         $field = $this->object($view, $value, $path);
         $type = $this->string($view, $field['type'] ?? null, $path.'.type');
+        if ('inventory' === $type) {
+            throw $this->invalid($view, $path.'.type', 'inventory fields are not played yet (ADR 0045).');
+        }
+
         if (!isset(self::FIELD_PROPERTIES[$type])) {
             throw $this->invalid($view, $path.'.type', \sprintf('unknown field type "%s".', $type));
         }

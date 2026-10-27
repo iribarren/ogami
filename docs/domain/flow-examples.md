@@ -308,17 +308,19 @@ sceneClosing
 
 ## 4. Cyberpunk RED campaign in acts
 
-A long campaign: the crew starts small, survives on gigs and rises in three acts. It also shows a survival economy with M2 tools.
+A long campaign: the crew starts small, survives on gigs and rises in three acts. It also shows a survival economy: a Character currency, a gear catalog and a Night Market shop ([ADR 0045](../adr/0045-gear-inventories-currency-and-shops.md)).
 
 ### Release
 
 | Part | Content |
 |---|---|
-| Trackers | `rep` counter 0–10; `heat` counter 0–10, hint "At 8+ someone sends a hit squad"; `alarm` clock 6 and `edge` counter 0–3 (as in example 2); `lifestyle` counter with levels Kibble / Prepak / Good prepak / Fresh food; `housing` counter with named levels; `month` clock 4; `eddies` counter (M2 only) |
+| Trackers | `rep` counter 0–10; `heat` counter 0–10, hint "At 8+ someone sends a hit squad"; `alarm` clock 6 and `edge` counter 0–3 (as in example 2); `lifestyle` counter with levels Kibble / Prepak / Good prepak / Fresh food; `housing` counter with named levels; `month` clock 4 |
+| Sheet | `eddies` number (min 0, default 500), the currency with unit "eb"; `gear` inventory (20 slots, categories Gear and Food); `cyberware` inventory (10 stacks, category Chrome) |
+| Gear catalog | Gear (used pistol, armor jacket, burner agent, climbing gear), Food (kibble, real coffee) and Chrome (cheap cyberoptic, neural link), each with a cost and slots |
 | Fact slots | `turf`, `crew-name`, `big-job`, `twist` (text); `fixer`, `nemesis` (npc) |
 | Tags | `crew`, `fixer`, `nomad`, `netrunner`, `solo`, `client`, `rival`, `corp` |
 | Scene Types | Character, Turf, Fixer; Gig offer, Legwork, Job, Payday, Downtime, Recruit, Social, Hit squad; Gear up, Fallout; the heist types of example 2; Betrayal, Showdown, Epilogue; Night Market, Month's end |
-| Tables | `street-events`, `twists`, Night Market categories and items |
+| Tables | `street-events`, `twists`, Night Market categories and items (Downtime's oracle shortcut) |
 
 ### Flow `campaign`
 
@@ -373,7 +375,7 @@ Betrayal
 
 ### Economy
 
-M2 builds a survival economy from trackers, release-level Scene Types, tables and effects (decision 25).
+Money is the Character's `eddies`, the sheet currency; gear sits in the `gear` and `cyberware` inventories.
 
 ```
 Downtime closing
@@ -381,17 +383,18 @@ Downtime closing
   condition month: upTo 3 → —; rest → nextScene Month's end
 
 Night Market
-  table categories → table items (per category)
-  choice "Buy?"  yes → eddies −X (a literal per choice); no → —
+  shop "What do you buy or sell?"
+    offer categories Gear, Food, Chrome; stock 1d4+2 entries rolled when reached; sellRate 50
+    one transaction for the Character: sells, then buys; gear lands in the inventory that accepts its category
 
 Month's end
   condition housing: one band per level → choice "Pay the rent?"
-    yes → eddies −rent, month set 0
-    no  → lifestyle −1, pick NPC [fixer] → createThread "Debt to {picked}"
+    pay  → eddies −rent (a sheet effect, refused when the Character cannot afford it), month set 0
+    skip → lifestyle −1, pick NPC [fixer] → createThread "Debt to {picked}"
   choice "Move up?"  yes → housing +1
 ```
 
-`eddies` is a campaign counter only in M2. It moves to the sheet in M3, with sheet list fields such as inventory and cyberware.
+A rent the Character cannot pay is refused (`insufficient_funds`), so the player takes the debt instead. Month's end runs its steps in `play`: a Scene Type's `setup` has no Character to pay.
 
 ### What it shows
 
@@ -402,14 +405,13 @@ Month's end
 | Chained `condition` steps, including a tag count, gating a `choice` | 3 |
 | A threshold consequence that lowers its tracker (`heat set 4`) | 7 |
 | Phase hooks for act intros and resets | 12, 13 |
-| Counter levels; an M2 economy | 18, 25 |
+| Counter levels; a currency, gear, inventories and a shop | 18, 25; ADR 0045 |
 | `pick` fallbacks through `none` instead of "or" | 16 |
 
 **Notes**
 - Phases only go forward: a failed big job carries forward into `fallout` (accepted limit).
 - Scene chains such as a gig are not shown as a group (accepted limit).
-- A price per item needs one choice per price: items, inventory and a `shop` step kind are an open question.
-- Sheet list fields (inventory, cyberware) and effects on them arrive in M3.
+- Gear changes only through the shop and the player's sheet edits: a gig pays no gear (flow effects on gear are out of scope).
 
 ## 5. West Marches
 

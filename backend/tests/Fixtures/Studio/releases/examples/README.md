@@ -11,6 +11,7 @@ Feature 8b (fact slot hints, `fillFact`, `{fact:key}`) is in every example that 
 | Feature | Adds |
 |---|---|
 | 10 | Sheet fields and the `character` step (schema version 2, [ADR 0022](../../../../../../docs/adr/0022-character-sheets-in-schema-version-2.md)); Characters, the Session party |
+| `play-items-economy` | The gear catalog, the currency, inventories and the `shop` step ([ADR 0045](../../../../../../docs/adr/0045-gear-inventories-currency-and-shops.md)), in `cpr-campaign-in-acts.json` |
 
 ## `vtm-chronicle.json`
 
@@ -46,7 +47,9 @@ Facts: `turf` and `crew-name` in Turf, `fixer` after its `createNpc`, `nemesis` 
 
 Tags: `crew`, `rival`, `fixer`, `client`. Recruit and the grudge use `createNpc`, loose ends and the debt to the fixer `createThread`; Betrayal picks the fixer, then the client, then asks the player; the act end adds `condition count NPC [crew]` after the `rep` condition.
 
-The heist types of example 2 are short copies; the Night Market has one price per choice.
+The heist types of example 2 are short copies.
+
+Economy ([ADR 0045](../../../../../../docs/adr/0045-gear-inventories-currency-and-shops.md)): a gear catalog of Gear, Food and Chrome; the sheet currency `eddies` (unit "eb", no tracker any more); the `gear` (20 slots, Gear and Food) and `cyberware` (10 stacks, Chrome) inventories. The Night Market is one `shop` step with a `1d4+2` stock and a sell rate of 50. Month's end runs in `play`, where a Character pays: each rent option spends `eddies` with a sheet effect. Play refuses the economy until `play-items-economy` plays it, so its tests read the example without it (`GameSystemReleaseTranslatorGearTest::playable()`).
 
 Warnings: none (Hit squad sets `heat` to 4, Month's end sets `month` to 0 when the rent is paid). The count condition adds none: only tracker conditions are checked.
 

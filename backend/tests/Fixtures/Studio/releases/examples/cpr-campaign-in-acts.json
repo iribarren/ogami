@@ -76,8 +76,7 @@
     {"key": "edge", "name": "Edge", "kind": "counter", "min": 0, "max": 3, "initial": 0},
     {"key": "lifestyle", "name": "Lifestyle", "kind": "counter", "min": 0, "max": 3, "initial": 0, "levels": [{"upTo": 0, "label": "Kibble"}, {"upTo": 1, "label": "Prepak"}, {"upTo": 2, "label": "Good prepak"}, {"label": "Fresh food"}]},
     {"key": "housing", "name": "Housing", "kind": "counter", "min": 0, "max": 2, "initial": 0, "levels": [{"upTo": 0, "label": "A bunk in a squat"}, {"upTo": 1, "label": "A cube of your own"}, {"label": "An apartment"}]},
-    {"key": "month", "name": "Month", "hint": "At 4/4 the rent is due", "kind": "clock", "segments": 4},
-    {"key": "eddies", "name": "Eddies", "hint": "Your cash, until the sheet holds it", "kind": "counter", "min": 0, "max": 1000, "initial": 200}
+    {"key": "month", "name": "Month", "hint": "At 4/4 the rent is due", "kind": "clock", "segments": 4}
   ],
   "factSlots": [
     {"key": "turf", "label": "Turf", "type": "text"},
@@ -250,31 +249,30 @@
       "play": [], "closing": []
     },
     {
-      "key": "night-market", "name": "Night Market", "purpose": "Browse the stalls and buy what you can afford.", "tips": "One price per choice.", "oracles": ["market"],
-      "setup": [
-        {"key": "stall", "kind": "table", "title": "What is on sale?", "table": "market"}
+      "key": "night-market", "name": "Night Market", "purpose": "Browse the stalls and buy what you can afford.", "tips": "The stalls change every night.", "oracles": ["market"],
+      "setup": [],
+      "play": [
+        {"key": "stalls", "kind": "shop", "title": "What do you buy or sell?", "prompt": "A few stalls are open tonight.", "offer": {"categories": ["Gear", "Food", "Chrome"]}, "stock": {"dice": "1d4+2"}, "sellRate": 50}
       ],
-      "play": [],
-      "closing": [
-        {"key": "buy", "kind": "choice", "title": "Buy it for 50 eb?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "eddies", "op": "add", "value": -50}]}, {"key": "no", "label": "No"}], "skip": "no"}
-      ]
+      "closing": []
     },
     {
       "key": "months-end", "name": "Month's end", "purpose": "The rent is due.", "oracles": [],
-      "setup": [
+      "setup": [],
+      "play": [
         {"key": "home", "kind": "condition", "title": "Where do you live?", "tracker": "housing", "bands": [{"upTo": 0, "next": "rent-squat"}, {"upTo": 1, "next": "rent-cube"}, {"next": "rent-apartment"}]},
-        {"key": "rent-squat", "kind": "choice", "title": "Pay the rent (50 eb)?", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "next": "move-up", "effects": [{"kind": "tracker", "tracker": "eddies", "op": "add", "value": -50}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "next": "debt", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}]}]},
-        {"key": "rent-cube", "kind": "choice", "title": "Pay the rent (150 eb)?", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "next": "move-up", "effects": [{"kind": "tracker", "tracker": "eddies", "op": "add", "value": -150}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "next": "debt", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}]}]},
-        {"key": "rent-apartment", "kind": "choice", "title": "Pay the rent (400 eb)?", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "next": "move-up", "effects": [{"kind": "tracker", "tracker": "eddies", "op": "add", "value": -400}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}]}]},
+        {"key": "rent-squat", "kind": "choice", "title": "Pay the rent (50 eb)?", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "next": "move-up", "effects": [{"kind": "sheet", "field": "eddies", "op": "subtract", "value": 50}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "next": "debt", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}]}]},
+        {"key": "rent-cube", "kind": "choice", "title": "Pay the rent (150 eb)?", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "next": "move-up", "effects": [{"kind": "sheet", "field": "eddies", "op": "subtract", "value": 150}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "next": "debt", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}]}]},
+        {"key": "rent-apartment", "kind": "choice", "title": "Pay the rent (400 eb)?", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "next": "move-up", "effects": [{"kind": "sheet", "field": "eddies", "op": "subtract", "value": 400}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}]}]},
         {"key": "debt", "kind": "pick", "title": "Which fixer do you borrow from?", "of": "npc", "tags": ["fixer"], "mode": "random", "branches": {"found": {"effects": [{"kind": "createThread", "name": "Debt to {picked}"}]}}},
         {"key": "move-up", "kind": "choice", "title": "Move up?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "housing", "op": "add", "value": 1}]}, {"key": "no", "label": "No"}], "skip": "no"}
       ],
-      "play": [], "closing": []
+      "closing": []
     }
   ],
   "flows": [
     {
-      "key": "campaign", "name": "Campaign in acts", "description": "Start small, survive on gigs and rise in three acts.", "default": true, "defaultView": "focus", "oracles": ["fate", "street-events", "twists", "market"], "trackers": ["rep", "heat", "alarm", "edge", "lifestyle", "housing", "month", "eddies"],
+      "key": "campaign", "name": "Campaign in acts", "description": "Start small, survive on gigs and rise in three acts.", "default": true, "defaultView": "focus", "oracles": ["fate", "street-events", "twists", "market"], "trackers": ["rep", "heat", "alarm", "edge", "lifestyle", "housing", "month"],
       "phases": [
         {"key": "street-zero", "name": "Street Zero", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["character", "turf", "fixer"]}},
         {
@@ -311,6 +309,23 @@
       ]
     }
   ],
-  "sheet": {},
-  "checks": []
+  "sheet": {
+    "fields": [
+      {"key": "eddies", "label": "Eddies", "type": "number", "min": 0, "default": 500},
+      {"key": "gear", "label": "Gear", "type": "inventory", "capacity": 20, "categories": ["Gear", "Food"]},
+      {"key": "cyberware", "label": "Cyberware", "type": "inventory", "maxStacks": 10, "categories": ["Chrome"]}
+    ],
+    "currency": {"field": "eddies", "unit": "eb"}
+  },
+  "checks": [],
+  "gear": [
+    {"key": "used-pistol", "name": "Used pistol", "cost": 50, "category": "Gear"},
+    {"key": "armor-jacket", "name": "Armor jacket", "cost": 100, "slots": 2, "category": "Gear", "description": "Light armor that passes for street wear."},
+    {"key": "burner-agent", "name": "Burner agent", "cost": 50, "slots": 0, "category": "Gear"},
+    {"key": "climbing-gear", "name": "Climbing gear", "cost": 100, "slots": 2, "category": "Gear"},
+    {"key": "kibble", "name": "Kibble by the kilo", "cost": 10, "category": "Food"},
+    {"key": "real-coffee", "name": "Real coffee", "cost": 20, "slots": 0, "category": "Food"},
+    {"key": "cyberoptic", "name": "Cheap cyberoptic", "cost": 500, "slots": 0, "category": "Chrome"},
+    {"key": "neural-link", "name": "Neural link", "cost": 500, "slots": 0, "category": "Chrome"}
+  ]
 }

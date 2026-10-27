@@ -18,6 +18,7 @@ use App\Shared\Application\Bus\QueryBus;
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
+use App\Tests\Unit\Play\Infrastructure\GameSystem\GameSystemReleaseTranslatorGearTest;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -148,13 +149,14 @@ final class PlayReadsPublishedGameSystemReleasesTest extends KernelTestCase
 
     /**
      * The five flow examples, published in Studio's canonical form, pass the anti-corruption layer
-     * with their flow.
+     * with their flow. The campaign in acts goes without its economy, which Play refuses until
+     * play-items-economy plays it (ADR 0045).
      */
     #[Test]
     #[DataProvider('flowExamples')]
     public function playReadsTheSchemaVersion2FlowExamples(string $fixture): void
     {
-        $content = ReleaseViews::fixtureContent($fixture);
+        $content = 'examples/cpr-campaign-in-acts' === $fixture ? GameSystemReleaseTranslatorGearTest::playable() : ReleaseViews::fixtureContent($fixture);
         self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a7f', $content, false));
         self::assertIsArray($content['gameSystem']);
         self::assertIsString($content['gameSystem']['key']);
@@ -170,7 +172,7 @@ final class PlayReadsPublishedGameSystemReleasesTest extends KernelTestCase
         self::assertSame(array_column($content['sceneTypes'], 'key'), array_map(static fn (SceneType $type): string => $type->key, $snapshot->sceneTypes()));
 
         $example = basename($fixture);
-        self::assertSame('west-marches' === $example, !$snapshot->sheet()->isEmpty(), 'Only the West Marches example defines a sheet.');
+        self::assertSame(\in_array($example, ['west-marches', 'cpr-campaign-in-acts'], true), !$snapshot->sheet()->isEmpty(), 'Only the West Marches and campaign in acts examples define a sheet.');
         self::assertArrayHasKey($example, self::EXAMPLE_FLOWS);
         [$flowKey, $phases] = self::EXAMPLE_FLOWS[$example];
         self::assertCount(1, $snapshot->flows());

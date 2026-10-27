@@ -6,12 +6,14 @@ namespace App\Tests\Unit\Studio\Domain\Check;
 
 use App\Formula\Domain\Formula;
 use App\Randomness\Domain\DiceExpression;
+use App\Randomness\Domain\PoolDie;
 use App\Studio\Domain\Check\CheckTestPool;
 use App\Studio\Domain\Check\CheckTestPoolRoll;
 use App\Studio\Domain\Check\CheckTestPush;
 use App\Studio\Domain\Check\CheckTestRoll;
 use App\Studio\Domain\Check\CheckTestRollFailed;
 use App\Studio\Domain\Check\CheckTestRollNotPushable;
+use App\Studio\Domain\Check\CheckTestSpecialResult;
 use App\Studio\Domain\Check\InvalidTestRoll;
 use App\Studio\Domain\Check\OutcomeBand;
 use App\Studio\Domain\Check\SampleSheet;
@@ -42,7 +44,7 @@ final class CheckTestRollPoolTest extends TestCase
         $pool = $result->pool ?? self::fail('A pool check rolls a pool.');
         self::assertNull($result->roll);
         self::assertSame([4, 4, '{hands}', 2], [$pool->roll->size(), $pool->count, $pool->countFormula, $result->total]);
-        self::assertSame([1, 5, 6, 2], array_map(static fn (\App\Randomness\Domain\PoolDie $die): int => $die->face(), $pool->roll->dice()));
+        self::assertSame([1, 5, 6, 2], array_map(static fn (PoolDie $die): int => $die->face(), $pool->roll->dice()));
         self::assertSame([0, 0, null, 'strong'], [$result->modifier, $result->situational, $result->difficulty, $result->band->key]);
         self::assertSame([0, 1, null], $result->bounds);
         self::assertSame('Take a Condition', $result->push?->label);
@@ -95,8 +97,8 @@ final class CheckTestRollPoolTest extends TestCase
         $result = $this->grit()->push(new ScriptedRandomNumberGenerator(6, 3), $this->sheet(), null, 0, [1, 5, 6, 2]);
 
         $pool = $result->pool ?? self::fail('A pushed roll has its pool.');
-        self::assertSame([6, 5, 6, 3], array_map(static fn (\App\Randomness\Domain\PoolDie $die): int => $die->face(), $pool->roll->dice()));
-        self::assertSame([true, false, false, true], array_map(static fn (\App\Randomness\Domain\PoolDie $die): bool => $die->isRerolled(), $pool->roll->dice()));
+        self::assertSame([6, 5, 6, 3], array_map(static fn (PoolDie $die): int => $die->face(), $pool->roll->dice()));
+        self::assertSame([true, false, false, true], array_map(static fn (PoolDie $die): bool => $die->isRerolled(), $pool->roll->dice()));
         self::assertSame([3, 2, 'strong', 'Take a Condition'], [$result->total, $result->rolledSuccesses, $result->band->key, $result->push?->label]);
     }
 
@@ -140,7 +142,7 @@ final class CheckTestRollPoolTest extends TestCase
     public function aRollWhoseDiceAllSucceededCannotBePushed(): void
     {
         $this->expectException(CheckTestRollNotPushable::class);
-        $this->expectExceptionMessageIsOrContains('Check "grit" cannot be pushed: no die failed.');
+        $this->expectExceptionMessageIsOrContains('Check "grit" cannot be pushed: no regular die failed.');
 
         $this->grit()->push(new ScriptedRandomNumberGenerator(), $this->sheet(), null, 0, [5, 6, 6, 5]);
     }
@@ -226,6 +228,19 @@ final class CheckTestRollPoolTest extends TestCase
         yield 'sides that are not an integer' => [['pool' => ['count' => 3, 'sides' => '6', 'successAt' => 5]]];
         yield 'a success above the sides' => [['pool' => ['count' => 3, 'sides' => 6, 'successAt' => 7]]];
         yield 'a success that is not an integer' => [['pool' => ['count' => 3, 'sides' => 6, 'successAt' => 5.5]]];
+        yield 'criticals that are not an object' => [['pool' => ['count' => 3, 'sides' => 10, 'successAt' => 6, 'criticals' => 2]]];
+        yield 'criticals without a bonus' => [['pool' => ['count' => 3, 'sides' => 10, 'successAt' => 6, 'criticals' => []]]];
+        yield 'a criticals bonus of zero' => [['pool' => ['count' => 3, 'sides' => 10, 'successAt' => 6, 'criticals' => ['bonus' => 0]]]];
+        yield 'a criticals bonus above ten' => [['pool' => ['count' => 3, 'sides' => 10, 'successAt' => 6, 'criticals' => ['bonus' => 11]]]];
+        yield 'a criticals bonus that is not an integer' => [['pool' => ['count' => 3, 'sides' => 10, 'successAt' => 6, 'criticals' => ['bonus' => '2']]]];
+        yield 'hunger that is not an object' => [['pool' => ['count' => 3, 'sides' => 10, 'successAt' => 6, 'hunger' => 1]]];
+        yield 'hunger without a count' => [['pool' => ['count' => 3, 'sides' => 10, 'successAt' => 6, 'hunger' => ['count' => 'many']]]];
+        yield 'a negative Hunger count' => [['pool' => ['count' => 3, 'sides' => 10, 'successAt' => 6, 'hunger' => ['count' => -1]]]];
+        yield 'a Hunger count above a hundred' => [['pool' => ['count' => 3, 'sides' => 10, 'successAt' => 6, 'hunger' => ['count' => 101]]]];
+        yield 'a Hunger formula that does not parse' => [['pool' => ['count' => 3, 'sides' => 10, 'successAt' => 6, 'hunger' => ['count' => ['formula' => '{']]]]];
+        yield 'a push cap of zero' => [['push' => ['label' => 'Pay', 'maxDice' => 0]]];
+        yield 'a push cap above a hundred' => [['push' => ['label' => 'Pay', 'maxDice' => 101]]];
+        yield 'a push cap that is not an integer' => [['push' => ['label' => 'Pay', 'maxDice' => '3']]];
         yield 'a push that is not an object' => [['push' => 'Pay']];
         yield 'a push without a label' => [['push' => ['effects' => []]]];
         yield 'a blank push label' => [['push' => ['label' => ' ']]];
@@ -311,6 +326,73 @@ final class CheckTestRollPoolTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         new CheckTestPool(3, 6, 7);
+    }
+
+    #[Test]
+    public function criticalsHungerDiceAndThePushCapAreReadAsStored(): void
+    {
+        $check = CheckTestRoll::fromStored([...$this->stored(), 'pool' => ['count' => 5, 'sides' => 10, 'successAt' => 6, 'criticals' => ['bonus' => 2], 'hunger' => ['count' => ['formula' => '{hands} - 3']]], 'push' => ['label' => 'Spend Willpower', 'maxDice' => 3]]);
+
+        $pool = $check->pool ?? self::fail('A pool check has a pool.');
+        self::assertSame([2, 3], [$pool->criticalsBonus, $check->push?->maxDice]);
+        self::assertSame('{hands} - 3', $pool->hunger instanceof Formula ? $pool->hunger->toString() : null);
+        // A check without them reads with none.
+        $plain = CheckTestRoll::fromStored($this->stored());
+        self::assertSame([null, 0, null], [$plain->pool?->hunger, $plain->pool?->criticalsBonus, $plain->push?->maxDice]);
+    }
+
+    #[Test]
+    public function aHungerRollTotalsItsCriticalPairsAndFlagsTheSpecialResult(): void
+    {
+        // Four dice of ten sides, success on 6+, two of them Hunger dice (hands 4 - 2): regular 10, 3 then Hunger 10, 1.
+        $result = $this->vampire(Formula::fromString('{hands} - 2'))->perform(new ScriptedRandomNumberGenerator(10, 3, 10, 1), $this->sheet(), null, 0);
+
+        $pool = $result->pool ?? self::fail('A pool check rolls a pool.');
+        self::assertSame([2, 2, true], [$pool->roll->successes(), $pool->roll->pool()->hunger, $pool->roll->dice()[3]->isHunger()]);
+        // Two successes and a pair of 10s worth two more; the pair holds a Hunger die.
+        self::assertSame([4, CheckTestSpecialResult::MessyCritical, null], [$result->total, $result->special, $result->rolledSpecial]);
+    }
+
+    #[Test]
+    public function aCheckWithOneBandNeverFailsSoItHasNoBestialFailure(): void
+    {
+        $check = $this->vampire(1, [new OutcomeBand('only', 'Only')]);
+
+        $result = $check->perform(new ScriptedRandomNumberGenerator(2, 3, 4, 1), $this->sheet(), null, 0);
+
+        self::assertNull($result->special);
+    }
+
+    #[Test]
+    public function aPushRebuildsTheHungerDiceLastReRollsTheCappedFailedRegularDiceAndComputesTheSpecialAgain(): void
+    {
+        $check = $this->vampire(1, null, new CheckTestPush('Spend Willpower', 2));
+
+        // Five dice (hands 4 + 1): four regular and one Hunger die; three regular dice failed, the cap re-rolls the first two.
+        $result = $check->push(new ScriptedRandomNumberGenerator(10, 10), $this->sheet(), null, 1, [2, 3, 4, 5, 1]);
+
+        $dice = $result->pool?->roll->dice() ?? self::fail('A pool check rolls a pool.');
+        self::assertSame([[10, true], [10, true], [4, false], [5, false], [1, false]], array_map(static fn (PoolDie $die): array => [$die->face(), $die->isRerolled()], $dice));
+        // Before: no success, failed with a Hunger 1. After: two 10s and a pair worth two more, which is no longer a failure.
+        self::assertSame([0, 4, CheckTestSpecialResult::BestialFailure, CheckTestSpecialResult::Critical], [$result->rolledSuccesses, $result->total, $result->rolledSpecial, $result->special]);
+    }
+
+    #[Test]
+    public function aRollWhoseOnlyFailedDiceAreHungerDiceCannotBePushed(): void
+    {
+        $this->expectException(CheckTestRollNotPushable::class);
+
+        $this->vampire(1)->push(new ScriptedRandomNumberGenerator(), $this->sheet(), null, 0, [6, 7, 8, 1]);
+    }
+
+    /**
+     * Three bands as the grit check; a pool of {hands} dice of ten sides, success on 6+, a pair of 10s worth 2 more.
+     *
+     * @param ?non-empty-list<OutcomeBand> $bands
+     */
+    private function vampire(int|Formula $hunger, ?array $bands = null, ?CheckTestPush $push = null): CheckTestRoll
+    {
+        return new CheckTestRoll('grit', null, null, null, $bands ?? [new OutcomeBand('miss', 'Miss', 0), new OutcomeBand('weak', 'Weak', 1), new OutcomeBand('strong', 'Strong')], new CheckTestPool(Formula::fromString('{hands}'), 10, 6, $hunger, 2), $push ?? new CheckTestPush('Spend Willpower'));
     }
 
     /**

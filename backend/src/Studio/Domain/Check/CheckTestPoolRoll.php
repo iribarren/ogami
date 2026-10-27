@@ -13,12 +13,14 @@ use App\Randomness\Domain\PoolRoll;
 final readonly class CheckTestPoolRoll
 {
     /**
-     * @param ?string $countFormula null when the check's count is a number
+     * @param ?string $countFormula  null when the check's count is a number
+     * @param ?string $hungerFormula null when the check's Hunger count is a number, or it has none
      */
     public function __construct(
         public PoolRoll $roll,
         public int $count,
         public ?string $countFormula,
+        public ?string $hungerFormula = null,
     ) {
     }
 }

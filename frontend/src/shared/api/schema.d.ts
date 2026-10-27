@@ -4417,6 +4417,12 @@ export interface components {
              * @example false
              */
             rerolled: boolean;
+            /**
+             * @description The group of dice the die belongs to: "pool" for a regular die, "hunger" for a Hunger die, which a push never re-rolls (ADR 0044).
+             * @example pool
+             * @enum {string}
+             */
+            group: "pool" | "hunger";
         };
         CheckTestRollPoolResponse: {
             /**
@@ -4447,17 +4453,41 @@ export interface components {
             /** @description Every die, in roll order. After a push, the dice that failed are re-rolled in place. */
             dice: components["schemas"]["CheckTestRollPoolDieResponse"][];
             /**
-             * @description How many dice succeeded; the total of the check.
+             * @description How many dice succeeded, before the bonus of critical pairs; the total of the response adds that bonus.
              * @example 2
              */
             successes: number;
+            /**
+             * @description How many of the dice are Hunger dice (the last ones in roll order): the check's Hunger count, or what its formula gave for the samples, clamped to the size (0 when it has none).
+             * @example 2
+             */
+            hunger: number;
+            /**
+             * @description The formula that gave the Hunger count; null when the check gives a number or has no Hunger dice.
+             * @example {hunger}
+             */
+            hungerFormula: string | null;
+            /**
+             * @description The successes every pair of dice showing the top face adds; 0 for a check without critical pairs.
+             * @example 2
+             */
+            criticalsBonus: number;
         };
+        /** @enum {string} */
+        CheckTestSpecialResult: "critical" | "messyCritical" | "bestialFailure";
         CheckTestRollPushResponse: {
             /**
              * @description What the push costs, in the words of the check.
              * @example Take a Condition
              */
             label: string;
+            /**
+             * @description The most failed regular dice a push re-rolls (ADR 0044); null re-rolls every one. Hunger dice are never re-rolled.
+             * @example 3
+             */
+            maxDice: number | null;
+            /** @description Only on a pushed roll: the special result the roll had before the push; null for none, and before a push. */
+            rolledSpecial: components["schemas"]["CheckTestSpecialResult"] | null;
         };
         CheckTestRollBandResponse: {
             /** @example success */
@@ -4478,10 +4508,12 @@ export interface components {
             /** @description The push the pool check declares: it can be pushed when a die failed; null for a check that declares none, and for a dice check. */
             push: components["schemas"]["CheckTestRollPushResponse"] | null;
             /**
-             * @description Only on a pushed roll: the successes the roll had before the push.
+             * @description Only on a pushed roll: the total the roll had before the push.
              * @example 1
              */
             rolledSuccesses: number | null;
+            /** @description The special result of the roll as it stands, after a push the push's (ADR 0044): critical, messy critical or bestial failure. Null for none, and for a dice check. */
+            special: components["schemas"]["CheckTestSpecialResult"] | null;
             /**
              * @description The value of the check's modifier formula for the samples; 0 when it has none, and for a pool check.
              * @example 6
@@ -4498,7 +4530,7 @@ export interface components {
              */
             difficulty: number | null;
             /**
-             * @description The dice, plus the modifier, plus the situational modifier; the successes of a pool.
+             * @description The dice, plus the modifier, plus the situational modifier; the successes of a pool plus the bonus of its critical pairs.
              * @example 13
              */
             total: number;

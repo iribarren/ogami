@@ -18,6 +18,7 @@ const rolled = {
   pool: null,
   push: null,
   rolledSuccesses: null,
+  special: null,
   dice: {
     expression: '1d10',
     total: 6,
@@ -433,7 +434,12 @@ const poolBands = [
   { key: 'win', label: 'Win', bound: null },
 ]
 
-const die = (face: number, success: boolean, rerolled = false) => ({ face, success, rerolled })
+const die = (face: number, success: boolean, rerolled = false, group = 'pool') => ({
+  face,
+  success,
+  rerolled,
+  group,
+})
 
 const poolRolled = {
   dice: null,
@@ -445,9 +451,13 @@ const poolRolled = {
     countFormula: '{pow} + 1',
     dice: [die(1, false), die(5, true), die(2, false), die(3, false)],
     successes: 1,
+    hunger: 0,
+    hungerFormula: null,
+    criticalsBonus: 0,
   },
-  push: { label: 'Take a Condition' },
+  push: { label: 'Take a Condition', maxDice: null, rolledSpecial: null },
   rolledSuccesses: null,
+  special: null,
   modifier: 0,
   situational: 0,
   difficulty: null,
@@ -709,5 +719,133 @@ describe('the test roll sandbox of a pool check', () => {
     answer(Response.json(poolPushed))
     expect(await sandbox.findByText('Rolled Partial, pushed to Win')).toBeVisible()
     expect(roll(sandbox)).toBeEnabled()
+  })
+})
+
+describe('the test roll sandbox with Hunger dice, critical pairs and a capped push', () => {
+  const hungry = {
+    ...poolRolled,
+    pool: {
+      ...poolRolled.pool,
+      size: 4,
+      dice: [die(10, true), die(2, false), die(3, false), die(10, true, false, 'hunger')],
+      successes: 2,
+      hunger: 1,
+      hungerFormula: '{pow}',
+      criticalsBonus: 2,
+    },
+    push: { label: 'Spend Willpower', maxDice: 3, rolledSpecial: null },
+    total: 4,
+    band: 'win',
+    special: 'messyCritical',
+  }
+
+  it('shows the Hunger dice in the second colour with a label, and the special result as text', async () => {
+    const { user, sandbox } = await editCheck('raid', raidHandlers({ [raidRoll]: json(hungry) }))
+
+    await user.click(roll(sandbox))
+
+    const results = within(await sandbox.findByRole('list', { name: 'Test roll results' }))
+    const dice = within(results.getByRole('list', { name: 'Pool dice' })).getAllByRole('listitem')
+    expect(dice.map((item) => item.getAttribute('data-group'))).toEqual([
+      'pool',
+      'pool',
+      'pool',
+      'hunger',
+    ])
+    expect(dice[3]).toHaveTextContent('10 (success)Hunger die')
+    expect(dice[3]).toHaveClass('border-destructive')
+    expect(dice[0]).not.toHaveTextContent('Hunger die')
+    expect(results.getByText('Messy critical')).toBeVisible()
+    expect(results.getByText('4 successes')).toBeVisible()
+    expect(results.getByText('1 Hunger')).toBeVisible()
+    expect(results.getByText('Critical pairs +2 each')).toBeVisible()
+  })
+
+  it('shows no special result when the roll has none', async () => {
+    const { user, sandbox } = await editCheck(
+      'raid',
+      raidHandlers({ [raidRoll]: json(poolRolled) }),
+    )
+
+    await user.click(roll(sandbox))
+
+    await sandbox.findByRole('list', { name: 'Test roll results' })
+    expect(sandbox.queryByText(/Special result/)).toBeNull()
+    expect(sandbox.queryByText(/Hunger/)).toBeNull()
+  })
+
+  it('offers the push for a failed regular die and says how many it re-rolls', async () => {
+    const { user, sandbox } = await editCheck('raid', raidHandlers({ [raidRoll]: json(hungry) }))
+
+    await user.click(roll(sandbox))
+
+    expect(await sandbox.findByRole('button', { name: 'Push the roll' })).toBeVisible()
+    expect(
+      sandbox.getByText('Re-roll up to 3 failed dice. Hunger dice are never re-rolled.'),
+    ).toBeVisible()
+  })
+
+  it('says every failed regular die is re-rolled without a cap', async () => {
+    const plain = {
+      ...hungry,
+      pool: { ...hungry.pool, hunger: 0 },
+      push: { ...hungry.push, maxDice: null },
+    }
+    const { user, sandbox } = await editCheck('raid', raidHandlers({ [raidRoll]: json(plain) }))
+
+    await user.click(roll(sandbox))
+
+    expect(await sandbox.findByText('Re-roll every failed regular die.')).toBeVisible()
+  })
+
+  it('says one die, not dice, for a cap of 1', async () => {
+    const capped = { ...hungry, push: { ...hungry.push, maxDice: 1 } }
+    const { user, sandbox } = await editCheck('raid', raidHandlers({ [raidRoll]: json(capped) }))
+
+    await user.click(roll(sandbox))
+
+    expect(await sandbox.findByText(/^Re-roll up to 1 failed die\./)).toBeVisible()
+  })
+
+  it('offers no push when the only failed dice are Hunger dice', async () => {
+    const onlyHunger = {
+      ...hungry,
+      pool: { ...hungry.pool, dice: [die(6, true), die(7, true), die(1, false, false, 'hunger')] },
+    }
+    const { user, sandbox } = await editCheck(
+      'raid',
+      raidHandlers({ [raidRoll]: json(onlyHunger) }),
+    )
+
+    await user.click(roll(sandbox))
+
+    await sandbox.findByRole('list', { name: 'Pool dice' })
+    expect(sandbox.queryByRole('button', { name: 'Push the roll' })).toBeNull()
+  })
+
+  it('names the special result the roll had before the push', async () => {
+    const before = {
+      ...hungry,
+      push: { ...hungry.push, rolledSpecial: null },
+      special: 'bestialFailure',
+      band: 'fail',
+    }
+    const pushed = {
+      ...hungry,
+      push: { ...hungry.push, rolledSpecial: 'bestialFailure' },
+      rolledSuccesses: 0,
+      special: null,
+      band: 'win',
+    }
+    const { user, sandbox } = await editCheck(
+      'raid',
+      raidHandlers({ [raidRoll]: json(before), [pushPath]: json(pushed) }),
+    )
+    await user.click(roll(sandbox))
+
+    await user.click(await sandbox.findByRole('button', { name: 'Push the roll' }))
+
+    expect(await sandbox.findByText('Rolled Fail (bestial failure), pushed to Win')).toBeVisible()
   })
 })

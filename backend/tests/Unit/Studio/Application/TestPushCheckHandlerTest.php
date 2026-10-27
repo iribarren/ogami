@@ -54,7 +54,7 @@ final class TestPushCheckHandlerTest extends TestCase
         $view = $this->push([6], new TestPushCheck('ann', 'mine', 'grit', ['hands' => 3], [], null, null, [1, 5, 6]));
 
         self::assertNull($view->dice);
-        self::assertEquals(new CheckTestPoolView(3, 6, 5, 3, '{hands}', [new CheckTestPoolDieView(6, true, true), new CheckTestPoolDieView(5, true, false), new CheckTestPoolDieView(6, true, false)], 3), $view->pool);
+        self::assertEquals(new CheckTestPoolView(3, 6, 5, 3, '{hands}', [new CheckTestPoolDieView(6, true, true, 'pool'), new CheckTestPoolDieView(5, true, false, 'pool'), new CheckTestPoolDieView(6, true, false, 'pool')], 3, 0, null, 0), $view->pool);
         self::assertSame([3, 'strong', 'Take a Condition', 2], [$view->total, $view->band, $view->pushLabel, $view->rolledSuccesses]);
     }
 

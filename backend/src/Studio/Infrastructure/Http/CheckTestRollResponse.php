@@ -8,6 +8,7 @@ use App\Randomness\Application\RollView;
 use App\Randomness\Infrastructure\Http\RollResponse;
 use App\Studio\Application\CheckTestPoolView;
 use App\Studio\Application\CheckTestRollView;
+use App\Studio\Domain\Check\CheckTestSpecialResult;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 
@@ -16,7 +17,7 @@ use OpenApi\Attributes as OA;
  * its `/push`: the roll of the saved check for the samples, which is never recorded. A check rolls
  * dice or a pool (ADR 0041): the other part is null.
  */
-#[OA\Schema(required: ['dice', 'pool', 'push', 'rolledSuccesses', 'modifier', 'situational', 'difficulty', 'total', 'bands', 'band'])]
+#[OA\Schema(required: ['dice', 'pool', 'push', 'rolledSuccesses', 'special', 'modifier', 'situational', 'difficulty', 'total', 'bands', 'band'])]
 final readonly class CheckTestRollResponse
 {
     /**
@@ -29,15 +30,17 @@ final readonly class CheckTestRollResponse
         public ?CheckTestRollPoolResponse $pool,
         #[OA\Property(ref: new Model(type: CheckTestRollPushResponse::class), description: 'The push the pool check declares: it can be pushed when a die failed; null for a check that declares none, and for a dice check.', nullable: true)]
         public ?CheckTestRollPushResponse $push,
-        #[OA\Property(description: 'Only on a pushed roll: the successes the roll had before the push.', example: 1, nullable: true)]
+        #[OA\Property(description: 'Only on a pushed roll: the total the roll had before the push.', example: 1, nullable: true)]
         public ?int $rolledSuccesses,
+        #[OA\Property(description: 'The special result of the roll as it stands, after a push the push\'s (ADR 0044): critical, messy critical or bestial failure. Null for none, and for a dice check.', nullable: true)]
+        public ?CheckTestSpecialResult $special,
         #[OA\Property(description: 'The value of the check\'s modifier formula for the samples; 0 when it has none, and for a pool check.', example: 6)]
         public int $modifier,
         #[OA\Property(description: 'The situational modifier that applied.', example: 0)]
         public int $situational,
         #[OA\Property(description: 'The Check difficulty that applied: the one sent, else the declared default; null for a check that declares none.', example: 13, nullable: true)]
         public ?int $difficulty,
-        #[OA\Property(description: 'The dice, plus the modifier, plus the situational modifier; the successes of a pool.', example: 13)]
+        #[OA\Property(description: 'The dice, plus the modifier, plus the situational modifier; the successes of a pool plus the bonus of its critical pairs.', example: 13)]
         public int $total,
         #[OA\Property(description: 'Every band in order with its bound for these samples.', type: 'array', items: new OA\Items(ref: new Model(type: CheckTestRollBandResponse::class)))]
         public array $bands,
@@ -51,8 +54,9 @@ final readonly class CheckTestRollResponse
         return new self(
             $view->dice instanceof RollView ? RollResponse::fromView($view->dice) : null,
             $view->pool instanceof CheckTestPoolView ? CheckTestRollPoolResponse::fromView($view->pool) : null,
-            null === $view->pushLabel ? null : CheckTestRollPushResponse::of($view->pushLabel),
+            null === $view->pushLabel ? null : CheckTestRollPushResponse::of($view->pushLabel, $view->pushMaxDice, $view->rolledSpecial),
             $view->rolledSuccesses,
+            $view->special,
             $view->modifier,
             $view->situational,
             $view->difficulty,

@@ -127,17 +127,19 @@ final readonly class CheckTestRoll
         try {
             $modifier = $this->modifier?->evaluate(new CheckFormulaValues($sheet, null)) ?? 0;
             $count = $this->countOf($sheet);
+            $hunger = $this->hungerOf($sheet);
             $bounds = $this->boundsOf($sheet, $effective);
             $roll = $this->dice?->roll($random);
-            $poolRoll = $this->pool?->pool($this->pool->sizeFor($count, $situational))->roll($random);
+            $poolRoll = $this->pool?->pool($this->pool->sizeFor($count, $situational), $hunger)->roll($random);
         } catch (FormulaEvaluationFailed|InvalidDiceExpression $failed) {
             throw CheckTestRollFailed::evaluation($this->key, $failed);
         }
 
         if ($this->pool instanceof CheckTestPool && $poolRoll instanceof PoolRoll) {
-            $total = $poolRoll->successes();
+            $total = $poolRoll->total();
+            $band = $this->bandFor($bounds, $total);
 
-            return new CheckTestRollResult(null, 0, $situational, $effective, $total, $this->bands, $bounds, $this->bandFor($bounds, $total), $this->poolRollOf($poolRoll, $count), $this->push);
+            return new CheckTestRollResult(null, 0, $situational, $effective, $total, $this->bands, $bounds, $band, $this->poolRollOf($poolRoll, $count), $this->push, null, $this->specialOf($poolRoll, $total, $effective, $band));
         }
 
         $roll ?? throw new \LogicException(\sprintf('Check "%s" rolls neither dice nor a pool.', $this->key));
@@ -154,12 +156,14 @@ final readonly class CheckTestRoll
 
     /**
      * Pushes the roll a client holds (ADR 0041), statelessly: the pool is sized again for these samples,
-     * rebuilt from the faces of the roll, and every die that failed is re-rolled once. The band is
-     * picked again for the pushed successes. The cost is not applied: a test roll has no campaign.
+     * rebuilt from the faces of the roll (the Hunger dice last, as rolled), and every regular die that
+     * failed is re-rolled once, at most the push's cap and never a Hunger die (ADR 0044). The band and
+     * the special result are picked again for the pushed roll. The cost is not applied: a test roll
+     * has no campaign.
      *
-     * @param list<int> $faces the face of each die of the roll as it was shown, in roll order
+     * @param list<int> $faces the face of each die of the roll as it was shown, in roll order, Hunger dice last
      *
-     * @throws CheckTestRollNotPushable when the check declares no push, or no die of the roll failed
+     * @throws CheckTestRollNotPushable when the check declares no push, or no regular die of the roll failed
      * @throws InvalidTestRoll          when the difficulty or the situational modifier is not accepted, or the faces are not the roll of this pool
      * @throws CheckTestRollFailed      when the pool count or a band bound cannot be evaluated; nothing is re-rolled
      */
@@ -174,24 +178,28 @@ final readonly class CheckTestRoll
 
         try {
             $count = $this->countOf($sheet);
+            $hunger = $this->hungerOf($sheet);
             $bounds = $this->boundsOf($sheet, $effective);
         } catch (FormulaEvaluationFailed $failed) {
             throw CheckTestRollFailed::evaluation($this->key, $failed);
         }
 
         try {
-            $rolled = PoolRoll::ofFaces($this->pool->pool($this->pool->sizeFor($count, $situational)), $faces);
+            $rolled = PoolRoll::ofFaces($this->pool->pool($this->pool->sizeFor($count, $situational), $hunger), $faces);
         } catch (InvalidDicePool $invalid) {
             throw InvalidTestRoll::at('faces', rtrim($invalid->getMessage(), '.'));
         }
 
         try {
-            $pushed = $rolled->push($random);
+            $pushed = $rolled->push($random, $this->push->maxDice);
         } catch (PoolRollNotPushable) {
             throw CheckTestRollNotPushable::noFailedDie($this->key);
         }
 
-        return new CheckTestRollResult(null, 0, $situational, $effective, $pushed->successes(), $this->bands, $bounds, $this->bandFor($bounds, $pushed->successes()), $this->poolRollOf($pushed, $count), $this->push, $rolled->successes());
+        $rolledBand = $this->bandFor($bounds, $rolled->total());
+        $band = $this->bandFor($bounds, $pushed->total());
+
+        return new CheckTestRollResult(null, 0, $situational, $effective, $pushed->total(), $this->bands, $bounds, $band, $this->poolRollOf($pushed, $count), $this->push, $rolled->total(), $this->specialOf($pushed, $pushed->total(), $effective, $band), $this->specialOf($rolled, $rolled->total(), $effective, $rolledBand));
     }
 
     private function assertSituational(int $situational): void
@@ -214,6 +222,32 @@ final readonly class CheckTestRoll
         }
 
         return $this->pool->count instanceof Formula ? $this->pool->count->evaluate(new CheckFormulaValues($sheet, null)) : $this->pool->count;
+    }
+
+    /**
+     * What the pool's Hunger count reads for the samples: its number, or its formula over the sheet
+     * (without a difficulty, as the count); 0 without Hunger dice. The pool clamps it to its size, so
+     * a negative one rolls none.
+     *
+     * @throws FormulaEvaluationFailed
+     */
+    private function hungerOf(ValueResolver $sheet): int
+    {
+        $hunger = $this->pool?->hunger;
+
+        return $hunger instanceof Formula ? $hunger->evaluate(new CheckFormulaValues($sheet, null)) : $hunger ?? 0;
+    }
+
+    /**
+     * The special result of a roll (ADR 0044), as Play's Check::specialOf(). A roll fails when its total
+     * is below the difficulty, if the check declares one, else when its band is the first of a check
+     * with two bands or more; a check with a single band never fails.
+     */
+    private function specialOf(PoolRoll $roll, int $total, ?int $difficulty, OutcomeBand $band): ?CheckTestSpecialResult
+    {
+        $failed = null !== $difficulty ? $total < $difficulty : \count($this->bands) >= 2 && $band === $this->bands[0];
+
+        return CheckTestSpecialResult::of($roll, $failed);
     }
 
     /**
@@ -241,7 +275,7 @@ final readonly class CheckTestRoll
 
     private function poolRollOf(PoolRoll $roll, int $count): CheckTestPoolRoll
     {
-        return new CheckTestPoolRoll($roll, $count, $this->pool?->count instanceof Formula ? $this->pool->count->toString() : null);
+        return new CheckTestPoolRoll($roll, $count, $this->pool?->count instanceof Formula ? $this->pool->count->toString() : null, $this->pool?->hunger instanceof Formula ? $this->pool->hunger->toString() : null);
     }
 
     private function effectiveDifficulty(?int $given): ?int
@@ -299,21 +333,55 @@ final readonly class CheckTestRoll
             throw CheckTestRollFailed::unreadable($where.' has a pool without integer sides and success threshold');
         }
 
-        if (\is_array($count)) {
-            $formula = $count['formula'] ?? null;
-            $count = Formula::fromString(\is_string($formula) ? $formula : throw CheckTestRollFailed::unreadable($where.' has a pool count without a formula'));
+        $count = self::readCount($count, $where, 'pool count');
+        if (null === $count) {
+            throw CheckTestRollFailed::unreadable($where.' has a pool count that is neither an integer nor a formula');
         }
 
-        if (!\is_int($count) && !$count instanceof Formula) {
-            throw CheckTestRollFailed::unreadable($where.' has a pool count that is neither an integer nor a formula');
+        $hunger = null;
+        if (\array_key_exists('hunger', $stored) && null !== $stored['hunger']) {
+            $hungry = $stored['hunger'];
+            $hunger = \is_array($hungry) && !array_is_list($hungry) ? self::readCount($hungry['count'] ?? null, $where, 'Hunger count') : null;
+            if (null === $hunger) {
+                throw CheckTestRollFailed::unreadable($where.' has Hunger dice without a count that is an integer or a formula');
+            }
+        }
+
+        $criticals = $stored['criticals'] ?? null;
+        $bonus = 0;
+        if (null !== $criticals) {
+            $bonus = \is_array($criticals) && !array_is_list($criticals) ? $criticals['bonus'] ?? null : null;
+            if (!\is_int($bonus) || $bonus < 1) {
+                throw CheckTestRollFailed::unreadable($where.' has critical pairs without an integer bonus from 1 to '.CheckTestPool::MAX_CRITICALS_BONUS);
+            }
         }
 
         // Only the pool's own bounds are reported as a pool that breaks the contract: any other error keeps its own label.
         try {
-            return new CheckTestPool($count, $sides, $successAt);
+            return new CheckTestPool($count, $sides, $successAt, $hunger, $bonus);
         } catch (\InvalidArgumentException $invalid) {
             throw CheckTestRollFailed::unreadable(\sprintf('%s has a pool that breaks the contract: %s', $where, rtrim($invalid->getMessage(), '.')), $invalid);
         }
+    }
+
+    /**
+     * A count as the release stores it: an integer, or an object with a formula that parses.
+     *
+     * @throws InvalidFormula when the formula does not parse
+     */
+    private static function readCount(mixed $stored, string $where, string $what): int|Formula|null
+    {
+        if (\is_int($stored)) {
+            return $stored;
+        }
+
+        if (!\is_array($stored) || array_is_list($stored)) {
+            return null;
+        }
+
+        $formula = $stored['formula'] ?? null;
+
+        return Formula::fromString(\is_string($formula) ? $formula : throw CheckTestRollFailed::unreadable(\sprintf('%s has a %s without a formula', $where, $what)));
     }
 
     private static function readPush(mixed $stored, string $where): CheckTestPush
@@ -337,7 +405,13 @@ final readonly class CheckTestRoll
             throw CheckTestRollFailed::unreadable(\sprintf('%s has a push that breaks the contract: at most %d effects, each an object', $where, CheckTestPush::MAX_EFFECTS));
         }
 
-        return new CheckTestPush($label);
+        // A cap of 0 or less would not be a push: the contract keeps 1..100, and a bad one is unreadable, never ignored.
+        $maxDice = $stored['maxDice'] ?? null;
+        if (null !== $maxDice && !\is_int($maxDice)) {
+            throw CheckTestRollFailed::unreadable($where.' has a push cap that is not an integer');
+        }
+
+        return new CheckTestPush($label, $maxDice);
     }
 
     /**

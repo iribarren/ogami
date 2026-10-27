@@ -10,7 +10,7 @@ use OpenApi\Attributes as OA;
 /**
  * A die of a test-rolled pool.
  */
-#[OA\Schema(required: ['face', 'success', 'rerolled'])]
+#[OA\Schema(required: ['face', 'success', 'rerolled', 'group'])]
 final readonly class CheckTestRollPoolDieResponse
 {
     private function __construct(
@@ -20,11 +20,13 @@ final readonly class CheckTestRollPoolDieResponse
         public bool $success,
         #[OA\Property(description: 'Whether a push re-rolled this die; always false before a push.', example: false)]
         public bool $rerolled,
+        #[OA\Property(description: 'The group of dice the die belongs to: "pool" for a regular die, "hunger" for a Hunger die, which a push never re-rolls (ADR 0044).', example: 'pool', enum: ['pool', 'hunger'])]
+        public string $group,
     ) {
     }
 
     public static function fromView(CheckTestPoolDieView $view): self
     {
-        return new self($view->face, $view->success, $view->rerolled);
+        return new self($view->face, $view->success, $view->rerolled, $view->group);
     }
 }

@@ -557,6 +557,7 @@ final class GameSystemCheckApiTest extends WebTestCase
 
         $vampire = self::vampire();
         $pool = $vampire['pool'];
+        \assert(\is_array($pool));
         yield 'criticals bonus 0' => [[...$vampire, 'pool' => [...$pool, 'criticals' => ['bonus' => 0]]], 'checks[2].pool.criticals.bonus: '];
         yield 'criticals bonus above 10' => [[...$vampire, 'pool' => [...$pool, 'criticals' => ['bonus' => 11]]], 'checks[2].pool.criticals.bonus: '];
         yield 'criticals unknown property' => [[...$vampire, 'pool' => [...$pool, 'criticals' => ['bonus' => 2, 'x' => 1]]], 'checks[2].pool.criticals.x: '];

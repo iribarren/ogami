@@ -82,6 +82,41 @@ final class FlowRunPendingCheckTest extends FlowRunTestCase
         yield 'every die succeeded' => ['grit', [5, 6, 5], 'Strong'];
         yield 'a pool check without a push' => ['steady', [1, 5, 2], 'Weak'];
         yield 'a dice check' => ['flat', [2], 'Low'];
+        yield 'only Hunger dice failed' => ['thirst', [5, 1, 2], 'Weak'];
+    }
+
+    #[Test]
+    public function aRollWhoseOnlyFailedDiceAreHungerDiceLeavesNothingToPushOrKeep(): void
+    {
+        $release = $this->gritRelease('thirst');
+        $campaign = $this->inScene($release);
+        $campaign->completeFlowStep('sneak', $this->rolled($release, 'thirst', 5, 1, 2), $release, self::at(), entryId: self::ENTRY);
+        $before = $this->deepCopy($campaign);
+
+        foreach ([null, 'strong'] as $pushedBandKey) {
+            try {
+                $campaign->resolvePendingFlowCheck('sneak', $pushedBandKey, $release, self::at());
+                self::fail('No roll pends.');
+            } catch (NoPendingCheck $none) {
+                self::assertSame('No roll of a check step waits for Keep or Push.', $none->getMessage());
+            }
+        }
+
+        self::assertEquals($before, $campaign);
+    }
+
+    #[Test]
+    public function aRollWithAFailedRegularDieAmongFailedHungerDicePendsAndKeepWorks(): void
+    {
+        $release = $this->gritRelease('thirst');
+        $campaign = $this->inScene($release);
+        $campaign->completeFlowStep('sneak', $this->rolled($release, 'thirst', 1, 1, 2), $release, self::at(), entryId: self::ENTRY);
+        self::assertEquals(new PendingCheck('sneak', self::ENTRY, 'ada', null, 'miss'), self::flowRunOf($campaign)->pendingCheck());
+
+        $campaign->resolvePendingFlowCheck('sneak', null, $release, self::at());
+
+        self::assertNull(self::flowRunOf($campaign)->pendingCheck());
+        self::assertSame(['sneak' => 'Miss'], self::flowRunOf($campaign)->answers());
     }
 
     #[Test]

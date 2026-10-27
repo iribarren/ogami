@@ -95,6 +95,7 @@ final class CampaignFlowCheckPushApiTest extends WebTestCase
     {
         yield 'every die succeeded' => ['gritty', [5, 6, 5]];
         yield 'a check without a push' => ['steady', [1, 5, 2]];
+        yield 'only Hunger dice failed' => ['thirsty', [5, 1, 2]];
     }
 
     /**
@@ -111,6 +112,22 @@ final class CampaignFlowCheckPushApiTest extends WebTestCase
 
         self::assertResponseIsSuccessful();
         self::assertSame(['key' => 'after', 'pending' => null], $this->stepOf($this->json()));
+    }
+
+    #[Test]
+    public function pushingARollWhoseOnlyFailedDiceAreHungerDiceIsAConflict(): void
+    {
+        $this->inScene('thirsty');
+        $this->random->script(5, 1, 2);
+        $this->answer(['stepKey' => 'roll-it', 'characterId' => 'char-ada']);
+        self::assertResponseIsSuccessful();
+        $before = $this->state();
+
+        $this->push(['stepKey' => 'roll-it']);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(['error' => 'No roll of a check step waits for Keep or Push.'], $this->json());
+        self::assertSame($before, $this->state());
     }
 
     #[Test]
@@ -453,6 +470,7 @@ final class CampaignFlowCheckPushApiTest extends WebTestCase
                 ['kind' => 'sheet', 'field' => 'physical', 'op' => 'mark'],
             ]]],
             ['key' => 'steady', 'label' => 'Steady', 'pool' => $pool, 'bands' => $bands],
+            ['key' => 'thirst', 'label' => 'Thirst', 'pool' => ['hunger' => ['count' => 2]] + $pool, 'bands' => $bands, 'push' => ['label' => 'Push']],
             ['key' => 'cursed', 'label' => 'Cursed', 'pool' => $pool, 'bands' => $bands, 'push' => ['label' => 'Pay', 'effects' => [['kind' => 'sheet', 'field' => 'stress', 'op' => 'set', 'value' => ['formula' => '{agility} / ({zero} - 1)']]]]],
         ]);
         $dread = static fn (int $by): array => ['kind' => 'tracker', 'tracker' => 'dread', 'op' => 'add', 'value' => $by];
@@ -464,6 +482,7 @@ final class CampaignFlowCheckPushApiTest extends WebTestCase
         $sceneTypes = [
             'gritty' => $step('grit', [['band' => 'weak', 'effects' => [$stress(2)]], ['band' => 'strong', 'effects' => [$dread(2)]]]),
             'steady' => $step('steady'),
+            'thirsty' => $step('thirst'),
             'cursed' => $step('cursed'),
             'fragile' => $step('grit', [['band' => 'strong', 'effects' => [$stress(['formula' => '{agility} / ({zero} - 1)'], 'set')]]]),
             'brittle' => $step('grit', [['band' => 'weak', 'effects' => [$stress(['formula' => '{agility} / ({zero} - 1)'], 'set')]]]),

@@ -34,7 +34,9 @@ use App\Randomness\Domain\DiceExpression;
  * difficulty - 1, "success" up to difficulty + 4, "crit") "flat" (1d6, no modifier or
  * difficulty, bands "low" up to 3 and "high"), "broken" (a modifier that divides by zero), "grit"
  * (a pool of 3d6 with successes on 5+, bands "miss" up to 0, "weak" up to 1 and "strong", pushable
- * at no cost, ADR 0041) and "steady" (the same pool without a push). For check sets (ADR 0042) each
+ * at no cost, ADR 0041), "steady" (the same pool without a push) and "thirst" (the pool with critical
+ * pairs worth 2 and 2 Hunger dice, a push capped at 1 die, ADR 0044: the dice are 1 regular die,
+ * then 2 Hunger dice). For check sets (ADR 0042) each
  * shares its band keys with a sibling: "knack" (1d10 + hands, the bands of "skill") and "nerve" (the
  * pool of "grit" with a push, the bands of "grit").
  *
@@ -76,6 +78,7 @@ final class CheckStepReleases
             new Check('grit', 'Grit', null, null, null, null, $poolBands, new CheckPool(3, 6, 5), new CheckPush('Push it')),
             new Check('nerve', 'Nerve', null, null, null, null, $poolBands, new CheckPool(3, 6, 5), new CheckPush('Push it')),
             new Check('steady', 'Steady', null, null, null, null, $poolBands, new CheckPool(3, 6, 5)),
+            new Check('thirst', 'Thirst', null, null, null, null, $poolBands, new CheckPool(3, 6, 5, 2, 2), new CheckPush('Push it', [], 1)),
         ];
 
         return new GameSystemSnapshot('checking', 'Checking', $version, null, [], [], [Tracker::counter('heat', 'Heat', null, 0, 20, 10)], sceneTypes: [$sceneType], flows: [

@@ -493,8 +493,9 @@ final class PresetsTest extends KernelTestCase
 
         // The world turn rolls the Second Inquisition against the Masquerade tracker.
         $flow = $snapshot->defaultFlow();
-        self::assertSame('chronicle', $flow?->key);
-        $inquisition = $flow?->phase('chronicle')?->worldTurn->step('inquisition');
+        self::assertNotNull($flow);
+        self::assertSame('chronicle', $flow->key);
+        $inquisition = $flow->phase('chronicle')?->worldTurn->step('inquisition');
         self::assertInstanceOf(RollStep::class, $inquisition);
         $upTo = $inquisition->bands[0]->upTo;
         self::assertInstanceOf(Formula::class, $upTo);

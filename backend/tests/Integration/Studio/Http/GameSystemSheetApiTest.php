@@ -425,7 +425,7 @@ final class GameSystemSheetApiTest extends WebTestCase
 
         $this->client->request('DELETE', self::BASE.'/mine/sheet/fields/pow?expectedVersion=1');
         self::assertResponseStatusCodeSame(422);
-        self::assertContains('sheet.pointBudget.fields[0]', $this->json()['paths']);
+        self::assertContains('sheet.pointBudget.fields[0]', (array) $this->json()['paths']);
 
         $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/fields/pow', ['expectedVersion' => 1, 'field' => ['key' => 'power', 'label' => 'Power', 'type' => 'number']]);
         self::assertResponseStatusCodeSame(422);

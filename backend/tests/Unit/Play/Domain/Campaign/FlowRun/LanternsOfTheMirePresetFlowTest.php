@@ -177,7 +177,7 @@ final class LanternsOfTheMirePresetFlowTest extends FlowRunTestCase
         $value = $campaign->character(CharacterId::fromString('inv'))?->values()[$field] ?? [];
         \assert(\is_array($value));
 
-        return array_values($value);
+        return array_values(array_filter($value, \is_string(...)));
     }
 
     private function markCondition(Campaign $campaign, string $field, string $option): void

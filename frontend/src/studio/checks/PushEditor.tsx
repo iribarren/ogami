@@ -20,6 +20,7 @@ export function PushEditor({
   push,
   context,
   labelError,
+  maxDiceError,
   effectErrors,
   onChange,
   onRestructure,
@@ -27,6 +28,7 @@ export function PushEditor({
   push: PushDraft | null
   context: StepContext
   labelError?: string
+  maxDiceError?: string
   effectErrors: StepError[]
   onChange: (push: PushDraft | null) => void
   onRestructure: () => void
@@ -59,6 +61,15 @@ export function PushEditor({
             help="What the push costs, in the player's words, such as Take a Condition."
             onChange={(label) => {
               onChange({ ...push, label })
+            }}
+          />
+          <TextField
+            label="Dice cap"
+            value={push.maxDice ?? ''}
+            error={maxDiceError}
+            help="Optional, 1 to 100: the most failed dice a push re-rolls, such as 3. Empty re-rolls every failed die. Hunger dice are never re-rolled."
+            onChange={(maxDice) => {
+              onChange({ ...push, maxDice })
             }}
           />
           <EffectsEditor

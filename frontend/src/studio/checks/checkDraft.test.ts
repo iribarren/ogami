@@ -15,6 +15,8 @@ import {
   writeCheck,
   type BandDraft,
   type CheckDraft,
+  type PoolDraft,
+  type PushDraft,
   type StoredCheck,
 } from './checkDraft'
 import { effectsToDrafts } from '../narrative/steps/effectDraft'
@@ -737,5 +739,114 @@ describe('a pool check', () => {
     expect(result).toEqual({ check: stored })
     expect(result).not.toHaveProperty('check.pool')
     expect(result).not.toHaveProperty('check.push')
+  })
+})
+
+function pooledOf(draft: CheckDraft): PoolDraft {
+  if (draft.pool === null) {
+    throw new Error('Expected a pool check.')
+  }
+  return draft.pool
+}
+
+function pushedOf(draft: CheckDraft): PushDraft {
+  if (draft.push === null) {
+    throw new Error('Expected a push.')
+  }
+  return draft.push
+}
+
+describe('criticals, Hunger dice and the push cap', () => {
+  const vampire: StoredCheck = {
+    key: 'feed',
+    label: 'Feed',
+    pool: {
+      count: { formula: '{pow} + 1' },
+      sides: 10,
+      successAt: 6,
+      criticals: { bonus: 2 },
+      hunger: { count: { formula: '{hunger}' } },
+    },
+    push: { label: 'Spend Willpower', maxDice: 3 },
+    bands: [
+      { key: 'fail', label: 'Fail', upTo: 0 },
+      { key: 'win', label: 'Win' },
+    ],
+  }
+
+  it('reads them into text inputs and writes the check back unchanged', () => {
+    const draft = drafted(vampire)
+
+    expect(draft.pool).toMatchObject({ criticalsBonus: '2', hunger: '{hunger}' })
+    expect(draft.push?.maxDice).toBe('3')
+    expect(writeCheck(draft)).toEqual({ check: vampire })
+  })
+
+  it('reads and writes an integer Hunger count, a zero included', () => {
+    const check = { ...vampire, pool: { ...(vampire.pool as object), hunger: { count: 0 } } }
+
+    expect(drafted(check).pool?.hunger).toBe('0')
+    expect(writeCheck(drafted(check))).toEqual({ check })
+  })
+
+  it('leaves them absent when the stored check has none, or the inputs are empty', () => {
+    const plain: StoredCheck = {
+      ...vampire,
+      pool: { count: 4, sides: 6, successAt: 5 },
+      push: { label: 'Pay' },
+    }
+    expect(writeCheck(drafted(plain))).toEqual({ check: plain })
+
+    const draft = drafted(vampire)
+    draft.pool = { ...pooledOf(draft), criticalsBonus: ' ', hunger: '' }
+    draft.push = { ...pushedOf(draft), maxDice: '' }
+    expect(writeCheck(draft)).toEqual({
+      check: {
+        ...vampire,
+        pool: { count: { formula: '{pow} + 1' }, sides: 10, successAt: 6 },
+        push: { label: 'Spend Willpower' },
+      },
+    })
+  })
+
+  it.each([
+    ['criticals that are not an object', { criticals: 2 }],
+    ['criticals with another property', { criticals: { bonus: 2, extra: 1 } }],
+    ['a bonus that is not an integer', { criticals: { bonus: 1.5 } }],
+    ['hunger that is not an object', { hunger: 3 }],
+    ['hunger without a count', { hunger: {} }],
+  ])('cannot hold %s', (_, changes) => {
+    expect(readCheck({ ...vampire, pool: { ...(vampire.pool as object), ...changes } })).toBeNull()
+  })
+
+  it('cannot hold a push cap that is not an integer', () => {
+    expect(readCheck({ ...vampire, push: { label: 'Pay', maxDice: 'three' } })).toBeNull()
+  })
+
+  it('refuses the bonus, the Hunger count and the cap the publisher would', () => {
+    const errorsOf = (pool: object, push?: object) => {
+      const draft = drafted(vampire)
+      draft.pool = { ...pooledOf(draft), ...pool }
+      draft.push = { ...pushedOf(draft), ...push }
+      const result = writeCheck(draft)
+      return 'errors' in result ? result.errors : null
+    }
+
+    expect(errorsOf({ criticalsBonus: '0' })).toHaveProperty('poolCriticalsBonus')
+    expect(errorsOf({ criticalsBonus: '11' })).toHaveProperty('poolCriticalsBonus')
+    expect(errorsOf({ criticalsBonus: 'two' })).toHaveProperty('poolCriticalsBonus')
+    expect(errorsOf({ criticalsBonus: '10' })).toBeNull()
+    expect(errorsOf({ hunger: '-1' })?.poolHunger).toContain('between 0 and 100')
+    expect(errorsOf({ hunger: '101' })?.poolHunger).toContain('between 0 and 100')
+    expect(errorsOf({ hunger: 'x'.repeat(201) })?.poolHunger).toContain('200 characters')
+    expect(errorsOf({}, { maxDice: '0' })).toHaveProperty('pushMaxDice')
+    expect(errorsOf({}, { maxDice: '101' })).toHaveProperty('pushMaxDice')
+    expect(errorsOf({}, { maxDice: '2.5' })).toHaveProperty('pushMaxDice')
+  })
+
+  it('starts a pool and a push without them', () => {
+    expect(
+      writeCheck({ ...switchMode(drafted(stored), 'pool'), push: { label: 'Pay', effects: [] } }),
+    ).toHaveProperty('errors.poolCount')
   })
 })

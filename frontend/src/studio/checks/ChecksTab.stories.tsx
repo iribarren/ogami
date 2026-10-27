@@ -316,3 +316,35 @@ export const PushCost: Story = {
     ).toBeVisible()
   },
 }
+
+/** A pool check with critical pairs, Hunger dice and a capped push (ADR 0044). */
+export const HungerAndCriticals: Story = {
+  parameters: {
+    api: {
+      [`GET ${base}/checks`]: json({
+        ...checks,
+        checks: [
+          {
+            ...pool,
+            pool: {
+              count: { formula: '{pow} + 1' },
+              sides: 10,
+              successAt: 6,
+              criticals: { bonus: 2 },
+              hunger: { count: { formula: '{pow}' } },
+            },
+            push: { label: 'Spend Willpower', maxDice: 3 },
+          },
+        ],
+      }),
+      [`GET ${base}/sheet`]: json(sheet),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit sneak' }))
+    await expect(canvas.getByLabelText('Critical pairs bonus')).toHaveValue('2')
+    await expect(canvas.getByLabelText('Hunger dice')).toHaveValue('{pow}')
+    await expect(canvas.getByLabelText('Dice cap')).toHaveValue('3')
+  },
+}

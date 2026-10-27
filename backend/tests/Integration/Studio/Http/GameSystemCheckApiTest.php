@@ -149,6 +149,41 @@ final class GameSystemCheckApiTest extends WebTestCase
     }
 
     #[Test]
+    public function criticalsHungerDiceAndThePushCapAreReadAsStored(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', 'valid/v2-hunger-dice');
+
+        $checks = $this->checks();
+
+        self::assertSame(['bonus' => 2], self::at($checks, 'checks.0.pool.criticals'));
+        self::assertSame(['count' => ['formula' => '{hunger}']], self::at($checks, 'checks.0.pool.hunger'));
+        self::assertSame(3, self::at($checks, 'checks.0.push.maxDice'));
+        self::assertSame(['count' => 1], self::at($checks, 'checks.1.pool.hunger'));
+        // A pool without them reads without them, not as null; jsonb does not keep the order of keys.
+        self::assertEquals(['count' => 4, 'sides' => 10, 'successAt' => 6, 'criticals' => ['bonus' => 2]], self::at($checks, 'checks.2.pool'));
+        self::assertArrayNotHasKey('hunger', (array) self::at($checks, 'checks.2.pool'));
+    }
+
+    #[Test]
+    public function aCheckWithCriticalsHungerDiceAndAPushCapIsSavedAndReadBack(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $vampire = self::vampire();
+
+        $this->client->jsonRequest('POST', self::BASE.'/mine/checks', ['expectedVersion' => 1, 'check' => $vampire]);
+
+        self::assertResponseStatusCodeSame(201);
+        $read = $this->checks();
+        self::assertSame(['bonus' => 2], self::at($read, 'checks.2.pool.criticals'));
+        self::assertSame(['count' => 3], self::at($read, 'checks.2.pool.hunger'));
+        self::assertSame(2, self::at($read, 'checks.2.push.maxDice'));
+        // The checks written before them read exactly as before.
+        self::assertArrayNotHasKey('pool', (array) self::at($read, 'checks.0'));
+    }
+
+    #[Test]
     public function aVersion1DraftReadsWithoutChecksAndRefusesEveryCommand(): void
     {
         $this->signIn('ann@example.com', ['GAME_MANAGER']);
@@ -519,6 +554,16 @@ final class GameSystemCheckApiTest extends WebTestCase
         yield 'unknown property' => [[...$grit, 'colour' => 'red'], 'checks[2].colour: '];
         yield 'no bands' => [[...$grit, 'bands' => []], 'checks[2].bands: '];
         yield 'bands not a list' => [[...$grit, 'bands' => 'hit'], 'checks[2].bands: '];
+
+        $vampire = self::vampire();
+        $pool = $vampire['pool'];
+        yield 'criticals bonus 0' => [[...$vampire, 'pool' => [...$pool, 'criticals' => ['bonus' => 0]]], 'checks[2].pool.criticals.bonus: '];
+        yield 'criticals bonus above 10' => [[...$vampire, 'pool' => [...$pool, 'criticals' => ['bonus' => 11]]], 'checks[2].pool.criticals.bonus: '];
+        yield 'criticals unknown property' => [[...$vampire, 'pool' => [...$pool, 'criticals' => ['bonus' => 2, 'x' => 1]]], 'checks[2].pool.criticals.x: '];
+        yield 'hunger count negative' => [[...$vampire, 'pool' => [...$pool, 'hunger' => ['count' => -1]]], 'checks[2].pool.hunger.count: '];
+        yield 'hunger formula of a ghost field' => [[...$vampire, 'pool' => [...$pool, 'hunger' => ['count' => ['formula' => '{ghost}']]]], 'checks[2].pool.hunger.count.formula: '];
+        yield 'push cap 0' => [[...$vampire, 'push' => ['label' => 'Pay', 'maxDice' => 0]], 'checks[2].push.maxDice: '];
+        yield 'push cap above 100' => [[...$vampire, 'push' => ['label' => 'Pay', 'maxDice' => 101]], 'checks[2].push.maxDice: '];
     }
 
     /**
@@ -565,6 +610,20 @@ final class GameSystemCheckApiTest extends WebTestCase
     private static function grit(): array
     {
         return ['key' => 'grit', 'label' => 'Grit', 'dice' => '2d6', 'bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => 7], ['key' => 'hit', 'label' => 'Hit']]];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function vampire(): array
+    {
+        return [
+            'key' => 'feed',
+            'label' => 'Feed',
+            'pool' => ['count' => 5, 'sides' => 10, 'successAt' => 6, 'criticals' => ['bonus' => 2], 'hunger' => ['count' => 3]],
+            'push' => ['label' => 'Spend Willpower', 'maxDice' => 2],
+            'bands' => [['key' => 'fail', 'label' => 'Failure', 'upTo' => 0], ['key' => 'win', 'label' => 'Win']],
+        ];
     }
 
     /**

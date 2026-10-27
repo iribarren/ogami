@@ -15591,6 +15591,52 @@
                         "description": "A die showing this or more is a success, 1 to `sides`.",
                         "type": "integer",
                         "example": 6
+                    },
+                    "criticals": {
+                        "description": "Critical pairs (ADR 0044): every pair of dice showing the top face adds `bonus` successes. Absent: no bonus.",
+                        "required": [
+                            "bonus"
+                        ],
+                        "properties": {
+                            "bonus": {
+                                "description": "1 to 10.",
+                                "type": "integer",
+                                "example": 2
+                            }
+                        },
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "hunger": {
+                        "description": "Hunger dice (ADR 0044): that many dice of the pool, in a second colour, are never re-rolled by a push. Absent: none.",
+                        "required": [
+                            "count"
+                        ],
+                        "properties": {
+                            "count": {
+                                "description": "An integer from 0 to 100, or a formula over the sheet read as a modifier; clamped to the size of the pool.",
+                                "oneOf": [
+                                    {
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    {
+                                        "required": [
+                                            "formula"
+                                        ],
+                                        "properties": {
+                                            "formula": {
+                                                "type": "string",
+                                                "example": "{hunger}"
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -15617,6 +15663,14 @@
                         },
                         "nullable": true,
                         "maxItems": 10
+                    },
+                    "maxDice": {
+                        "description": "The most failed regular dice a push re-rolls, 1 to 100 (ADR 0044); Hunger dice are never re-rolled. Absent: every failed die.",
+                        "type": "integer",
+                        "example": 3,
+                        "nullable": true,
+                        "maximum": 100,
+                        "minimum": 1
                     }
                 },
                 "type": "object"

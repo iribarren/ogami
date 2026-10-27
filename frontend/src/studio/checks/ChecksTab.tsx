@@ -655,6 +655,20 @@ function CheckEditor({
     () => (countIsFormula ? checkReads(count, start) : []),
     [countIsFormula, count, start],
   )
+  // The Hunger count is read the same way.
+  const hunger = draft.pool?.hunger?.trim() ?? ''
+  const hungerIsFormula = hunger !== '' && !/^-?\d+$/.test(hunger)
+  const hungerDiagnostics = useMemo(
+    () =>
+      hungerIsFormula
+        ? checkFormulaDiagnostics({ formula: hunger, scope: 'modifier', catalog, difficulty: null })
+        : null,
+    [hungerIsFormula, hunger, catalog],
+  )
+  const hungerReads = useMemo(
+    () => (hungerIsFormula ? checkReads(hunger, start) : []),
+    [hungerIsFormula, hunger, start],
+  )
   const costContext = useMemo(() => pushContext(start), [start])
   const modeId = useId()
   const difficultyId = useId()
@@ -910,6 +924,32 @@ function CheckEditor({
                   error={shown.poolSuccessAt}
                   help="A die succeeds on this face or higher."
                 />
+                <TextField
+                  label="Critical pairs bonus"
+                  value={draft.pool.criticalsBonus ?? ''}
+                  onChange={(criticalsBonus) => {
+                    changePool({ criticalsBonus })
+                  }}
+                  error={shown.poolCriticalsBonus}
+                  help="Optional, 1 to 10. Each pair of dice showing the top face adds this many successes."
+                />
+                <div className="space-y-2">
+                  <FormulaInput
+                    label="Hunger dice"
+                    value={draft.pool.hunger ?? ''}
+                    onChange={(value) => {
+                      changePool({ hunger: value })
+                    }}
+                    diagnostics={hungerDiagnostics}
+                    references={references}
+                    error={shown.poolHunger}
+                  />
+                  <p className="hint">
+                    Optional: a number from 0 to 100, or a formula over the sheet. Hunger dice are
+                    part of the pool and are never re-rolled by a push.
+                  </p>
+                  {hungerReads.length > 0 && <p className="hint">Reads {hungerReads.join(', ')}</p>}
+                </div>
               </>
             )}
           </div>
@@ -968,6 +1008,7 @@ function CheckEditor({
               push={draft.push}
               context={costContext}
               labelError={shown.pushLabel}
+              maxDiceError={shown.pushMaxDice}
               effectErrors={shown.pushEffects ?? []}
               onChange={changePush}
               onRestructure={() => {

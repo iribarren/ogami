@@ -38,12 +38,17 @@ export const maxBands = 10
 
 /**
  * The form state of a pool: every input is text. The count is one input: digits are an integer,
- * anything else a formula over the sheet.
+ * anything else a formula over the sheet. The Hunger count is the same kind of input. An empty
+ * criticals bonus or Hunger count (or one never set) is a pool without it: nothing is sent.
  */
 export interface PoolDraft {
   count: string
   sides: string
   successAt: string
+  /** The successes a pair of top faces adds (ADR 0044). */
+  criticalsBonus?: string
+  /** The dice of the pool that are Hunger dice: never re-rolled (ADR 0044). */
+  hunger?: string
 }
 
 /** The most characters a push's cost label may have, as the publisher. */
@@ -56,13 +61,15 @@ const maxPushLabel = 100
 export interface PushDraft {
   label: string
   effects: EffectDraft[]
+  /** The most failed dice a push re-rolls; empty (or never set) re-rolls every failed regular die. */
+  maxDice?: string
 }
 
 /** How a check rolls: its dice notation and modifier, or a pool of dice counted for successes. */
 export type CheckMode = 'dice' | 'pool'
 
 /** The pool's limits, as the publisher. */
-const poolLimits = { count: 100, formula: 200, sides: 1000 }
+const poolLimits = { count: 100, formula: 200, sides: 1000, bonus: 10 }
 
 /** The form state of one check. */
 export interface CheckDraft {
@@ -130,6 +137,9 @@ export type CheckErrors = Partial<
     | 'poolCount'
     | 'poolSides'
     | 'poolSuccessAt'
+    | 'poolCriticalsBonus'
+    | 'poolHunger'
+    | 'pushMaxDice'
     | 'pushLabel'
     | 'difficulty'
     | 'difficultyLabel'
@@ -309,39 +319,75 @@ function readBand(band: unknown): BandDraft | null {
 function readPool(pool: unknown): PoolDraft | null {
   if (
     !isObject(pool) ||
-    Object.keys(pool).some((name) => !['count', 'sides', 'successAt'].includes(name))
+    Object.keys(pool).some(
+      (name) => !['count', 'sides', 'successAt', 'criticals', 'hunger'].includes(name),
+    )
   ) {
     return null
   }
-  const { count, sides, successAt } = pool
+  const { count, sides, successAt, criticals, hunger } = pool
   if (!Number.isInteger(sides) || !Number.isInteger(successAt)) {
     return null
   }
-  let counted: string
-  if (typeof count === 'number' && Number.isInteger(count)) {
-    counted = String(count)
-  } else if (
-    isObject(count) &&
-    Object.keys(count).length === 1 &&
-    typeof count.formula === 'string'
-  ) {
-    counted = count.formula
-  } else {
+  const counted = readCount(count)
+  if (counted === null) {
     return null
   }
-  return { count: counted, sides: String(sides), successAt: String(successAt) }
+  const read: PoolDraft = { count: counted, sides: String(sides), successAt: String(successAt) }
+  if (criticals !== undefined) {
+    if (
+      !isObject(criticals) ||
+      Object.keys(criticals).length !== 1 ||
+      typeof criticals.bonus !== 'number' ||
+      !Number.isInteger(criticals.bonus)
+    ) {
+      return null
+    }
+    read.criticalsBonus = String(criticals.bonus)
+  }
+  if (hunger !== undefined) {
+    const hungry =
+      isObject(hunger) && Object.keys(hunger).length === 1 ? readCount(hunger.count) : null
+    if (hungry === null) {
+      return null
+    }
+    read.hunger = hungry
+  }
+  return read
+}
+
+/** A pool or Hunger count as text: an integer as digits, a `{formula}` as its formula; else null. */
+function readCount(count: unknown): string | null {
+  if (typeof count === 'number' && Number.isInteger(count)) {
+    return String(count)
+  }
+  if (isObject(count) && Object.keys(count).length === 1 && typeof count.formula === 'string') {
+    return count.formula
+  }
+  return null
 }
 
 /** The stored push as form state, or null when it is not exactly a label and a list of effects. */
 function readPush(push: unknown): PushDraft | null {
-  if (!isObject(push) || Object.keys(push).some((name) => !['label', 'effects'].includes(name))) {
+  if (
+    !isObject(push) ||
+    Object.keys(push).some((name) => !['label', 'effects', 'maxDice'].includes(name))
+  ) {
     return null
   }
-  const { label, effects } = push
-  if (typeof label !== 'string' || (effects !== undefined && !Array.isArray(effects))) {
+  const { label, effects, maxDice } = push
+  if (
+    typeof label !== 'string' ||
+    (effects !== undefined && !Array.isArray(effects)) ||
+    (maxDice !== undefined && !(typeof maxDice === 'number' && Number.isInteger(maxDice)))
+  ) {
     return null
   }
-  return { label, effects: effectsToDrafts((effects ?? []) as unknown[]) }
+  return {
+    label,
+    effects: effectsToDrafts((effects ?? []) as unknown[]),
+    ...(typeof maxDice === 'number' ? { maxDice: String(maxDice) } : {}),
+  }
 }
 
 /** The stored check as form state, or null when a property has a shape the form cannot hold. */
@@ -574,9 +620,36 @@ function writePool(pool: PoolDraft, errors: CheckErrors): Record<string, unknown
   }
   written.successAt = successValue
 
+  const bonus = (pool.criticalsBonus ?? '').trim()
+  if (bonus !== '') {
+    const value = integerOf(bonus)
+    if (value === null || value < 1 || value > poolLimits.bonus) {
+      errors.poolCriticalsBonus = `The bonus must be a whole number from 1 to ${String(poolLimits.bonus)}.`
+    } else {
+      written.criticals = { bonus: value }
+    }
+  }
+
+  const hunger = (pool.hunger ?? '').trim()
+  if (hunger !== '') {
+    const value = integerOf(hunger)
+    if (value !== null) {
+      if (value < 0 || value > poolLimits.count) {
+        errors.poolHunger = `The Hunger count must be between 0 and ${String(poolLimits.count)}, or a formula.`
+      }
+      written.hunger = { count: value }
+    } else if (hunger.length > poolLimits.formula) {
+      errors.poolHunger = `The Hunger formula is at most ${String(poolLimits.formula)} characters.`
+    } else {
+      written.hunger = { count: { formula: hunger } }
+    }
+  }
+
   return errors.poolCount === undefined &&
     errors.poolSides === undefined &&
-    errors.poolSuccessAt === undefined
+    errors.poolSuccessAt === undefined &&
+    errors.poolCriticalsBonus === undefined &&
+    errors.poolHunger === undefined
     ? written
     : null
 }
@@ -607,8 +680,21 @@ function writePush(push: PushDraft, errors: CheckErrors): Record<string, unknown
     errors.pushEffects = found
   }
 
-  return errors.pushLabel === undefined && found.length === 0
-    ? { label, ...(effects.length > 0 ? { effects } : {}) }
+  const cap = (push.maxDice ?? '').trim()
+  let maxDice: number | null = null
+  if (cap !== '') {
+    maxDice = integerOf(cap)
+    if (maxDice === null || maxDice < 1 || maxDice > poolLimits.count) {
+      errors.pushMaxDice = `The cap must be a whole number from 1 to ${String(poolLimits.count)}, or empty.`
+    }
+  }
+
+  return errors.pushLabel === undefined && errors.pushMaxDice === undefined && found.length === 0
+    ? {
+        label,
+        ...(effects.length > 0 ? { effects } : {}),
+        ...(maxDice === null ? {} : { maxDice }),
+      }
     : null
 }
 

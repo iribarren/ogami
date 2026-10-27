@@ -4155,6 +4155,22 @@ export interface components {
              * @example 6
              */
             successAt: number;
+            /** @description Critical pairs (ADR 0044): every pair of dice showing the top face adds `bonus` successes. Absent: no bonus. */
+            criticals?: {
+                /**
+                 * @description 1 to 10.
+                 * @example 2
+                 */
+                bonus: number;
+            } | null;
+            /** @description Hunger dice (ADR 0044): that many dice of the pool, in a second colour, are never re-rolled by a push. Absent: none. */
+            hunger?: {
+                /** @description An integer from 0 to 100, or a formula over the sheet read as a modifier; clamped to the size of the pool. */
+                count: number | {
+                    /** @example {hunger} */
+                    formula: string;
+                };
+            } | null;
         };
         /** @description Only on a check with a pool. A push is offered when a die failed. */
         GameSystemCheckPush: {
@@ -4167,6 +4183,11 @@ export interface components {
             effects?: {
                 [key: string]: unknown;
             }[] | null;
+            /**
+             * @description The most failed regular dice a push re-rolls, 1 to 100 (ADR 0044); Hunger dice are never re-rolled. Absent: every failed die.
+             * @example 3
+             */
+            maxDice?: number | null;
         };
         /** @description Integers between -1,000 and 1,000 with min <= default <= max. */
         GameSystemCheckDifficulty: {

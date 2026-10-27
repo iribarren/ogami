@@ -37,8 +37,6 @@ final readonly class PinnedReleaseResponse
         public array $sheet,
         #[OA\Property(ref: new Model(type: SheetLayoutResponse::class), description: 'How the release lays its sheet out in groups; null when it declares none, and the fields of the same group then render together.', nullable: true)]
         public ?SheetLayoutResponse $sheetLayout,
-        #[OA\Property(ref: new Model(type: PointBudgetResponse::class), description: 'The points a player may spend on number fields when creating a Character (ADR 0040): the single budget; null when the sheet has none or several (read pointBudgets). Kept until the UI moves to pointBudgets.', nullable: true)]
-        public ?PointBudgetResponse $pointBudget,
         #[OA\Property(description: 'Every point budget of the sheet in order (ADR 0043), a legacy single budget as the key "points"; empty when the sheet has none.', type: 'array', items: new OA\Items(ref: new Model(type: PointBudgetEntryResponse::class)))]
         public array $pointBudgets,
     ) {
@@ -46,6 +44,6 @@ final readonly class PinnedReleaseResponse
 
     public static function fromView(PinnedReleaseView $view): self
     {
-        return new self($view->gameSystemKey, $view->gameSystemName, $view->version, $view->theme, CreditsResponse::fromCredits($view->credits), array_map(SheetFieldResponse::fromView(...), $view->sheet), SheetLayoutResponse::fromLayout($view->sheetLayout), PointBudgetResponse::fromBudget($view->pointBudget), array_map(PointBudgetEntryResponse::fromBudget(...), $view->pointBudgets));
+        return new self($view->gameSystemKey, $view->gameSystemName, $view->version, $view->theme, CreditsResponse::fromCredits($view->credits), array_map(SheetFieldResponse::fromView(...), $view->sheet), SheetLayoutResponse::fromLayout($view->sheetLayout), array_map(PointBudgetEntryResponse::fromBudget(...), $view->pointBudgets));
     }
 }

@@ -12,5 +12,4 @@ enum SheetConflictCode: string
 {
     case ModifiedConcurrently = 'modified_concurrently';
     case LibraryPack = 'library_pack';
-    case SeveralPointBudgets = 'several_point_budgets';
 }

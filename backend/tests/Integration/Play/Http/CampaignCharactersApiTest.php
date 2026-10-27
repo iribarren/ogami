@@ -116,12 +116,12 @@ final class CampaignCharactersApiTest extends WebTestCase
         $sheet = array_column((array) $pinned['sheet'], null, 'key');
         self::assertSame(['3d6*5', '(2d6+6)*5', null, null], [$sheet['str']['roll'], $sheet['con']['roll'], $sheet['role']['roll'], $sheet['hp']['roll']]);
         self::assertSame(['{half}', null, null], [$sheet['hp']['startMax'], $sheet['str']['startMax'], $sheet['half']['startMax']]);
-        self::assertSame(['label' => 'Points', 'total' => 100, 'fields' => ['str', 'con'], 'min' => 15, 'max' => 90], $pinned['pointBudget'] ?? null);
+        self::assertArrayNotHasKey('pointBudget', $pinned);
         self::assertSame([['key' => 'points', 'label' => 'Points', 'total' => 100, 'fields' => ['str', 'con'], 'min' => 15, 'max' => 90]], $pinned['pointBudgets'] ?? null, 'A legacy budget is the key "points".');
     }
 
     #[Test]
-    public function thePinnedReleaseExposesSeveralBudgetsAndNoSingleOne(): void
+    public function thePinnedReleaseExposesSeveralBudgets(): void
     {
         $this->signIn('ada@example.com', ['SOLO_PLAYER']);
 
@@ -129,7 +129,7 @@ final class CampaignCharactersApiTest extends WebTestCase
 
         $pinned = $this->json()['pinnedRelease'] ?? null;
         self::assertIsArray($pinned);
-        self::assertNull($pinned['pointBudget']);
+        self::assertArrayNotHasKey('pointBudget', $pinned);
         self::assertSame([
             ['key' => 'attributes', 'label' => 'Attribute points', 'total' => 100, 'fields' => ['str', 'con'], 'min' => 15, 'max' => 90],
             ['key' => 'skills', 'label' => 'Skill points', 'total' => 5, 'fields' => ['lore', 'sneak'], 'min' => null, 'max' => 3],
@@ -194,8 +194,7 @@ final class CampaignCharactersApiTest extends WebTestCase
 
         $pinned = $this->json()['pinnedRelease'] ?? null;
         self::assertIsArray($pinned);
-        self::assertArrayHasKey('pointBudget', $pinned);
-        self::assertNull($pinned['pointBudget']);
+        self::assertSame([], $pinned['pointBudgets']);
         foreach ((array) $pinned['sheet'] as $field) {
             $field = (array) $field;
             self::assertArrayHasKey('roll', $field);

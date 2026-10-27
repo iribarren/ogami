@@ -7,7 +7,6 @@ namespace App\Tests\Unit\Studio\Domain\GameSystem;
 use App\Studio\Domain\GameSystem\DraftReferences;
 use App\Studio\Domain\GameSystem\GameSystem;
 use App\Studio\Domain\GameSystem\GameSystemId;
-use App\Studio\Domain\GameSystem\SeveralPointBudgets;
 use App\Studio\Domain\GameSystem\SheetFieldInUse;
 use App\Studio\Domain\GameSystem\SheetPointBudgetNotFound;
 use App\Studio\Domain\Release\InvalidReleaseContent;
@@ -212,44 +211,6 @@ final class GameSystemSheetPointBudgetsTest extends TestCase
             self::fail('Expected InvalidReleaseContent');
         } catch (InvalidReleaseContent $invalid) {
             self::assertSame('sheet.pointBudgets: must be a list', $invalid->getMessage());
-        }
-    }
-
-    #[Test]
-    public function theSingleBudgetCommandsWorkWithAtMostOneBudgetOfEitherShape(): void
-    {
-        $gameSystem = $this->draft(['pointBudgets' => [['key' => 'attributes', ...$this->attributes()]]]);
-
-        $gameSystem->saveSheetPointBudget($this->skills(), $this->now);
-        $sheet = $this->sheetOf($gameSystem);
-        self::assertArrayNotHasKey('pointBudgets', $sheet);
-        self::assertSame($this->skills(), $sheet['pointBudget']);
-
-        $gameSystem->saveSheetPointBudgetEntry('attributes', $this->attributes(), $this->now);
-        $gameSystem->removeSheetPointBudgetEntry('attributes', $this->now);
-        self::assertCount(1, (array) $this->sheetOf($gameSystem)['pointBudgets']);
-        $gameSystem->removeSheetPointBudget($this->now);
-        $sheet = $this->sheetOf($gameSystem);
-        self::assertArrayNotHasKey('pointBudgets', $sheet);
-        self::assertArrayNotHasKey('pointBudget', $sheet);
-    }
-
-    #[Test]
-    public function theSingleBudgetCommandsAreRefusedWithSeveralBudgets(): void
-    {
-        $gameSystem = $this->draft(['pointBudgets' => [['key' => 'attributes', ...$this->attributes()], ['key' => 'skills', ...$this->skills()]]]);
-        $before = $gameSystem->document();
-
-        foreach ([
-            fn () => $gameSystem->saveSheetPointBudget($this->attributes(), $this->now),
-            fn () => $gameSystem->removeSheetPointBudget($this->now),
-        ] as $command) {
-            try {
-                $command();
-                self::fail('Expected SeveralPointBudgets');
-            } catch (SeveralPointBudgets) {
-                self::assertSame($before, $gameSystem->document());
-            }
         }
     }
 

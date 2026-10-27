@@ -726,7 +726,6 @@ export const sheet = {
   ],
   trackers: [{ key: 'heat', label: 'Heat', max: 10 }],
   publishedFieldKeys: ['hp'],
-  pointBudget: null,
   pointBudgets: [],
 }
 
@@ -753,7 +752,6 @@ export const sheetWithConditions = {
 export const sheetWithPointBudgets = {
   ...sheet,
   version: 11,
-  pointBudget: null,
   pointBudgets: [
     { key: 'attributes', label: 'Attribute points', total: 12, fields: ['pow'], min: 1, max: 5 },
     { key: 'skills', label: 'Skill points', total: 8, fields: ['dex'], min: null, max: 3 },
@@ -764,7 +762,6 @@ export const sheetWithPointBudgets = {
 export const sheetWithLegacyBudget = {
   ...sheet,
   version: 12,
-  pointBudget: { label: null, total: 30, fields: ['pow'], min: null, max: null },
   pointBudgets: [{ key: 'points', label: null, total: 30, fields: ['pow'], min: null, max: null }],
 }
 
@@ -782,7 +779,6 @@ export const sheetUngrouped = {
   ],
   trackers: [],
   publishedFieldKeys: [],
-  pointBudget: null,
   pointBudgets: [],
 }
 

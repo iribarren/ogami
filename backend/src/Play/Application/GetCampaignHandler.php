@@ -56,7 +56,7 @@ final readonly class GetCampaignHandler implements QueryHandler
             $campaign->id()->toString(),
             $campaign->name(),
             $campaign->createdAt(),
-            new PinnedReleaseView($pinned->gameSystemKey(), $pinned->gameSystemName(), $pinned->releaseVersion(), $snapshot->theme(), $snapshot->credits(), array_map(SheetFieldView::of(...), $snapshot->sheet()->fields()), $snapshot->sheet()->layout(), 1 === \count($snapshot->sheet()->budgets()) ? $snapshot->sheet()->budgets()[0] : null, $snapshot->sheet()->budgets()),
+            new PinnedReleaseView($pinned->gameSystemKey(), $pinned->gameSystemName(), $pinned->releaseVersion(), $snapshot->theme(), $snapshot->credits(), array_map(SheetFieldView::of(...), $snapshot->sheet()->fields()), $snapshot->sheet()->layout(), $snapshot->sheet()->budgets()),
             array_map(static fn (Session $session): SessionView => self::session($session, $snapshot, $campaign), $campaign->sessions()),
             $campaign->currentSession()?->number(),
             $campaign->currentScene()?->number(),

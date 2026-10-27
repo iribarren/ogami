@@ -1,7 +1,7 @@
 # Feature: preset-vtm-chronicle
 
 - **Locator:** `odd/tasks/preset-vtm-chronicle.md` · Engram topic `odd/preset-vtm-chronicle/tasks`
-- **Issue:** #301 · **Branch:** `feat/preset-vtm-chronicle-6-preset` · **Status:** in progress (slice 6)
+- **Issue:** #301 · **Branch:** `feat/preset-vtm-chronicle-7-findings` · **Status:** in progress (slice 7)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B10 (after `rules-dice-pools`, [ADR 0041](../../docs/adr/0041-dice-pools-pushes-and-conditions.md))
@@ -104,7 +104,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T12 | 5 | Studio metadata: credits badge; tests | delegated writer (Sonnet; same writer) | [x] | a731325 |
 | T13 | 6 | Author `vtm-night-court` in Studio from the content spec, sandbox-roll Hunger and criticals, publish; log Studio findings | parent (browser, Claude in Chrome worker) | [x] | — (Studio only; recorded in the export) |
 | T14 | 6 | Play a session (Session Zero, two nights, a world turn, a bestial failure branch, the masquerade roll-under); fix content and republish; log Play findings | parent (browser, Claude in Chrome worker) | [x] | — (v2 published from Studio) |
-| T15 | 6 | Export to `backend/presets/vtm-night-court.json` unedited; `PresetsTest` (publishes, credits and badge, 13 checks with Hunger, criticals and the capped push, special step outcomes) | delegated writer (Sonnet) | [x] | |
+| T15 | 6 | Export to `backend/presets/vtm-night-court.json` unedited; `PresetsTest` (publishes, credits and badge, 13 checks with Hunger, criticals and the capped push, special step outcomes) | delegated writer (Sonnet) | [x] | dca4271, b3c49c2, 28a81bd (slice 5 fix 53f1ec2) |
 | T16 | 7 | Studio and Play findings from T13–T14: fix the small ones, file the rest as a `follow-up` issue | delegated writer (Sonnet) | [ ] | |
 | T17 | 7 | Flow unit test (a messy critical on a Hunt, a bestial failure reaching the Compulsion, a failed Rouse raising Hunger, the masquerade roll-under forcing the raid, Dawn adding a night); e2e spec (credits badge, a Hunger roll in the journal) | delegated writer (Sonnet) | [ ] | |
 | T18 | 7 | Wrap-up: findings fixed or filed; roadmap B10 done; this doc closed | parent (closing doc commit) | [ ] | |
@@ -129,17 +129,17 @@ Authored 2026-10-27 by two Claude in Chrome workers as `night-author@ogami.test`
 
 | ID | Finding | Severity | Plan |
 |---|---|---|---|
-| S3 | Overview: no `eldritch` theme among the offered themes | Low | Slice 7 triage |
-| S5 | Sheet: groups cannot be declared up front; their order follows the first field of each, then Move up / down one step at a time (rapid clicks scramble the order, S28) | Low | Slice 7 triage |
-| S8 | Oracles: likelihood levels cannot be reordered | Low | Slice 7 triage |
-| S9 | Oracle tables: an entry key is reachable only through each row's expander; Paste entries takes ranges but not keys | Low | Slice 7 triage |
-| S13 / S18 | Scene Types: every step, effect and Next is a custom select and each special result needs its own Add outcome, so a skill-check Scene Type takes ~30–40 actions | Medium | Slice 7 triage |
-| S16 / S25 | A Next select lists only steps that exist, so the Compulsion step (and the world turn's branch targets) must be created before the outcome that jumps to it | Low | Slice 7 triage |
-| S21 | Three Scene Types reported saved by the first worker had no steps; cause unknown (no save, or a lost save) | Medium | Slice 7 triage |
-| S22 / S30 | Saving a Scene Type shows no confirmation | Low | Slice 7 triage |
-| S23 / S19 | Custom selects drop typeahead typed within ~1 s of opening | Medium | Slice 7 triage |
-| S24 | Flow editor: after saving, a roll step whose band is bound to a tracker (`upTo {tracker}`) shows "a kind or shape this editor cannot edit yet", so the masquerade roll cannot be corrected in Studio | Medium | Slice 7 triage |
-| S32 | Pick step: no hint that no tags means any NPC | Low | Slice 7 triage |
+| S3 | Overview: no `eldritch` theme among the offered themes | Low | Follow-up issue (T18) |
+| S5 | Sheet: groups cannot be declared up front; their order follows the first field of each, then Move up / down one step at a time (rapid clicks scramble the order, S28) | Low | Follow-up issue (T18) |
+| S8 | Oracles: likelihood levels cannot be reordered | Low | Follow-up issue (T18) |
+| S9 | Oracle tables: an entry key is reachable only through each row's expander; Paste entries takes ranges but not keys | Low | Follow-up issue (T18) |
+| S13 / S18 | Scene Types: every step, effect and Next is a custom select and each special result needs its own Add outcome, so a skill-check Scene Type takes ~30–40 actions | Medium | Follow-up issue (T18) |
+| S16 / S25 | A Next select lists only steps that exist, so the Compulsion step (and the world turn's branch targets) must be created before the outcome that jumps to it | Low | Follow-up issue (T18) |
+| S21 | Three Scene Types reported saved by the first worker had no steps; cause unknown (no save, or a lost save) | Medium | Follow-up issue (T18) |
+| S22 / S30 | Saving a Scene Type shows no confirmation | Low | T16: `SaveState` in the Scene Type editor, like the Flow editor |
+| S23 / S19 | Custom selects drop typeahead typed within ~1 s of opening | Medium | Follow-up issue (T18) |
+| S24 | Flow editor: after saving, a roll step whose band is bound to a tracker (`upTo {tracker}`) shows "a kind or shape this editor cannot edit yet", so the masquerade roll cannot be corrected in Studio | Medium | T16: reproduce with the preset's stored step; fix if small, else follow-up issue |
+| S32 | Pick step: no hint that no tags means any NPC | Low | Follow-up issue (T18) |
 
 ## Playtest findings
 
@@ -147,13 +147,13 @@ Played 2026-10-27 by a Claude in Chrome worker as `night-author@ogami.test`: cam
 
 | ID | Finding | Kind | Severity | Plan |
 |---|---|---|---|---|
-| P1 | Closing Session Zero asks the chronicle's "Did you get what you wanted?" and opens Session 2 at once | UX | Low | Slice 7 triage |
-| P2 | Hunters strike is checked only after the hunter-activity event (as example 1), so a full Hunters clock filled another way never forces it | Content | Medium | Slice 7 triage |
-| P3 | Skipping a world-turn pick takes no branch, and the next prompt reads "What does  do toward their agenda?" with `{picked}` empty | Bug | Low | Slice 7 triage |
-| P4 | Push is offered on a roll that already succeeded (ADR 0041 allows a push whenever a regular die failed) | UX | Low | Slice 7 triage |
-| P5 | The step card shifts after every action, moving Record and Roll | UX | Low | Slice 7 triage |
-| P6 | The world turn says "step n of 10" while it has 11 steps; the hunters condition leaves no journal entry | Bug | Low | Slice 7 triage |
-| P7 | The character step shows "Attribute points: 9 / 22" before any input (the defaults of 1 count) | UX | Low | Slice 7 triage |
+| P1 | Closing Session Zero asks the chronicle's "Did you get what you wanted?" and opens Session 2 at once | UX | Low | Follow-up issue (T18) |
+| P2 | Hunters strike is checked only after the hunter-activity event (as example 1), so a full Hunters clock filled another way never forces it | Content | Medium | Follow-up issue (T18) |
+| P3 | Skipping a world-turn pick takes no branch, and the next prompt reads "What does  do toward their agenda?" with `{picked}` empty | Bug | Low | Open: an empty `{picked}` should render "—" in step text only (needs `FlowRun::view`), not in Effect text (names, Fact values); see Progress |
+| P4 | Push is offered on a roll that already succeeded (ADR 0041 allows a push whenever a regular die failed) | UX | Low | Follow-up issue (T18) |
+| P5 | The step card shifts after every action, moving Record and Roll | UX | Low | Follow-up issue (T18) |
+| P6 | The world turn says "step n of 10" while it has 11 steps; the hunters condition leaves no journal entry | Bug | Low | No change: condition steps are not shown, counted or journalled by design (contract, ADR 0018) |
+| P7 | The character step shows "Attribute points: 9 / 22" before any input (the defaults of 1 count) | UX | Low | No change: the budget includes the free first dot (9 attributes at 1); by design |
 
 ## Progress
 
@@ -177,6 +177,7 @@ Played 2026-10-27 by a Claude in Chrome worker as `night-author@ogami.test`: cam
 - 2026-10-27: T13 done: `vtm-night-court` v1 authored in Studio from the content spec and published (export 2,361 lines, above the ~1,900 forecast); sandbox showed Hunger dice, a messy critical, a capped push that kept the Hunger dice, and Rouse failing and succeeding. Findings S3–S32 above.
 - 2026-10-27: T14 done: v2 (Intrigue pick without tags, skill-check steps mandatory) played end to end; findings P1–P7 above. No content change was needed to play.
 - 2026-10-27: T15 done: exported v2 unedited to `backend/presets/vtm-night-court.json` (2,363 lines); a re-export to a scratch path is `cmp`-identical; `make presets` prints `Unchanged vtm-night-court (v2, managed in Studio)`. `PresetsTest` gains one test (10 tests, 580 assertions) that publishes it once and reads Play's snapshot: credits notice, license, URL and `dark-pack` badge; 13 checks, 12 Hunger pools of attribute + skill (d10, success 6, criticals 2, Hunger `{hunger}`, push "Spend Willpower" capped at 3 dice, costing 1 Willpower), Rouse as a plain 1-die pool; the 22/14 point budgets; the Hunt's `bestialFailure` outcome to the Compulsion step and its `messyCritical` outcome; the world turn's Second Inquisition roll banded on the Masquerade tracker. Live proof: the test was temporarily changed to expect 23 attribute points, failed, and was restored (no RED-first, the file already existed).
+- 2026-10-27: slice 7 commit 1 (slice 6 review findings): R3-001 `PresetsTest` asserts the Hunt's `messyCritical` effects (Hunger −2, masquerade +1) and the failure band's masquerade +1; characterisation (passed on its first run). R3-003 / P3 not done: the dash cannot live in `Placeholders` alone, because `FlowRun::renderedEffectText` (line 1339) shares it and an Effect's name or `fillFact` text must stay empty (a naive change broke `FlowRunEffectsTest` and `FlowRunFactsTest`); it needs a flag set by `FlowRun::view` (line 718), outside the writer's surfaces.
 
 ## Reviews
 
@@ -187,7 +188,8 @@ Played 2026-10-27 by a Claude in Chrome worker as `night-author@ogami.test`: cam
 | 3 | `review-742c3094e8c4a81d` | 2837504, 7a2ba3d, 019a728, c5769a6 | approved, acknowledged | R3 suggestion: `CreditsNotice.tsx:17` crashes when the API sends a badge this SPA build does not know (`creditsBadges` lookup undefined); fall back to no logo, with a test. Fixed in slice 4 | [#304](https://github.com/iribarren/ogami/pull/304) |
 | 4 | `review-8f746d03d236f101` | f6c9ade, bd7e739, 9ec7929 | approved, acknowledged | Warning: `checkDraft.ts` `readPool` / `readPush` refuse a stored explicit `null` for `criticals`, `hunger` or `maxDice`, which the contract documents as nullable and the sandbox reads as absent. Suggestion: `CheckTestPool.php:41` accepts a critical bonus of 0..10 but its message says 1..10. Fixed in slice 5 | [#305](https://github.com/iribarren/ogami/pull/305) |
 | 5 | `review-618ddda709b5a87d` | 3ed1b59, efcc9f6, a731325 | approved, acknowledged; 1,191 lines | R3 suggestion: the checks wiring of `FlowEditor.tsx:78-80` into `stepContext` has no flow-editor page test (the Scene Type editor page has one). Fixed in slice 6 (53f1ec2). A review note that `OracleTableEditorPage` offers no special outcomes was moot: table entries hold a Scene Type and effects, never steps | [#306](https://github.com/iribarren/ogami/pull/306) |
+| 6 | `review-b01d06f9303cb135`; 2,534 lines (export 2,363), size accepted by the user | 53f1ec2, dca4271, b3c49c2, 28a81bd | approved, acknowledged | R3-001: `PresetsTest` does not assert the Hunt's `messyCritical` effects (Hunger −2, masquerade +1) nor the failure's masquerade +1. R3-002: the raid's masquerade `add -3` (`vtm-night-court.json:1102-1108`) relies on the tracker clamp at 0, untested. R3-003: Intrigue's optional pick, when skipped, leaves `{picked}` empty in the next prompt (as P3). Fixed or filed in slice 7 | [#307](https://github.com/iribarren/ogami/pull/307) |
 
 ## Next step
 
-Slice 6: the writer fixes slice 5's review findings (flow-editor page test for the checks wiring, special outcomes in the oracle table editor); a Claude in Chrome worker authors `vtm-night-court` from the content spec (T13) and plays it (T14); the writer exports it and adds `PresetsTest` (T15).
+Slice 7: the writer fixes slice 6's review findings (Hunt outcome effects in `PresetsTest`, the empty `{picked}`), T16 (Scene Type save confirmation, S24) and T17 (flow unit test with the raid's clamp, e2e); then review, PR, and the closing doc commit with the follow-up issues (T18).

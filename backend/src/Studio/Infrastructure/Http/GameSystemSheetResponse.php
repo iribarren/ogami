@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Studio\Infrastructure\Http;
 
 use App\Studio\Application\GameSystemSheetView;
-use App\Studio\Application\SheetPointBudgetView;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 
@@ -39,8 +38,6 @@ final readonly class GameSystemSheetResponse
         public array $trackers,
         #[OA\Property(description: 'The field keys of the GameSystem\'s latest release, empty when it has none: renaming or deleting one makes Characters on later upgrades lose that value.', type: 'array', items: new OA\Items(type: 'string'), example: ['pow', 'hp'])]
         public array $publishedFieldKeys,
-        #[OA\Property(ref: new Model(type: SheetPointBudgetResponse::class), description: 'What a Character spends over number fields at creation (ADR 0040): the single point budget; null when the sheet has none or several (read pointBudgets). Kept until the Studio UI moves to pointBudgets.', nullable: true)]
-        public ?SheetPointBudgetResponse $pointBudget,
         #[OA\Property(description: 'The point budgets of the sheet in order (ADR 0043), a legacy single budget as the key "points"; empty without any.', type: 'array', items: new OA\Items(ref: new Model(type: SheetPointBudgetEntryResponse::class)))]
         public array $pointBudgets,
     ) {
@@ -56,7 +53,6 @@ final readonly class GameSystemSheetResponse
             $view->fields,
             array_map(SheetTrackerResponse::fromView(...), $view->trackers),
             $view->publishedFieldKeys,
-            $view->pointBudget instanceof SheetPointBudgetView ? SheetPointBudgetResponse::fromView($view->pointBudget) : null,
             array_map(SheetPointBudgetEntryResponse::fromView(...), $view->pointBudgets),
         );
     }

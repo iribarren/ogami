@@ -16,18 +16,14 @@ use App\Studio\Application\MoveSheetFieldHandler;
 use App\Studio\Application\OwnedGameSystems;
 use App\Studio\Application\RemoveSheetLayout;
 use App\Studio\Application\RemoveSheetLayoutHandler;
-use App\Studio\Application\RemoveSheetPointBudget;
 use App\Studio\Application\RemoveSheetPointBudgetEntry;
 use App\Studio\Application\RemoveSheetPointBudgetEntryHandler;
-use App\Studio\Application\RemoveSheetPointBudgetHandler;
 use App\Studio\Application\SaveSheetField;
 use App\Studio\Application\SaveSheetFieldHandler;
 use App\Studio\Application\SaveSheetLayout;
 use App\Studio\Application\SaveSheetLayoutHandler;
-use App\Studio\Application\SaveSheetPointBudget;
 use App\Studio\Application\SaveSheetPointBudgetEntry;
 use App\Studio\Application\SaveSheetPointBudgetEntryHandler;
-use App\Studio\Application\SaveSheetPointBudgetHandler;
 use App\Studio\Application\SheetGroupView;
 use App\Studio\Application\SheetPointBudgetView;
 use App\Studio\Application\SheetTrackerView;
@@ -35,7 +31,6 @@ use App\Studio\Domain\GameSystem\GameSystem;
 use App\Studio\Domain\GameSystem\GameSystemId;
 use App\Studio\Domain\GameSystem\GameSystemModifiedConcurrently;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
-use App\Studio\Domain\GameSystem\SeveralPointBudgets;
 use App\Studio\Domain\GameSystem\SheetFieldInUse;
 use App\Studio\Domain\GameSystem\SheetFieldKeyTaken;
 use App\Studio\Domain\GameSystem\SheetFieldNotFound;
@@ -62,8 +57,6 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(SaveSheetLayoutHandler::class)]
 #[CoversClass(DeclareSheetLayoutHandler::class)]
 #[CoversClass(RemoveSheetLayoutHandler::class)]
-#[CoversClass(SaveSheetPointBudgetHandler::class)]
-#[CoversClass(RemoveSheetPointBudgetHandler::class)]
 #[CoversClass(SaveSheetPointBudgetEntryHandler::class)]
 #[CoversClass(RemoveSheetPointBudgetEntryHandler::class)]
 #[CoversClass(GetGameSystemSheetHandler::class)]
@@ -236,43 +229,15 @@ final class GameSystemSheetHandlersTest extends TestCase
         yield 'save layout' => [static fn (self $t, string $user, int $version) => $t->saveLayout(1, [['name' => 'General']], $user, $version)];
         yield 'declare layout' => [static fn (self $t, string $user, int $version) => $t->declareLayout($user, $version)];
         yield 'remove layout' => [static fn (self $t, string $user, int $version) => $t->removeLayout($user, $version)];
-        yield 'save point budget' => [static fn (self $t, string $user, int $version) => $t->saveBudget(['total' => 100, 'fields' => ['pow']], $user, $version)];
-        yield 'remove point budget' => [static fn (self $t, string $user, int $version) => $t->removeBudget($user, $version)];
+        yield 'save point budget' => [static fn (self $t, string $user, int $version) => $t->saveBudgetEntry('points', ['total' => 100, 'fields' => ['pow']], $user, $version)];
     }
 
     #[Test]
-    public function aSheetWithoutAPointBudgetReadsNull(): void
+    public function aSheetWithoutAPointBudgetReadsAnEmptyList(): void
     {
         $this->draft('my-sheet');
 
-        self::assertNull($this->sheet('ann', 'my-sheet')->pointBudget);
-    }
-
-    #[Test]
-    public function aPointBudgetIsSavedReadBackAndReplacedWhole(): void
-    {
-        $draft = $this->draft('my-sheet');
-
-        $this->saveBudget(['label' => 'Points', 'total' => 100, 'fields' => ['pow'], 'min' => 10, 'max' => 90]);
-        self::assertEquals(new SheetPointBudgetView('points', 'Points', 100, ['pow'], 10, 90), $this->sheet('ann', 'my-sheet')->pointBudget);
-
-        $this->saveBudget(['total' => 40, 'fields' => ['pow']], version: 2);
-        self::assertEquals(new SheetPointBudgetView('points', null, 40, ['pow'], null, null), $this->sheet('ann', 'my-sheet')->pointBudget);
-        self::assertSame(3, $this->sheet('ann', 'my-sheet')->version);
-        self::assertSame(['total' => 40, 'fields' => ['pow']], self::storedBudget($draft));
-    }
-
-    #[Test]
-    public function aPointBudgetIsRemoved(): void
-    {
-        $draft = $this->draft('my-sheet');
-        $this->saveBudget(['total' => 100, 'fields' => ['pow']]);
-
-        $this->removeBudget(version: 2);
-
-        self::assertNull($this->sheet('ann', 'my-sheet')->pointBudget);
-        self::assertNull(self::storedBudget($draft));
-        self::assertSame(['pow', 'hp', 'sanity', 'bonus'], array_column($this->sheet('ann', 'my-sheet')->fields, 'key'));
+        self::assertSame([], $this->sheet('ann', 'my-sheet')->pointBudgets);
     }
 
     /**
@@ -280,20 +245,20 @@ final class GameSystemSheetHandlersTest extends TestCase
      */
     public static function invalidBudgets(): iterable
     {
-        yield 'no total' => [['fields' => ['pow']], 'sheet.pointBudget.total'];
-        yield 'a total that is not a number' => [['total' => '100', 'fields' => ['pow']], 'sheet.pointBudget.total'];
-        yield 'a total of zero' => [['total' => 0, 'fields' => ['pow']], 'sheet.pointBudget.total'];
-        yield 'no fields' => [['total' => 100], 'sheet.pointBudget.fields'];
-        yield 'fields that are not a list' => [['total' => 100, 'fields' => 'pow'], 'sheet.pointBudget.fields'];
-        yield 'no field listed' => [['total' => 100, 'fields' => []], 'sheet.pointBudget.fields'];
-        yield 'an unknown field' => [['total' => 100, 'fields' => ['nowhere']], 'sheet.pointBudget.fields[0]'];
-        yield 'a field that is not a number' => [['total' => 100, 'fields' => ['pow', 'hp']], 'sheet.pointBudget.fields[1]'];
-        yield 'a repeated field' => [['total' => 100, 'fields' => ['pow', 'pow']], 'sheet.pointBudget.fields[1]'];
-        yield 'min above max' => [['total' => 100, 'fields' => ['pow'], 'min' => 50, 'max' => 40], 'sheet.pointBudget.max'];
-        yield 'bounds no value fits' => [['total' => 100, 'fields' => ['pow'], 'min' => 100], 'sheet.pointBudget.fields[0]'];
-        yield 'a total below the lowest values' => [['total' => 10, 'fields' => ['pow'], 'min' => 20], 'sheet.pointBudget.total'];
-        yield 'a label that is too long' => [['label' => str_repeat('x', 61), 'total' => 100, 'fields' => ['pow']], 'sheet.pointBudget.label'];
-        yield 'an unknown property' => [['total' => 100, 'fields' => ['pow'], 'step' => 5], 'sheet.pointBudget'];
+        yield 'no total' => [['fields' => ['pow']], 'sheet.pointBudgets[0].total'];
+        yield 'a total that is not a number' => [['total' => '100', 'fields' => ['pow']], 'sheet.pointBudgets[0].total'];
+        yield 'a total of zero' => [['total' => 0, 'fields' => ['pow']], 'sheet.pointBudgets[0].total'];
+        yield 'no fields' => [['total' => 100], 'sheet.pointBudgets[0].fields'];
+        yield 'fields that are not a list' => [['total' => 100, 'fields' => 'pow'], 'sheet.pointBudgets[0].fields'];
+        yield 'no field listed' => [['total' => 100, 'fields' => []], 'sheet.pointBudgets[0].fields'];
+        yield 'an unknown field' => [['total' => 100, 'fields' => ['nowhere']], 'sheet.pointBudgets[0].fields[0]'];
+        yield 'a field that is not a number' => [['total' => 100, 'fields' => ['pow', 'hp']], 'sheet.pointBudgets[0].fields[1]'];
+        yield 'a repeated field' => [['total' => 100, 'fields' => ['pow', 'pow']], 'sheet.pointBudgets[0].fields[1]'];
+        yield 'min above max' => [['total' => 100, 'fields' => ['pow'], 'min' => 50, 'max' => 40], 'sheet.pointBudgets[0].max'];
+        yield 'bounds no value fits' => [['total' => 100, 'fields' => ['pow'], 'min' => 100], 'sheet.pointBudgets[0].fields[0]'];
+        yield 'a total below the lowest values' => [['total' => 10, 'fields' => ['pow'], 'min' => 20], 'sheet.pointBudgets[0].total'];
+        yield 'a label that is too long' => [['label' => str_repeat('x', 61), 'total' => 100, 'fields' => ['pow']], 'sheet.pointBudgets[0].label'];
+        yield 'an unknown property' => [['total' => 100, 'fields' => ['pow'], 'step' => 5], 'sheet.pointBudgets[0]'];
     }
 
     /**
@@ -308,7 +273,7 @@ final class GameSystemSheetHandlersTest extends TestCase
         $before = $draft->document();
 
         try {
-            $this->saveBudget($budget);
+            $this->saveBudgetEntry('points', ['label' => 'Points', ...$budget]);
             self::fail('The budget was accepted.');
         } catch (InvalidReleaseContent $invalid) {
             self::assertStringStartsWith($path, $invalid->getMessage());
@@ -320,17 +285,16 @@ final class GameSystemSheetHandlersTest extends TestCase
     }
 
     #[Test]
-    public function severalPointBudgetsAreReadInOrderAndThePlainBudgetIsNullThenSingleAgain(): void
+    public function severalPointBudgetsAreReadInOrderAndRemovedOneByOne(): void
     {
         $draft = $this->draft('my-sheet');
         $this->save(null, ['key' => 'luck', 'label' => 'Luck', 'type' => 'number', 'min' => 0, 'max' => 10]);
 
         $this->saveBudgetEntry('attributes', ['label' => 'Attribute points', 'total' => 100, 'fields' => ['pow'], 'min' => 10], version: 2);
-        self::assertEquals(new SheetPointBudgetView('attributes', 'Attribute points', 100, ['pow'], 10, null), $this->sheet('ann', 'my-sheet')->pointBudget, 'A list of one is the single budget, under its own key.');
+        self::assertEquals(new SheetPointBudgetView('attributes', 'Attribute points', 100, ['pow'], 10, null), $this->sheet('ann', 'my-sheet')->pointBudgets[0]);
 
         $this->saveBudgetEntry('skills', ['label' => 'Skill points', 'total' => 8, 'fields' => ['luck'], 'max' => 3], version: 3);
         $view = $this->sheet('ann', 'my-sheet');
-        self::assertNull($view->pointBudget);
         self::assertEquals([new SheetPointBudgetView('attributes', 'Attribute points', 100, ['pow'], 10, null), new SheetPointBudgetView('skills', 'Skill points', 8, ['luck'], null, 3)], $view->pointBudgets);
 
         $this->removeBudgetEntry('attributes', version: 4);
@@ -344,8 +308,9 @@ final class GameSystemSheetHandlersTest extends TestCase
     #[Test]
     public function aLegacyBudgetReadsAsTheKeyPoints(): void
     {
-        $this->draft('my-sheet');
-        $this->saveBudget(['total' => 40, 'fields' => ['pow']]);
+        $draft = $this->draft('my-sheet');
+        $sheet = (array) $draft->document()['sheet'];
+        $draft->restore(ReleaseArrays::with($draft->document(), 'sheet', [...$sheet, 'pointBudget' => ['total' => 40, 'fields' => ['pow']]]), $this->clock->now());
 
         self::assertEquals([new SheetPointBudgetView('points', null, 40, ['pow'], null, null)], $this->sheet('ann', 'my-sheet')->pointBudgets);
     }
@@ -363,23 +328,11 @@ final class GameSystemSheetHandlersTest extends TestCase
     }
 
     #[Test]
-    public function theSingleBudgetCommandsAreRefusedWithSeveralBudgets(): void
-    {
-        $draft = $this->draft('my-sheet');
-        $this->save(null, ['key' => 'luck', 'label' => 'Luck', 'type' => 'number', 'min' => 0, 'max' => 10]);
-        $this->saveBudgetEntry('attributes', ['label' => 'Attribute points', 'total' => 100, 'fields' => ['pow']], version: 2);
-        $this->saveBudgetEntry('skills', ['label' => 'Skill points', 'total' => 8, 'fields' => ['luck']], version: 3);
-
-        $this->expectRefusal(SeveralPointBudgets::class, $draft, fn () => $this->saveBudget(['total' => 5, 'fields' => ['pow']], version: 4));
-        $this->expectRefusal(SeveralPointBudgets::class, $draft, fn () => $this->removeBudget(version: 4));
-    }
-
-    #[Test]
     public function aFieldOfThePointBudgetCannotBeDeletedAfterwards(): void
     {
         $draft = $this->draft('my-sheet');
         $this->save(null, ['key' => 'luck', 'label' => 'Luck', 'type' => 'number']);
-        $this->saveBudget(['total' => 100, 'fields' => ['luck']], version: 2);
+        $this->saveBudgetEntry('points', ['label' => 'Points', 'total' => 100, 'fields' => ['luck']], version: 2);
 
         $this->expectRefusal(SheetFieldInUse::class, $draft, fn () => $this->delete('luck', version: 3));
     }
@@ -440,8 +393,8 @@ final class GameSystemSheetHandlersTest extends TestCase
         yield 'moving out of range' => [static fn (self $t) => $t->move('pow', 4), InvalidReleaseContent::class];
         yield 'saving a layout before declaring one' => [static fn (self $t) => $t->saveLayout(1, [['name' => 'General']]), InvalidReleaseContent::class];
         yield 'removing a layout nobody declared' => [static fn (self $t) => $t->removeLayout(), InvalidReleaseContent::class];
-        yield 'removing a point budget nobody saved' => [static fn (self $t) => $t->removeBudget(), InvalidReleaseContent::class];
-        yield 'a point budget without a total' => [static fn (self $t) => $t->saveBudget(['fields' => ['pow']]), InvalidReleaseContent::class];
+        yield 'removing a point budget nobody saved' => [static fn (self $t) => $t->removeBudgetEntry('points'), SheetPointBudgetNotFound::class];
+        yield 'a point budget without a total' => [static fn (self $t) => $t->saveBudgetEntry('points', ['label' => 'Points', 'fields' => ['pow']]), InvalidReleaseContent::class];
     }
 
     /**
@@ -471,8 +424,8 @@ final class GameSystemSheetHandlersTest extends TestCase
         $this->expectRefusal(InvalidReleaseContent::class, $draft, fn () => $this->saveLayout(1, [['name' => 'General']], key: 'my-journal'));
         $this->expectRefusal(InvalidReleaseContent::class, $draft, fn () => $this->declareLayout(key: 'my-journal'));
         $this->expectRefusal(InvalidReleaseContent::class, $draft, fn () => $this->removeLayout(key: 'my-journal'));
-        $this->expectRefusal(InvalidReleaseContent::class, $draft, fn () => $this->saveBudget(['total' => 100, 'fields' => ['pow']], key: 'my-journal'));
-        $this->expectRefusal(InvalidReleaseContent::class, $draft, fn () => $this->removeBudget(key: 'my-journal'));
+        $this->expectRefusal(InvalidReleaseContent::class, $draft, fn () => $this->saveBudgetEntry('points', ['label' => 'Points', 'total' => 100, 'fields' => ['pow']], key: 'my-journal'));
+        $this->expectRefusal(InvalidReleaseContent::class, $draft, fn () => $this->removeBudgetEntry('points', key: 'my-journal'));
     }
 
     /**
@@ -528,19 +481,6 @@ final class GameSystemSheetHandlersTest extends TestCase
     public function removeLayout(string $user = 'ann', int $version = 1, string $key = 'my-sheet'): void
     {
         (new RemoveSheetLayoutHandler($this->owned, $this->gameSystems, $this->clock))(new RemoveSheetLayout($user, $key, $version));
-    }
-
-    /**
-     * @param array<array-key, mixed> $budget
-     */
-    public function saveBudget(array $budget, string $user = 'ann', int $version = 1, string $key = 'my-sheet'): void
-    {
-        (new SaveSheetPointBudgetHandler($this->owned, $this->gameSystems, $this->clock))(new SaveSheetPointBudget($user, $key, $version, $budget));
-    }
-
-    public function removeBudget(string $user = 'ann', int $version = 1, string $key = 'my-sheet'): void
-    {
-        (new RemoveSheetPointBudgetHandler($this->owned, $this->gameSystems, $this->clock))(new RemoveSheetPointBudget($user, $key, $version));
     }
 
     /**

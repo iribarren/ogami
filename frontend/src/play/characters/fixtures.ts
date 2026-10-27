@@ -183,7 +183,7 @@ export const creationSheet: SheetField[] = [
 ]
 
 /** Spend 100 points over Strength and Constitution, 15 to 90 each, or roll them. */
-export const creationBudget: NonNullable<Campaign['pinnedRelease']['pointBudget']> = {
+export const creationBudget: Omit<Campaign['pinnedRelease']['pointBudgets'][number], 'key'> = {
   label: 'Characteristic points',
   total: 100,
   fields: ['str', 'con'],
@@ -197,7 +197,6 @@ export const creationCampaign: Campaign = {
   pinnedRelease: {
     ...nightJobCampaign.pinnedRelease,
     sheet: creationSheet,
-    pointBudget: creationBudget,
     pointBudgets: [{ key: 'points', ...creationBudget }],
   },
   characters: [],
@@ -226,7 +225,6 @@ export const twoBudgetCampaign: Campaign = {
   pinnedRelease: {
     ...creationCampaign.pinnedRelease,
     sheet: [...creationSheet, loreField],
-    pointBudget: null,
     pointBudgets: creationBudgets,
   },
 }

@@ -9537,216 +9537,6 @@
                 }
             }
         },
-        "/api/studio/game-systems/{key}/sheet/point-budget": {
-            "put": {
-                "tags": [
-                    "Studio"
-                ],
-                "summary": "Replace the single point budget of the sheet of one of my GameSystem drafts: the total a Character spends over number fields at creation, with creation-only bounds for them. Answers 409 several_point_budgets when the sheet has several: use the keyed routes (kept until the Studio UI moves to them)",
-                "operationId": "saveSheetPointBudget",
-                "parameters": [
-                    {
-                        "name": "key",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SaveSheetPointBudgetRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "The draft's sheet with the new point budget and the new version.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/GameSystemSheetResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "The JSON body is malformed or has no integer \"expectedVersion\".",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "No session.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "The user is not a game manager.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "The user has no GameSystem with this key.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "Nothing changed; the code says why: modified_concurrently (another request saved the draft meanwhile: reload it and try again), library_pack (a pack has no sheet) or several_point_budgets (the sheet has several point budgets: use the keyed routes).",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SheetConflictResponse"
-                                }
-                            }
-                        }
-                    },
-                    "415": {
-                        "description": "The body is not JSON.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "The budget breaks the release contract's rules (the message starts with its path, \"sheet.pointBudget\" and the property: a missing or non-number total, a missing, non-list, unknown, non-number or repeated field, min above max, a total below the sum of the lowest values the fields can take), or the draft has schema version 1; nothing changed.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Studio"
-                ],
-                "summary": "Remove the single point budget of the sheet of one of my GameSystem drafts: Characters are created without one. Answers 409 several_point_budgets when the sheet has several: use the keyed routes (kept until the Studio UI moves to them)",
-                "operationId": "removeSheetPointBudget",
-                "parameters": [
-                    {
-                        "name": "expectedVersion",
-                        "in": "query",
-                        "description": "The draft version the client read; a query parameter because a DELETE has no body.",
-                        "required": true,
-                        "schema": {
-                            "type": "integer",
-                            "example": 3
-                        }
-                    },
-                    {
-                        "name": "key",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The draft's sheet without a point budget and the new version.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/GameSystemSheetResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "The \"expectedVersion\" query parameter is missing or not an integer.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "No session.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "The user is not a game manager.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "The user has no GameSystem with this key.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "Nothing changed; the code says why: modified_concurrently (another request saved the draft meanwhile: reload it and try again), library_pack (a pack has no sheet) or several_point_budgets (the sheet has several point budgets: use the keyed routes).",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SheetConflictResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "The sheet has no point budget (the message starts with \"sheet.pointBudget\"), or the draft has schema version 1; nothing changed.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/studio/game-systems/{key}/sheet/point-budgets/{budget}": {
             "put": {
                 "tags": [
@@ -11483,52 +11273,6 @@
                 },
                 "type": "object"
             },
-            "PointBudgetResponse": {
-                "required": [
-                    "label",
-                    "total",
-                    "fields",
-                    "min",
-                    "max"
-                ],
-                "properties": {
-                    "label": {
-                        "description": "What to call the points; null to call them \"Points\".",
-                        "type": "string",
-                        "example": "Characteristic points",
-                        "nullable": true
-                    },
-                    "total": {
-                        "description": "The most points a player spends.",
-                        "type": "integer",
-                        "example": 460
-                    },
-                    "fields": {
-                        "description": "The keys of the number fields the points are spent on.",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "example": [
-                            "str",
-                            "con"
-                        ]
-                    },
-                    "min": {
-                        "description": "The lowest value a budget field takes when a Character is created; null when the budget adds no lower bound to the field's own.",
-                        "type": "integer",
-                        "example": 15,
-                        "nullable": true
-                    },
-                    "max": {
-                        "description": "The highest value a budget field takes when a Character is created; null when the budget adds no upper bound to the field's own.",
-                        "type": "integer",
-                        "example": 90,
-                        "nullable": true
-                    }
-                },
-                "type": "object"
-            },
             "PointBudgetEntryResponse": {
                 "required": [
                     "key",
@@ -11590,8 +11334,8 @@
                     "credits",
                     "sheet",
                     "sheetLayout",
-                    "pointBudget",
-                    "pointBudgets"
+                    "pointBudgets",
+                    "pointBudget"
                 ],
                 "properties": {
                     "gameSystemKey": {
@@ -11643,15 +11387,6 @@
                         ],
                         "nullable": true,
                         "description": "How the release lays its sheet out in groups; null when it declares none, and the fields of the same group then render together."
-                    },
-                    "pointBudget": {
-                        "oneOf": [
-                            {
-                                "$ref": "#/components/schemas/PointBudgetResponse"
-                            }
-                        ],
-                        "nullable": true,
-                        "description": "The points a player may spend on number fields when creating a Character (ADR 0040): the single budget; null when the sheet has none or several (read pointBudgets). Kept until the UI moves to pointBudgets."
                     },
                     "pointBudgets": {
                         "description": "Every point budget of the sheet in order (ADR 0043), a legacy single budget as the key \"points\"; empty when the sheet has none.",
@@ -17884,52 +17619,6 @@
                 },
                 "type": "object"
             },
-            "SheetPointBudgetResponse": {
-                "required": [
-                    "label",
-                    "total",
-                    "fields",
-                    "min",
-                    "max"
-                ],
-                "properties": {
-                    "label": {
-                        "description": "What the points are called; null when the budget has no name.",
-                        "type": "string",
-                        "example": "Characteristic points",
-                        "nullable": true
-                    },
-                    "total": {
-                        "description": "The most a Character spends.",
-                        "type": "integer",
-                        "example": 460
-                    },
-                    "fields": {
-                        "description": "The keys of the number fields the budget covers.",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "example": [
-                            "str",
-                            "con"
-                        ]
-                    },
-                    "min": {
-                        "description": "The least a covered field takes at creation; null when only the field's own minimum applies.",
-                        "type": "integer",
-                        "example": 15,
-                        "nullable": true
-                    },
-                    "max": {
-                        "description": "The most a covered field takes at creation; null when only the field's own maximum applies.",
-                        "type": "integer",
-                        "example": 90,
-                        "nullable": true
-                    }
-                },
-                "type": "object"
-            },
             "SheetPointBudgetEntryResponse": {
                 "required": [
                     "key",
@@ -17991,8 +17680,8 @@
                     "fields",
                     "trackers",
                     "publishedFieldKeys",
-                    "pointBudget",
-                    "pointBudgets"
+                    "pointBudgets",
+                    "pointBudget"
                 ],
                 "properties": {
                     "version": {
@@ -18050,15 +17739,6 @@
                             "pow",
                             "hp"
                         ]
-                    },
-                    "pointBudget": {
-                        "oneOf": [
-                            {
-                                "$ref": "#/components/schemas/SheetPointBudgetResponse"
-                            }
-                        ],
-                        "nullable": true,
-                        "description": "What a Character spends over number fields at creation (ADR 0040): the single point budget; null when the sheet has none or several (read pointBudgets). Kept until the Studio UI moves to pointBudgets."
                     },
                     "pointBudgets": {
                         "description": "The point budgets of the sheet in order (ADR 0043), a legacy single budget as the key \"points\"; empty without any.",
@@ -18187,80 +17867,6 @@
                 },
                 "type": "object"
             },
-            "SaveSheetPointBudgetRequest": {
-                "required": [
-                    "expectedVersion",
-                    "total",
-                    "fields"
-                ],
-                "properties": {
-                    "expectedVersion": {
-                        "description": "The draft version the client read; another save since then is refused (409).",
-                        "type": "integer",
-                        "example": 3
-                    },
-                    "label": {
-                        "description": "What the points are called (1 to 60 characters); unnamed when left out.",
-                        "type": "string",
-                        "example": "Characteristic points",
-                        "nullable": true
-                    },
-                    "total": {
-                        "description": "The most a Character spends (1 to 1,000,000). It must cover the lowest values the fields can take.",
-                        "type": "integer",
-                        "example": 460
-                    },
-                    "fields": {
-                        "description": "The keys of the number fields the budget covers: at least one, distinct.",
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "example": [
-                            "str",
-                            "con"
-                        ],
-                        "minItems": 1
-                    },
-                    "min": {
-                        "description": "The least a covered field takes at creation, inside the field's own bounds; only the field's minimum when left out.",
-                        "type": "integer",
-                        "example": 15,
-                        "nullable": true
-                    },
-                    "max": {
-                        "description": "The most a covered field takes at creation, inside the field's own bounds and at least min; only the field's maximum when left out.",
-                        "type": "integer",
-                        "example": 90,
-                        "nullable": true
-                    }
-                },
-                "type": "object"
-            },
-            "SheetConflictCode": {
-                "type": "string",
-                "enum": [
-                    "modified_concurrently",
-                    "library_pack",
-                    "several_point_budgets"
-                ]
-            },
-            "SheetConflictResponse": {
-                "required": [
-                    "error",
-                    "code"
-                ],
-                "properties": {
-                    "error": {
-                        "description": "A human-readable message.",
-                        "type": "string"
-                    },
-                    "code": {
-                        "$ref": "#/components/schemas/SheetConflictCode"
-                    }
-                },
-                "type": "object"
-            },
             "SaveSheetPointBudgetEntryRequest": {
                 "required": [
                     "expectedVersion",
@@ -18307,6 +17913,29 @@
                         "type": "integer",
                         "example": 3,
                         "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "SheetConflictCode": {
+                "type": "string",
+                "enum": [
+                    "modified_concurrently",
+                    "library_pack"
+                ]
+            },
+            "SheetConflictResponse": {
+                "required": [
+                    "error",
+                    "code"
+                ],
+                "properties": {
+                    "error": {
+                        "description": "A human-readable message.",
+                        "type": "string"
+                    },
+                    "code": {
+                        "$ref": "#/components/schemas/SheetConflictCode"
                     }
                 },
                 "type": "object"

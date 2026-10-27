@@ -35,7 +35,6 @@ final readonly class GetGameSystemSheetHandler implements QueryHandler
             1 === $gameSystem->schemaVersion() ? [] : $this->fields($sheet),
             1 === $gameSystem->schemaVersion() ? [] : $this->trackers($document),
             $latest instanceof \App\Studio\Domain\Release\GameSystemRelease ? $this->keys($this->fields($this->sheet($latest->content()->toArray()))) : [],
-            1 === \count($budgets) ? $budgets[0] : null,
             $budgets,
         );
     }

@@ -165,6 +165,21 @@ describe('a sheet with several point budgets', () => {
     expect(skills.getByText('Creation range: at most 3')).toBeVisible()
   })
 
+  it('refuses a new budget whose key another budget already uses', async () => {
+    const { sent, handler } = recorder(Response.json(sheetWithPointBudgets))
+    const { user } = await openSheet({ ...withBudgets, [`PUT ${entry('attributes')}`]: handler })
+
+    await user.click(await screen.findByRole('button', { name: 'Add point budget' }))
+    await typeText(user, inDialog().getByLabelText('Key'), 'attributes')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Other points')
+    await typeText(user, inDialog().getByLabelText('Total'), '5')
+    await user.click(inDialog().getByRole('checkbox', { name: /Power/ }))
+    await user.click(inDialog().getByRole('button', { name: 'Save point budget' }))
+
+    expect(await inDialog().findByText('Another budget uses this key.')).toBeVisible()
+    expect(sent).toEqual([])
+  })
+
   it('says a lower bound alone as at least', async () => {
     await openSheet({
       [`GET ${base}/sheet`]: json({

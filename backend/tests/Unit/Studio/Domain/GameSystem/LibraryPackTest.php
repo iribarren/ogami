@@ -83,8 +83,8 @@ final class LibraryPackTest extends TestCase
         yield 'save a sheet layout' => [static fn (GameSystem $pack, \DateTimeImmutable $now) => $pack->saveSheetLayout(2, [], $now), 'save a sheet layout'];
         yield 'declare a sheet layout' => [static fn (GameSystem $pack, \DateTimeImmutable $now) => $pack->declareSheetLayout($now), 'declare a sheet layout'];
         yield 'remove a sheet layout' => [static fn (GameSystem $pack, \DateTimeImmutable $now) => $pack->removeSheetLayout($now), 'remove a sheet layout'];
-        yield 'save a sheet point budget' => [static fn (GameSystem $pack, \DateTimeImmutable $now) => $pack->saveSheetPointBudget(['total' => 10, 'fields' => ['luck']], $now), 'save a sheet point budget'];
-        yield 'remove a sheet point budget' => [static fn (GameSystem $pack, \DateTimeImmutable $now) => $pack->removeSheetPointBudget($now), 'remove a sheet point budget'];
+        yield 'save a sheet point budget' => [static fn (GameSystem $pack, \DateTimeImmutable $now) => $pack->saveSheetPointBudgetEntry('luck', ['label' => 'Luck', 'total' => 10, 'fields' => ['luck']], $now), 'save a sheet point budget'];
+        yield 'remove a sheet point budget' => [static fn (GameSystem $pack, \DateTimeImmutable $now) => $pack->removeSheetPointBudgetEntry('luck', $now), 'remove a sheet point budget'];
         yield 'a theme' => [static fn (GameSystem $pack, \DateTimeImmutable $now) => $pack->editMetadata(GameSystemMetadata::of('Names', null, null, 'noir'), $now), 'have a theme'];
         yield 'credits' => [static fn (GameSystem $pack, \DateTimeImmutable $now) => $pack->editMetadata(GameSystemMetadata::of('Names', null, ['notice' => 'By me'], null), $now), 'have credits'];
         yield 'restore a release' => [static fn (GameSystem $pack, \DateTimeImmutable $now) => $pack->restore(['schemaVersion' => 2, 'gameSystem' => ['key' => 'other', 'name' => 'Other']], $now), 'restore a release'];

@@ -572,46 +572,6 @@ final class GameSystem
     }
 
     /**
-     * Replaces the whole point budget of the sheet (ADR 0040), the rules being the release's: a
-     * total, distinct number fields to spend it on, and optional creation-only bounds for them.
-     * Writes the legacy single `pointBudget`, dropping a list of one budget.
-     *
-     * @param array<array-key, mixed> $budget "label", "total", "fields", "min" and "max" as in a release document
-     *
-     * @throws InvalidReleaseContent when the draft is schema version 1, or the budget breaks the release contract (the path starts with "sheet.pointBudget"); nothing changes
-     * @throws SeveralPointBudgets   when the sheet has several budgets, which only a keyed command can address
-     */
-    public function saveSheetPointBudget(array $budget, \DateTimeImmutable $now): void
-    {
-        $this->refuseOnPack('save a sheet point budget');
-        $this->sheetFields();
-        $sheet = $this->sheet();
-        $this->refuseSeveralPointBudgets($sheet);
-        unset($sheet['pointBudgets']);
-        $this->replaceSheet([...$sheet, 'pointBudget' => $budget], $now);
-    }
-
-    /**
-     * Drops the point budget: Characters are created without one.
-     *
-     * @throws InvalidReleaseContent when the draft is schema version 1, the sheet has no point budget, or the draft would break the item rules
-     * @throws SeveralPointBudgets   when the sheet has several budgets, which only a keyed command can address
-     */
-    public function removeSheetPointBudget(\DateTimeImmutable $now): void
-    {
-        $this->refuseOnPack('remove a sheet point budget');
-        $this->sheetFields();
-        $sheet = $this->sheet();
-        $this->refuseSeveralPointBudgets($sheet);
-        if ([] === $this->pointBudgetList($sheet)) {
-            throw InvalidReleaseContent::at('sheet.pointBudget', 'no point budget, there is nothing to remove');
-        }
-
-        unset($sheet['pointBudget'], $sheet['pointBudgets']);
-        $this->replaceSheet($sheet, $now);
-    }
-
-    /**
      * Puts the point budget with this key (ADR 0043): replaces it in place, else appends it. The
      * whole list is stored as `pointBudgets`; a legacy `pointBudget` is the budget "points" and is
      * moved into the list.
@@ -914,19 +874,6 @@ final class GameSystem
         }
 
         return \is_array($legacy) ? [['key' => self::LEGACY_BUDGET_KEY, ...$legacy]] : [];
-    }
-
-    /**
-     * @param array<array-key, mixed> $sheet
-     *
-     * @throws SeveralPointBudgets
-     */
-    private function refuseSeveralPointBudgets(array $sheet): void
-    {
-        $count = \count($this->pointBudgetList($sheet));
-        if ($count > 1) {
-            throw SeveralPointBudgets::in($count);
-        }
     }
 
     /**

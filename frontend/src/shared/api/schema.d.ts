@@ -1547,24 +1547,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/studio/game-systems/{key}/sheet/point-budget": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Replace the single point budget of the sheet of one of my GameSystem drafts: the total a Character spends over number fields at creation, with creation-only bounds for them. Answers 409 several_point_budgets when the sheet has several: use the keyed routes (kept until the Studio UI moves to them) */
-        put: operations["saveSheetPointBudget"];
-        post?: never;
-        /** Remove the single point budget of the sheet of one of my GameSystem drafts: Characters are created without one. Answers 409 several_point_budgets when the sheet has several: use the keyed routes (kept until the Studio UI moves to them) */
-        delete: operations["removeSheetPointBudget"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/studio/game-systems/{key}/sheet/point-budgets/{budget}": {
         parameters: {
             query?: never;
@@ -2051,36 +2033,6 @@ export interface components {
             /** @description The groups in declared order. A field names its group; a group without fields renders nothing. */
             groups: components["schemas"]["SheetGroupResponse"][];
         };
-        PointBudgetResponse: {
-            /**
-             * @description What to call the points; null to call them "Points".
-             * @example Characteristic points
-             */
-            label: string | null;
-            /**
-             * @description The most points a player spends.
-             * @example 460
-             */
-            total: number;
-            /**
-             * @description The keys of the number fields the points are spent on.
-             * @example [
-             *       "str",
-             *       "con"
-             *     ]
-             */
-            fields: string[];
-            /**
-             * @description The lowest value a budget field takes when a Character is created; null when the budget adds no lower bound to the field's own.
-             * @example 15
-             */
-            min: number | null;
-            /**
-             * @description The highest value a budget field takes when a Character is created; null when the budget adds no upper bound to the field's own.
-             * @example 90
-             */
-            max: number | null;
-        };
         PointBudgetEntryResponse: {
             /**
              * @description The budget's key in the sheet; "points" for a legacy single budget.
@@ -2135,8 +2087,6 @@ export interface components {
             sheet: components["schemas"]["SheetFieldResponse"][];
             /** @description How the release lays its sheet out in groups; null when it declares none, and the fields of the same group then render together. */
             sheetLayout: components["schemas"]["SheetLayoutResponse"] | null;
-            /** @description The points a player may spend on number fields when creating a Character (ADR 0040): the single budget; null when the sheet has none or several (read pointBudgets). Kept until the UI moves to pointBudgets. */
-            pointBudget: components["schemas"]["PointBudgetResponse"] | null;
             /** @description Every point budget of the sheet in order (ADR 0043), a legacy single budget as the key "points"; empty when the sheet has none. */
             pointBudgets: components["schemas"]["PointBudgetEntryResponse"][];
         };
@@ -5234,36 +5184,6 @@ export interface components {
              */
             max: number | null;
         };
-        SheetPointBudgetResponse: {
-            /**
-             * @description What the points are called; null when the budget has no name.
-             * @example Characteristic points
-             */
-            label: string | null;
-            /**
-             * @description The most a Character spends.
-             * @example 460
-             */
-            total: number;
-            /**
-             * @description The keys of the number fields the budget covers.
-             * @example [
-             *       "str",
-             *       "con"
-             *     ]
-             */
-            fields: string[];
-            /**
-             * @description The least a covered field takes at creation; null when only the field's own minimum applies.
-             * @example 15
-             */
-            min: number | null;
-            /**
-             * @description The most a covered field takes at creation; null when only the field's own maximum applies.
-             * @example 90
-             */
-            max: number | null;
-        };
         SheetPointBudgetEntryResponse: {
             /**
              * @description The budget's key, which addresses it in the point budget routes; "points" for a legacy single budget.
@@ -5331,8 +5251,6 @@ export interface components {
              *     ]
              */
             publishedFieldKeys: string[];
-            /** @description What a Character spends over number fields at creation (ADR 0040): the single point budget; null when the sheet has none or several (read pointBudgets). Kept until the Studio UI moves to pointBudgets. */
-            pointBudget: components["schemas"]["SheetPointBudgetResponse"] | null;
             /** @description The point budgets of the sheet in order (ADR 0043), a legacy single budget as the key "points"; empty without any. */
             pointBudgets: components["schemas"]["SheetPointBudgetEntryResponse"][];
         };
@@ -5411,48 +5329,6 @@ export interface components {
              */
             expectedVersion: number;
         };
-        SaveSheetPointBudgetRequest: {
-            /**
-             * @description The draft version the client read; another save since then is refused (409).
-             * @example 3
-             */
-            expectedVersion: number;
-            /**
-             * @description What the points are called (1 to 60 characters); unnamed when left out.
-             * @example Characteristic points
-             */
-            label?: string | null;
-            /**
-             * @description The most a Character spends (1 to 1,000,000). It must cover the lowest values the fields can take.
-             * @example 460
-             */
-            total: number;
-            /**
-             * @description The keys of the number fields the budget covers: at least one, distinct.
-             * @example [
-             *       "str",
-             *       "con"
-             *     ]
-             */
-            fields: string[];
-            /**
-             * @description The least a covered field takes at creation, inside the field's own bounds; only the field's minimum when left out.
-             * @example 15
-             */
-            min?: number | null;
-            /**
-             * @description The most a covered field takes at creation, inside the field's own bounds and at least min; only the field's maximum when left out.
-             * @example 90
-             */
-            max?: number | null;
-        };
-        /** @enum {string} */
-        SheetConflictCode: "modified_concurrently" | "library_pack" | "several_point_budgets";
-        SheetConflictResponse: {
-            /** @description A human-readable message. */
-            error: string;
-            code: components["schemas"]["SheetConflictCode"];
-        };
         SaveSheetPointBudgetEntryRequest: {
             /**
              * @description The draft version the client read; another save since then is refused (409).
@@ -5487,6 +5363,13 @@ export interface components {
              * @example 3
              */
             max?: number | null;
+        };
+        /** @enum {string} */
+        SheetConflictCode: "modified_concurrently" | "library_pack";
+        SheetConflictResponse: {
+            /** @description A human-readable message. */
+            error: string;
+            code: components["schemas"]["SheetConflictCode"];
         };
         LibraryImportPackResponse: {
             /** @example fantasy-basics */
@@ -13160,174 +13043,6 @@ export interface operations {
                 };
             };
             /** @description The sheet already declares a layout or has no fields (the message starts with "sheet.groups" or "sheet.fields"), the groups break the release contract's rules (more than 20), or the draft has schema version 1; nothing changed. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    saveSheetPointBudget: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SaveSheetPointBudgetRequest"];
-            };
-        };
-        responses: {
-            /** @description The draft's sheet with the new point budget and the new version. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GameSystemSheetResponse"];
-                };
-            };
-            /** @description The JSON body is malformed or has no integer "expectedVersion". */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description No session. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description The user is not a game manager. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description The user has no GameSystem with this key. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Nothing changed; the code says why: modified_concurrently (another request saved the draft meanwhile: reload it and try again), library_pack (a pack has no sheet) or several_point_budgets (the sheet has several point budgets: use the keyed routes). */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SheetConflictResponse"];
-                };
-            };
-            /** @description The body is not JSON. */
-            415: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description The budget breaks the release contract's rules (the message starts with its path, "sheet.pointBudget" and the property: a missing or non-number total, a missing, non-list, unknown, non-number or repeated field, min above max, a total below the sum of the lowest values the fields can take), or the draft has schema version 1; nothing changed. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    removeSheetPointBudget: {
-        parameters: {
-            query: {
-                /** @description The draft version the client read; a query parameter because a DELETE has no body. */
-                expectedVersion: number;
-            };
-            header?: never;
-            path: {
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The draft's sheet without a point budget and the new version. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GameSystemSheetResponse"];
-                };
-            };
-            /** @description The "expectedVersion" query parameter is missing or not an integer. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description No session. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description The user is not a game manager. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description The user has no GameSystem with this key. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Nothing changed; the code says why: modified_concurrently (another request saved the draft meanwhile: reload it and try again), library_pack (a pack has no sheet) or several_point_budgets (the sheet has several point budgets: use the keyed routes). */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SheetConflictResponse"];
-                };
-            };
-            /** @description The sheet has no point budget (the message starts with "sheet.pointBudget"), or the draft has schema version 1; nothing changed. */
             422: {
                 headers: {
                     [name: string]: unknown;

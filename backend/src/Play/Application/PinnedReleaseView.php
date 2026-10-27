@@ -12,9 +12,8 @@ use App\Play\Domain\GameSystem\Sheet\SheetLayout;
  * The GameSystem release a campaign is pinned to; theme names the curated Theme the release asks
  * for, null for the default app theme; credits are the notice, license and link the release carries, null without;
  * sheet lists the fields Characters fill in (none for a release without a sheet); sheetLayout is how the
- * release groups them (ADR 0031), null when it declares no groups; pointBudget is the points a player may spend on number
- * fields when creating a Character (ADR 0040): the single budget, null without one or with several;
- * pointBudgets are all of them in order (ADR 0043), a legacy single budget as the key "points".
+ * release groups them (ADR 0031), null when it declares no groups; pointBudgets are the points a player may spend on number
+ * fields when creating a Character (ADR 0040, 0043), all of them in order, a legacy single budget as the key "points".
  */
 final readonly class PinnedReleaseView
 {
@@ -30,7 +29,6 @@ final readonly class PinnedReleaseView
         public ?Credits $credits = null,
         public array $sheet = [],
         public ?SheetLayout $sheetLayout = null,
-        public ?PointBudget $pointBudget = null,
         public array $pointBudgets = [],
     ) {
     }

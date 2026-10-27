@@ -1103,5 +1103,7 @@ describe('the Night Court world turn roll', () => {
     ])
 
     expect(draft?.kind).toBe('roll')
+    // After a server save the canonical step comes back with the empty last band as {}.
+    expect(stepsToItems(draft ? [draft] : [])).toEqual({ steps: [inquisition] })
   })
 })

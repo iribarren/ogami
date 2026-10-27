@@ -22,6 +22,8 @@ const sheet: Record<string, string> = {
   Stealth: '3',
   Streetwise: '2',
   Persuasion: '3',
+  // Not left to the preset's default: the roll below has two Hunger dice.
+  Hunger: '2',
 }
 
 test('a solo player starts Night Court, sees the Dark Pack credits and rolls a Hunger pool check', async ({

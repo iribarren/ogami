@@ -8,20 +8,22 @@ use App\Play\Domain\GameSystem\Sheet\ConditionOption;
 use App\Play\Domain\GameSystem\Sheet\ConditionsField;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
+use App\Play\Domain\GameSystem\Sheet\InventoryField;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
 use App\Play\Domain\GameSystem\Sheet\TextField;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
 
 /**
- * One field of the pinned release's character sheet. `type` is "number", "text", "list", "track", "conditions" or "derived";
+ * One field of the pinned release's character sheet. `type` is "number", "text", "list", "track", "conditions", "inventory" or "derived";
  * the properties of the other types are null. `span` is how many columns of its group the field takes (ADR 0031). A derived field holds its formula in the spelling the release gives it. A number's `roll` is the normalized dice expression the server rolls at creation, a track's `startMax` the formula it starts full at (ADR 0040). Limits are resolved: a number's min and max default to
- * the contract's one million, a text's maxLength and a list's maxItems to their defaults. A conditions field's `options` are its marks in declared order (ADR 0041); its value is the list of the marked option keys.
+ * the contract's one million, a text's maxLength and a list's maxItems to their defaults. A conditions field's `options` are its marks in declared order (ADR 0041); its value is the list of the marked option keys. An inventory field's value is a list of stacks (ADR 0045): `capacity` is its slot limit (null: none), `maxStacks` its stack limit and `categories` the gear categories it accepts (null: every entry).
  */
 final readonly class SheetFieldView
 {
     /**
      * @param ?list<ConditionOptionView> $options
+     * @param ?list<string>              $categories
      */
     public function __construct(
         public string $key,
@@ -41,6 +43,9 @@ final readonly class SheetFieldView
         public ?string $roll = null,
         public ?string $startMax = null,
         public ?array $options = null,
+        public ?int $capacity = null,
+        public ?int $maxStacks = null,
+        public ?array $categories = null,
     ) {
     }
 
@@ -54,6 +59,7 @@ final readonly class SheetFieldView
             $field instanceof ListField => new self(...$common, type: 'list', itemLabel: $field->itemLabel, maxItems: $field->limit()),
             $field instanceof TrackField => new self(...$common, type: 'track', max: $field->max, startMax: $field->startMax?->toString()),
             $field instanceof ConditionsField => new self(...$common, type: 'conditions', options: array_map(static fn (ConditionOption $option): ConditionOptionView => new ConditionOptionView($option->key, $option->label), $field->options)),
+            $field instanceof InventoryField => new self(...$common, type: 'inventory', capacity: $field->capacity, maxStacks: $field->maxStacks, categories: $field->categories),
             $field instanceof DerivedField => new self(...$common, type: 'derived', formula: $field->formula->toString()),
             default => throw new \LogicException(\sprintf('Unknown field type %s.', $field::class)),
         };

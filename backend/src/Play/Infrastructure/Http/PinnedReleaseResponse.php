@@ -11,12 +11,13 @@ use OpenApi\Attributes as OA;
 /**
  * The GameSystem release a campaign is pinned to (ADR 0014).
  */
-#[OA\Schema(required: ['gameSystemKey', 'gameSystemName', 'version', 'theme', 'credits', 'sheet', 'sheetLayout', 'pointBudgets'])]
+#[OA\Schema(required: ['gameSystemKey', 'gameSystemName', 'version', 'theme', 'credits', 'sheet', 'sheetLayout', 'pointBudgets', 'gear', 'currency'])]
 final readonly class PinnedReleaseResponse
 {
     /**
      * @param list<SheetFieldResponse>       $sheet
      * @param list<PointBudgetEntryResponse> $pointBudgets
+     * @param list<GearEntryResponse>        $gear
      */
     private function __construct(
         #[OA\Property(example: 'ironsworn')]
@@ -39,11 +40,15 @@ final readonly class PinnedReleaseResponse
         public ?SheetLayoutResponse $sheetLayout,
         #[OA\Property(description: 'Every point budget of the sheet in order (ADR 0043), a legacy single budget as the key "points"; empty when the sheet has none.', type: 'array', items: new OA\Items(ref: new Model(type: PointBudgetEntryResponse::class)))]
         public array $pointBudgets,
+        #[OA\Property(description: 'The release\'s gear catalog in order (ADR 0045); inventory fields accept entries from it. Empty when the release has none.', type: 'array', items: new OA\Items(ref: new Model(type: GearEntryResponse::class)))]
+        public array $gear,
+        #[OA\Property(ref: new Model(type: CurrencyResponse::class), description: 'The sheet field Characters keep money in; null when the release declares no currency.', nullable: true)]
+        public ?CurrencyResponse $currency,
     ) {
     }
 
     public static function fromView(PinnedReleaseView $view): self
     {
-        return new self($view->gameSystemKey, $view->gameSystemName, $view->version, $view->theme, CreditsResponse::fromCredits($view->credits), array_map(SheetFieldResponse::fromView(...), $view->sheet), SheetLayoutResponse::fromLayout($view->sheetLayout), array_map(PointBudgetEntryResponse::fromBudget(...), $view->pointBudgets));
+        return new self($view->gameSystemKey, $view->gameSystemName, $view->version, $view->theme, CreditsResponse::fromCredits($view->credits), array_map(SheetFieldResponse::fromView(...), $view->sheet), SheetLayoutResponse::fromLayout($view->sheetLayout), array_map(PointBudgetEntryResponse::fromBudget(...), $view->pointBudgets), array_map(GearEntryResponse::fromEntry(...), $view->gear), CurrencyResponse::fromCurrency($view->currency));
     }
 }

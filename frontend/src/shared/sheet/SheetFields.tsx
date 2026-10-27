@@ -220,6 +220,11 @@ function FieldControl({
     )
   }
 
+  if (field.type === 'inventory') {
+    // The control lands with play-items-economy slice 4; the stored stacks are sent back as they are.
+    return null
+  }
+
   if (field.type === 'conditions' && Array.isArray(draft)) {
     // One checkbox per option; the marked keys are the draft, in the order they were ticked.
     return (

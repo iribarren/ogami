@@ -26,6 +26,9 @@ const base: SheetField = {
   startMax: null,
   span: 1,
   options: null,
+  capacity: null,
+  maxStacks: null,
+  categories: null,
 }
 
 /** A conditions field (ADR 0041): three options a Character can be marked with, in this order. */

@@ -12,11 +12,12 @@ use OpenApi\Attributes as OA;
  * One field of the character sheet of a campaign's pinned release. The properties of the other
  * types than `type` are null.
  */
-#[OA\Schema(required: ['key', 'label', 'hint', 'group', 'type', 'min', 'max', 'default', 'multiline', 'maxLength', 'itemLabel', 'maxItems', 'formula', 'roll', 'startMax', 'span', 'options'])]
+#[OA\Schema(required: ['key', 'label', 'hint', 'group', 'type', 'min', 'max', 'default', 'multiline', 'maxLength', 'itemLabel', 'maxItems', 'formula', 'roll', 'startMax', 'span', 'options', 'capacity', 'maxStacks', 'categories'])]
 final readonly class SheetFieldResponse
 {
     /**
      * @param ?list<ConditionOptionResponse> $options
+     * @param ?list<string>                  $categories
      */
     private function __construct(
         #[OA\Property(description: 'The key Character values are stored under.', example: 'reflexes')]
@@ -27,7 +28,7 @@ final readonly class SheetFieldResponse
         public ?string $hint,
         #[OA\Property(description: 'Consecutive fields with the same group are laid out together; null when ungrouped.', example: 'Stats', nullable: true)]
         public ?string $group,
-        #[OA\Property(description: 'A number is an integer, a text a string, a list an array of strings, a conditions field an array of the keys of its marked options and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.', example: 'number', enum: ['number', 'text', 'list', 'track', 'conditions', 'derived'])]
+        #[OA\Property(description: 'A number is an integer, a text a string, a list an array of strings, a conditions field an array of the keys of its marked options, an inventory field an array of stacks (ADR 0045) and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.', example: 'number', enum: ['number', 'text', 'list', 'track', 'conditions', 'inventory', 'derived'])]
         public string $type,
         #[OA\Property(description: 'Number: the lowest value (-1000000 when the field sets none). Null for other types.', example: 1, nullable: true)]
         public ?int $min,
@@ -58,11 +59,17 @@ final readonly class SheetFieldResponse
             nullable: true,
         )]
         public ?array $options,
+        #[OA\Property(description: 'Inventory: the most slots its stacks use together (a stack takes quantity times the slots of one unit); null when it has no slot limit. Null for other types.', example: 20, nullable: true)]
+        public ?int $capacity,
+        #[OA\Property(description: 'Inventory: the most stacks it holds. Null for other types.', example: 50, nullable: true)]
+        public ?int $maxStacks,
+        #[OA\Property(description: 'Inventory: the gear categories it accepts, matched exactly against the catalog; null when it accepts every entry, with or without a category. Null for other types.', type: 'array', items: new OA\Items(type: 'string'), example: ['Gear', 'Food'], nullable: true)]
+        public ?array $categories,
     ) {
     }
 
     public static function fromView(SheetFieldView $view): self
     {
-        return new self($view->key, $view->label, $view->hint, $view->group, $view->type, $view->min, $view->max, $view->default, $view->multiline, $view->maxLength, $view->itemLabel, $view->maxItems, $view->formula, $view->roll, $view->startMax, $view->span, null === $view->options ? null : array_map(ConditionOptionResponse::fromView(...), $view->options));
+        return new self($view->key, $view->label, $view->hint, $view->group, $view->type, $view->min, $view->max, $view->default, $view->multiline, $view->maxLength, $view->itemLabel, $view->maxItems, $view->formula, $view->roll, $view->startMax, $view->span, null === $view->options ? null : array_map(ConditionOptionResponse::fromView(...), $view->options), $view->capacity, $view->maxStacks, $view->categories);
     }
 }

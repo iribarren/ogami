@@ -10,7 +10,7 @@ export interface SheetFieldView {
   hint: string | null
   /** The name of its layout group; without a layout, consecutive fields with the same group render together. */
   group: string | null
-  type: 'number' | 'text' | 'list' | 'track' | 'conditions' | 'derived'
+  type: 'number' | 'text' | 'list' | 'track' | 'conditions' | 'inventory' | 'derived'
   min: number | null
   max: number | null
   default: number | null
@@ -27,6 +27,12 @@ export interface SheetFieldView {
   span: number
   /** Conditions: the options a Character can be marked with, in declared order (ADR 0041). */
   options?: { key: string; label: string }[] | null
+  /** Inventory: the slots its stacks may use together; null for no limit (ADR 0045). */
+  capacity?: number | null
+  /** Inventory: the most stacks it holds. */
+  maxStacks?: number | null
+  /** Inventory: the gear categories it accepts; null for every entry. */
+  categories?: string[] | null
 }
 
 export interface SheetGroupView {
@@ -50,8 +56,13 @@ export interface SheetTemplateView {
   layout: SheetLayoutView | null
 }
 
-/** What a Character stores under a field: a number, text, the rows of a list, the marked option keys of a conditions field or a track. */
-export type SheetValue = number | string | string[] | { current: number; max: number }
+/** A stack of an inventory (ADR 0045): catalog gear by key, or a free stack with its own name and slots. */
+export type SheetStack =
+  { gear: string; quantity: number } | { name: string; quantity: number; slots: number }
+
+/** What a Character stores under a field: a number, text, the rows of a list, the marked option keys of a conditions field, the stacks of an inventory or a track. */
+export type SheetValue =
+  number | string | string[] | SheetStack[] | { current: number; max: number }
 
 /** The value of a Tracker, which a derived field may read. */
 export interface TrackerReading {

@@ -46,7 +46,7 @@ export const draft: GameSystem = {
   kind: 'game-system',
   name: 'My draft',
   description: 'A game of my own.',
-  credits: { notice: 'Unofficial fan content.', license: 'CC BY 4.0', url: null },
+  credits: { notice: 'Unofficial fan content.', license: 'CC BY 4.0', url: null, badge: null },
   theme: 'noir',
   schemaVersion: 2,
   sectionCounts: { oracleTables: 2, trackers: 1, flows: 0, checks: 3 },

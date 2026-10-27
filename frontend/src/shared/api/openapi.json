@@ -16523,7 +16523,8 @@
                 "required": [
                     "notice",
                     "license",
-                    "url"
+                    "url",
+                    "badge"
                 ],
                 "properties": {
                     "notice": {
@@ -16539,6 +16540,14 @@
                         "type": "string",
                         "example": "https://example.com/license",
                         "nullable": true
+                    },
+                    "badge": {
+                        "type": "string",
+                        "example": "dark-pack",
+                        "nullable": true,
+                        "enum": [
+                            "dark-pack"
+                        ]
                     }
                 },
                 "type": "object"
@@ -16659,6 +16668,15 @@
                         "type": "string",
                         "example": "https://example.com/license",
                         "nullable": true
+                    },
+                    "badge": {
+                        "description": "The logo Play shows beside the notice (ADR 0044); only with a notice, like the license and the URL.",
+                        "type": "string",
+                        "example": "dark-pack",
+                        "nullable": true,
+                        "enum": [
+                            "dark-pack"
+                        ]
                     }
                 },
                 "type": "object"

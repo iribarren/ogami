@@ -187,6 +187,7 @@ final class GameSystemTest extends TestCase
         yield 'long description' => ['Name', str_repeat('d', 2001), null, null, 'description'];
         yield 'credits without notice' => ['Name', null, ['license' => 'CC'], null, 'credits'];
         yield 'credits with an http url' => ['Name', null, ['notice' => 'N', 'url' => 'http://example.org'], null, 'credits'];
+        yield 'credits with an unknown badge' => ['Name', null, ['notice' => 'N', 'badge' => 'camarilla'], null, 'credits'];
         yield 'credits with an unknown field' => ['Name', null, ['notice' => 'N', 'author' => 'me'], null, 'credits'];
         yield 'unknown theme' => ['Name', null, null, 'pastel', 'theme'];
     }

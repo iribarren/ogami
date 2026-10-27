@@ -4645,6 +4645,11 @@ export interface components {
             license: string | null;
             /** @example https://example.com/license */
             url: string | null;
+            /**
+             * @example dark-pack
+             * @enum {string|null}
+             */
+            badge: "dark-pack" | null;
         };
         GameSystemResponse: {
             /** @example my-system */
@@ -4713,6 +4718,12 @@ export interface components {
              * @example https://example.com/license
              */
             url?: string | null;
+            /**
+             * @description The logo Play shows beside the notice (ADR 0044); only with a notice, like the license and the URL.
+             * @example dark-pack
+             * @enum {string|null}
+             */
+            badge?: "dark-pack" | null;
         };
         EditGameSystemMetadataRequest: {
             /**

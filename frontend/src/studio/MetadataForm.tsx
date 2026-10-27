@@ -1,6 +1,7 @@
 import { BookOpen, ScrollText } from 'lucide-react'
 import { useId, useState, type SubmitEvent } from 'react'
 
+import { creditsBadges } from '@/shared/credits/badges'
 import { CAMPAIGN_THEME_NAMES } from '@/shared/theme/themes'
 import { Alert, FieldError } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
@@ -30,6 +31,12 @@ const MAX_NOTICE_LENGTH = 2000
  */
 const characterCount = (text: string) => Array.from(text).length
 
+// Looked up by any string: the API may name a badge this build has no logo for.
+const knownBadges: Partial<Record<string, (typeof creditsBadges)['dark-pack']>> = creditsBadges
+
+/** The name of each badge in the picker; one this build does not know shows its value. */
+const badgeNames: Record<string, string> = { 'dark-pack': 'Dark Pack' }
+
 /** Empty text means "none" for the optional fields. */
 const orNull = (text: string) => (text.trim() === '' ? null : text)
 
@@ -53,6 +60,7 @@ export function MetadataForm({
   const [notice, setNotice] = useState(gameSystem.credits?.notice ?? '')
   const [license, setLicense] = useState(gameSystem.credits?.license ?? '')
   const [url, setUrl] = useState(gameSystem.credits?.url ?? '')
+  const [badge, setBadge] = useState<string>(gameSystem.credits?.badge ?? '')
   const [theme, setTheme] = useState(gameSystem.theme ?? '')
   const save = useEditMetadata(gameSystem.key)
   // "Saved." describes the last save only: any later edit hides it.
@@ -63,9 +71,11 @@ export function MetadataForm({
   const noticeId = useId()
   const licenseId = useId()
   const urlId = useId()
+  const badgeId = useId()
   const themeId = useId()
-  // Credits are all or nothing: a license or link without a notice has nothing to qualify.
-  const creditsValid = notice.trim() !== '' || (license.trim() === '' && url.trim() === '')
+  // Credits are all or nothing: a license, link or badge without a notice has nothing to qualify.
+  const creditsValid =
+    notice.trim() !== '' || (license.trim() === '' && url.trim() === '' && badge === '')
   const noticeLength = characterCount(notice)
   const noticeTooLong = noticeLength > MAX_NOTICE_LENGTH
   const valid = name.trim() !== '' && (!hasCreditsAndTheme || (creditsValid && !noticeTooLong))
@@ -75,12 +85,29 @@ export function MetadataForm({
     themes.push(theme)
   }
 
+  // A badge this build does not know (the API may grow one) stays selectable, without a logo.
+  const badges: string[] = Object.keys(creditsBadges)
+  if (badge !== '' && !badges.includes(badge)) {
+    badges.push(badge)
+  }
+  const logo = knownBadges[badge]
+
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     const body: EditMetadataRequest = { name, description: orNull(description) }
     if (hasCreditsAndTheme) {
       body.credits =
-        notice.trim() === '' ? null : { notice, license: orNull(license), url: orNull(url) }
+        notice.trim() === ''
+          ? null
+          : {
+              notice,
+              license: orNull(license),
+              url: orNull(url),
+              // A badge is left out, not null, when none is picked.
+              ...(badge === ''
+                ? {}
+                : { badge: badge as NonNullable<typeof body.credits>['badge'] }),
+            }
       body.theme = orNull(theme)
     }
     setEdited(false)
@@ -229,7 +256,9 @@ export function MetadataForm({
               )}
               {!creditsValid && (
                 <FieldError>
-                  A license or link needs a notice. Clear them, or write the notice.
+                  {license.trim() === '' && url.trim() === ''
+                    ? 'A badge needs a notice. Clear it, or write the notice.'
+                    : 'A license or link needs a notice. Clear them, or write the notice.'}
                 </FieldError>
               )}
             </div>
@@ -255,6 +284,34 @@ export function MetadataForm({
                   setUrl(event.target.value)
                 }}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={badgeId}>Badge (optional)</Label>
+              <div className="flex items-center gap-3">
+                <Select
+                  id={badgeId}
+                  value={badge}
+                  aria-describedby={`${badgeId}-hint`}
+                  onChange={(event) => {
+                    setBadge(event.target.value)
+                  }}
+                >
+                  <option value="">None</option>
+                  {badges.map((option) => (
+                    <option key={option} value={option}>
+                      {badgeNames[option] ?? option}
+                    </option>
+                  ))}
+                </Select>
+                {logo && (
+                  <span className="grid size-12 shrink-0 place-items-center rounded-full bg-white">
+                    <img src={logo.src} alt={logo.alt} className="size-9 object-contain" />
+                  </span>
+                )}
+              </div>
+              <p id={`${badgeId}-hint`} className="hint">
+                The logo Play shows beside the notice.
+              </p>
             </div>
           </div>
           {actionBar}

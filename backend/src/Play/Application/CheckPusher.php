@@ -30,12 +30,10 @@ use App\Play\Domain\Journal\FlowStepSnapshot;
 use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryNotTheLatest;
 use App\Play\Domain\Journal\JournalEntryRepository;
-use App\Randomness\Domain\DicePool;
-use App\Randomness\Domain\PoolRoll;
 use App\Randomness\Domain\RandomNumberGenerator;
 
 /**
- * Pushes the pool roll of a journal entry (ADR 0041), for the sheet (PushCheckHandler) and for a
+ * Pushes the pool roll of a journal entry (ADR 0041, ADR 0044: failed regular dice only, capped by the push), for the sheet (PushCheckHandler) and for a
  * check step whose roll pends (ResolvePendingFlowCheckHandler). push() checks and computes
  * everything and applies the cost to the Campaign in memory; keep() saves the Campaign and the
  * completed entry, in the command bus transaction. A failure on the way keeps nothing, so a push is
@@ -82,17 +80,17 @@ final readonly class CheckPusher
             throw CheckAlreadyPushed::entry($entry->id());
         }
 
-        if ($pool->successes === $pool->size) {
+        $roll = $pool->roll();
+        if (!$roll->isPushable()) {
             throw CheckCannotBePushed::noFailedDie();
         }
 
         $check = $release->check($content->checkKey());
-        if (!$check instanceof Check || !$check->pool instanceof CheckPool || !$check->push instanceof CheckPush || $check->pool->sides !== $pool->sides || $check->pool->successAt !== $pool->successAt) {
+        if (!$check instanceof Check || !$check->pool instanceof CheckPool || !$check->push instanceof CheckPush || $check->pool->sides !== $pool->sides || $check->pool->successAt !== $pool->successAt || ($check->pool->criticals ?? 0) !== $pool->criticalsBonus) {
             throw CheckCannotBePushed::checkChanged($content->checkKey());
         }
 
         $character = $campaign->character(CharacterId::fromString($content->characterId())) ?? throw CheckCannotBePushed::characterGone($content->characterId());
-        $roll = PoolRoll::ofFaces(new DicePool($pool->size, $pool->sides, $pool->successAt), array_map(static fn (array $die): int => $die['face'], $pool->dice));
         try {
             $result = $check->push($this->random, SheetValues::of($release->sheet(), $character->values(), $campaign->trackerValuesOf($release)), $roll, $content->difficulty());
         } catch (CheckNotPushable) {

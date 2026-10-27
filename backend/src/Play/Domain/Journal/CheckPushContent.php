@@ -13,12 +13,13 @@ use App\Randomness\Domain\PoolDie;
  * The push part of a pool check entry (ADR 0041), stored only once the roll was pushed: the label of
  * the cost, the whole pool after the push (dice that were re-rolled say so), its successes, the band
  * the roll had before the push and what the cost changed on the Character's sheet. Tracker changes
- * are not journalled, as the FlowRun does not journal them either.
+ * are not journalled, as the FlowRun does not journal them either. Since ADR 0044 it also keeps the
+ * special result of the pushed roll, absent (none) in entries stored before it.
  *
  * @phpstan-import-type SheetChangeData from SheetChangeContent
  *
  * @phpstan-type PushDieData array{group: string, face: int, success: bool, rerolled: bool}
- * @phpstan-type PushData array{label: string, dice: list<PushDieData>, successes: int, rolledBandKey: string, rolledBandLabel: string, changes: list<SheetChangeData>}
+ * @phpstan-type PushData array{label: string, dice: list<PushDieData>, successes: int, rolledBandKey: string, rolledBandLabel: string, changes: list<SheetChangeData>, special?: string}
  */
 final readonly class CheckPushContent
 {
@@ -33,6 +34,7 @@ final readonly class CheckPushContent
         public string $rolledBandKey,
         public string $rolledBandLabel,
         public array $changes,
+        public ?string $special = null,
     ) {
     }
 
@@ -45,11 +47,12 @@ final readonly class CheckPushContent
     {
         return self::of(
             $label,
-            array_map(static fn (PoolDie $die): array => ['group' => CheckPoolContent::GROUP, 'face' => $die->face(), 'success' => $die->isSuccess(), 'rerolled' => $die->isRerolled()], $result->roll->dice()),
+            array_map(static fn (PoolDie $die): array => ['group' => $die->group()->value, 'face' => $die->face(), 'success' => $die->isSuccess(), 'rerolled' => $die->isRerolled()], $result->roll->dice()),
             $result->roll->successes(),
             $rolledBandKey,
             $rolledBandLabel,
             array_map(static fn (SheetChange $change): array => $change->toArray(), $changes),
+            $result->special?->value,
         );
     }
 
@@ -72,6 +75,7 @@ final readonly class CheckPushContent
             ContentData::string($data, 'rolledBandKey'),
             ContentData::string($data, 'rolledBandLabel'),
             ContentData::listOfArrays($data, 'changes'),
+            ContentData::optionalString($data, 'special'),
         );
     }
 
@@ -82,7 +86,7 @@ final readonly class CheckPushContent
      * @throws InvalidJournalEntryContent when the label is blank or too long, a band key is blank, the successes are not those
      *                                    of the dice, or a change is malformed
      */
-    private static function of(string $label, array $dice, int $successes, string $rolledBandKey, string $rolledBandLabel, array $changes): self
+    private static function of(string $label, array $dice, int $successes, string $rolledBandKey, string $rolledBandLabel, array $changes, ?string $special = null): self
     {
         if ('' === trim($label) || mb_strlen($label) > CheckPush::MAX_LABEL_LENGTH) {
             throw InvalidJournalEntryContent::malformed('label', \sprintf('1 to %d characters', CheckPush::MAX_LABEL_LENGTH));
@@ -96,7 +100,7 @@ final readonly class CheckPushContent
             throw InvalidJournalEntryContent::malformed('successes', 'the number of dice that succeeded after the push');
         }
 
-        return new self($label, $dice, $successes, $rolledBandKey, $rolledBandLabel, SheetChangeContent::checkedChanges($changes));
+        return new self($label, $dice, $successes, $rolledBandKey, $rolledBandLabel, SheetChangeContent::checkedChanges($changes), $special);
     }
 
     /**
@@ -111,6 +115,6 @@ final readonly class CheckPushContent
             'rolledBandKey' => $this->rolledBandKey,
             'rolledBandLabel' => $this->rolledBandLabel,
             'changes' => $this->changes,
-        ];
+        ] + (null !== $this->special ? ['special' => $this->special] : []);
     }
 }

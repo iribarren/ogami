@@ -1,7 +1,7 @@
 # Feature: preset-vtm-chronicle
 
 - **Locator:** `odd/tasks/preset-vtm-chronicle.md` · Engram topic `odd/preset-vtm-chronicle/tasks`
-- **Issue:** #301 · **Branch:** `feat/preset-vtm-chronicle-1-contract` · **Status:** in progress (slice 1)
+- **Issue:** #301 · **Branch:** `feat/preset-vtm-chronicle-2-play-roll` · **Status:** in progress (slice 2)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B10 (after `rules-dice-pools`, [ADR 0041](../../docs/adr/0041-dice-pools-pushes-and-conditions.md))
@@ -89,11 +89,11 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; roadmap B10 in progress | parent (inline, docs) | [x] | |
-| T2 | 1 | ADR 0044 (criticals, Hunger dice, special results, step outcomes on a special, `push.maxDice`, `credits.badge`), ADR index, glossary; schema `v2.schema.json` and contract doc (fix the stale line 386) | delegated writer (Opus, design; preparation trigger: code reading for the design) | [x] | |
-| T3 | 1 | Publisher: `Checks` (`criticals`, `hunger`, `maxDice`), flow `check` step outcomes with `special`, `credits.badge`, `DraftReferences` if Hunger formulas reference fields; unit tests and fixtures; Play's translator refuses the new shapes with a clear error | delegated writer (Opus) | [x] | |
-| T4 | 2 | Kernel: dice groups, Hunger dice, critical pairs, special result, push capped at N and never on Hunger dice; unit tests | delegated writer | [ ] | |
-| T5 | 2 | Play backend: translator reads `criticals`, `hunger`, `maxDice`; `Check` perform and push; results and journal content (groups, special; legacy entries read); API; `make api`; tests | delegated writer | [ ] | |
+| T1 | 1 | Docs: this feature doc; roadmap B10 in progress | parent (inline, docs) | [x] | d100598 |
+| T2 | 1 | ADR 0044 (criticals, Hunger dice, special results, step outcomes on a special, `push.maxDice`, `credits.badge`), ADR index, glossary; schema `v2.schema.json` and contract doc (fix the stale line 386) | delegated writer (Opus, design; preparation trigger: code reading for the design) | [x] | d100598 |
+| T3 | 1 | Publisher: `Checks` (`criticals`, `hunger`, `maxDice`), flow `check` step outcomes with `special`, `credits.badge`, `DraftReferences` if Hunger formulas reference fields; unit tests and fixtures; Play's translator refuses the new shapes with a clear error | delegated writer (Opus) | [x] | 3318de9 |
+| T4 | 2 | Kernel: dice groups, Hunger dice, critical pairs, special result, push capped at N and never on Hunger dice; unit tests | delegated writer (Sonnet) | [x] | |
+| T5 | 2 | Play backend: translator reads `criticals`, `hunger`, `maxDice`; `Check` perform and push; results and journal content (groups, special; legacy entries read); API; `make api`; tests | delegated writer (Sonnet) | [x] | |
 | T6 | 3 | Play UI: Hunger dice in a second colour, the special result in the roll dialog and the journal, push offer counts regular dice and shows the cap; fixtures and tests | delegated writer | [ ] | |
 | T7 | 3 | Flow: `check` step outcomes on a special (translator, `CheckStep::outcomeFor`, `FlowRun`, pending check Keep/Push); tests | delegated writer | [ ] | |
 | T8 | 3 | Credits badge in Play: translator, `Credits`, responses, the Dark Pack logo asset, `CreditsNotice`; tests | delegated writer | [ ] | |
@@ -124,12 +124,17 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - 2026-10-27: explored ADR 0021, 0041, `rules-dice-pools`, `preset-vaesen`, example 1; Dark Pack Agreement read (fits). Layer map by an explorer. User chose the badge enum, show-and-branch special results and a push cap. Issue #301.
 - 2026-10-27: slice 1 written: ADR 0044 (criticals need a roll that does not fail; "fails" is below the difficulty, else the first of 2+ bands), schema and contract doc; Studio publishes the new parts, Play's translator refuses them; fixture `valid/v2-hunger-dice`.
+- 2026-10-27: slice 2 commit 1: R3 fix, `Checks::specials()` treats a literal `hunger.count` 0 as no Hunger dice (a formula still enables them); unit test RED then GREEN.
+- 2026-10-27: T4 kernel: `DieGroup` enum, `DicePool(hunger, criticalsBonus)`, `PoolRoll::total/criticalPairs/hasCriticalPair/hasHungerCriticalPair/hasHungerOne/isPushable`, `push($random, ?$maxDice)`. Special-result precedence stays in Play (T5): it needs "fails" (difficulty or first band), which only a check knows; the kernel states dice facts only. RED: new tests errored against the old kernel (19 errors, 7 failures); GREEN: 450 Randomness tests.
+- 2026-10-27: T5 Play backend: translator reads `pool.criticals`, `pool.hunger` (number or formula) and `push.maxDice`; `Check` evaluates the Hunger formula like `pool.count` (422 path), computes `SpecialResult` per ADR 0044 (fails = below the difficulty, else first of 2+ bands) on perform and push; journal pool part gains `criticalsBonus` and `special`, push part `special` (both left out of the stored JSON when 0 or none, so legacy entries read and rewrite unchanged); the pool part checks groups (Hunger dice last), the total with the bonus, special against the dice, and that a push re-rolls the first failed regular dice only. API: `special` on the entry, the pool part and the push part, `criticalsBonus` on the pool part. The push 409 message now says "No regular die of the roll failed". RED for the translator: 3 errors and 14 failures against the old translator; the journal and `Check` tests were written with the code.
+- 2026-10-27: `make api` regenerated `frontend/src/shared/api/openapi.json` and `schema.d.ts`; the spec lives under `frontend/`, outside the brief's edit surfaces (it named `backend/openapi.json`), so both are in their own `chore(api)` commit for the parent to confirm.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | Findings | PR |
 |---|---|---|---|---|---|
+| 1 | `review-32fb84966e5a47d6` | d100598, 3318de9 | approved, acknowledged | R3 warning: a literal `hunger.count` 0 still accepts `bestialFailure` / `messyCritical` step outcomes (`Checks.php:147-150`); fixed in slice 2. Note: Studio's sandbox (`CheckTestRoll::readPool`) ignores criticals and Hunger until slice 4 | [#302](https://github.com/iribarren/ogami/pull/302) |
 
 ## Next step
 
-Slice 1: the writer writes ADR 0044, the schema and contract doc (T2), then the publisher (T3).
+Slice 2: the writer fixes slice 1's R3 warning, then the kernel (T4) and Play's backend (T5).

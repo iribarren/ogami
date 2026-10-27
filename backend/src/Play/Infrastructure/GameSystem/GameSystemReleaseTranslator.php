@@ -1240,25 +1240,49 @@ final readonly class GameSystemReleaseTranslator
 
         $path .= '.pool';
         $pool = $this->object($view, $check['pool'], $path);
-        $this->refuseUnplayed($view, $pool, $path, 'criticals', 'critical pairs are');
-        $this->refuseUnplayed($view, $pool, $path, 'hunger', 'Hunger dice are');
-        $this->assertProperties($view, $pool, $path, ['count', 'sides', 'successAt']);
-        if (\is_array($pool['count'] ?? null)) {
-            $count = $this->object($view, $pool['count'], $path.'.count');
-            $this->assertProperties($view, $count, $path.'.count', ['formula']);
-            $count = $this->checkFormula($view, $count['formula'] ?? null, $path.'.count.formula', $fields, $trackerKeys, null);
-        } else {
-            $count = $this->requiredInt($view, $pool['count'] ?? null, $path.'.count', DicePool::MIN_COUNT, DicePool::MAX_COUNT);
-        }
+        $this->assertProperties($view, $pool, $path, ['count', 'sides', 'successAt', 'criticals', 'hunger']);
+        $count = $this->poolCount($view, $pool['count'] ?? null, $path.'.count', DicePool::MIN_COUNT, $fields, $trackerKeys);
 
         $sides = $this->requiredInt($view, $pool['sides'] ?? null, $path.'.sides', DicePool::MIN_SIDES, DicePool::MAX_SIDES);
         $successAt = $this->requiredInt($view, $pool['successAt'] ?? null, $path.'.successAt', 1, $sides);
 
+        $criticals = null;
+        if (null !== ($pool['criticals'] ?? null)) {
+            $object = $this->object($view, $pool['criticals'], $path.'.criticals');
+            $this->assertProperties($view, $object, $path.'.criticals', ['bonus']);
+            $criticals = $this->requiredInt($view, $object['bonus'] ?? null, $path.'.criticals.bonus', 1, CheckPool::MAX_CRITICALS);
+        }
+
+        $hunger = null;
+        if (null !== ($pool['hunger'] ?? null)) {
+            $object = $this->object($view, $pool['hunger'], $path.'.hunger');
+            $this->assertProperties($view, $object, $path.'.hunger', ['count']);
+            $hunger = $this->poolCount($view, $object['count'] ?? null, $path.'.hunger.count', 0, $fields, $trackerKeys);
+        }
+
         try {
-            return new CheckPool($count, $sides, $successAt);
+            return new CheckPool($count, $sides, $successAt, $criticals, $hunger);
         } catch (\InvalidArgumentException $invalid) {
             throw $this->invalid($view, $path, $invalid->getMessage());
         }
+    }
+
+    /**
+     * A pool or Hunger count: an integer from $min to 100, or a {formula} over the sheet.
+     *
+     * @param array<string, Field> $fields
+     * @param list<string>         $trackerKeys
+     */
+    private function poolCount(PublishedReleaseView $view, mixed $value, string $path, int $min, array $fields, array $trackerKeys): int|Formula
+    {
+        if (!\is_array($value)) {
+            return $this->requiredInt($view, $value, $path, $min, DicePool::MAX_COUNT);
+        }
+
+        $count = $this->object($view, $value, $path);
+        $this->assertProperties($view, $count, $path, ['formula']);
+
+        return $this->checkFormula($view, $count['formula'] ?? null, $path.'.formula', $fields, $trackerKeys, null);
     }
 
     /**
@@ -1279,8 +1303,7 @@ final readonly class GameSystemReleaseTranslator
         }
 
         $push = $this->object($view, $check['push'], $path);
-        $this->refuseUnplayed($view, $push, $path, 'maxDice', 'a push cap is');
-        $this->assertProperties($view, $push, $path, ['label', 'effects']);
+        $this->assertProperties($view, $push, $path, ['label', 'effects', 'maxDice']);
         $label = $this->boundedString($view, $push['label'] ?? null, $path.'.label', CheckPush::MAX_LABEL_LENGTH);
         $raw = $this->list($view, $push['effects'] ?? [], $path.'.effects');
         if (\count($raw) > CheckPush::MAX_EFFECTS) {
@@ -1301,7 +1324,9 @@ final readonly class GameSystemReleaseTranslator
             $effects[] = $effect;
         }
 
-        return new CheckPush($label, $effects);
+        $maxDice = $this->optionalInt($view, $push['maxDice'] ?? null, $path.'.maxDice', 1, CheckPush::MAX_DICE);
+
+        return new CheckPush($label, $effects, $maxDice);
     }
 
     /**
@@ -1474,7 +1499,7 @@ final readonly class GameSystemReleaseTranslator
 
     /**
      * Refuses a part of ADR 0044 Studio publishes but Play does not play yet (preset-vtm-chronicle
-     * slices 2 and 3), present even as null, so a release using it fails closed instead of playing without it.
+     * slice 3), present even as null, so a release using it fails closed instead of playing without it.
      *
      * @param array<array-key, mixed> $object
      */

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Domain\GameSystem\Check;
 
 /**
- * A check cannot be pushed: it declares no push, or its roll has no failed die to re-roll.
+ * A check cannot be pushed: it declares no push, or its roll has no failed regular die to re-roll.
  */
 final class CheckNotPushable extends \DomainException
 {

@@ -76,9 +76,9 @@ final readonly class CheckContent implements JournalEntryContent
     public static function fromResult(string $characterId, string $characterName, Check $check, CheckResult $result, ReferenceLabels $labels): self
     {
         if ($check->pool instanceof CheckPool && $result->pool instanceof PoolResult) {
-            $pool = CheckPoolContent::fromResult($check->pool, $result->pool, $result->situational, $labels);
+            $pool = CheckPoolContent::fromResult($check->pool, $result->pool, $result->situational, $labels, $result->special);
 
-            return self::of($characterId, $characterName, $check->key, $check->label, \sprintf('%dd%d', $pool->size, $pool->sides), [], $pool->successes, 0, $result->situational, $result->difficulty, $result->total, $result->band->key, $result->band->label, $check->hint, null, [], $pool);
+            return self::of($characterId, $characterName, $check->key, $check->label, \sprintf('%dd%d', $pool->size, $pool->sides), [], $result->total, 0, $result->situational, $result->difficulty, $result->total, $result->band->key, $result->band->label, $check->hint, null, [], $pool);
         }
 
         $roll = $result->roll ?? throw new \LogicException(\sprintf('The result of dice check "%s" has no roll.', $check->key));
@@ -155,7 +155,7 @@ final readonly class CheckContent implements JournalEntryContent
      * @param list<ModifierTermData> $modifierTerms
      *
      * @throws InvalidJournalEntryContent when an id, key or formula is blank, there are terms without a formula, the total is not the dice plus the modifiers,
-     *                                    or a pool check has dice groups or a modifier, an expression that is not its size and sides, or a total that is not its successes
+     *                                    or a pool check has dice groups or a modifier, an expression that is not its size and sides, or a total that is not its successes plus the bonus of its critical pairs
      */
     private static function of(
         string $characterId,
@@ -199,9 +199,9 @@ final readonly class CheckContent implements JournalEntryContent
                 throw InvalidJournalEntryContent::malformed('expression', 'the size and sides of the pool, such as "3d6"');
             }
 
-            $successes = $pool->push instanceof CheckPushContent ? $pool->push->successes : $pool->successes;
-            if ($diceTotal !== $successes || $total !== $successes) {
-                throw InvalidJournalEntryContent::malformed('total', $pool->push instanceof CheckPushContent ? 'the successes of the pool after the push' : 'the successes of the pool');
+            $poolTotal = $pool->total();
+            if ($diceTotal !== $poolTotal || $total !== $poolTotal) {
+                throw InvalidJournalEntryContent::malformed('total', $pool->push instanceof CheckPushContent ? 'the successes of the pool after the push, plus the bonus of its critical pairs' : 'the successes of the pool, plus the bonus of its critical pairs');
             }
         }
 
@@ -229,7 +229,7 @@ final readonly class CheckContent implements JournalEntryContent
         $pool = $this->pool ?? throw new \LogicException(\sprintf('Check "%s" rolled dice, only a pool roll can be pushed.', $this->checkKey));
         $push = CheckPushContent::fromResult($label, $result, $this->bandKey, $this->bandLabel, $changes);
 
-        return self::of($this->characterId, $this->characterName, $this->checkKey, $this->checkLabel, $this->expression, $this->groups, $push->successes, $this->modifier, $this->situational, $this->difficulty, $push->successes, $result->band->key, $result->band->label, $this->hint, $this->modifierFormula, $this->modifierTerms, $pool->pushed($push, $this->situational));
+        return self::of($this->characterId, $this->characterName, $this->checkKey, $this->checkLabel, $this->expression, $this->groups, $result->total, $this->modifier, $this->situational, $this->difficulty, $result->total, $result->band->key, $result->band->label, $this->hint, $this->modifierFormula, $this->modifierTerms, $pool->pushed($push, $this->situational));
     }
 
     public function kind(): string
@@ -326,6 +326,15 @@ final readonly class CheckContent implements JournalEntryContent
     public function pool(): ?CheckPoolContent
     {
         return $this->pool;
+    }
+
+    /**
+     * The special result of the roll as it stands (ADR 0044): critical, messyCritical or bestialFailure;
+     * null for none, for a dice check and for entries stored before special results.
+     */
+    public function special(): ?string
+    {
+        return $this->pool?->currentSpecial();
     }
 
     /**

@@ -10,10 +10,10 @@ use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 
 /**
- * The pool part of a recorded check: the count and size of the pool, its dice and the successes as first
- * rolled, and the push once the roll was pushed.
+ * The pool part of a recorded check: the count and size of the pool, its dice, their groups and the successes as
+ * first rolled, and the push once the roll was pushed.
  */
-#[OA\Schema(required: ['count', 'countFormula', 'terms', 'size', 'sides', 'successAt', 'dice', 'successes', 'push'])]
+#[OA\Schema(required: ['count', 'countFormula', 'terms', 'size', 'sides', 'successAt', 'dice', 'successes', 'criticalsBonus', 'special', 'push'])]
 final readonly class CheckPoolContentResponse
 {
     /**
@@ -43,8 +43,12 @@ final readonly class CheckPoolContentResponse
             items: new OA\Items(ref: new Model(type: JournalPoolDieResponse::class)),
         )]
         public array $dice,
-        #[OA\Property(description: 'How many dice succeeded; the total of the check.', example: 2)]
+        #[OA\Property(description: 'How many dice succeeded, before the bonus of critical pairs; the total of the check is this plus the bonus of each critical pair.', example: 2)]
         public int $successes,
+        #[OA\Property(description: 'The successes each critical pair (two dice showing the top face) adds to the total; 0 for a pool without critical pairs, and for entries recorded before them.', example: 2)]
+        public int $criticalsBonus,
+        #[OA\Property(description: 'The special result of the first roll; null for none, and for entries recorded before special results.', nullable: true, enum: ['critical', 'messyCritical', 'bestialFailure'])]
+        public ?string $special,
         #[OA\Property(ref: new Model(type: CheckPushContentResponse::class), description: 'The push of the roll; null until the roll is pushed, and for entries recorded before pushes. Once pushed, the dice and successes above stay the first roll.', nullable: true)]
         public ?CheckPushContentResponse $push,
     ) {
@@ -61,6 +65,8 @@ final readonly class CheckPoolContentResponse
             $pool->successAt,
             array_map(JournalPoolDieResponse::of(...), $pool->dice),
             $pool->successes,
+            $pool->criticalsBonus,
+            $pool->special,
             $pool->push instanceof CheckPushContent ? CheckPushContentResponse::of($pool->push) : null,
         );
     }

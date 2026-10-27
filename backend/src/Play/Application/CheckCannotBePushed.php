@@ -29,7 +29,7 @@ final class CheckCannotBePushed extends \DomainException
 
     public static function noFailedDie(): self
     {
-        return new self('Every die of the roll succeeded: there is nothing to re-roll.');
+        return new self('No regular die of the roll failed: there is nothing to re-roll.');
     }
 
     public static function checkChanged(string $checkKey): self

@@ -3457,10 +3457,11 @@ export interface components {
         };
         JournalPoolDieResponse: {
             /**
-             * @description The group of dice the die belongs to; "pool" for the dice of a pool.
+             * @description The group of dice the die belongs to: "pool" for a regular die, "hunger" for a Hunger die; entries recorded before Hunger dice only have "pool".
              * @example pool
+             * @enum {string}
              */
-            group: string;
+            group: "pool" | "hunger";
             /**
              * @description The face the die landed on.
              * @example 5
@@ -3471,10 +3472,11 @@ export interface components {
         };
         JournalPushDieResponse: {
             /**
-             * @description The group of dice the die belongs to; "pool" for the dice of a pool.
+             * @description The group of dice the die belongs to: "pool" for a regular die, "hunger" for a Hunger die, which a push never re-rolls.
              * @example pool
+             * @enum {string}
              */
-            group: string;
+            group: "pool" | "hunger";
             /**
              * @description The face the die shows after the push.
              * @example 5
@@ -3482,7 +3484,7 @@ export interface components {
             face: number;
             /** @description Whether the die succeeded: its face reached the success threshold. */
             success: boolean;
-            /** @description Whether the push re-rolled the die: it failed before the push. */
+            /** @description Whether the push re-rolled the die: a regular die that failed before the push, within the cap of the push. */
             rerolled: boolean;
         };
         SheetChangeDiceResponse: {
@@ -3538,6 +3540,11 @@ export interface components {
             rolledBandLabel: string;
             /** @description What the cost changed on the sheet of the rolling Character, in apply order; Tracker changes are not listed. */
             changes: components["schemas"]["SheetChangeResponse"][];
+            /**
+             * @description The special result of the roll after the push; null for none, and for entries recorded before special results.
+             * @enum {string|null}
+             */
+            special: "critical" | "messyCritical" | "bestialFailure" | null;
         };
         CheckPoolContentResponse: {
             /**
@@ -3570,10 +3577,20 @@ export interface components {
             /** @description Every die rolled, in roll order. */
             dice: components["schemas"]["JournalPoolDieResponse"][];
             /**
-             * @description How many dice succeeded; the total of the check.
+             * @description How many dice succeeded, before the bonus of critical pairs; the total of the check is this plus the bonus of each critical pair.
              * @example 2
              */
             successes: number;
+            /**
+             * @description The successes each critical pair (two dice showing the top face) adds to the total; 0 for a pool without critical pairs, and for entries recorded before them.
+             * @example 2
+             */
+            criticalsBonus: number;
+            /**
+             * @description The special result of the first roll; null for none, and for entries recorded before special results.
+             * @enum {string|null}
+             */
+            special: "critical" | "messyCritical" | "bestialFailure" | null;
             /** @description The push of the roll; null until the roll is pushed, and for entries recorded before pushes. Once pushed, the dice and successes above stay the first roll. */
             push: components["schemas"]["CheckPushContentResponse"] | null;
         };
@@ -3656,6 +3673,11 @@ export interface components {
             modifierTerms: components["schemas"]["CheckModifierTermResponse"][];
             /** @description The pool rolled, with its dice and successes; null for a check that rolls dice, and for entries recorded before pools. */
             pool: components["schemas"]["CheckPoolContentResponse"] | null;
+            /**
+             * @description The special result of the roll as it stands, after a push the push's: critical, messy critical or bestial failure. Null for none, for a check that rolls dice and for entries recorded before special results.
+             * @enum {string|null}
+             */
+            special: "critical" | "messyCritical" | "bestialFailure" | null;
         };
         SheetChangeContentResponse: {
             /**

@@ -12,7 +12,8 @@ use App\Randomness\Domain\Roll;
  * The modifier terms are the values the modifier formula read, in the order it first names them.
  *
  * A pool check rolls no dice expression: it has a pool result and no roll, its total is the number
- * of successes, and it has no modifier (the situational modifier changed the size of the pool).
+ * of successes plus the bonus of critical pairs, and it has no modifier (the situational modifier
+ * changed the size of the pool). A pool roll can have a special result (ADR 0044).
  */
 final readonly class CheckResult
 {
@@ -28,6 +29,7 @@ final readonly class CheckResult
         public CheckBand $band,
         public array $modifierTerms = [],
         public ?PoolResult $pool = null,
+        public ?SpecialResult $special = null,
     ) {
     }
 }

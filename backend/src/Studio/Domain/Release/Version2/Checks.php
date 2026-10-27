@@ -182,7 +182,8 @@ final class Checks
 
     /**
      * The special results a check can produce (ADR 0044): a critical needs critical pairs, a bestial
-     * failure Hunger dice, and a messy critical both. A dice check produces none.
+     * failure Hunger dice, and a messy critical both. A dice check produces none. A literal Hunger
+     * count of 0 rolls no Hunger dice, so it enables none of the Hunger results (a formula might).
      *
      * @param array<string, mixed>|null $pool the canonical pool, or null for a dice check
      *
@@ -191,7 +192,7 @@ final class Checks
     private static function specials(?array $pool): array
     {
         $criticals = isset($pool['criticals']);
-        $hunger = isset($pool['hunger']);
+        $hunger = isset($pool['hunger']) && ['count' => 0] !== $pool['hunger'];
 
         return array_filter(['critical' => $criticals, 'messyCritical' => $criticals && $hunger, 'bestialFailure' => $hunger]);
     }

@@ -54,7 +54,7 @@ final class PoolPushTest extends TestCase
         $roll = new DicePool(2, 6, 5)->roll(new ScriptedRandomNumberGenerator(5, 6));
 
         $this->expectException(PoolRollNotPushable::class);
-        $this->expectExceptionMessageIsOrContains('every die succeeded');
+        $this->expectExceptionMessageIsOrContains('no regular die failed');
 
         $roll->push(new ScriptedRandomNumberGenerator());
     }

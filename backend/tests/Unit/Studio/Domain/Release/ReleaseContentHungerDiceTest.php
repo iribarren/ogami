@@ -77,11 +77,31 @@ final class ReleaseContentHungerDiceTest extends TestCase
     public function aLiteralHungerCountOfZeroIsValid(): void
     {
         $release = ReleaseArrays::with(ReleaseArrays::fixture(self::FIXTURE), 'checks.1.pool.hunger.count', 0);
+        $release = ReleaseArrays::with($release, 'sceneTypes.0.play.1.outcomes', []);
 
         /** @var array{checks: list<array{pool: array<string, mixed>}>} $content */
         $content = ReleaseContent::fromArray($release)->toArray();
 
         self::assertSame(['count' => 0], $content['checks'][1]['pool']['hunger']);
+    }
+
+    #[Test]
+    public function aLiteralHungerCountOfZeroRefusesTheOutcomesNeedingHungerDice(): void
+    {
+        $release = ReleaseArrays::with(ReleaseArrays::fixture(self::FIXTURE), 'checks.1.pool.hunger.count', 0);
+
+        $this->expectException(InvalidReleaseContent::class);
+        $this->expectExceptionMessageIsOrContains('sceneTypes[0].play[1].outcomes[0].special: check "frenzy" never has a bestialFailure, it needs pool.hunger');
+
+        ReleaseContent::fromArray($release);
+    }
+
+    #[Test]
+    public function aHungerFormulaStillEnablesTheOutcomesNeedingHungerDice(): void
+    {
+        $release = ReleaseArrays::with(ReleaseArrays::fixture(self::FIXTURE), 'checks.1.pool.hunger.count', ['formula' => '{hunger}']);
+
+        self::assertNotSame('', ReleaseContent::fromArray($release)->hash());
     }
 
     #[Test]

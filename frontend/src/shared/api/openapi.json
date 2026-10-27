@@ -14215,9 +14215,13 @@
                 ],
                 "properties": {
                     "group": {
-                        "description": "The group of dice the die belongs to; \"pool\" for the dice of a pool.",
+                        "description": "The group of dice the die belongs to: \"pool\" for a regular die, \"hunger\" for a Hunger die; entries recorded before Hunger dice only have \"pool\".",
                         "type": "string",
-                        "example": "pool"
+                        "example": "pool",
+                        "enum": [
+                            "pool",
+                            "hunger"
+                        ]
                     },
                     "face": {
                         "description": "The face the die landed on.",
@@ -14240,9 +14244,13 @@
                 ],
                 "properties": {
                     "group": {
-                        "description": "The group of dice the die belongs to; \"pool\" for the dice of a pool.",
+                        "description": "The group of dice the die belongs to: \"pool\" for a regular die, \"hunger\" for a Hunger die, which a push never re-rolls.",
                         "type": "string",
-                        "example": "pool"
+                        "example": "pool",
+                        "enum": [
+                            "pool",
+                            "hunger"
+                        ]
                     },
                     "face": {
                         "description": "The face the die shows after the push.",
@@ -14254,7 +14262,7 @@
                         "type": "boolean"
                     },
                     "rerolled": {
-                        "description": "Whether the push re-rolled the die: it failed before the push.",
+                        "description": "Whether the push re-rolled the die: a regular die that failed before the push, within the cap of the push.",
                         "type": "boolean"
                     }
                 },
@@ -14320,7 +14328,8 @@
                     "successes",
                     "rolledBandKey",
                     "rolledBandLabel",
-                    "changes"
+                    "changes",
+                    "special"
                 ],
                 "properties": {
                     "label": {
@@ -14356,6 +14365,16 @@
                         "items": {
                             "$ref": "#/components/schemas/SheetChangeResponse"
                         }
+                    },
+                    "special": {
+                        "description": "The special result of the roll after the push; null for none, and for entries recorded before special results.",
+                        "type": "string",
+                        "nullable": true,
+                        "enum": [
+                            "critical",
+                            "messyCritical",
+                            "bestialFailure"
+                        ]
                     }
                 },
                 "type": "object"
@@ -14370,6 +14389,8 @@
                     "successAt",
                     "dice",
                     "successes",
+                    "criticalsBonus",
+                    "special",
                     "push"
                 ],
                 "properties": {
@@ -14414,9 +14435,24 @@
                         }
                     },
                     "successes": {
-                        "description": "How many dice succeeded; the total of the check.",
+                        "description": "How many dice succeeded, before the bonus of critical pairs; the total of the check is this plus the bonus of each critical pair.",
                         "type": "integer",
                         "example": 2
+                    },
+                    "criticalsBonus": {
+                        "description": "The successes each critical pair (two dice showing the top face) adds to the total; 0 for a pool without critical pairs, and for entries recorded before them.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "special": {
+                        "description": "The special result of the first roll; null for none, and for entries recorded before special results.",
+                        "type": "string",
+                        "nullable": true,
+                        "enum": [
+                            "critical",
+                            "messyCritical",
+                            "bestialFailure"
+                        ]
                     },
                     "push": {
                         "oneOf": [
@@ -14449,7 +14485,8 @@
                     "hint",
                     "modifierFormula",
                     "modifierTerms",
-                    "pool"
+                    "pool",
+                    "special"
                 ],
                 "properties": {
                     "kind": {
@@ -14552,6 +14589,16 @@
                         ],
                         "nullable": true,
                         "description": "The pool rolled, with its dice and successes; null for a check that rolls dice, and for entries recorded before pools."
+                    },
+                    "special": {
+                        "description": "The special result of the roll as it stands, after a push the push's: critical, messy critical or bestial failure. Null for none, for a check that rolls dice and for entries recorded before special results.",
+                        "type": "string",
+                        "nullable": true,
+                        "enum": [
+                            "critical",
+                            "messyCritical",
+                            "bestialFailure"
+                        ]
                     }
                 },
                 "type": "object"

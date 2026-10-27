@@ -162,6 +162,7 @@ final class JournalChecksApiTest extends WebTestCase
                     ['reference' => '{luck}', 'label' => 'Luck', 'value' => -2],
                 ],
                 'pool' => null,
+                'special' => null,
             ],
         ];
         self::assertJsonStringEqualsJsonString(json_encode($created, \JSON_THROW_ON_ERROR), (string) $this->client->getResponse()->getContent());
@@ -218,8 +219,11 @@ final class JournalChecksApiTest extends WebTestCase
                     'successAt' => 5,
                     'dice' => [$die(1), $die(5), $die(6), $die(2), $die(4), $die(3)],
                     'successes' => 2,
+                    'criticalsBonus' => 0,
+                    'special' => null,
                     'push' => null,
                 ],
+                'special' => null,
             ],
         ];
         self::assertJsonStringEqualsJsonString(json_encode($created, \JSON_THROW_ON_ERROR), (string) $this->client->getResponse()->getContent());

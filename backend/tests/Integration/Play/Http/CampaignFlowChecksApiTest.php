@@ -143,6 +143,8 @@ final class CampaignFlowChecksApiTest extends WebTestCase
             'successAt' => 5,
             'dice' => [$die(5), $die(2), $die(6), $die(1), $die(3)],
             'successes' => 2,
+            'criticalsBonus' => 0,
+            'special' => null,
             'push' => null,
         ], self::at($content, 'pool'));
     }

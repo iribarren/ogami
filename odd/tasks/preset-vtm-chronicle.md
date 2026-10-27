@@ -1,7 +1,7 @@
 # Feature: preset-vtm-chronicle
 
 - **Locator:** `odd/tasks/preset-vtm-chronicle.md` · Engram topic `odd/preset-vtm-chronicle/tasks`
-- **Issue:** #301 · **Branch:** `feat/preset-vtm-chronicle-1-contract` · **Status:** in progress (slice 1)
+- **Issue:** #301 · **Branch:** `feat/preset-vtm-chronicle-2-play-roll` · **Status:** in progress (slice 2)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B10 (after `rules-dice-pools`, [ADR 0041](../../docs/adr/0041-dice-pools-pushes-and-conditions.md))
@@ -89,9 +89,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; roadmap B10 in progress | parent (inline, docs) | [x] | |
-| T2 | 1 | ADR 0044 (criticals, Hunger dice, special results, step outcomes on a special, `push.maxDice`, `credits.badge`), ADR index, glossary; schema `v2.schema.json` and contract doc (fix the stale line 386) | delegated writer (Opus, design; preparation trigger: code reading for the design) | [x] | |
-| T3 | 1 | Publisher: `Checks` (`criticals`, `hunger`, `maxDice`), flow `check` step outcomes with `special`, `credits.badge`, `DraftReferences` if Hunger formulas reference fields; unit tests and fixtures; Play's translator refuses the new shapes with a clear error | delegated writer (Opus) | [x] | |
+| T1 | 1 | Docs: this feature doc; roadmap B10 in progress | parent (inline, docs) | [x] | d100598 |
+| T2 | 1 | ADR 0044 (criticals, Hunger dice, special results, step outcomes on a special, `push.maxDice`, `credits.badge`), ADR index, glossary; schema `v2.schema.json` and contract doc (fix the stale line 386) | delegated writer (Opus, design; preparation trigger: code reading for the design) | [x] | d100598 |
+| T3 | 1 | Publisher: `Checks` (`criticals`, `hunger`, `maxDice`), flow `check` step outcomes with `special`, `credits.badge`, `DraftReferences` if Hunger formulas reference fields; unit tests and fixtures; Play's translator refuses the new shapes with a clear error | delegated writer (Opus) | [x] | 3318de9 |
 | T4 | 2 | Kernel: dice groups, Hunger dice, critical pairs, special result, push capped at N and never on Hunger dice; unit tests | delegated writer | [ ] | |
 | T5 | 2 | Play backend: translator reads `criticals`, `hunger`, `maxDice`; `Check` perform and push; results and journal content (groups, special; legacy entries read); API; `make api`; tests | delegated writer | [ ] | |
 | T6 | 3 | Play UI: Hunger dice in a second colour, the special result in the roll dialog and the journal, push offer counts regular dice and shows the cap; fixtures and tests | delegated writer | [ ] | |
@@ -124,12 +124,14 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - 2026-10-27: explored ADR 0021, 0041, `rules-dice-pools`, `preset-vaesen`, example 1; Dark Pack Agreement read (fits). Layer map by an explorer. User chose the badge enum, show-and-branch special results and a push cap. Issue #301.
 - 2026-10-27: slice 1 written: ADR 0044 (criticals need a roll that does not fail; "fails" is below the difficulty, else the first of 2+ bands), schema and contract doc; Studio publishes the new parts, Play's translator refuses them; fixture `valid/v2-hunger-dice`.
+- 2026-10-27: slice 2 commit 1: R3 fix, `Checks::specials()` treats a literal `hunger.count` 0 as no Hunger dice (a formula still enables them); unit test RED then GREEN.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | Findings | PR |
 |---|---|---|---|---|---|
+| 1 | `review-32fb84966e5a47d6` | d100598, 3318de9 | approved, acknowledged | R3 warning: a literal `hunger.count` 0 still accepts `bestialFailure` / `messyCritical` step outcomes (`Checks.php:147-150`); fixed in slice 2. Note: Studio's sandbox (`CheckTestRoll::readPool`) ignores criticals and Hunger until slice 4 | [#302](https://github.com/iribarren/ogami/pull/302) |
 
 ## Next step
 
-Slice 1: the writer writes ADR 0044, the schema and contract doc (T2), then the publisher (T3).
+Slice 2: the writer fixes slice 1's R3 warning, then the kernel (T4) and Play's backend (T5).

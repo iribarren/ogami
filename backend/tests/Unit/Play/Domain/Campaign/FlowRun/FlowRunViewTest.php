@@ -16,6 +16,7 @@ use App\Play\Domain\GameSystem\Flow\SelectionRule;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\SceneType;
 use App\Tests\Support\Play\Campaigns;
+use App\Tests\Unit\Play\Infrastructure\GameSystem\GameSystemReleaseTranslatorGearTest;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -178,7 +179,8 @@ final class FlowRunViewTest extends FlowRunTestCase
     #[Test]
     public function theProgressNamesTheActAndAPhaseEndNamesTheNextPhase(): void
     {
-        $release = self::release('examples/cpr-campaign-in-acts');
+        // Without its economy, which Play refuses until play-items-economy plays it (ADR 0045).
+        $release = self::translate(GameSystemReleaseTranslatorGearTest::playable());
         $campaign = self::guided($release, 'campaign');
         $campaign->startSession(self::at(), $release);
         foreach ([['character', ['who', 'want']], ['turf', ['block', 'crew-name']], ['fixer', ['fixer']]] as $scene => [$sceneType, $steps]) {

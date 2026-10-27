@@ -264,6 +264,14 @@ final class Effects
     }
 
     /**
+     * A field type with its article, for messages: "a list", "an inventory".
+     */
+    public static function typed(string $type): string
+    {
+        return (\in_array($type[0] ?? '', ['a', 'e', 'i', 'o', 'u'], true) ? 'an ' : 'a ').$type;
+    }
+
+    /**
      * The key of a number, track or conditions field of the sheet.
      */
     private static function sheetField(mixed $value, string $path, Catalog $catalog): string
@@ -271,7 +279,7 @@ final class Effects
         $key = ReleaseFields::key($value, $path);
         $type = $catalog->fieldType($key) ?? throw InvalidReleaseContent::at($path, \sprintf('unknown sheet field "%s"', $key));
         if (!\in_array($type, self::CHANGEABLE_FIELDS, true)) {
-            throw InvalidReleaseContent::at($path, \sprintf('field "%s" is a %s field, a sheet effect changes number and track fields only (mark and clear change conditions fields)', $key, $type));
+            throw InvalidReleaseContent::at($path, \sprintf('field "%s" is %s field, a sheet effect changes number and track fields only (mark and clear change conditions fields)', $key, self::typed($type)));
         }
 
         return $key;

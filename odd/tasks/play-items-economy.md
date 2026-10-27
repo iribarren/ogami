@@ -87,7 +87,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; roadmap B11 in progress | parent (inline, docs) | [x] | |
 | T2 | 1 | ADR 0045 (gear catalog, `inventory`, `sheet.currency`, `shop`, affordability, upgrade conversions), ADR index, ADR 0025 and 0035 amended-by notes, glossary (Gear, Inventory, Stack, Currency, Shop); schema `v2.schema.json` and contract doc; example 4's Economy section | delegated writer (Opus, design; preparation trigger: code reading for the design) | [x] | |
-| T3 | 1 | Publisher: `gear` catalog, `sheet.currency`, `inventory` field, `shop` step, references (offers, categories, a destination inventory, currency required), canonical form; unit tests; economy in `cpr-campaign-in-acts.json`; Play's translator refuses the new shapes with a clear error | delegated writer (Opus, same writer) | [ ] | |
+| T3 | 1 | Publisher: `gear` catalog, `sheet.currency`, `inventory` field, `shop` step, references (offers, categories, a destination inventory, currency required), canonical form; unit tests; economy in `cpr-campaign-in-acts.json`; Play's translator refuses the new shapes with a clear error | delegated writer (Opus, same writer) | [x] | |
 | T4 | 2 | Play: translator reads `gear`, `sheet.currency`, `inventory`; `InventoryField`, stacks, capacity, `maxStacks`, categories in `CharacterValues`; legacy Characters read; tests | delegated writer (Sonnet) | [ ] | |
 | T5 | 2 | Play API: pinned release gear catalog and currency, sheet field view, Character values with stacks; `make api`; tests | delegated writer (Sonnet) | [ ] | |
 | T6 | 3 | Play flow: translator `shop`; stock roll when reached (stored on the FlowRun); transaction (sell then buy, routing, stacking), errors, journal content, `{step:key}`; request and step response; tests | delegated writer (Sonnet or Opus) | [ ] | |
@@ -123,6 +123,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - 2026-10-27: feature started; explorer layer map; four design decisions taken with the user; issue #311; slice plan of 7.
 - 2026-10-27: T2 done: ADR 0045 settles the defaults and adds unique gear names (for the upgrade's name match), no `mandatory` and no sheet effects on a shop, no spill between inventories, a 0..offer clamp on dice stock, 422 for both codes; glossary, schema, contract doc, example 4 (docs only, no runnable RED).
+- 2026-10-27: T3 done: publisher `Gear`, inventory, currency and shop rules (RED: `gear: unknown property`, then GREEN, 59 tests in `ReleaseContentGearTest`, schema agreement in `ReleaseSchemaGearTest`); example 4 fixture carries the economy; Play's translator refuses each shape (ADR 0045) and its tests read the example without it.
 
 ## Next step
 

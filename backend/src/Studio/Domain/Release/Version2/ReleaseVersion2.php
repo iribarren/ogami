@@ -11,7 +11,7 @@ use App\Studio\Domain\Release\ReleaseOracles;
 
 /**
  * Validates the parts schema version 2 adds or changes (docs/contracts/gamesystem-release.md):
- * oracle table entry and chaos extensions, trackers, fact slots, tags, the sheet, checks, Scene Types and flows,
+ * oracle table entry and chaos extensions, trackers, fact slots, tags, the gear catalog, the sheet, checks, Scene Types and flows,
  * then the references inside each flow. Returns them in canonical form; ReleaseContent handles the parts
  * every version shares.
  *
@@ -19,7 +19,7 @@ use App\Studio\Domain\Release\ReleaseOracles;
  * (FlowReferences::check()) are the flow coherence (ADR 0030). Publishing runs both, in that order;
  * the Studio editor runs the item rules only.
  *
- * @phpstan-type Parts array{theme?: string, oracles: array<string, mixed>, trackers: list<array<string, mixed>>, factSlots: list<array<string, mixed>>, tags?: list<array<string, mixed>>, sceneTypes: list<array<string, mixed>>, flows: list<array<string, mixed>>, sheet: array<string, mixed>, checks: list<array<string, mixed>>}
+ * @phpstan-type Parts array{theme?: string, oracles: array<string, mixed>, trackers: list<array<string, mixed>>, factSlots: list<array<string, mixed>>, tags?: list<array<string, mixed>>, gear?: list<array<string, mixed>>, sceneTypes: list<array<string, mixed>>, flows: list<array<string, mixed>>, sheet: array<string, mixed>, checks: list<array<string, mixed>>}
  *
  * @internal used by ReleaseContent only
  */
@@ -63,7 +63,7 @@ final class ReleaseVersion2
     /** Top-level fields of schema version 2, in schema order: name => required. */
     public const array RELEASE = [
         'schemaVersion' => true, 'gameSystem' => true, 'theme' => false, 'oracles' => true, 'trackers' => true, 'factSlots' => true, 'tags' => false,
-        'sceneTypes' => true, 'flows' => true, 'sheet' => true, 'checks' => true,
+        'sceneTypes' => true, 'flows' => true, 'sheet' => true, 'checks' => true, 'gear' => false,
     ];
 
     public const array ENTRY = [...ReleaseOracles::ENTRY, 'key' => false, 'sceneType' => false, 'effects' => false];
@@ -98,7 +98,7 @@ final class ReleaseVersion2
      * @param array<string, mixed> $release       the checked top-level object (RELEASE fields)
      * @param bool                 $flowCoherence false to run the item rules only
      *
-     * @return Parts "theme" and "tags" are left out when absent or empty
+     * @return Parts "theme", "tags" and "gear" are left out when absent or empty
      *
      * @throws InvalidReleaseContent the first error
      */
@@ -141,10 +141,10 @@ final class ReleaseVersion2
     /**
      * The stages and what each reads. A stage runs only when everything it reads came out valid:
      *
-     * - trackers, oracles, fact slots and tags read nothing;
+     * - trackers, oracles, fact slots, tags and the gear catalog read nothing;
      * - the chaos trackers read the trackers and the oracles; nothing reads them back;
      * - the Scene Types (without steps) read the oracles (their shortcuts);
-     * - the sheet reads the trackers;
+     * - the sheet reads the trackers and the gear categories (inventory fields);
      * - the checks read all of those, through the catalog;
      * - the table entries, the Scene Type steps (each of the three parts on its own) and the flows
      *   read the catalog with the checks;
@@ -169,10 +169,11 @@ final class ReleaseVersion2
 
         $factSlots = $stages->run(static fn (): array => self::factSlots($release['factSlots']));
         $tags = $stages->run(static fn (): array => self::tags($release['tags'] ?? null));
+        $gear = $stages->run(static fn (): array => Gear::validate($release['gear'] ?? null));
         $sceneTypes = null === $oracles ? null : $stages->run(static fn (): array => self::sceneTypes($release['sceneTypes'], $oracles));
         // Checks and sheet effects read the sheet, and flow steps read the checks, so both come before the steps.
-        $sheet = null === $trackers ? null : $stages->run(static fn (): array => SheetFields::validate($release['sheet'], array_keys($trackers[1])));
-        if (\in_array(null, [$trackers, $oracles, $factSlots, $tags, $sceneTypes, $sheet], true)) {
+        $sheet = null === $trackers || null === $gear ? null : $stages->run(static fn (): array => SheetFields::validate($release['sheet'], array_keys($trackers[1]), self::gearCategories($gear[1])));
+        if (\in_array(null, [$trackers, $oracles, $factSlots, $tags, $gear, $sceneTypes, $sheet], true)) {
             return null;
         }
 
@@ -180,7 +181,7 @@ final class ReleaseVersion2
         [$sceneTypeList, $sceneTypeKeys] = $sceneTypes;
         /** @var array<string, string> $fieldTypes */
         $fieldTypes = array_column($sheet['fields'] ?? [], 'type', 'key');
-        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tags[1], $factSlots[1], fieldTypes: $fieldTypes, tagScopes: self::tagScopes($tags[0]), conditionOptions: self::conditionOptions($sheet['fields'] ?? []));
+        $catalog = new Catalog($trackerRanges, self::tableEntryKeys($oracles['tables']), self::likelihoodLevels($oracles['likelihood']), $sceneTypeKeys, $tags[1], $factSlots[1], fieldTypes: $fieldTypes, tagScopes: self::tagScopes($tags[0]), conditionOptions: self::conditionOptions($sheet['fields'] ?? []), gear: $gear[1], inventories: self::inventories($sheet['fields'] ?? []), currency: $sheet['currency']['field'] ?? null);
         $checks = $stages->run(static fn (): array => Checks::validate($release['checks'], $fieldTypes, $catalog));
         if (null === $checks) {
             return null;
@@ -232,7 +233,42 @@ final class ReleaseVersion2
             $parts['tags'] = $tags[0];
         }
 
+        if ([] !== $gear[0]) {
+            $parts['gear'] = $gear[0];
+        }
+
         return [...$parts, 'sceneTypes' => $sceneTypeList, 'flows' => $flows, 'sheet' => $sheet, 'checks' => $checks[0]];
+    }
+
+    /**
+     * @param array<string, string|null> $gear the category of each gear entry by key
+     *
+     * @return array<string, true>
+     */
+    private static function gearCategories(array $gear): array
+    {
+        return new Catalog([], [], [], [], gear: $gear)->gearCategories();
+    }
+
+    /**
+     * The categories each inventory field accepts, by key in sheet order (null: every entry).
+     *
+     * @param list<array<string, mixed>> $fields canonical sheet fields
+     *
+     * @return array<string, list<string>|null>
+     */
+    private static function inventories(array $fields): array
+    {
+        $inventories = [];
+        foreach ($fields as $field) {
+            if ('inventory' === $field['type'] && \is_string($field['key'])) {
+                /** @var list<string>|null $categories */
+                $categories = $field['categories'] ?? null;
+                $inventories[$field['key']] = $categories;
+            }
+        }
+
+        return $inventories;
     }
 
     /**

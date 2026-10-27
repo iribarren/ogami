@@ -30,6 +30,9 @@ final class Steps
     public const int MAX_INSPIRATION = 5;
     public const int MIN_CHECK_SET = 2;
     public const int MAX_CHECK_SET = 10;
+    public const int MAX_OFFER_GEAR = 100;
+    public const int MAX_STOCK = 50;
+    public const int MAX_SELL_RATE = 100;
     public const string END = 'end';
 
     /** What a pick or a condition count ranges over. */
@@ -48,6 +51,7 @@ final class Steps
         'pick' => ['of' => true, 'tags' => false, 'mode' => true, 'count' => false, 'branches' => false],
         'character' => [],
         'check' => ['check' => false, 'checks' => false, 'difficulty' => false, 'outcomes' => false],
+        'shop' => ['offer' => true, 'stock' => false, 'sellRate' => false],
     ];
 
     private const array PICK_BRANCHES = ['found' => false, 'none' => false];
@@ -58,6 +62,7 @@ final class Steps
     private const array CHECK_OUTCOME = ['band' => false, 'special' => false, 'next' => false, 'effects' => false];
     private const array TABLE_BRANCH = ['entry' => true, 'next' => false, 'effects' => false];
     private const array OPTION = ['key' => true, 'label' => true, 'next' => false, 'effects' => false];
+    private const array OFFER = ['gear' => false, 'categories' => false];
 
     /**
      * @return list<array<string, mixed>> canonical steps
@@ -110,6 +115,11 @@ final class Steps
             }
         }
 
+        // A shop is left with an empty transaction (ADR 0045), so nothing is ever skipped there.
+        if (isset($step['mandatory']) && 'shop' === $kind) {
+            throw InvalidReleaseContent::at($path.'.mandatory', 'a shop step is never skipped, an empty transaction leaves it');
+        }
+
         if (isset($step['mandatory']) && ReleaseFields::boolean($step['mandatory'], $path.'.mandatory') && 'condition' === $kind) {
             throw InvalidReleaseContent::at($path.'.mandatory', 'a condition step is never mandatory');
         }
@@ -127,6 +137,7 @@ final class Steps
             'condition' => self::condition($step, $path, $catalog),
             'pick' => self::pick($step, $path, $catalog),
             'check' => self::check($step, $path, $catalog),
+            'shop' => self::shop($step, $path, $catalog, $setup),
         };
 
         return array_filter($step, static fn (mixed $field): bool => [] !== $field && false !== $field);
@@ -572,6 +583,105 @@ final class Steps
                 throw InvalidReleaseContent::at(\sprintf('%s[%s]', $path, $index), 'a sheet effect is not allowed on the option the skip names, a skip completes without a Character');
             }
         }
+    }
+
+    /**
+     * A shop step (ADR 0045) sells the entries of its offer, catalog keys and categories resolved to
+     * their union, and buys at its sell rate. It needs a Character, so never sits in a setup list, and
+     * the sheet's currency; every offered entry lands in some inventory field, and an integer stock
+     * draws at most the whole offer (a dice stock is clamped when rolled). Its own effects never
+     * change the sheet: the transaction does (see step()).
+     *
+     * @param array<string, mixed> $step
+     *
+     * @return array<string, mixed>
+     */
+    private static function shop(array $step, string $path, Catalog $catalog, bool $setup): array
+    {
+        if ($setup) {
+            throw InvalidReleaseContent::at($path, 'a shop step needs a Character, which a Scene Type\'s setup list has none of');
+        }
+
+        if (null === $catalog->currency) {
+            throw InvalidReleaseContent::at($path, 'a shop step needs sheet.currency');
+        }
+
+        $offerPath = $path.'.offer';
+        $offer = ReleaseFields::object($step['offer'], $offerPath, self::OFFER);
+        $offered = [];
+        foreach (ReleaseFields::sizedList($offer['gear'] ?? [], $offerPath.'.gear', 0, self::MAX_OFFER_GEAR, 'gear entries') as $index => $key) {
+            $keyPath = \sprintf('%s.gear[%d]', $offerPath, $index);
+            $key = ReleaseFields::key($key, $keyPath);
+            if (!\array_key_exists($key, $catalog->gear)) {
+                throw InvalidReleaseContent::at($keyPath, \sprintf('unknown gear "%s"', $key));
+            }
+
+            if (isset($offered[$key])) {
+                throw InvalidReleaseContent::at($keyPath, \sprintf('duplicate gear "%s"', $key));
+            }
+
+            self::assertLands($key, $catalog, $keyPath);
+            $offered[$key] = true;
+        }
+
+        $offer['categories'] = Gear::categories($offer['categories'] ?? [], $offerPath.'.categories', $catalog->gearCategories(), 0);
+        foreach ($offer['categories'] as $index => $category) {
+            foreach (array_keys($catalog->gear, $category, true) as $key) {
+                self::assertLands($key, $catalog, \sprintf('%s.categories[%d]', $offerPath, $index));
+                $offered[$key] = true;
+            }
+        }
+
+        if ([] === $offered) {
+            throw InvalidReleaseContent::at($offerPath, 'give gear or categories, at least one entry');
+        }
+
+        $step['offer'] = array_filter($offer, static fn (mixed $part): bool => [] !== $part);
+        if (isset($step['stock'])) {
+            $step['stock'] = self::stock($step['stock'], $path.'.stock', \count($offered));
+        }
+
+        if (isset($step['sellRate'])) {
+            ReleaseFields::integer($step['sellRate'], $path.'.sellRate', 1, self::MAX_SELL_RATE);
+        }
+
+        return $step;
+    }
+
+    /**
+     * An offered entry needs an inventory field that accepts it: a purchase must land somewhere.
+     */
+    private static function assertLands(string $key, Catalog $catalog, string $path): void
+    {
+        $category = $catalog->gear[$key];
+        if (!$catalog->hasInventoryFor($category)) {
+            throw InvalidReleaseContent::at($path, null === $category ? \sprintf('no inventory field accepts gear "%s", which has no category', $key) : \sprintf('no inventory field accepts gear "%s" of category "%s"', $key, $category));
+        }
+    }
+
+    /**
+     * How many distinct entries of the offer are on sale: an integer up to the offer's size, or dice.
+     *
+     * @return int|array{dice: string}
+     */
+    private static function stock(mixed $value, string $path, int $offered): int|array
+    {
+        if (\is_array($value)) {
+            $dice = ReleaseFields::object($value, $path, ['dice' => true]);
+
+            return ['dice' => self::dice($dice['dice'], $path.'.dice')];
+        }
+
+        if (!\is_int($value)) {
+            throw InvalidReleaseContent::at($path, 'must be an integer or {dice: string}');
+        }
+
+        $stock = ReleaseFields::integer($value, $path, 1, self::MAX_STOCK);
+        if ($stock > $offered) {
+            throw InvalidReleaseContent::at($path, \sprintf('must be at most %d, the entries the offer resolves to, %d given', $offered, $stock));
+        }
+
+        return $stock;
     }
 
     /**

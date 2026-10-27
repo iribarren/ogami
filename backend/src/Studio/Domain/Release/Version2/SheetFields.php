@@ -12,7 +12,8 @@ use App\Studio\Domain\Release\ReleaseFields;
  * The character sheet template of schema version 2 (ADR 0022): an optional list of fields of six
  * types, each with its own closed set of properties; a "derived" field holds a formula (ADR 0023). An optional layout of groups
  * (SheetLayout, ADR 0031) places the fields in a grid. A conditions field (ADR 0041) declares the options a Character marks. A number field may roll its value, a track start from a formula and the
- * sheet declare a point budget when a Character is created (ADR 0040). The canonical sheet is [] without fields or layout, so a
+ * sheet declare a point budget when a Character is created (ADR 0040). An inventory field holds stacks of gear of the
+ * categories it accepts, and the sheet may name a number field its currency (ADR 0045). The canonical sheet is [] without fields or layout, so a
  * release that never used the sheet keeps its content hash.
  *
  * @internal
@@ -31,8 +32,12 @@ final class SheetFields
     public const int MAX_CONDITION_OPTIONS = 20;
     public const int MAX_OPTION_LABEL_LENGTH = 60;
     public const int MAX_FORMULA_LENGTH = Formula::MAX_LENGTH;
+    public const int MAX_CAPACITY = 999;
+    public const int MAX_STACKS = 100;
+    public const int DEFAULT_MAX_STACKS = 50;
+    public const int MAX_UNIT_LENGTH = 10;
 
-    private const array SHEET = ['fields' => false, 'columns' => false, 'groups' => false, 'pointBudget' => false, 'pointBudgets' => false];
+    private const array SHEET = ['fields' => false, 'columns' => false, 'groups' => false, 'pointBudget' => false, 'pointBudgets' => false, 'currency' => false];
     private const array COMMON = ['key' => true, 'label' => true, 'hint' => false, 'group' => false, 'span' => false, 'type' => true];
 
     /** The fields each type adds to COMMON, in schema order: name => required. */
@@ -43,16 +48,19 @@ final class SheetFields
         'track' => ['max' => false, 'startMax' => false],
         'derived' => ['formula' => true],
         'conditions' => ['options' => true],
+        'inventory' => ['capacity' => false, 'maxStacks' => false, 'categories' => false],
     ];
 
     private const array OPTION = ['key' => true, 'label' => true];
+    private const array CURRENCY = ['field' => true, 'unit' => false];
 
     /**
-     * @param list<string> $trackerKeys the trackers of the release, which derived fields may read
+     * @param list<string>        $trackerKeys    the trackers of the release, which derived fields may read
+     * @param array<string, true> $gearCategories the categories of the gear catalog, which inventory fields may accept
      *
-     * @return array{fields?: list<array<string, mixed>>, columns?: int, groups?: list<array<string, mixed>>, pointBudget?: array<string, mixed>, pointBudgets?: list<array<string, mixed>>} no "fields" key when the sheet has none, no layout or budget keys without them
+     * @return array{fields?: list<array<string, mixed>>, columns?: int, groups?: list<array<string, mixed>>, pointBudget?: array<string, mixed>, pointBudgets?: list<array<string, mixed>>, currency?: array{field: string, unit?: string}} no "fields" key when the sheet has none, no layout, budget or currency keys without them
      */
-    public static function validate(mixed $value, array $trackerKeys = []): array
+    public static function validate(mixed $value, array $trackerKeys = [], array $gearCategories = []): array
     {
         $sheet = ReleaseFields::object($value, 'sheet', self::SHEET);
         [$layout, $groupColumns] = SheetLayout::validate($sheet);
@@ -63,7 +71,7 @@ final class SheetFields
         $byKey = [];
         foreach (ReleaseFields::sizedList($sheet['fields'] ?? [], 'sheet.fields', 0, self::MAX_FIELDS, 'fields') as $index => $field) {
             $path = \sprintf('sheet.fields[%d]', $index);
-            $field = self::field($field, $path);
+            $field = self::field($field, $path, $gearCategories);
             SheetLayout::checkField($groupColumns, $field, $path);
             if (1 === ($field['span'] ?? null)) {
                 unset($field['span']);
@@ -99,13 +107,41 @@ final class SheetFields
         Formulas::sheet($derived, $keys, $trackerKeys);
         Formulas::startMax($starts, $derived, $keys);
 
-        return ([] === $fields ? [] : ['fields' => $fields]) + $layout + PointBudget::validate($sheet, $byKey);
+        $currency = isset($sheet['currency']) ? ['currency' => self::currency($sheet['currency'], $keys)] : [];
+
+        return ([] === $fields ? [] : ['fields' => $fields]) + $layout + PointBudget::validate($sheet, $byKey) + $currency;
     }
 
     /**
+     * The sheet's currency (ADR 0045): a number field, never a derived one, and an optional unit.
+     *
+     * @param array<string, string> $types the type of every field by key
+     *
+     * @return array{field: string, unit?: string}
+     */
+    private static function currency(mixed $value, array $types): array
+    {
+        $currency = ReleaseFields::object($value, 'sheet.currency', self::CURRENCY);
+        $field = ReleaseFields::key($currency['field'], 'sheet.currency.field');
+        $type = $types[$field] ?? throw InvalidReleaseContent::at('sheet.currency.field', \sprintf('unknown sheet field "%s"', $field));
+        if ('number' !== $type) {
+            throw InvalidReleaseContent::at('sheet.currency.field', \sprintf('field "%s" is %s field, the currency is a number field', $field, Effects::typed($type)));
+        }
+
+        $checked = ['field' => $field];
+        if (isset($currency['unit'])) {
+            $checked['unit'] = ReleaseFields::text($currency['unit'], 'sheet.currency.unit', 1, self::MAX_UNIT_LENGTH);
+        }
+
+        return $checked;
+    }
+
+    /**
+     * @param array<string, true> $gearCategories
+     *
      * @return array<string, mixed>
      */
-    private static function field(mixed $value, string $path): array
+    private static function field(mixed $value, string $path, array $gearCategories): array
     {
         $type = ReleaseFields::tag($value, $path, 'type', array_keys(self::TYPES));
         $field = ReleaseFields::object($value, $path, [...self::COMMON, ...self::TYPES[$type]]);
@@ -131,6 +167,7 @@ final class SheetFields
             'track' => self::track($field, $path),
             'derived' => self::derived($field, $path),
             'conditions' => self::conditions($field, $path),
+            'inventory' => self::inventory($field, $path, $gearCategories),
         };
 
         return array_filter($field, static fn (mixed $part): bool => false !== $part);
@@ -240,6 +277,32 @@ final class SheetFields
     private static function derived(array $field, string $path): array
     {
         ReleaseFields::text($field['formula'], $path.'.formula', 1, self::MAX_FORMULA_LENGTH);
+
+        return $field;
+    }
+
+    /**
+     * Stacks of gear (ADR 0045): an optional slot capacity, a stack limit (50 by default, left out
+     * of the canonical form) and the catalog categories it accepts (every entry without them).
+     *
+     * @param array<string, mixed> $field
+     * @param array<string, true>  $gearCategories
+     *
+     * @return array<string, mixed>
+     */
+    private static function inventory(array $field, string $path, array $gearCategories): array
+    {
+        if (isset($field['capacity'])) {
+            ReleaseFields::integer($field['capacity'], $path.'.capacity', 1, self::MAX_CAPACITY);
+        }
+
+        if (isset($field['maxStacks']) && self::DEFAULT_MAX_STACKS === ReleaseFields::integer($field['maxStacks'], $path.'.maxStacks', 1, self::MAX_STACKS)) {
+            unset($field['maxStacks']);
+        }
+
+        if (isset($field['categories'])) {
+            $field['categories'] = Gear::categories($field['categories'], $path.'.categories', $gearCategories);
+        }
 
         return $field;
     }

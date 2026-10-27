@@ -1,7 +1,7 @@
 # Feature: preset-vaesen
 
 - **Locator:** `odd/tasks/preset-vaesen.md` · Engram topic `odd/preset-vaesen/tasks`
-- **Issue:** #294 · **Branch:** `feat/preset-vaesen-4-drop-single-budget` · **Status:** in progress (slice 4)
+- **Issue:** #294 · **Branch:** `feat/preset-vaesen-5-skill-budget` · **Status:** in progress (slice 5)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B9 (after `rules-dice-pools`, [ADR 0041](../../docs/adr/0041-dice-pools-pushes-and-conditions.md), and `rules-flow-choices`, [ADR 0042](../../docs/adr/0042-flow-choices-check-sets-and-scene-tables.md))
@@ -65,7 +65,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 2 | `feat/preset-vaesen-2-point-budgets` | `feat(studio): preset-vaesen 2/4 several point budgets` | T5–T7 | ~1,500: ADR ~150; contract, publisher and contract doc ~120; Studio backend ~150 + tests ~250; Play translator, `SheetTemplate`, `CharacterCreation`, responses ~180 + tests ~200; generated OpenAPI and TS ~100; fixtures ~50 |
 | 3 | `feat/preset-vaesen-3-budgets-ui` | `feat(studio): preset-vaesen 3/4 point budgets in Studio and Play` | T8–T10 | ~1,300: slice 2 review fixes ~100; Studio sheet budget list ~450 + tests and story ~300; Play character form one counter per budget ~150 + tests ~150; S27 kind list ~80; no API change |
 | 4 | `feat/preset-vaesen-4-drop-single-budget` | `refactor(studio): preset-vaesen 4/5 drop the single point budget API` | T11 | ~1,490 (built): slice 3 review fix ~30; removal of the single-budget endpoint, view field and Play response field ~760; generated OpenAPI and TS ~700 |
-| 5 | `feat/preset-vaesen-5-skill-budget` | `feat(presets): preset-vaesen 5/5 skill budget and tests` | T12–T14 | ~550: slice 4 review fixes; Lanterns skill budget in Studio, re-export (diff ~60) and `PresetsTest` ~30; flow unit test ~200, e2e spec ~60; follow-up issue for the UX findings; roadmap and closing ~150 |
+| 5 | `feat/preset-vaesen-5-skill-budget` | `feat(presets): preset-vaesen 5/5 skill budget and tests` | T12–T15 | ~650: slice 4 review fixes ~60; P18 form bounds ~100 (T15); Lanterns skill budget in Studio, re-export (diff ~60) and `PresetsTest` ~30; flow unit test ~200, e2e spec ~60; follow-up issue for the UX findings; roadmap and closing ~150 |
 
 Point budget map (explorer, 2026-10-26): publisher `Studio/Domain/Release/Version2/PointBudget.php`; Studio `GameSystem.php:570-602`, `DraftReferences.php:237-242`, `SaveSheetPointBudget*`, `GameSystemSheetController.php:232-279`; Play translator `GameSystemReleaseTranslator.php:950-982`, `SheetTemplate.php:29,75`, `CharacterCreation.php:64-133`; frontend `studio/sheet/SheetPointBudgetPanel.tsx`, `play/characters/creation.ts`, `CharacterForm.tsx:163-169`. The upgrade planner does not read budgets. Turning `sheet.pointBudget` into an array changes the content hash of every release with a budget (`ReleaseContent.php:18-19`), so the ADR picks an additive property or schema version 3. Open design points for the ADR: a field in two budgets (refuse), roll-or-points per budget or per Character, budget keys in Studio routes and error paths. `docs/contracts/gamesystem-release.md:279` wrongly says Play refuses `pointBudget`.
 
@@ -83,10 +83,11 @@ Point budget map (explorer, 2026-10-26): publisher `Studio/Domain/Release/Versio
 | T8 | 3 | Studio sheet: a list of budgets (add, edit, remove), error paths; tests and story | delegated writer (Sonnet) | [x] | c656d70 |
 | T9 | 3 | Play character form: one counter per budget, submit blocked when any is over; tests | delegated writer (Sonnet) | [x] | f2b77c5 |
 | T10 | 3 | S27: the effect-kind select shows every kind (no clipped tenth row); test | delegated writer (Sonnet) | [x] | af9d94d |
-| T11 | 4 | Remove the single-budget Studio endpoints (`PUT` / `DELETE …/sheet/point-budget`, commands, `several_point_budgets`), the Studio view's `pointBudget` and Play's pinned `pointBudget` (ADR 0043); slice 2 finding A-S goes with them; `make api` | delegated writer (Sonnet) | [x] | |
+| T11 | 4 | Remove the single-budget Studio endpoints (`PUT` / `DELETE …/sheet/point-budget`, commands, `several_point_budgets`), the Studio view's `pointBudget` and Play's pinned `pointBudget` (ADR 0043); slice 2 finding A-S goes with them; `make api` | delegated writer (Sonnet) | [x] | d25fe23, 76990ad |
 | T12 | 5 | Lanterns: skill budget (8, at most 3) in Studio, publish, re-export unedited; `PresetsTest` update | parent (browser) + delegated writer | [ ] | |
+| T15 | 5 | P18: the Play character form flags a budget field above its budget's max (or below its min) and blocks Save; tests | delegated writer | [ ] | |
 | T13 | 5 | Flow unit test (Clues and Nightfall, Nightfall ends the phase, a pushed step marks a Condition, Respite clears) and e2e spec (credits, a pool roll in the journal) | delegated writer | [ ] | |
-| T14 | 5 | Wrap-up: follow-up issue for the UX findings (P3, P6, P7, P9, P13, Studio polish); roadmap B9 done; this doc closed | delegated writer | [ ] | |
+| T14 | 5 | Wrap-up: follow-up issue for the UX findings (P3, P6, P7, P9, P13, Studio polish); roadmap B9 done; this doc closed | parent (closing doc commit) | [ ] | |
 
 ## Studio findings
 
@@ -105,7 +106,7 @@ Authored 2026-10-26 by a Claude in Chrome worker as `mire-author@ogami.test` (~1
 | S15, S16 | Scene types: tall step cards; per-band effects of a check set in collapsed accordions | Low | → Studio polish |
 | S17 | Scene types: no `sheet` effect on the Respite choice. By design ([ADR 0042](../../docs/adr/0042-flow-choices-check-sets-and-scene-tables.md)): a Scene Type's Setup runs before a Character is known, so its steps take none; the spec put the choice in Setup. The editor does not say why the kind is missing | Medium | Content: choice moved to Play (T3); the missing-kind hint → Studio polish |
 | S20 | Flow hooks: `sheet` effect reported missing on the Unmasking XP choices and the closing prompt. Wrong: it is offered (S27) | — | — |
-| S27 | Effects editor: the effect-kind select shows nine rows and `sheet` is the tenth, visible only by scrolling the open list; it misled the authoring twice (S17, S20) | High | Fixed in this feature |
+| S27 | Effects editor: the effect-kind select shows nine rows and `sheet` is the tenth, visible only by scrolling the open list; it misled the authoring twice (S17, S20) | High | Fixed in this feature (T10); checked in Chrome 2026-10-27: all ten kinds show without a scrollbar |
 | S21 | Flow hooks: a suggested choice must name its Skip option; the error shows only after adding the step | Low | → Studio polish |
 | S22, S23 | Flows: a phase needs a Scene Type to save; the first phase key does not follow its name | Low | → Studio polish |
 | S26 | Sheet: no bulk add or duplicate for fields (23 fields ≈ 450 actions, the costliest part) | Medium | → Studio polish |
@@ -130,6 +131,7 @@ Played 2026-10-26 by a Claude in Chrome worker as `mire-author@ogami.test`: camp
 | P14 | Push is offered on a success; the introduction said "a failed roll" | Content | Low | v3 wording: ADR 0041 pushes any roll with a missed die |
 | P15 | "Flow complete. Play on freely."; End session keeps the journal | — | — | Works |
 | P16 | "Upgrade to v3" restarts guidance at the first phase; trackers and the Character carry over, the character step offers the existing one | — | — | Works |
+| P18 | v4 (slice 4 Chrome pass): a skill field takes 4 or 5 above the Skill points max of 3 with no counter error and Save looking enabled (`CharacterForm.tsx:30` passes the bounds only as input attributes) | Bug | Medium | Fixed in this feature (T15) |
 | P17 | v3: Nightfall 6 at a scene's end writes "Night has fallen… The phase ends after this scene" and goes straight to the Confrontation; the condition step form starts with only the Otherwise band and an empty tracker | — | Low | Works; form defaults → Studio polish |
 
 ## Progress
@@ -152,6 +154,8 @@ Played 2026-10-26 by a Claude in Chrome worker as `mire-author@ogami.test`: camp
 - 2026-10-27: Slice 3 finding W fixed (writer, Sonnet): Add refuses a key another budget already uses ("Another budget uses this key."), edit keeps its read-only key. RED: the new panel test failed before the change, GREEN after (panel 23).
 - 2026-10-27: T11 done (writer, Sonnet): removed the single-budget Studio API per ADR 0043: routes `PUT` / `DELETE …/sheet/point-budget`, `SaveSheetPointBudget*` / `RemoveSheetPointBudget*`, `SaveSheetPointBudgetRequest`, `SeveralPointBudgets` and the `several_point_budgets` code, the `GameSystem` single-budget methods, `GameSystemSheetView::$pointBudget`, `SheetPointBudgetResponse`, Play's `PinnedReleaseView::$pointBudget` and `PointBudgetResponse`. Legacy `sheet.pointBudget` is still read (publisher, Studio view as key `points`, Play translator). Slice 2 finding A-S goes with the single `PUT`. Tests of the removed surface deleted or moved to the keyed commands; kept the proof that a legacy draft reads as `pointBudgets[0]` with key `points` (handler and API tests) and a test that the old routes answer 404 and the view has no `pointBudget`. Tests adjusted, not written first (removal); Unit, Play and Studio integration suites, PHPStan and `tsc` green. Generated API in the next commit.
 - 2026-10-27: Slice 4 split: fix and T11 with the regenerated API reached ~1,490 lines, and T12 waits on Chrome (extension not connected), so T12–T14 move to a new slice 5 (~550); slices 1–3 PR titles said n/4.
+- 2026-10-27: T12 Studio part (Chrome worker, `mire-author@ogami.test`): "Skill points" (key `skills`, total 8, range 0–3, the twelve skills) added beside "Attribute points" (key `points`); validation clean; v4 published ("Skill points: 8 to spend, at most 3 per skill."). Play on v4: two counters, a valid set saved, 9/8 shows "(over budget)" with Save disabled; a skill field took 4 and 5 above its max (P18, now T15). S27 checked in Chrome. The key followed the label as `skill-points` and was overridden to `skills`. No console errors.
+- 2026-10-27: Slice 4 review fixes (writer, Sonnet): W `pointBudget` dropped from the `required` lists of `PinnedReleaseResponse` and `GameSystemSheetResponse`, spec regenerated (`openapi.json` only; no cheap contract test exists for `required`, so none added); S `aFieldOfALegacyBudgetCannotBeDeletedOrRenamed` (API) pins the 422 with `sheet.pointBudget.fields[0]` for a delete and a rename. Test written after the guard, which already worked, so no RED.
 
 ## Reviews
 
@@ -159,8 +163,9 @@ Played 2026-10-26 by a Claude in Chrome worker as `mire-author@ogami.test`: camp
 |---|---|---|---|---|
 | 1 | — | ed44865, 43ab5a1 | Review on 43ab5a1 offered, skipped by the user; no findings | [#295](https://github.com/iribarren/ogami/pull/295) |
 | 2 | `review-87aecb3c8f1fd2f6` (35c7f86–01bde98), `review-47259e8074827396` (8cd0e3a–4b816a3) | 35c7f86, 01bde98, 8cd0e3a, 4b816a3 | Both parts approved and acknowledged; ~3,060 lines (user-approved oversize). Findings: A-W `GameSystemSheetPointBudgetsTest.php:205-210` the malformed-list test throws in its fixture, the guard is untested (fixed in slice 3); A-S `GameSystem.php:588-591` the single `PUT` renames a keyed one-entry budget to `points` (goes with the endpoint in T11); B-W `GetCampaignHandler.php:59` a several-budget release is playable but the Play form reads only `pointBudget` (fixed by T9); B-S `SheetTemplate.php:56-57` a field repeated in one budget gives a misleading message, untested (fixed in slice 3) | [#296](https://github.com/iribarren/ogami/pull/296) |
-| 3 | `review-8145f8989b106d27` | e598ed0, c656d70, f2b77c5, af9d94d | Approved and acknowledged; ~965 lines. Finding: W `SheetPointBudgetPanel.tsx:95-97` Add checks only the key format, not whether the key is taken, so the keyed `PUT` silently replaces an existing budget (label "Points" gives key `points`, the legacy budget) (fixed in slice 4). Open: S27 list height in Chrome (slice 5 Chrome pass) | [#297](https://github.com/iribarren/ogami/pull/297) |
+| 3 | `review-8145f8989b106d27` | e598ed0, c656d70, f2b77c5, af9d94d | Approved and acknowledged; ~965 lines. Finding: W `SheetPointBudgetPanel.tsx:95-97` Add checks only the key format, not whether the key is taken, so the keyed `PUT` silently replaces an existing budget (label "Points" gives key `points`, the legacy budget) (fixed in slice 4). Open: S27 list height in Chrome (checked in slice 5, passed) | [#297](https://github.com/iribarren/ogami/pull/297) |
+| 4 | `review-7f4696b64bc88589` | 040d703, d25fe23, 76990ad | Approved and acknowledged; ~1,499 lines. Findings: W `openapi.json:11337-11338`, `:17683-17684` still list `pointBudget` in the `required` of `PinnedReleaseResponse` and `GameSystemSheetResponse` (stale `OA\Schema(required: …)` on the PHP responses) (fixed in slice 5); S the in-use guard on a legacy single `sheet.pointBudget` lost its integration test (`GameSystemSheetHandlersTest.php:335`) (fixed in slice 5) | [#298](https://github.com/iribarren/ogami/pull/298) |
 
 ## Next step
 
-Slice 4 review, then push and PR; slice 5 (T12 skill budget in Studio through Chrome and re-export, T13 tests, T14 wrap-up).
+Slice 5: slice 4 review fixes, T15 (P18), T12 export and `PresetsTest`, T13 tests; review, PR; closing doc commit (T14, follow-up issue, roadmap).

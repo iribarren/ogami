@@ -11334,8 +11334,7 @@
                     "credits",
                     "sheet",
                     "sheetLayout",
-                    "pointBudgets",
-                    "pointBudget"
+                    "pointBudgets"
                 ],
                 "properties": {
                     "gameSystemKey": {
@@ -17680,8 +17679,7 @@
                     "fields",
                     "trackers",
                     "publishedFieldKeys",
-                    "pointBudgets",
-                    "pointBudget"
+                    "pointBudgets"
                 ],
                 "properties": {
                     "version": {

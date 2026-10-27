@@ -13,7 +13,7 @@ use OpenApi\Attributes as OA;
  * version a client sends back as the expected version of its next sheet write. Every sheet write
  * answers with this.
  */
-#[OA\Schema(required: ['version', 'schemaVersion', 'columns', 'groups', 'fields', 'trackers', 'publishedFieldKeys', 'pointBudget', 'pointBudgets'])]
+#[OA\Schema(required: ['version', 'schemaVersion', 'columns', 'groups', 'fields', 'trackers', 'publishedFieldKeys', 'pointBudgets'])]
 final readonly class GameSystemSheetResponse
 {
     /**

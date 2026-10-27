@@ -416,6 +416,23 @@ final class GameSystemSheetApiTest extends WebTestCase
         self::assertSame([], $this->json()['pointBudgets']);
     }
 
+    #[Test]
+    public function aFieldOfALegacyBudgetCannotBeDeletedOrRenamed(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', edit: fn (array $release): array => $this->withLegacyBudget($release, ['label' => 'Points', 'total' => 100, 'fields' => ['pow']]));
+        $before = $this->sheet();
+
+        $this->client->request('DELETE', self::BASE.'/mine/sheet/fields/pow?expectedVersion=1');
+        self::assertResponseStatusCodeSame(422);
+        self::assertContains('sheet.pointBudget.fields[0]', $this->json()['paths']);
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/sheet/fields/pow', ['expectedVersion' => 1, 'field' => ['key' => 'power', 'label' => 'Power', 'type' => 'number']]);
+        self::assertResponseStatusCodeSame(422);
+        self::assertStringContainsString('sheet.pointBudget.fields[0]', $this->error());
+        self::assertSame($before, $this->sheet());
+    }
+
     /**
      * @return iterable<string, array{string, array<string, mixed>, non-empty-string}> the budget key, the body without its version and where the 422 points
      */

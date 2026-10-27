@@ -878,7 +878,7 @@ final class Campaign
      * Sets one stored value of a Character, as a sheet Effect changes it (FlowRunContext clamps it to
      * the field first); the rest of the Character stays.
      *
-     * @param int|list<string>|array{current: int, max: int} $value
+     * @param int|list<string>|list<array<string, int|string>>|array{current: int, max: int} $value
      *
      * @throws UnknownCharacter when the campaign holds no Character with this id
      * @throws InvalidCharacter when the value breaks a rule

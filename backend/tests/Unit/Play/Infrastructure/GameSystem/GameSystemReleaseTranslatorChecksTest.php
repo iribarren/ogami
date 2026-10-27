@@ -254,7 +254,7 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
         yield 'dice over 100 characters' => [[self::skill(['dice' => str_repeat('1+', 60).'1'])], 'checks[0].dice: invalid dice notation: A dice expression has at most 100 characters, 121 given.'];
         yield 'a modifier that does not parse' => [[self::skill(['modifier' => '{hands} +'])], 'checks[0].modifier: Unexpected end of the formula; expected a number, a reference, "min", "max", "-" or "(".'];
         yield 'a modifier reading an unknown field' => [[self::skill(['modifier' => '{ghost}'])], 'checks[0].modifier: {ghost}: unknown field "ghost".'];
-        yield 'a modifier reading a text field' => [[self::skill(['modifier' => '{role}'])], 'checks[0].modifier: {role}: field "role" is a text or list field, a formula reads number, track and derived fields only.'];
+        yield 'a modifier reading a text field' => [[self::skill(['modifier' => '{role}'])], 'checks[0].modifier: {role}: field "role" is a text, list or inventory field, a formula reads number, track, conditions and derived fields only.'];
         yield 'a modifier reading an unknown tracker' => [[self::skill(['modifier' => '{tracker:nope}'])], 'checks[0].modifier: {tracker:nope}: unknown tracker "nope".'];
         yield 'a modifier reading the difficulty' => [[self::skill(['modifier' => '{check:difficulty}'])], 'checks[0].modifier: {check:difficulty}: a check reference is read only by the bands of a check.'];
         yield 'a difficulty that is not an object' => [[self::skill(['difficulty' => 5])], 'checks[0].difficulty: must be an object.'];
@@ -335,7 +335,7 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
         yield 'a count object without a formula' => [$with(['count' => ['formula' => null]]), 'checks[0].pool.count.formula: must be a string.'];
         yield 'a count formula that does not parse' => [$with(['count' => ['formula' => '{hands} +']]), 'checks[0].pool.count.formula: '];
         yield 'a count formula reading an unknown field' => [$with(['count' => ['formula' => '{nope}']]), 'checks[0].pool.count.formula: {nope}: unknown field "nope".'];
-        yield 'a count formula reading a text field' => [$with(['count' => ['formula' => '{role}']]), 'checks[0].pool.count.formula: {role}: field "role" is a text or list field, a formula reads number, track and derived fields only.'];
+        yield 'a count formula reading a text field' => [$with(['count' => ['formula' => '{role}']]), 'checks[0].pool.count.formula: {role}: field "role" is a text, list or inventory field, a formula reads number, track, conditions and derived fields only.'];
         yield 'a count formula reading a check value' => [$with(['count' => ['formula' => '{check:difficulty}']]), 'checks[0].pool.count.formula: {check:difficulty}: a check reference is read only by the bands of a check.'];
         yield 'sides under 2' => [$with(['sides' => 1, 'successAt' => 1]), 'checks[0].pool.sides: must be between 2 and 1000.'];
         yield 'sides over 1000' => [$with(['sides' => 1001]), 'checks[0].pool.sides: must be between 2 and 1000.'];

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Play\Domain\GameSystem\Sheet;
 
 use App\Formula\Domain\Formula;
+use App\Play\Domain\GameSystem\Sheet\Currency;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
+use App\Play\Domain\GameSystem\Sheet\InventoryField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
 use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
 use App\Play\Domain\GameSystem\Sheet\TextField;
@@ -62,5 +64,35 @@ final class SheetTemplateTest extends TestCase
             new DerivedField('a', 'A', null, null, Formula::fromString('{b}')),
             new DerivedField('b', 'B', null, null, Formula::fromString('{a}')),
         ]);
+    }
+
+    #[Test]
+    public function theCurrencyFloorIsTheMinOfItsFieldElseZero(): void
+    {
+        self::assertNull(new SheetTemplate([new NumberField('eddies', 'Eddies')])->currency());
+        self::assertNull(new SheetTemplate([new NumberField('eddies', 'Eddies')])->currencyFloor());
+
+        $currency = new Currency('eddies', 'eb');
+        self::assertSame($currency, new SheetTemplate([new NumberField('eddies', 'Eddies')], currency: $currency)->currency());
+        self::assertSame(0, new SheetTemplate([new NumberField('eddies', 'Eddies')], currency: $currency)->currencyFloor());
+        self::assertSame(-500, new SheetTemplate([new NumberField('eddies', 'Eddies', min: -500)], currency: $currency)->currencyFloor());
+    }
+
+    #[Test]
+    public function aCurrencyThatIsNotANumberFieldIsRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('The currency is "gear", which is not a number field.');
+
+        new SheetTemplate([new InventoryField('gear', 'Gear')], currency: new Currency('gear'));
+    }
+
+    #[Test]
+    public function aCurrencyOfAMissingFieldIsRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('The currency is "eddies", which is not a number field.');
+
+        new SheetTemplate([], currency: new Currency('eddies'));
     }
 }

@@ -10,8 +10,8 @@ namespace App\Play\Domain\Campaign\Upgrade;
 final readonly class FieldChange
 {
     /**
-     * @param int|string|list<string>|array{current: int, max: int}|null $before
-     * @param int|string|list<string>|array{current: int, max: int}|null $after
+     * @param int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}|null $before
+     * @param int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}|null $after
      */
     public function __construct(
         public string $fieldKey,

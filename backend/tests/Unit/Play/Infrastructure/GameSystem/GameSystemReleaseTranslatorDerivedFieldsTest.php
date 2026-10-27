@@ -73,8 +73,8 @@ final class GameSystemReleaseTranslatorDerivedFieldsTest extends TestCase
     {
         yield 'a syntax error' => ['{str} +', 'sheet.fields[4].formula: Unexpected end of the formula'];
         yield 'an unknown field' => ['{ghost}', 'sheet.fields[4].formula: {ghost}: unknown field "ghost".'];
-        yield 'a text field' => ['{role}', 'sheet.fields[4].formula: {role}: field "role" is a text or list field, a formula reads number, track and derived fields only.'];
-        yield 'a list field' => ['{gear}', 'sheet.fields[4].formula: {gear}: field "gear" is a text or list field, a formula reads number, track and derived fields only.'];
+        yield 'a text field' => ['{role}', 'sheet.fields[4].formula: {role}: field "role" is a text, list or inventory field, a formula reads number, track, conditions and derived fields only.'];
+        yield 'a list field' => ['{gear}', 'sheet.fields[4].formula: {gear}: field "gear" is a text, list or inventory field, a formula reads number, track, conditions and derived fields only.'];
         yield 'a max of a number' => ['{str.max}', 'sheet.fields[4].formula: {str.max}: field "str" is not a track field, only a track field has a max.'];
         yield 'a max of an unknown field' => ['{ghost.max}', 'sheet.fields[4].formula: {ghost.max}: unknown field "ghost".'];
         yield 'an undeclared tracker' => ['{tracker:nope}', 'sheet.fields[4].formula: {tracker:nope}: unknown tracker "nope".'];

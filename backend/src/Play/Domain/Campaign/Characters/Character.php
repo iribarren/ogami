@@ -22,9 +22,9 @@ final readonly class Character
     public const int MAX_NAME_LENGTH = 100;
 
     /**
-     * @param list<string>                                                         $tags
-     * @param list<string>                                                         $freeTags
-     * @param array<string, int|string|list<string>|array{current: int, max: int}> $values
+     * @param list<string>                                                                                         $tags
+     * @param list<string>                                                                                         $freeTags
+     * @param array<string, int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}> $values
      */
     private function __construct(
         private CharacterId $id,
@@ -98,7 +98,7 @@ final readonly class Character
     }
 
     /**
-     * @return array<string, int|string|list<string>|array{current: int, max: int}> by field key
+     * @return array<string, int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}> by field key
      */
     public function values(): array
     {

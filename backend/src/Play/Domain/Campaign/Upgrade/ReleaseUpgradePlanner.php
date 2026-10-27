@@ -202,7 +202,7 @@ final readonly class ReleaseUpgradePlanner
     }
 
     /**
-     * @return array{int|string|list<string>|array{current: int, max: int}, ?FieldChangeKind} the new value, and how it changed (null when kept)
+     * @return array{int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}, ?FieldChangeKind} the new value, and how it changed (null when kept)
      */
     private function fitValue(Field $field, mixed $value): array
     {

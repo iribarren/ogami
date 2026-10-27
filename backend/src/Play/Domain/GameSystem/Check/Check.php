@@ -118,15 +118,17 @@ final readonly class Check
             $bandValues = new CheckValues($sheet, $effective);
             $bounds = array_map(static fn (CheckBand $band): ?int => $band->upTo instanceof Formula ? $band->upTo->evaluate($bandValues) : $band->upTo, $this->bands);
             $roll = $this->dice?->roll($random);
-            $poolRoll = $this->pool instanceof CheckPool ? new DicePool(CheckPool::sizeFor($count, $situational), $this->pool->sides, $this->pool->successAt)->roll($random) : null;
+            $hunger = $this->pool instanceof CheckPool ? $this->hungerOf($this->pool, $sheetValues) : 0;
+            $poolRoll = $this->pool instanceof CheckPool ? new DicePool(CheckPool::sizeFor($count, $situational), $this->pool->sides, $this->pool->successAt, $hunger, $this->pool->criticals ?? 0)->roll($random) : null;
         } catch (FormulaEvaluationFailed|InvalidDiceExpression $failed) {
             throw CheckEvaluationFailed::of($this->key, $failed);
         }
 
         if ($poolRoll instanceof PoolRoll) {
-            $total = $poolRoll->successes();
+            $total = $poolRoll->total();
+            $band = $this->bandFor($bounds, $total);
 
-            return new CheckResult(null, 0, $situational, $effective, $total, $this->bandFor($bounds, $total), [], new PoolResult($count, $poolRoll, $this->termsOf($this->pool->count, $sheetValues)));
+            return new CheckResult(null, 0, $situational, $effective, $total, $band, [], new PoolResult($count, $poolRoll, $this->termsOf($this->pool->count, $sheetValues)), $this->specialOf($poolRoll, $total, $effective, $band));
         }
 
         $roll ??= throw new \LogicException(\sprintf('Check "%s" rolls neither dice nor a pool.', $this->key));
@@ -142,7 +144,8 @@ final readonly class Check
     }
 
     /**
-     * Pushes a pool roll (ADR 0041): re-rolls every die that failed, once, and picks the band again
+     * Pushes a pool roll (ADR 0041): re-rolls the regular dice that failed, once (at most the push's
+     * cap, never Hunger dice, ADR 0044), and picks the band and the special result again
      * for the new successes. Every band bound is evaluated first, against the current sheet and the
      * difficulty the roll had, so a check that cannot be evaluated re-rolls nothing. The cost is not
      * applied here.
@@ -167,12 +170,34 @@ final readonly class Check
         }
 
         try {
-            $pushed = $roll->push($random);
+            $pushed = $roll->push($random, $this->push->maxDice);
         } catch (PoolRollNotPushable) {
             throw CheckNotPushable::noFailedDie($this->key);
         }
 
-        return new PushResult($pushed, $pushed->successes(), $this->bandFor($bounds, $pushed->successes()));
+        $band = $this->bandFor($bounds, $pushed->total());
+
+        return new PushResult($pushed, $pushed->total(), $band, $this->specialOf($pushed, $pushed->total(), $difficulty, $band));
+    }
+
+    /**
+     * The special result of a roll (ADR 0044). A roll fails when its total is below the difficulty, if
+     * the check declares one, else when its band is the first of a check with two bands or more; a
+     * check with a single band never fails. A failed roll with a Hunger 1 is a bestial failure; one
+     * that does not fail is a messy critical with a critical pair holding a Hunger die, else a
+     * critical with a critical pair. The dice only state facts a pool declares, so a pool without
+     * critical pairs or Hunger dice never has a special result.
+     */
+    private function specialOf(PoolRoll $roll, int $total, ?int $difficulty, CheckBand $band): ?SpecialResult
+    {
+        $failed = null !== $difficulty ? $total < $difficulty : \count($this->bands) >= 2 && $band === $this->bands[0];
+
+        return match (true) {
+            $failed => $roll->hasHungerOne() ? SpecialResult::BestialFailure : null,
+            $roll->hasHungerCriticalPair() => SpecialResult::MessyCritical,
+            $roll->hasCriticalPair() => SpecialResult::Critical,
+            default => null,
+        };
     }
 
     /**
@@ -192,6 +217,14 @@ final readonly class Check
     private function countOf(CheckPool $pool, CheckValues $values): int
     {
         return $pool->count instanceof Formula ? $pool->count->evaluate($values) : $pool->count;
+    }
+
+    /**
+     * @throws FormulaEvaluationFailed
+     */
+    private function hungerOf(CheckPool $pool, CheckValues $values): int
+    {
+        return $pool->hunger instanceof Formula ? $pool->hunger->evaluate($values) : $pool->hunger ?? 0;
     }
 
     /**

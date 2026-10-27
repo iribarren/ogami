@@ -81,6 +81,16 @@ final class ContentData
     }
 
     /**
+     * An integer for a field older entries do not store: absent reads as $default.
+     *
+     * @param array<mixed> $data
+     */
+    public static function optionalInt(array $data, string $field, int $default): int
+    {
+        return \array_key_exists($field, $data) ? self::int($data, $field) : $default;
+    }
+
+    /**
      * @param array<mixed> $data
      */
     public static function nullableInt(array $data, string $field): ?int

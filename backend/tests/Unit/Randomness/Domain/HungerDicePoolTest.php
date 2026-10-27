@@ -85,7 +85,7 @@ final class HungerDicePoolTest extends TestCase
         $roll = $this->roll($size, $asked, array_fill(0, $size, 3));
 
         self::assertSame($rolled, new DicePool($size, 10, 6, $asked)->hunger);
-        self::assertSame($rolled, \count(array_filter($roll->dice(), static fn (PoolDie $die): bool => $die->isHunger())));
+        self::assertCount($rolled, array_filter($roll->dice(), static fn (PoolDie $die): bool => $die->isHunger()));
     }
 
     #[Test]
@@ -183,7 +183,7 @@ final class HungerDicePoolTest extends TestCase
     {
         $pushed = $this->roll(4, 0, [2, 3, 8, 8])->push(new ScriptedRandomNumberGenerator(7, 7), 3);
 
-        self::assertSame(2, \count(array_filter($pushed->dice(), static fn (PoolDie $die): bool => $die->isRerolled())));
+        self::assertCount(2, array_filter($pushed->dice(), static fn (PoolDie $die): bool => $die->isRerolled()));
     }
 
     #[Test]

@@ -156,6 +156,7 @@ final class JournalCheckPushApiTest extends WebTestCase
             'rolledBandKey' => 'weak',
             'rolledBandLabel' => 'Weak',
             'changes' => [['field' => 'stress', 'before' => 0, 'after' => 1, 'dice' => null]],
+            'special' => null,
         ], $content['pool']['push']);
         // The same entry was completed: the journal holds it once, as returned.
         self::assertSame([$pushed], $this->get(\sprintf('/api/campaigns/%s/journal', $id)));
@@ -457,7 +458,7 @@ final class JournalCheckPushApiTest extends WebTestCase
         $this->push($id, $entry['id']);
 
         self::assertResponseStatusCodeSame(409);
-        self::assertSame(['error' => 'Every die of the roll succeeded: there is nothing to re-roll.'], $this->json());
+        self::assertSame(['error' => 'No regular die of the roll failed: there is nothing to re-roll.'], $this->json());
         self::assertSame($before, $this->state($id));
     }
 

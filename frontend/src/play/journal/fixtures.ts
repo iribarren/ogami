@@ -202,6 +202,7 @@ export const skillCheckEntry: JournalEntry = {
       { reference: '{edge}', label: 'Edge', value: 2 },
     ],
     pool: null,
+    special: null,
   },
 }
 
@@ -229,6 +230,7 @@ export const luckCheckEntry: JournalEntry = {
     modifierFormula: null,
     modifierTerms: [],
     pool: null,
+    special: null,
   },
 }
 
@@ -272,8 +274,11 @@ export const sneakCheckEntry: JournalEntry = {
         { group: 'pool', face: 5, success: true },
       ],
       successes: 2,
+      criticalsBonus: 0,
+      special: null,
       push: null,
     },
+    special: null,
   },
 }
 
@@ -300,6 +305,7 @@ export const pushedGritEntry: JournalEntry = recordedEntry(
       rolledBandKey: 'weak',
       rolledBandLabel: 'Weak',
       changes: [{ field: 'wounds', before: 0, after: 1, dice: null }],
+      special: null,
     },
   }),
 )
@@ -341,8 +347,11 @@ function gritContent({
         { group: 'pool', face: 3, success: false },
       ],
       successes: 1,
+      criticalsBonus: 0,
+      special: null,
       push,
     },
+    special: null,
     ...over,
   }
 }

@@ -12,7 +12,7 @@ use OpenApi\Attributes as OA;
  * The push part of a recorded pool check: the pool after the push, its successes, the band the roll
  * had before the push and what the cost changed on the Character's sheet.
  */
-#[OA\Schema(required: ['label', 'dice', 'successes', 'rolledBandKey', 'rolledBandLabel', 'changes'])]
+#[OA\Schema(required: ['label', 'dice', 'successes', 'rolledBandKey', 'rolledBandLabel', 'changes', 'special'])]
 final readonly class CheckPushContentResponse
 {
     /**
@@ -40,6 +40,8 @@ final readonly class CheckPushContentResponse
             items: new OA\Items(ref: new Model(type: SheetChangeResponse::class)),
         )]
         public array $changes,
+        #[OA\Property(description: 'The special result of the roll after the push; null for none, and for entries recorded before special results.', nullable: true, enum: ['critical', 'messyCritical', 'bestialFailure'])]
+        public ?string $special,
     ) {
     }
 
@@ -52,6 +54,7 @@ final readonly class CheckPushContentResponse
             $push->rolledBandKey,
             $push->rolledBandLabel,
             array_map(SheetChangeResponse::of(...), $push->changes),
+            $push->special,
         );
     }
 }

@@ -141,7 +141,7 @@ final readonly class PoolRoll
         }
 
         $dice = [];
-        foreach (array_values($faces) as $index => $face) {
+        foreach ($faces as $index => $face) {
             if ($face < 1 || $face > $pool->sides) {
                 throw InvalidDicePool::face($face, $pool->sides);
             }

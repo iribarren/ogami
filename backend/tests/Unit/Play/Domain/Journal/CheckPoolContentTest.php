@@ -167,7 +167,7 @@ final class CheckPoolContentTest extends TestCase
         yield 'success threshold over the sides' => [$with(['successAt' => 7]), '"successAt" must be between 1 and the sides'];
         yield 'size that is not the count plus the situational modifier' => [$with(['size' => 2, 'dice' => [$die(6, true), $die(5, true)], 'successes' => 2]) + ['expression' => '2d6'], '"size" must be the count plus the situational modifier'];
         yield 'size that is not the number of dice' => [$with(['dice' => [$die(6, true), $die(2, false)], 'successes' => 1]), '"size" must be the count plus the situational modifier'];
-        yield 'a die of another group' => [$with(['dice' => [['group' => 'hunger'] + $die(6, true), $die(2, false), $die(5, true)]]), '"group" must be "pool"'];
+        yield 'a die of an unknown group' => [$with(['dice' => [['group' => 'frost'] + $die(6, true), $die(2, false), $die(5, true)]]), '"group" must be "pool" or "hunger"'];
         yield 'a face over the sides' => [$with(['dice' => [$die(7, true), $die(2, false), $die(5, true)]]), '"face" must be between 1 and the sides'];
         yield 'a face under 1' => [$with(['dice' => [$die(0, false), $die(2, false), $die(5, true)], 'successes' => 1]), '"face" must be between 1 and the sides'];
         yield 'a success that disagrees with its face' => [$with(['dice' => [$die(6, true), $die(2, true), $die(5, true)], 'successes' => 3]), '"success" must be whether the face reaches the success threshold'];

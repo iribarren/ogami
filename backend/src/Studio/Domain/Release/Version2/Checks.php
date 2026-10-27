@@ -192,7 +192,7 @@ final class Checks
     private static function specials(?array $pool): array
     {
         $criticals = isset($pool['criticals']);
-        $hunger = isset($pool['hunger']) && 0 !== $pool['hunger']['count'];
+        $hunger = isset($pool['hunger']) && ['count' => 0] !== $pool['hunger'];
 
         return array_filter(['critical' => $criticals, 'messyCritical' => $criticals && $hunger, 'bestialFailure' => $hunger]);
     }

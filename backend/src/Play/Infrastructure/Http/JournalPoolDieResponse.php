@@ -13,7 +13,7 @@ use OpenApi\Attributes as OA;
 final readonly class JournalPoolDieResponse
 {
     private function __construct(
-        #[OA\Property(description: 'The group of dice the die belongs to; "pool" for the dice of a pool.', example: 'pool')]
+        #[OA\Property(description: 'The group of dice the die belongs to: "pool" for a regular die, "hunger" for a Hunger die; entries recorded before Hunger dice only have "pool".', example: 'pool', enum: ['pool', 'hunger'])]
         public string $group,
         #[OA\Property(description: 'The face the die landed on.', example: 5)]
         public int $face,

@@ -933,12 +933,12 @@ final class FlowRun
     }
 
     /**
-     * Whether a check step's roll waits for Keep or Push: a pool roll with a die that failed, of a
+     * Whether a check step's roll waits for Keep or Push: a pool roll with a regular die that failed, of a
      * check that declares a push.
      */
     private function pushable(string $checkKey, CheckResult $result, FlowRunContext $context): bool
     {
-        return $context->release->check($checkKey)?->push instanceof CheckPush && $result->pool instanceof PoolResult && $result->pool->roll->failures() > 0;
+        return $context->release->check($checkKey)?->push instanceof CheckPush && $result->pool instanceof PoolResult && $result->pool->roll->isPushable();
     }
 
     /**

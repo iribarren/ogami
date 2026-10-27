@@ -199,6 +199,42 @@ final class ReleaseContentGearTest extends TestCase
         ReleaseContent::fromArray($release);
     }
 
+    /**
+     * @return iterable<string, array{string, mixed, string}> where an inventory field "gear" is read, and the message
+     */
+    public static function inventoryReaders(): iterable
+    {
+        $check = [['key' => 'skill', 'label' => 'Skill', 'dice' => '1d10', 'modifier' => '{gear}', 'bands' => [['key' => 'fail', 'label' => 'Fail', 'upTo' => 5], ['key' => 'hit', 'label' => 'Hit']]]];
+
+        yield 'a formula' => ['sheet.fields.3', ['key' => 'load', 'label' => 'Load', 'type' => 'derived', 'formula' => '{gear}+1'], 'sheet.fields[3].formula: {gear}: field "gear" is a inventory field, a formula reads'];
+        yield 'a startMax' => ['sheet.fields.3', ['key' => 'hp', 'label' => 'Hit points', 'type' => 'track', 'startMax' => ['formula' => '{gear}']], 'sheet.fields[3].startMax.formula: {gear}: field "gear" is a inventory field, a start max formula reads'];
+        yield 'a check modifier' => ['checks', $check, 'checks[0].modifier: {gear}: field "gear" is a inventory field, a formula reads'];
+        yield 'a point budget' => ['sheet.pointBudget', ['total' => 10, 'fields' => ['gear']], 'sheet.pointBudget.fields[0]: field "gear" is'];
+    }
+
+    #[Test]
+    #[DataProvider('inventoryReaders')]
+    public function nothingReadsAnInventoryFieldAsANumber(string $path, mixed $value, string $message): void
+    {
+        $release = ReleaseArrays::with(ReleaseArrays::fixture(self::FIXTURE), $path, $value);
+
+        $this->expectException(InvalidReleaseContent::class);
+        $this->expectExceptionMessageIsOrContains($message);
+
+        ReleaseContent::fromArray($release);
+    }
+
+    #[Test]
+    public function aStepPlaceholderMayNameAShopStep(): void
+    {
+        $release = ReleaseArrays::with(ReleaseArrays::fixture(self::FIXTURE), 'sceneTypes.20.play.1', ['key' => 'leave', 'kind' => 'prompt', 'title' => 'Leaving', 'prompt' => 'You walk off with: {step:stalls}.']);
+
+        /** @var array{sceneTypes: list<array{play: list<array<string, mixed>>}>} $content */
+        $content = ReleaseContent::fromArray($release)->toArray();
+
+        self::assertSame('You walk off with: {step:stalls}.', $content['sceneTypes'][20]['play'][1]['prompt']);
+    }
+
     #[Test]
     public function aShopInAPhaseHookIsCheckedThere(): void
     {

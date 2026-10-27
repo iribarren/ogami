@@ -1,7 +1,7 @@
 # Feature: play-items-economy
 
 - **Locator:** `odd/tasks/play-items-economy.md` · Engram topic `odd/play-items-economy/tasks`
-- **Issue:** [#311](https://github.com/iribarren/ogami/issues/311) · **Branch:** `feat/play-items-economy-1-contract` · **Status:** in progress (slice 1 of 7)
+- **Issue:** [#311](https://github.com/iribarren/ogami/issues/311) · **Branch:** `feat/play-items-economy-2-play-inventory` · **Status:** in progress (slice 2 of 7)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B11 (before B12 `preset-cpr-campaign`; settles [ADR 0025](../../docs/adr/0025-items-and-shops-after-the-mvp.md))
@@ -85,9 +85,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: this feature doc; roadmap B11 in progress | parent (inline, docs) | [x] | |
-| T2 | 1 | ADR 0045 (gear catalog, `inventory`, `sheet.currency`, `shop`, affordability, upgrade conversions), ADR index, ADR 0025 and 0035 amended-by notes, glossary (Gear, Inventory, Stack, Currency, Shop); schema `v2.schema.json` and contract doc; example 4's Economy section | delegated writer (Opus, design; preparation trigger: code reading for the design) | [x] | |
-| T3 | 1 | Publisher: `gear` catalog, `sheet.currency`, `inventory` field, `shop` step, references (offers, categories, a destination inventory, currency required), canonical form; unit tests; economy in `cpr-campaign-in-acts.json`; Play's translator refuses the new shapes with a clear error | delegated writer (Opus, same writer) | [x] | |
+| T1 | 1 | Docs: this feature doc; roadmap B11 in progress | parent (inline, docs) | [x] | fa4c738 |
+| T2 | 1 | ADR 0045 (gear catalog, `inventory`, `sheet.currency`, `shop`, affordability, upgrade conversions), ADR index, ADR 0025 and 0035 amended-by notes, glossary (Gear, Inventory, Stack, Currency, Shop); schema `v2.schema.json` and contract doc; example 4's Economy section | delegated writer (Opus, design; preparation trigger: code reading for the design) | [x] | fa4c738 |
+| T3 | 1 | Publisher: `gear` catalog, `sheet.currency`, `inventory` field, `shop` step, references (offers, categories, a destination inventory, currency required), canonical form; unit tests; economy in `cpr-campaign-in-acts.json`; Play's translator refuses the new shapes with a clear error | delegated writer (Opus, same writer) | [x] | 393c5d5 |
 | T4 | 2 | Play: translator reads `gear`, `sheet.currency`, `inventory`; `InventoryField`, stacks, capacity, `maxStacks`, categories in `CharacterValues`; legacy Characters read; tests | delegated writer (Sonnet) | [ ] | |
 | T5 | 2 | Play API: pinned release gear catalog and currency, sheet field view, Character values with stacks; `make api`; tests | delegated writer (Sonnet) | [ ] | |
 | T6 | 3 | Play flow: translator `shop`; stock roll when reached (stored on the FlowRun); transaction (sell then buy, routing, stacking), errors, journal content, `{step:key}`; request and step response; tests | delegated writer (Sonnet or Opus) | [ ] | |
@@ -118,13 +118,15 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-4430bdf6d7dc77a6` | fa4c738, 393c5d5 | approved; R3 warning (refusal tests: formulas, `startMax`, check modifiers and point budgets reject an `inventory` field) and R3 suggestion (positive `{step:key}` test on a shop step) fixed in slice 2 | [#312](https://github.com/iribarren/ogami/pull/312) |
 
 ## Progress
 
 - 2026-10-27: feature started; explorer layer map; four design decisions taken with the user; issue #311; slice plan of 7.
 - 2026-10-27: T2 done: ADR 0045 settles the defaults and adds unique gear names (for the upgrade's name match), no `mandatory` and no sheet effects on a shop, no spill between inventories, a 0..offer clamp on dice stock, 422 for both codes; glossary, schema, contract doc, example 4 (docs only, no runnable RED).
 - 2026-10-27: T3 done: publisher `Gear`, inventory, currency and shop rules (RED: `gear: unknown property`, then GREEN, 59 tests in `ReleaseContentGearTest`, schema agreement in `ReleaseSchemaGearTest`); example 4 fixture carries the economy; Play's translator refuses each shape (ADR 0045) and its tests read the example without it.
+- 2026-10-28: slice 1 review fixes: publisher tests that an `inventory` field is refused in a derived formula, a `startMax`, a check modifier and a point budget, and that `{step:key}` may name a `shop` step (the publisher already refused and accepted these, so no RED; the tests pin the behavior, 64 tests green in `ReleaseContentGearTest`).
 
 ## Next step
 
-Slice 1: T2 and T3 (one Opus writer), then review and PR.
+Slice 2: slice 1 review fixes, then T4–T5 (one Sonnet writer), then review and PR. Slice 3 drops the stripped example-4 copy `GameSystemReleaseTranslatorGearTest::playable()` once Play reads shops too.

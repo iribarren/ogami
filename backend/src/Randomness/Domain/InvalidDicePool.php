@@ -30,4 +30,14 @@ final class InvalidDicePool extends \DomainException
     {
         return new self(\sprintf('A die of a pool shows a face between 1 and %d, %d given.', $sides, $face));
     }
+
+    public static function criticalsBonus(int $bonus): self
+    {
+        return new self(\sprintf('The bonus of a critical pair cannot be negative, %d given.', $bonus));
+    }
+
+    public static function maxDice(int $maxDice): self
+    {
+        return new self(\sprintf('A push re-rolls at least 1 die, %d given as its cap.', $maxDice));
+    }
 }

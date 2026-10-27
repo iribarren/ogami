@@ -415,16 +415,18 @@ final class PresetsTest extends KernelTestCase
         }
         self::assertSame(['brawl' => '{vigour} + {brawl} - {body}', 'inquiry' => '{reason} + {inquiry} - {mind}', 'insight' => '{heart} + {insight} - {mind}', 'stand-fast' => '{reason} + {heart} - {mind}'], $formulas);
 
-        // Two Conditions fields, one per kind of harm, and the four attributes share 12 points.
+        // Two Conditions fields, one per kind of harm, and the four attributes share 12 points and the skills 8.
         $sheet = $snapshot->sheet();
         foreach (['body' => ['winded', 'bruised', 'bleeding'], 'mind' => ['rattled', 'dread', 'despair']] as $key => $options) {
             $conditions = $sheet->field($key);
             self::assertInstanceOf(ConditionsField::class, $conditions, $key);
             self::assertSame($options, $conditions->optionKeys(), $key);
         }
-        $budget = $sheet->budgets()[0] ?? null;
-        self::assertNotNull($budget);
-        self::assertSame([12, ['vigour', 'finesse', 'reason', 'heart']], [$budget->total, $budget->fields]);
+        // Two point budgets (ADR 0043): the attributes, and 8 skill points over the twelve skills, at most 3 each.
+        $budgets = $sheet->budgets();
+        self::assertSame(['points', 'skills'], array_map(static fn (\App\Play\Domain\GameSystem\Sheet\PointBudget $budget): string => $budget->key, $budgets));
+        self::assertSame([12, ['vigour', 'finesse', 'reason', 'heart']], [$budgets[0]->total, $budgets[0]->fields]);
+        self::assertSame([8, 0, 3, [...$bodySkills, ...$mindSkills]], [$budgets[1]->total, $budgets[1]->min, $budgets[1]->max, $budgets[1]->fields]);
 
         // The mystery is the default flow; Clues and Nightfall track it, and a full Nightfall ends the Investigation after its scene.
         $flow = $snapshot->defaultFlow();

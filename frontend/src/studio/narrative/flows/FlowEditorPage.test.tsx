@@ -821,6 +821,55 @@ describe('the hooks of a phase', () => {
     expect(Object.keys(sent ?? {})).not.toContain('worldTurn')
   })
 
+  it('offers the special results of the checks the draft holds in a hook step', async () => {
+    const feed = { key: 'feed', kind: 'check', title: 'Feed', check: 'skill' }
+    const withCheck = {
+      ...stored({ worldTurn: [feed] }),
+      catalog: {
+        ...narrativeFlows.catalog,
+        checks: [{ key: 'skill', label: 'Skill', bands: ['fail', 'win'], difficulty: null }],
+      },
+    }
+    const hunger = {
+      key: 'skill',
+      label: 'Skill',
+      pool: {
+        count: 3,
+        sides: 10,
+        successAt: 6,
+        criticals: { bonus: 2 },
+        hunger: { count: { formula: '{hunger}' } },
+      },
+      bands: [
+        { key: 'fail', label: 'Fail', upTo: 0 },
+        { key: 'win', label: 'Win' },
+      ],
+    }
+    const { user } = await openEditor('heist', {
+      [`GET ${base}/narrative`]: json(withCheck),
+      [`GET ${base}/checks`]: json({
+        version: 5,
+        schemaVersion: 2,
+        checks: [hunger],
+        fields: [],
+        trackers: [],
+        conditions: [],
+        usages: {},
+      }),
+    })
+
+    await user.click(hook('World turn (1 step)'))
+
+    const specials = within(await content().findByRole('group', { name: 'Special results' }))
+    expect(
+      specials.getAllByRole('button', { name: /^Add outcome for / }).map((b) => b.textContent),
+    ).toEqual([
+      'Add outcome for Critical',
+      'Add outcome for Messy critical',
+      'Add outcome for Bestial failure',
+    ])
+  })
+
   it('sends a stored empty hook back as it was', async () => {
     const saved = recorder(() => Response.json(narrativeFlows))
     const { user } = await openEditor('heist', {

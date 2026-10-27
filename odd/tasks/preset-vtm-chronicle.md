@@ -1,7 +1,7 @@
 # Feature: preset-vtm-chronicle
 
 - **Locator:** `odd/tasks/preset-vtm-chronicle.md` · Engram topic `odd/preset-vtm-chronicle/tasks`
-- **Issue:** #301 · **Branch:** `feat/preset-vtm-chronicle-5-studio-flow` · **Status:** in progress (slice 5)
+- **Issue:** #301 · **Branch:** `feat/preset-vtm-chronicle-6-preset` · **Status:** in progress (slice 6)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B10 (after `rules-dice-pools`, [ADR 0041](../../docs/adr/0041-dice-pools-pushes-and-conditions.md))
@@ -74,7 +74,7 @@ GameSystem `vtm-night-court`, original wording throughout.
 
 ## Slice plan
 
-Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice. Each slice's first commit carries the previous slice's review fixes.
+Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice. Each slice's first commit carries the previous slice's review fixes. Slice 6 was split in two when it was planned (2026-10-27): the export alone is ~1,900 lines, so the findings, flow test and e2e moved to slice 7 (slices 1–5 PR titles said n/6).
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
@@ -83,7 +83,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 3 | `feat/preset-vtm-chronicle-3-play-ui` | `feat(play): preset-vtm-chronicle 3/6 special results, flow branching and badge` | T6–T8 | ~1,500: dice in two colours, the special result, push offer with the cap ~450; step outcomes on a special (translator, `CheckStep`, `FlowRun`) ~450; credits badge (translator, responses, logo asset, `CreditsNotice`) ~250; generated ~300 |
 | 4 | `feat/preset-vtm-chronicle-4-studio-checks` | `feat(studio): preset-vtm-chronicle 4/6 hunger and criticals in the check editor` | T9–T10 | ~1,700: editor criticals, Hunger and push cap ~550; sandbox backend and views ~450; sandbox UI ~350; generated ~350 |
 | 5 | `feat/preset-vtm-chronicle-5-studio-flow` | `feat(studio): preset-vtm-chronicle 5/6 special outcomes and badge in Studio` | T11–T12 | ~1,000: check step outcomes on a special in the flow editor ~550; metadata badge ~250; generated ~200 |
-| 6 | `feat/preset-vtm-chronicle-6-preset` | `feat(presets): preset-vtm-chronicle 6/6 night court` | T13–T16 | ~2,000: exported JSON ~1,700 (reviewed per commit, as `preset-vaesen` slice 1); `PresetsTest`, flow unit test, e2e ~300; closing. Studio and Play findings fixed or filed |
+| 6 | `feat/preset-vtm-chronicle-6-preset` | `feat(presets): preset-vtm-chronicle 6/7 night court` | T13–T15 | ~2,300: slice 5 review fixes ~150; this doc ~100; exported JSON ~1,900 (12 Scene Types, 13 checks; one file, so over the ceiling and reviewed apart from it); `PresetsTest` ~120 |
+| 7 | `feat/preset-vtm-chronicle-7-findings` | `feat(presets): preset-vtm-chronicle 7/7 findings and preset tests` | T16–T18 | ~600: Studio and Play findings from T13–T14 fixed or filed; flow unit test, e2e ~350; closing |
 
 ## Tasks
 
@@ -99,12 +100,14 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T8 | 3 | Credits badge in Play: translator, `Credits`, responses, the Dark Pack logo asset, `CreditsNotice`; tests | delegated writer (Sonnet) | [x] | 019a728 |
 | T9 | 4 | Studio check editor: criticals, Hunger count, push cap; error paths; tests and story | delegated writer (Sonnet) | [x] | bd7e739 (slice 3 fix f6c9ade) |
 | T10 | 4 | Studio sandbox: Hunger dice, criticals, special result, capped push (backend, views, API, UI); tests | delegated writer (Sonnet) | [x] | 9ec7929 |
-| T11 | 5 | Studio flow editor: check step outcomes on a special; tests | delegated writer (Sonnet; writer trigger: 2+ non-trivial files) | [x] | |
-| T12 | 5 | Studio metadata: credits badge; tests | delegated writer (Sonnet; same writer) | [x] | |
-| T13 | 6 | Author `vtm-night-court` in Studio from the outline, sandbox-roll Hunger and criticals, publish; log Studio findings | parent (browser, worker) | [ ] | |
-| T14 | 6 | Play a session (Session Zero, two nights, a world turn, a bestial failure branch, the masquerade roll-under); fix content and republish; log Play findings | parent (browser, worker) | [ ] | |
-| T15 | 6 | Export to `backend/presets/vtm-night-court.json` unedited; `PresetsTest`; flow unit test; e2e spec (credits badge, a Hunger roll in the journal) | delegated writer | [ ] | |
-| T16 | 6 | Wrap-up: findings fixed or filed; roadmap B10 done; this doc closed | parent (closing doc commit) | [ ] | |
+| T11 | 5 | Studio flow editor: check step outcomes on a special; tests | delegated writer (Sonnet; writer trigger: 2+ non-trivial files) | [x] | efcc9f6 (slice 4 fixes 3ed1b59) |
+| T12 | 5 | Studio metadata: credits badge; tests | delegated writer (Sonnet; same writer) | [x] | a731325 |
+| T13 | 6 | Author `vtm-night-court` in Studio from the content spec, sandbox-roll Hunger and criticals, publish; log Studio findings | parent (browser, Claude in Chrome worker) | [ ] | |
+| T14 | 6 | Play a session (Session Zero, two nights, a world turn, a bestial failure branch, the masquerade roll-under); fix content and republish; log Play findings | parent (browser, Claude in Chrome worker) | [ ] | |
+| T15 | 6 | Export to `backend/presets/vtm-night-court.json` unedited; `PresetsTest` (publishes, credits and badge, 13 checks with Hunger, criticals and the capped push, special step outcomes) | delegated writer (Sonnet) | [ ] | |
+| T16 | 7 | Studio and Play findings from T13–T14: fix the small ones, file the rest as a `follow-up` issue | delegated writer (Sonnet) | [ ] | |
+| T17 | 7 | Flow unit test (a messy critical on a Hunt, a bestial failure reaching the Compulsion, a failed Rouse raising Hunger, the masquerade roll-under forcing the raid, Dawn adding a night); e2e spec (credits badge, a Hunger roll in the journal) | delegated writer (Sonnet) | [ ] | |
+| T18 | 7 | Wrap-up: findings fixed or filed; roadmap B10 done; this doc closed | parent (closing doc commit) | [ ] | |
 
 ## Acceptance criteria
 
@@ -138,6 +141,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-27: slice 5 commit 1 (slice 4 review findings): `readPool` / `readPush` read a stored `null` criticals, Hunger or push cap as absent and the write leaves it out (RED: the check was unreadable, then GREEN). `CheckTestPool` already took 0 as "no critical pairs" (the default) and the reader refuses a stored 0, so its message now says "0 for none or in 1..10" (RED: the old message, then GREEN).
 - 2026-10-27: T11 flow editor special outcomes: `CheckOutcomeDraft` is a band or a `special` outcome (an entry naming both, neither or an unknown special stays a stored step); `setCheckOutcome` writes bands in the check's order, then critical, messyCritical, bestialFailure, strays last, and `setBandOutcome` wraps it. `StepContext.checks[].specials` (optional) comes from `specialsOf` over the checks read model (`stepContext(narrative, checks)`; a literal Hunger count 0 is no Hunger dice) and the Flow and Scene Type editors load `useGameSystemChecks`, so no endpoint was added; a set offers the intersection, and while the pools are unknown nothing is offered or flagged. "Special results" group under the bands with Add / Remove, strays say "This check cannot produce this special result."; `outcomes[n].special` errors already map to the row. Vitest and the story were written with the code; the suite passed on first run, apart from one test of mine fixed before it counted.
 - 2026-10-27: T12 Studio credits badge: `GameSystemCreditsRequest` / `GameSystemCreditsResponse` gain a nullable `badge` (OpenAPI enum from `ReleaseVersion2::BADGES`); the controller accepts a string or null and 400s any other type like the license, the domain refuses an unknown badge (422 naming `credits.badge`), a null or absent badge clears it, `make api`. `MetadataForm` has a "Badge" select (None / Dark Pack, an unknown stored one stays selectable) with the logo beside it, leaves `badge` out of the request when none is picked, and a badge needs a notice. API, unit and Vitest tests (new `MetadataForm.test.tsx`) were written before the code for the backend (RED: badge missing from the answer, unknown badge accepted) and with the component for the frontend; story `MetadataForm`.
+- 2026-10-27: slice 6 commit 1 (slice 5 review findings): `FlowEditorPage` test proves the checks read model reaches `stepContext` (a World turn check step on a Hunger check with criticals offers Critical, Messy critical and Bestial failure). No production change: the test passed on its first run against the existing wiring; mutation check (dropping `checks.data` from `stepContext` in `FlowEditor.tsx`) made it fail, then restored. The oracle table finding needs no change: a table entry holds a Scene Type and effects (`EntriesEditor`), never steps, so no check step can sit there and `OracleTableEditorPage` needs no checks.
 
 ## Reviews
 
@@ -147,7 +151,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 2 | `review-92d91f85ad4060fc` (main..ce45510), `review-095722f7f9626921` (ce45510..1f58d52); 1,936 lines, size accepted by the user | a219e5d, ce45510, 55fd791, 1f58d52 | approved, acknowledged (both) | No test for a negative Hunger formula (the pool clamps it to 0; must not 500); no flow-level test that a roll whose only failed dice are Hunger dice is not pushable on a pending step (`FlowRun::pushable`); `PoolRoll::ofFaces` dropped `array_values` (list contract); optional: `Checks.php:195` literal Hunger `> 0` where the schema already refuses negatives. Fixed in slice 3 | [#303](https://github.com/iribarren/ogami/pull/303) |
 | 3 | `review-742c3094e8c4a81d` | 2837504, 7a2ba3d, 019a728, c5769a6 | approved, acknowledged | R3 suggestion: `CreditsNotice.tsx:17` crashes when the API sends a badge this SPA build does not know (`creditsBadges` lookup undefined); fall back to no logo, with a test. Fixed in slice 4 | [#304](https://github.com/iribarren/ogami/pull/304) |
 | 4 | `review-8f746d03d236f101` | f6c9ade, bd7e739, 9ec7929 | approved, acknowledged | Warning: `checkDraft.ts` `readPool` / `readPush` refuse a stored explicit `null` for `criticals`, `hunger` or `maxDice`, which the contract documents as nullable and the sandbox reads as absent. Suggestion: `CheckTestPool.php:41` accepts a critical bonus of 0..10 but its message says 1..10. Fixed in slice 5 | [#305](https://github.com/iribarren/ogami/pull/305) |
+| 5 | `review-618ddda709b5a87d` | 3ed1b59, efcc9f6, a731325 | approved, acknowledged; 1,191 lines | R3 suggestion: the checks wiring of `FlowEditor.tsx:78-80` into `stepContext` has no flow-editor page test (the Scene Type editor page has one). Note: `OracleTableEditorPage` loads no checks, so a check step in a table entry's steps offers no special outcomes. Both fixed in slice 6 | [#306](https://github.com/iribarren/ogami/pull/306) |
 
 ## Next step
 
-Slice 5: the writer fixes slice 4's review findings (stored `null` pool parts in the check editor, the sandbox's criticals bonus range), then Studio's flow editor special outcomes (T11) and the metadata credits badge (T12).
+Slice 6: the writer fixes slice 5's review findings (flow-editor page test for the checks wiring, special outcomes in the oracle table editor); a Claude in Chrome worker authors `vtm-night-court` from the content spec (T13) and plays it (T14); the writer exports it and adds `PresetsTest` (T15).

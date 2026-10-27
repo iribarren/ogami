@@ -85,7 +85,7 @@ Point budget map (explorer, 2026-10-26): publisher `Studio/Domain/Release/Versio
 | T10 | 3 | S27: the effect-kind select shows every kind (no clipped tenth row); test | delegated writer (Sonnet) | [x] | af9d94d |
 | T11 | 4 | Remove the single-budget Studio endpoints (`PUT` / `DELETE …/sheet/point-budget`, commands, `several_point_budgets`), the Studio view's `pointBudget` and Play's pinned `pointBudget` (ADR 0043); slice 2 finding A-S goes with them; `make api` | delegated writer (Sonnet) | [x] | d25fe23, 76990ad |
 | T12 | 5 | Lanterns: skill budget (8, at most 3) in Studio, publish, re-export unedited; `PresetsTest` update | parent (browser) + delegated writer | [ ] | |
-| T15 | 5 | P18: the Play character form flags a budget field above its budget's max (or below its min) and blocks Save; tests | delegated writer | [ ] | |
+| T15 | 5 | P18: the Play character form flags a budget field above its budget's max (or below its min) and blocks Save; tests | delegated writer | [x] | |
 | T13 | 5 | Flow unit test (Clues and Nightfall, Nightfall ends the phase, a pushed step marks a Condition, Respite clears) and e2e spec (credits, a pool roll in the journal) | delegated writer | [ ] | |
 | T14 | 5 | Wrap-up: follow-up issue for the UX findings (P3, P6, P7, P9, P13, Studio polish); roadmap B9 done; this doc closed | parent (closing doc commit) | [ ] | |
 
@@ -156,6 +156,7 @@ Played 2026-10-26 by a Claude in Chrome worker as `mire-author@ogami.test`: camp
 - 2026-10-27: Slice 4 split: fix and T11 with the regenerated API reached ~1,490 lines, and T12 waits on Chrome (extension not connected), so T12–T14 move to a new slice 5 (~550); slices 1–3 PR titles said n/4.
 - 2026-10-27: T12 Studio part (Chrome worker, `mire-author@ogami.test`): "Skill points" (key `skills`, total 8, range 0–3, the twelve skills) added beside "Attribute points" (key `points`); validation clean; v4 published ("Skill points: 8 to spend, at most 3 per skill."). Play on v4: two counters, a valid set saved, 9/8 shows "(over budget)" with Save disabled; a skill field took 4 and 5 above its max (P18, now T15). S27 checked in Chrome. The key followed the label as `skill-points` and was overridden to `skills`. No console errors.
 - 2026-10-27: Slice 4 review fixes (writer, Sonnet): W `pointBudget` dropped from the `required` lists of `PinnedReleaseResponse` and `GameSystemSheetResponse`, spec regenerated (`openapi.json` only; no cheap contract test exists for `required`, so none added); S `aFieldOfALegacyBudgetCannotBeDeletedOrRenamed` (API) pins the 422 with `sheet.pointBudget.fields[0]` for a delete and a rename. Test written after the guard, which already worked, so no RED.
+- 2026-10-27: T15 done (writer, Sonnet): P18 fixed. A budget field whose typed value lies outside its budget-narrowed range shows "<Label>: between 0 and 3." (`role=alert`, above the sheet) and Save is disabled, as when over budget; blank counts as 0 as before; the server's bounds check is unchanged. RED: the new `CharactersPanel` test failed before the change (no message), GREEN after (45 tests in `play/characters`).
 
 ## Reviews
 

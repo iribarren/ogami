@@ -6,11 +6,13 @@ namespace App\Tests\Integration\Play;
 
 use App\Formula\Domain\Formula;
 use App\Play\Application\GetGameSystemSnapshot;
+use App\Play\Domain\GameSystem\CreditsBadge;
 use App\Play\Domain\GameSystem\Flow\CheckStep;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
 use App\Play\Domain\GameSystem\Flow\EndPhaseEffect;
 use App\Play\Domain\GameSystem\Flow\FlowView;
+use App\Play\Domain\GameSystem\Flow\RollStep;
 use App\Play\Domain\GameSystem\Flow\SheetEffect;
 use App\Play\Domain\GameSystem\Flow\SheetOperation;
 use App\Play\Domain\GameSystem\Flow\TableStep;
@@ -439,6 +441,65 @@ final class PresetsTest extends KernelTestCase
         $last = $nightfall->bands[\count($nightfall->bands) - 1];
         self::assertContainsOnlyInstancesOf(EndPhaseEffect::class, $last->outcome->effects);
         self::assertCount(1, $last->outcome->effects);
+    }
+
+    #[Test]
+    public function vtmNightCourtPublishesOnceWithItsDarkPackCreditsHungerPoolChecksAndTheMasqueradeFlow(): void
+    {
+        $this->assertPublishesOnce('vtm-night-court');
+
+        $snapshot = $this->snapshot('vtm-night-court');
+        // Publishing into an empty database makes release 1, whatever version the file was exported at.
+        self::assertSame(1, $snapshot->releaseVersion());
+
+        // The Dark Pack Agreement (ADR 0021) is named with its link and its badge, and the notice discloses generative AI.
+        $credits = $snapshot->credits();
+        self::assertNotNull($credits);
+        self::assertStringContainsString('generative AI', $credits->notice);
+        self::assertSame(['Dark Pack Agreement', 'https://www.paradoxinteractive.com/games/world-of-darkness/community/dark-pack-agreement', CreditsBadge::DarkPack], [$credits->license, $credits->url, $credits->badge]);
+
+        // Thirteen checks (ADR 0044): twelve Hunger pools of attribute + skill that push by spending Willpower, and Rouse the Blood.
+        $checks = $snapshot->checks();
+        self::assertCount(13, $checks);
+        $pools = array_filter($checks, static fn (\App\Play\Domain\GameSystem\Check\Check $check): bool => 'rouse' !== $check->key);
+        self::assertCount(12, $pools);
+        foreach ($pools as $check) {
+            $pool = $check->pool;
+            self::assertSame([10, 6, 2], [$pool?->sides, $pool?->successAt, $pool?->criticals], $check->key);
+            self::assertMatchesRegularExpression('/^\{[a-z]+\} \+ \{'.$check->key.'\}$/', $pool?->count instanceof Formula ? $pool->count->toString() : '', $check->key);
+            self::assertSame('{hunger}', $pool?->hunger instanceof Formula ? $pool->hunger->toString() : null, $check->key);
+            self::assertSame(['Spend Willpower', 3], [$check->push?->label, $check->push?->maxDice], $check->key);
+            $cost = $check->push->effects[0] ?? null;
+            self::assertInstanceOf(SheetEffect::class, $cost, $check->key);
+            self::assertSame(['willpower', SheetOperation::Subtract], [$cost->field, $cost->op], $check->key);
+        }
+
+        // Rouse the Blood is one plain die: no Hunger, no critical pairs, no push.
+        $rouse = $snapshot->check('rouse');
+        self::assertSame([1, 10, 6, null, null, null], [$rouse?->pool?->count, $rouse?->pool?->sides, $rouse?->pool?->successAt, $rouse?->pool?->criticals, $rouse?->pool?->hunger, $rouse?->push]);
+
+        // Two point budgets (ADR 0043): 22 over nine attributes at 1..4, 14 over twelve skills at 0..3.
+        $budgets = $snapshot->sheet()->budgets();
+        self::assertSame(['points', 'skills'], array_map(static fn (\App\Play\Domain\GameSystem\Sheet\PointBudget $budget): string => $budget->key, $budgets));
+        self::assertSame([22, 1, 4, 9], [$budgets[0]->total, $budgets[0]->min, $budgets[0]->max, \count($budgets[0]->fields)]);
+        self::assertSame([14, 0, 3, 12], [$budgets[1]->total, $budgets[1]->min, $budgets[1]->max, \count($budgets[1]->fields)]);
+
+        // A Bestial Failure sends a hook roll to the Compulsion step; a Messy Critical on the Hunt has an Outcome of its own.
+        $hunt = $snapshot->sceneType('hunt')?->play->step('check-1');
+        self::assertInstanceOf(CheckStep::class, $hunt);
+        self::assertSame('compulsion', $hunt->specialOutcomes['bestialFailure']->next ?? null);
+        self::assertContains('messyCritical', array_keys($hunt->specialOutcomes));
+        self::assertSame('end', $hunt->specialOutcomes['messyCritical']->next);
+
+        // The world turn rolls the Second Inquisition against the Masquerade tracker.
+        $flow = $snapshot->defaultFlow();
+        self::assertSame('chronicle', $flow?->key);
+        $inquisition = $flow?->phase('chronicle')?->worldTurn->step('inquisition');
+        self::assertInstanceOf(RollStep::class, $inquisition);
+        $upTo = $inquisition->bands[0]->upTo;
+        self::assertInstanceOf(Formula::class, $upTo);
+        self::assertSame('{tracker:masquerade}', $upTo->toString());
+        self::assertContains('masquerade', array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
     }
 
     private function assertPublishesOnce(string $preset): void

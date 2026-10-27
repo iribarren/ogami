@@ -102,9 +102,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T10 | 4 | Studio sandbox: Hunger dice, criticals, special result, capped push (backend, views, API, UI); tests | delegated writer (Sonnet) | [x] | 9ec7929 |
 | T11 | 5 | Studio flow editor: check step outcomes on a special; tests | delegated writer (Sonnet; writer trigger: 2+ non-trivial files) | [x] | efcc9f6 (slice 4 fixes 3ed1b59) |
 | T12 | 5 | Studio metadata: credits badge; tests | delegated writer (Sonnet; same writer) | [x] | a731325 |
-| T13 | 6 | Author `vtm-night-court` in Studio from the content spec, sandbox-roll Hunger and criticals, publish; log Studio findings | parent (browser, Claude in Chrome worker) | [ ] | |
-| T14 | 6 | Play a session (Session Zero, two nights, a world turn, a bestial failure branch, the masquerade roll-under); fix content and republish; log Play findings | parent (browser, Claude in Chrome worker) | [ ] | |
-| T15 | 6 | Export to `backend/presets/vtm-night-court.json` unedited; `PresetsTest` (publishes, credits and badge, 13 checks with Hunger, criticals and the capped push, special step outcomes) | delegated writer (Sonnet) | [ ] | |
+| T13 | 6 | Author `vtm-night-court` in Studio from the content spec, sandbox-roll Hunger and criticals, publish; log Studio findings | parent (browser, Claude in Chrome worker) | [x] | — (Studio only; recorded in the export) |
+| T14 | 6 | Play a session (Session Zero, two nights, a world turn, a bestial failure branch, the masquerade roll-under); fix content and republish; log Play findings | parent (browser, Claude in Chrome worker) | [x] | — (v2 published from Studio) |
+| T15 | 6 | Export to `backend/presets/vtm-night-court.json` unedited; `PresetsTest` (publishes, credits and badge, 13 checks with Hunger, criticals and the capped push, special step outcomes) | delegated writer (Sonnet) | [x] | |
 | T16 | 7 | Studio and Play findings from T13–T14: fix the small ones, file the rest as a `follow-up` issue | delegated writer (Sonnet) | [ ] | |
 | T17 | 7 | Flow unit test (a messy critical on a Hunt, a bestial failure reaching the Compulsion, a failed Rouse raising Hunger, the masquerade roll-under forcing the raid, Dawn adding a night); e2e spec (credits badge, a Hunger roll in the journal) | delegated writer (Sonnet) | [ ] | |
 | T18 | 7 | Wrap-up: findings fixed or filed; roadmap B10 done; this doc closed | parent (closing doc commit) | [ ] | |
@@ -122,6 +122,38 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - Per slice: test first where a runnable test exists; `make verify` once at the end; CI runs every suite.
 - Slice 6: Chrome authoring and playtest; `PresetsTest`; e2e.
+
+## Studio findings
+
+Authored 2026-10-27 by two Claude in Chrome workers as `night-author@ogami.test` (the first stopped on a browser-tool rate limit; ~1,350 browser actions in all, Scene Types ~30–40 each). v1 published, validation clean on the first run, no console errors. Deviations from the content spec: theme `noir` (no `eldritch`); the raid's "masquerade −3" is a tracker `add -3` (tracker effects have `add` and `set` only, as the contract says); Intrigue's pick had both `leader` and `rival` tags, which matches nobody (a pick needs all its tags), and the skill-check steps were optional: both fixed in v2. Tool artefacts (sign-in, coordinate clicks) are left out.
+
+| ID | Finding | Severity | Plan |
+|---|---|---|---|
+| S3 | Overview: no `eldritch` theme among the offered themes | Low | Slice 7 triage |
+| S5 | Sheet: groups cannot be declared up front; their order follows the first field of each, then Move up / down one step at a time (rapid clicks scramble the order, S28) | Low | Slice 7 triage |
+| S8 | Oracles: likelihood levels cannot be reordered | Low | Slice 7 triage |
+| S9 | Oracle tables: an entry key is reachable only through each row's expander; Paste entries takes ranges but not keys | Low | Slice 7 triage |
+| S13 / S18 | Scene Types: every step, effect and Next is a custom select and each special result needs its own Add outcome, so a skill-check Scene Type takes ~30–40 actions | Medium | Slice 7 triage |
+| S16 / S25 | A Next select lists only steps that exist, so the Compulsion step (and the world turn's branch targets) must be created before the outcome that jumps to it | Low | Slice 7 triage |
+| S21 | Three Scene Types reported saved by the first worker had no steps; cause unknown (no save, or a lost save) | Medium | Slice 7 triage |
+| S22 / S30 | Saving a Scene Type shows no confirmation | Low | Slice 7 triage |
+| S23 / S19 | Custom selects drop typeahead typed within ~1 s of opening | Medium | Slice 7 triage |
+| S24 | Flow editor: after saving, a roll step whose band is bound to a tracker (`upTo {tracker}`) shows "a kind or shape this editor cannot edit yet", so the masquerade roll cannot be corrected in Studio | Medium | Slice 7 triage |
+| S32 | Pick step: no hint that no tags means any NPC | Low | Slice 7 triage |
+
+## Playtest findings
+
+Played 2026-10-27 by a Claude in Chrome worker as `night-author@ogami.test`: campaign "Night Court Test v2" on v2, Session Zero, a Hunt with a push (the failed regular die re-rolled, the Hunger die kept, Willpower 5 → 4), a bestial failure at Hunger 5 reaching the Compulsion table, Dawn (Rouse, night 1 → 2), world turns (a faction move, hunter activity, quiet nights), masquerade set to 10 forcing the Inquisition raid (its closing 10 → 7), Intrigue with the fixed pick and the optional Rouse (Hunger 0 → 1), Haven (Humanity 7 → 6), the session closing. Credits notice, Dark Pack logo and license link show in the new-campaign form and on the campaign. No messy critical came up in two Hunts (the sandbox showed one in T13); no push on a failed roll (its failed dice were Hunger dice, where Push is correctly not offered). No console errors; 122 `/api` calls all 200/201.
+
+| ID | Finding | Kind | Severity | Plan |
+|---|---|---|---|---|
+| P1 | Closing Session Zero asks the chronicle's "Did you get what you wanted?" and opens Session 2 at once | UX | Low | Slice 7 triage |
+| P2 | Hunters strike is checked only after the hunter-activity event (as example 1), so a full Hunters clock filled another way never forces it | Content | Medium | Slice 7 triage |
+| P3 | Skipping a world-turn pick takes no branch, and the next prompt reads "What does  do toward their agenda?" with `{picked}` empty | Bug | Low | Slice 7 triage |
+| P4 | Push is offered on a roll that already succeeded (ADR 0041 allows a push whenever a regular die failed) | UX | Low | Slice 7 triage |
+| P5 | The step card shifts after every action, moving Record and Roll | UX | Low | Slice 7 triage |
+| P6 | The world turn says "step n of 10" while it has 11 steps; the hunters condition leaves no journal entry | Bug | Low | Slice 7 triage |
+| P7 | The character step shows "Attribute points: 9 / 22" before any input (the defaults of 1 count) | UX | Low | Slice 7 triage |
 
 ## Progress
 
@@ -142,6 +174,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-27: T11 flow editor special outcomes: `CheckOutcomeDraft` is a band or a `special` outcome (an entry naming both, neither or an unknown special stays a stored step); `setCheckOutcome` writes bands in the check's order, then critical, messyCritical, bestialFailure, strays last, and `setBandOutcome` wraps it. `StepContext.checks[].specials` (optional) comes from `specialsOf` over the checks read model (`stepContext(narrative, checks)`; a literal Hunger count 0 is no Hunger dice) and the Flow and Scene Type editors load `useGameSystemChecks`, so no endpoint was added; a set offers the intersection, and while the pools are unknown nothing is offered or flagged. "Special results" group under the bands with Add / Remove, strays say "This check cannot produce this special result."; `outcomes[n].special` errors already map to the row. Vitest and the story were written with the code; the suite passed on first run, apart from one test of mine fixed before it counted.
 - 2026-10-27: T12 Studio credits badge: `GameSystemCreditsRequest` / `GameSystemCreditsResponse` gain a nullable `badge` (OpenAPI enum from `ReleaseVersion2::BADGES`); the controller accepts a string or null and 400s any other type like the license, the domain refuses an unknown badge (422 naming `credits.badge`), a null or absent badge clears it, `make api`. `MetadataForm` has a "Badge" select (None / Dark Pack, an unknown stored one stays selectable) with the logo beside it, leaves `badge` out of the request when none is picked, and a badge needs a notice. API, unit and Vitest tests (new `MetadataForm.test.tsx`) were written before the code for the backend (RED: badge missing from the answer, unknown badge accepted) and with the component for the frontend; story `MetadataForm`.
 - 2026-10-27: slice 6 commit 1 (slice 5 review findings): `FlowEditorPage` test proves the checks read model reaches `stepContext` (a World turn check step on a Hunger check with criticals offers Critical, Messy critical and Bestial failure). No production change: the test passed on its first run against the existing wiring; mutation check (dropping `checks.data` from `stepContext` in `FlowEditor.tsx`) made it fail, then restored. The oracle table finding needs no change: a table entry holds a Scene Type and effects (`EntriesEditor`), never steps, so no check step can sit there and `OracleTableEditorPage` needs no checks.
+- 2026-10-27: T13 done: `vtm-night-court` v1 authored in Studio from the content spec and published (export 2,361 lines, above the ~1,900 forecast); sandbox showed Hunger dice, a messy critical, a capped push that kept the Hunger dice, and Rouse failing and succeeding. Findings S3–S32 above.
+- 2026-10-27: T14 done: v2 (Intrigue pick without tags, skill-check steps mandatory) played end to end; findings P1–P7 above. No content change was needed to play.
+- 2026-10-27: T15 done: exported v2 unedited to `backend/presets/vtm-night-court.json` (2,363 lines); a re-export to a scratch path is `cmp`-identical; `make presets` prints `Unchanged vtm-night-court (v2, managed in Studio)`. `PresetsTest` gains one test (10 tests, 579 assertions) that publishes it once and reads Play's snapshot: credits notice, license, URL and `dark-pack` badge; 13 checks, 12 Hunger pools of attribute + skill (d10, success 6, criticals 2, Hunger `{hunger}`, push "Spend Willpower" capped at 3 dice, costing 1 Willpower), Rouse as a plain 1-die pool; the 22/14 point budgets; the Hunt's `bestialFailure` outcome to the Compulsion step and its `messyCritical` outcome; the world turn's Second Inquisition roll banded on the Masquerade tracker. Live proof: the test was temporarily changed to expect 23 attribute points, failed, and was restored (no RED-first, the file already existed).
 
 ## Reviews
 
@@ -151,7 +186,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 2 | `review-92d91f85ad4060fc` (main..ce45510), `review-095722f7f9626921` (ce45510..1f58d52); 1,936 lines, size accepted by the user | a219e5d, ce45510, 55fd791, 1f58d52 | approved, acknowledged (both) | No test for a negative Hunger formula (the pool clamps it to 0; must not 500); no flow-level test that a roll whose only failed dice are Hunger dice is not pushable on a pending step (`FlowRun::pushable`); `PoolRoll::ofFaces` dropped `array_values` (list contract); optional: `Checks.php:195` literal Hunger `> 0` where the schema already refuses negatives. Fixed in slice 3 | [#303](https://github.com/iribarren/ogami/pull/303) |
 | 3 | `review-742c3094e8c4a81d` | 2837504, 7a2ba3d, 019a728, c5769a6 | approved, acknowledged | R3 suggestion: `CreditsNotice.tsx:17` crashes when the API sends a badge this SPA build does not know (`creditsBadges` lookup undefined); fall back to no logo, with a test. Fixed in slice 4 | [#304](https://github.com/iribarren/ogami/pull/304) |
 | 4 | `review-8f746d03d236f101` | f6c9ade, bd7e739, 9ec7929 | approved, acknowledged | Warning: `checkDraft.ts` `readPool` / `readPush` refuse a stored explicit `null` for `criticals`, `hunger` or `maxDice`, which the contract documents as nullable and the sandbox reads as absent. Suggestion: `CheckTestPool.php:41` accepts a critical bonus of 0..10 but its message says 1..10. Fixed in slice 5 | [#305](https://github.com/iribarren/ogami/pull/305) |
-| 5 | `review-618ddda709b5a87d` | 3ed1b59, efcc9f6, a731325 | approved, acknowledged; 1,191 lines | R3 suggestion: the checks wiring of `FlowEditor.tsx:78-80` into `stepContext` has no flow-editor page test (the Scene Type editor page has one). Note: `OracleTableEditorPage` loads no checks, so a check step in a table entry's steps offers no special outcomes. Both fixed in slice 6 | [#306](https://github.com/iribarren/ogami/pull/306) |
+| 5 | `review-618ddda709b5a87d` | 3ed1b59, efcc9f6, a731325 | approved, acknowledged; 1,191 lines | R3 suggestion: the checks wiring of `FlowEditor.tsx:78-80` into `stepContext` has no flow-editor page test (the Scene Type editor page has one). Fixed in slice 6 (53f1ec2). A review note that `OracleTableEditorPage` offers no special outcomes was moot: table entries hold a Scene Type and effects, never steps | [#306](https://github.com/iribarren/ogami/pull/306) |
 
 ## Next step
 

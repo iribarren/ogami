@@ -360,7 +360,8 @@
       "properties": {
         "notice": { "description": "The text Play shows. Trimmed, 1 to 2000 characters.", "type": "string", "minLength": 1, "maxLength": 2000 },
         "license": { "description": "The name of the license or policy the content is provided under.", "type": ["string", "null"], "maxLength": 200 },
-        "url": { "description": "Where the license or policy is published: an absolute https:// URL.", "type": ["string", "null"], "maxLength": 500, "pattern": "^https://[^\\s/?#]+\\S*$" }
+        "url": { "description": "Where the license or policy is published: an absolute https:// URL.", "type": ["string", "null"], "maxLength": 500, "pattern": "^https://[^\\s/?#]+\\S*$" },
+        "badge": { "description": "A publisher logo Play shows beside the notice; the SPA ships the image (ADR 0044). Optional; omitted or null means none.", "enum": ["dark-pack", null] }
       }
     },
     "oracles": {
@@ -722,7 +723,7 @@
       ]
     },
     "checkPool": {
-      "description": "A pool of dice that each succeed at or above successAt (ADR 0041); the check total is the number of successes. successAt <= sides is checked by the domain; a count formula reads the sheet like a modifier.",
+      "description": "A pool of dice that each succeed at or above successAt (ADR 0041); the check total is the number of successes, plus the bonus of critical pairs. Some of its dice may be Hunger dice (ADR 0044). successAt <= sides is checked by the domain; count formulas read the sheet like a modifier.",
       "type": "object",
       "required": ["count", "sides", "successAt"],
       "additionalProperties": false,
@@ -731,17 +732,44 @@
           "anyOf": [{ "type": "integer", "minimum": 1, "maximum": 100 }, { "$ref": "#/$defs/formulaRef" }]
         },
         "sides": { "type": "integer", "minimum": 2, "maximum": 1000 },
-        "successAt": { "type": "integer", "minimum": 1, "maximum": 1000 }
+        "successAt": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "criticals": {
+          "description": "Every pair of dice showing the top face (sides), in any group, adds bonus successes (ADR 0044).",
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["bonus"],
+              "additionalProperties": false,
+              "properties": { "bonus": { "type": "integer", "minimum": 1, "maximum": 10 } }
+            },
+            { "type": "null" }
+          ]
+        },
+        "hunger": {
+          "description": "How many dice of the pool are Hunger dice, clamped to the pool size: never pushed, rolled in a second colour (ADR 0044). A count formula reads the sheet like pool.count.",
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["count"],
+              "additionalProperties": false,
+              "properties": {
+                "count": { "anyOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "$ref": "#/$defs/formulaRef" }] }
+              }
+            },
+            { "type": "null" }
+          ]
+        }
       }
     },
     "checkPush": {
-      "description": "A pool check may be pushed once: its failed dice re-roll and the cost effects apply (ADR 0041). Effects are sheet and tracker effects only, checked by the domain.",
+      "description": "A pool check may be pushed once: its failed regular dice re-roll, at most maxDice of them, and the cost effects apply (ADR 0041, 0044). Hunger dice never re-roll. Effects are sheet and tracker effects only, checked by the domain.",
       "type": "object",
       "required": ["label"],
       "additionalProperties": false,
       "properties": {
         "label": { "$ref": "#/$defs/label" },
-        "effects": { "$ref": "#/$defs/optionalEffects" }
+        "effects": { "$ref": "#/$defs/optionalEffects" },
+        "maxDice": { "description": "Re-roll only the first maxDice failed regular dice, in roll order. Omitted or null: every failed regular die.", "type": ["integer", "null"], "minimum": 1, "maximum": 100 }
       }
     },
     "checkDifficulty": {
@@ -797,17 +825,19 @@
           "anyOf": [{ "$ref": "#/$defs/difficultyValue" }, { "$ref": "#/$defs/trackerRef" }, { "$ref": "#/$defs/formulaRef" }, { "type": "null" }]
         },
         "outcomes": {
+          "description": "Each entry names a band or a special result (ADR 0044), each at most once; a special entry wins over the band's. The domain checks that the band exists and that the check can produce the special result.",
           "type": ["array", "null"],
-          "maxItems": 10,
+          "maxItems": 13,
           "items": {
             "type": "object",
-            "required": ["band"],
             "additionalProperties": false,
             "properties": {
               "band": { "description": "Key of a band of the check.", "$ref": "#/$defs/key" },
+              "special": { "description": "A special result of a pool roll.", "enum": ["critical", "messyCritical", "bestialFailure"] },
               "next": { "$ref": "#/$defs/next" },
               "effects": { "$ref": "#/$defs/optionalEffects" }
-            }
+            },
+            "oneOf": [{ "required": ["band"] }, { "required": ["special"] }]
           }
         }
       },

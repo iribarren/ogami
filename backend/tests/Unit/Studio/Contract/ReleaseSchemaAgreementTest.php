@@ -238,7 +238,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: v2-check-step-difficulty-string' => ['sceneTypes[0].play[0].difficulty: must be an integer, {tracker: key} or {formula: string}', '/sceneTypes/0/play/0/difficulty'],
         'generated: v2-check-step-outcome-missing-band' => ['sceneTypes[0].play[0].outcomes[0].band: required', '/sceneTypes/0/play/0/outcomes/0'],
         'generated: v2-check-step-outcome-unknown-property' => ['sceneTypes[0].play[0].outcomes[0].prompt: unknown property', '/sceneTypes/0/play/0/outcomes/0'],
-        'generated: v2-check-step-too-many-outcomes' => ['sceneTypes[0].play[0].outcomes: at most 10 outcomes', '/sceneTypes/0/play/0/outcomes'],
+        'generated: v2-check-step-too-many-outcomes' => ['sceneTypes[0].play[0].outcomes: at most ', '/sceneTypes/0/play/0/outcomes'],
         'generated: v2-too-long-step-tip' => ['sceneTypes[0].play[0].tip: must be at most 2000 characters', '/sceneTypes/0/play/0/tip'],
         'generated: v2-too-long-phase-description' => ['flows[0].phases[0].description: must be at most 2000 characters', '/flows/0/phases/0/description'],
         'generated: v2-sheet-effect-bad-op' => ['sceneTypes[0].play[0].outcomes[0].effects[0].op: ', '/sceneTypes/0/play/0/outcomes/0/effects/0'],
@@ -661,7 +661,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
             'v2-check-step-difficulty-string' => $with([], ['difficulty' => 'hard']),
             'v2-check-step-outcome-missing-band' => $with([], ['outcomes' => [['next' => 'end']]]),
             'v2-check-step-outcome-unknown-property' => $with([], ['outcomes' => [['band' => 'miss', 'prompt' => 'x']]]),
-            'v2-check-step-too-many-outcomes' => $with([], ['outcomes' => array_fill(0, 11, ['band' => 'miss'])]),
+            'v2-check-step-too-many-outcomes' => $with([], ['outcomes' => array_fill(0, 14, ['band' => 'miss'])]),
         ];
 
         $upTo = static fn (mixed $upTo): array => ['bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => $upTo], ['key' => 'hit', 'label' => 'Hit']]];

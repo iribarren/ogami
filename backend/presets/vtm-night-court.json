@@ -1,0 +1,2363 @@
+{
+    "schemaVersion": 2,
+    "gameSystem": {
+        "key": "vtm-night-court",
+        "name": "Vampire: The Masquerade — Night Court",
+        "description": "An unofficial sandbox chronicle for one player: build a city of the Kindred, then survive its court, your Hunger and the hunters, night by night.",
+        "credits": {
+            "notice": "Night Court is unofficial fan content and not official World of Darkness material; its text was written with the help of generative AI. Portions of the materials are the copyrights and trademarks of Paradox Interactive AB, and are used with permission. All rights reserved. For more information please visit worldofdarkness.com.",
+            "license": "Dark Pack Agreement",
+            "url": "https://www.paradoxinteractive.com/games/world-of-darkness/community/dark-pack-agreement",
+            "badge": "dark-pack"
+        }
+    },
+    "theme": "noir",
+    "oracles": {
+        "tables": [
+            {
+                "key": "night-events",
+                "name": "What stirs tonight?",
+                "dice": "1d6",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 2,
+                        "text": "A faction makes its move",
+                        "key": "faction-move"
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "An ally is in trouble",
+                        "key": "ally-in-trouble"
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "Someone new arrives in the city",
+                        "key": "new-arrival"
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "A touchstone's life shifts",
+                        "key": "touchstone"
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "Someone is asking the wrong questions",
+                        "key": "hunter-activity"
+                    }
+                ]
+            },
+            {
+                "key": "ally-problems",
+                "name": "What trouble is your ally in?",
+                "dice": "1d6",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "A debt to a dangerous elder has come due."
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "Their haven was found; they need a new one before dawn."
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "They broke the Masquerade, and someone has proof."
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "A mortal they love is in a hospital, asking for them."
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "They are being blackmailed by a ghoul who knows too much."
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "They vanished two nights ago; their phone still rings."
+                    }
+                ]
+            },
+            {
+                "key": "arrivals",
+                "name": "Who arrives?",
+                "dice": "1d6",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "A Toreador fleeing a fallen court"
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "An Anarch courier with a sealed message"
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "A Nosferatu who already knows your name"
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "A thin-blooded stray, starving"
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "An archon on the Prince's business"
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "A hunter wearing a priest's collar"
+                    }
+                ]
+            },
+            {
+                "key": "hunting-grounds",
+                "name": "Where do you hunt?",
+                "dice": "1d6",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "A packed club where no one remembers faces."
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "A hospital night shift, tired and careless."
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "The river walk, lonely after midnight."
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "A rooftop party above the old town."
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "An all-night diner full of regulars."
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "A shelter where you once volunteered, alive."
+                    }
+                ]
+            },
+            {
+                "key": "compulsion",
+                "name": "The Beast takes the wheel",
+                "dice": "1d6",
+                "entries": [
+                    {
+                        "min": 1,
+                        "max": 1,
+                        "text": "Hunger: until you feed, every scene bends toward blood."
+                    },
+                    {
+                        "min": 2,
+                        "max": 2,
+                        "text": "Dominance: you must win the next argument or contest, whatever it costs."
+                    },
+                    {
+                        "min": 3,
+                        "max": 3,
+                        "text": "Harm: you lash out at whoever stands closest, in word or deed."
+                    },
+                    {
+                        "min": 4,
+                        "max": 4,
+                        "text": "Paranoia: everyone is a threat; trust no one until the night ends."
+                    },
+                    {
+                        "min": 5,
+                        "max": 5,
+                        "text": "Your clan's curse: play the Compulsion of your clan."
+                    },
+                    {
+                        "min": 6,
+                        "max": 6,
+                        "text": "Your clan's curse: play the Compulsion of your clan."
+                    }
+                ]
+            }
+        ],
+        "likelihood": [
+            {
+                "key": "is-it-so",
+                "name": "Is it so?",
+                "sides": 100,
+                "levels": [
+                    {
+                        "key": "unlikely",
+                        "label": "Unlikely",
+                        "target": 25
+                    },
+                    {
+                        "key": "even-odds",
+                        "label": "Even odds",
+                        "target": 50
+                    },
+                    {
+                        "key": "likely",
+                        "label": "Likely",
+                        "target": 75
+                    }
+                ]
+            }
+        ]
+    },
+    "trackers": [
+        {
+            "key": "masquerade",
+            "name": "Masquerade breaches",
+            "hint": "Each world turn rolls 1d10: at or under this, the Second Inquisition moves.",
+            "kind": "counter",
+            "min": 0,
+            "max": 10,
+            "initial": 0
+        },
+        {
+            "key": "hunters",
+            "name": "Hunters",
+            "hint": "When it fills, the hunters strike.",
+            "kind": "clock",
+            "segments": 4
+        },
+        {
+            "key": "night",
+            "name": "Night",
+            "hint": "Nights of the chronicle so far; Dawn ends one.",
+            "kind": "counter",
+            "min": 1,
+            "max": 1000,
+            "initial": 1
+        }
+    ],
+    "factSlots": [
+        {
+            "key": "city",
+            "label": "City",
+            "type": "text"
+        },
+        {
+            "key": "era",
+            "label": "Era",
+            "type": "text"
+        },
+        {
+            "key": "tone",
+            "label": "Tone",
+            "type": "text"
+        },
+        {
+            "key": "ruling-sect",
+            "label": "Ruling sect",
+            "type": "text"
+        },
+        {
+            "key": "prince",
+            "label": "Prince",
+            "type": "npc"
+        },
+        {
+            "key": "ambition",
+            "label": "Ambition",
+            "type": "thread",
+            "hint": "Long-term: what you want from your unlife"
+        },
+        {
+            "key": "desire",
+            "label": "Desire",
+            "type": "thread",
+            "hint": "Short-term, renewed each session"
+        }
+    ],
+    "tags": [
+        {
+            "key": "leader",
+            "label": "Leader"
+        },
+        {
+            "key": "ally",
+            "label": "Ally"
+        },
+        {
+            "key": "touchstone",
+            "label": "Touchstone"
+        },
+        {
+            "key": "rival",
+            "label": "Rival"
+        },
+        {
+            "key": "hunter",
+            "label": "Hunter"
+        },
+        {
+            "key": "newcomer",
+            "label": "Newcomer"
+        }
+    ],
+    "sceneTypes": [
+        {
+            "key": "city",
+            "name": "City",
+            "purpose": "Choose the city, its era and its tone.",
+            "oracles": [],
+            "setup": [
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "Which city?",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "fillFact",
+                            "slot": "city",
+                            "text": "{answer}"
+                        }
+                    ]
+                },
+                {
+                    "key": "prompt-2",
+                    "kind": "prompt",
+                    "title": "Which era?",
+                    "prompt": "Tonight, the 1990s, the Victorian age…",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "fillFact",
+                            "slot": "era",
+                            "text": "{answer}"
+                        }
+                    ]
+                },
+                {
+                    "key": "prompt-3",
+                    "kind": "prompt",
+                    "title": "What tone?",
+                    "prompt": "Political intrigue, street-level horror, personal tragedy…",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "fillFact",
+                            "slot": "tone",
+                            "text": "{answer}"
+                        }
+                    ]
+                }
+            ],
+            "play": [],
+            "closing": []
+        },
+        {
+            "key": "court",
+            "name": "Court",
+            "purpose": "Find out who rules the night.",
+            "tips": "Write the Prince's clan as a free fact.",
+            "oracles": [],
+            "setup": [
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "Which sect rules the city?",
+                    "prompt": "The Camarilla, the Anarchs, or a court of your own making.",
+                    "effects": [
+                        {
+                            "kind": "fillFact",
+                            "slot": "ruling-sect",
+                            "text": "{answer}"
+                        }
+                    ]
+                },
+                {
+                    "key": "prompt-2",
+                    "kind": "prompt",
+                    "title": "Who is the Prince?",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "createNpc",
+                            "name": "{answer}",
+                            "agenda": "Keeps the city under control.",
+                            "tags": [
+                                "leader"
+                            ]
+                        },
+                        {
+                            "kind": "fillFact",
+                            "slot": "prince"
+                        }
+                    ]
+                }
+            ],
+            "play": [],
+            "closing": []
+        },
+        {
+            "key": "factions",
+            "name": "Factions",
+            "purpose": "Name the powers that matter in the city.",
+            "tips": "Write one free fact per faction.",
+            "oracles": [],
+            "setup": [
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "Who leads another faction?",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "createNpc",
+                            "name": "{answer}",
+                            "agenda": "Wants more of the city.",
+                            "tags": [
+                                "leader"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "key": "prompt-2",
+                    "kind": "prompt",
+                    "title": "Who in the court resents you?",
+                    "effects": [
+                        {
+                            "kind": "createNpc",
+                            "name": "{answer}",
+                            "tags": [
+                                "rival"
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "play": [],
+            "closing": []
+        },
+        {
+            "key": "character",
+            "name": "Character",
+            "purpose": "Create your Kindred.",
+            "oracles": [],
+            "setup": [
+                {
+                    "key": "character-1",
+                    "kind": "character",
+                    "title": "Make your Kindred",
+                    "mandatory": true
+                },
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "What is your ambition?",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "createThread",
+                            "name": "{answer}"
+                        },
+                        {
+                            "kind": "fillFact",
+                            "slot": "ambition"
+                        }
+                    ]
+                },
+                {
+                    "key": "prompt-2",
+                    "kind": "prompt",
+                    "title": "Who keeps you human?",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "createNpc",
+                            "name": "{answer}",
+                            "tags": [
+                                "touchstone"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "key": "prompt-3",
+                    "kind": "prompt",
+                    "title": "Who stands by you?",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "createNpc",
+                            "name": "{answer}",
+                            "tags": [
+                                "ally"
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "play": [],
+            "closing": []
+        },
+        {
+            "key": "elysium",
+            "name": "Elysium",
+            "purpose": "Move among the Kindred under the court's rules: be seen, trade favours, keep your face.",
+            "oracles": [
+                "is-it-so",
+                "compulsion"
+            ],
+            "setup": [
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "Who do you need to be seen with tonight?",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "sceneTitle",
+                            "title": "{answer}"
+                        }
+                    ]
+                }
+            ],
+            "play": [
+                {
+                    "key": "check-1",
+                    "kind": "check",
+                    "title": "Work the room",
+                    "prompt": "Pick how you work the room.",
+                    "mandatory": true,
+                    "checks": [
+                        "persuasion",
+                        "subterfuge",
+                        "insight",
+                        "intimidation"
+                    ],
+                    "outcomes": [
+                        {
+                            "band": "failure",
+                            "next": "end",
+                            "effects": [
+                                {
+                                    "kind": "createNpc",
+                                    "name": "Someone you slighted",
+                                    "tags": [
+                                        "rival"
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "band": "success",
+                            "next": "end"
+                        },
+                        {
+                            "band": "exceptional",
+                            "next": "end"
+                        },
+                        {
+                            "special": "bestialFailure",
+                            "next": "compulsion"
+                        }
+                    ]
+                },
+                {
+                    "key": "compulsion",
+                    "kind": "table",
+                    "title": "The Beast takes the wheel",
+                    "prompt": "Your Hunger got the better of you. Play the Compulsion in this scene.",
+                    "mandatory": true,
+                    "table": "compulsion"
+                }
+            ],
+            "closing": []
+        },
+        {
+            "key": "hunt",
+            "name": "Hunt",
+            "purpose": "Feed without breaking the Masquerade.",
+            "oracles": [
+                "hunting-grounds",
+                "compulsion"
+            ],
+            "setup": [
+                {
+                    "key": "table-1",
+                    "kind": "table",
+                    "title": "Where do you hunt?",
+                    "mandatory": true,
+                    "table": "hunting-grounds"
+                },
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "Who is the vessel?",
+                    "effects": [
+                        {
+                            "kind": "sceneTitle",
+                            "title": "{answer}"
+                        }
+                    ]
+                }
+            ],
+            "play": [
+                {
+                    "key": "check-1",
+                    "kind": "check",
+                    "title": "Take the vessel",
+                    "mandatory": true,
+                    "checks": [
+                        "persuasion",
+                        "stealth",
+                        "athletics",
+                        "brawl",
+                        "streetwise"
+                    ],
+                    "outcomes": [
+                        {
+                            "band": "failure",
+                            "next": "end",
+                            "effects": [
+                                {
+                                    "kind": "tracker",
+                                    "tracker": "masquerade",
+                                    "op": "add",
+                                    "value": 1
+                                }
+                            ]
+                        },
+                        {
+                            "band": "success",
+                            "next": "end",
+                            "effects": [
+                                {
+                                    "kind": "sheet",
+                                    "field": "hunger",
+                                    "op": "subtract",
+                                    "value": 1
+                                }
+                            ]
+                        },
+                        {
+                            "band": "exceptional",
+                            "next": "end",
+                            "effects": [
+                                {
+                                    "kind": "sheet",
+                                    "field": "hunger",
+                                    "op": "subtract",
+                                    "value": 2
+                                }
+                            ]
+                        },
+                        {
+                            "special": "messyCritical",
+                            "next": "end",
+                            "effects": [
+                                {
+                                    "kind": "sheet",
+                                    "field": "hunger",
+                                    "op": "subtract",
+                                    "value": 2
+                                },
+                                {
+                                    "kind": "tracker",
+                                    "tracker": "masquerade",
+                                    "op": "add",
+                                    "value": 1
+                                }
+                            ]
+                        },
+                        {
+                            "special": "bestialFailure",
+                            "next": "compulsion"
+                        }
+                    ]
+                },
+                {
+                    "key": "compulsion",
+                    "kind": "table",
+                    "title": "The Beast takes the wheel",
+                    "prompt": "Your Hunger got the better of you. Play the Compulsion in this scene.",
+                    "mandatory": true,
+                    "table": "compulsion"
+                }
+            ],
+            "closing": []
+        },
+        {
+            "key": "investigation",
+            "name": "Investigation",
+            "purpose": "Chase a secret through the mortal and Kindred city.",
+            "oracles": [
+                "is-it-so",
+                "compulsion"
+            ],
+            "setup": [
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "What are you trying to learn?",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "sceneTitle",
+                            "title": "{answer}"
+                        }
+                    ]
+                }
+            ],
+            "play": [
+                {
+                    "key": "check-1",
+                    "kind": "check",
+                    "title": "Dig",
+                    "mandatory": true,
+                    "checks": [
+                        "investigation",
+                        "awareness",
+                        "streetwise",
+                        "occult",
+                        "larceny"
+                    ],
+                    "outcomes": [
+                        {
+                            "band": "failure",
+                            "next": "end",
+                            "effects": [
+                                {
+                                    "kind": "tracker",
+                                    "tracker": "hunters",
+                                    "op": "add",
+                                    "value": 1
+                                }
+                            ]
+                        },
+                        {
+                            "band": "success",
+                            "next": "end"
+                        },
+                        {
+                            "band": "exceptional",
+                            "next": "end"
+                        },
+                        {
+                            "special": "bestialFailure",
+                            "next": "compulsion"
+                        }
+                    ]
+                },
+                {
+                    "key": "compulsion",
+                    "kind": "table",
+                    "title": "The Beast takes the wheel",
+                    "prompt": "Your Hunger got the better of you. Play the Compulsion in this scene.",
+                    "mandatory": true,
+                    "table": "compulsion"
+                }
+            ],
+            "closing": []
+        },
+        {
+            "key": "intrigue",
+            "name": "Intrigue",
+            "purpose": "Scheme against a rival or bargain with a faction.",
+            "oracles": [
+                "is-it-so",
+                "compulsion"
+            ],
+            "setup": [
+                {
+                    "key": "pick-1",
+                    "kind": "pick",
+                    "title": "Who is your scheme aimed at?",
+                    "of": "npc",
+                    "mode": "choose"
+                },
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "What do you want from {picked}?",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "sceneTitle",
+                            "title": "{answer}"
+                        }
+                    ]
+                }
+            ],
+            "play": [
+                {
+                    "key": "check-1",
+                    "kind": "check",
+                    "title": "Call on a Discipline?",
+                    "check": "rouse",
+                    "outcomes": [
+                        {
+                            "band": "failure",
+                            "effects": [
+                                {
+                                    "kind": "sheet",
+                                    "field": "hunger",
+                                    "op": "add",
+                                    "value": 1
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "key": "check-2",
+                    "kind": "check",
+                    "title": "Make your play",
+                    "mandatory": true,
+                    "checks": [
+                        "persuasion",
+                        "subterfuge",
+                        "intimidation",
+                        "insight"
+                    ],
+                    "outcomes": [
+                        {
+                            "band": "failure",
+                            "next": "end"
+                        },
+                        {
+                            "band": "success",
+                            "next": "end"
+                        },
+                        {
+                            "band": "exceptional",
+                            "next": "end"
+                        },
+                        {
+                            "special": "critical",
+                            "next": "end"
+                        },
+                        {
+                            "special": "bestialFailure",
+                            "next": "compulsion"
+                        }
+                    ]
+                },
+                {
+                    "key": "compulsion",
+                    "kind": "table",
+                    "title": "The Beast takes the wheel",
+                    "prompt": "Your Hunger got the better of you. Play the Compulsion in this scene.",
+                    "mandatory": true,
+                    "table": "compulsion"
+                }
+            ],
+            "closing": []
+        },
+        {
+            "key": "haven",
+            "name": "Haven",
+            "purpose": "Rest, tend your touchstones and take stock.",
+            "oracles": [],
+            "setup": [],
+            "play": [
+                {
+                    "key": "pick-1",
+                    "kind": "pick",
+                    "title": "Who do you visit?",
+                    "of": "npc",
+                    "tags": [
+                        "touchstone"
+                    ],
+                    "mode": "choose"
+                },
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "What do you do for {picked}?"
+                },
+                {
+                    "key": "choice-1",
+                    "kind": "choice",
+                    "title": "Did you do something tonight you cannot take back?",
+                    "options": [
+                        {
+                            "key": "yes",
+                            "label": "Yes",
+                            "effects": [
+                                {
+                                    "kind": "sheet",
+                                    "field": "humanity",
+                                    "op": "subtract",
+                                    "value": 1
+                                }
+                            ]
+                        },
+                        {
+                            "key": "no",
+                            "label": "No"
+                        }
+                    ],
+                    "skip": "no"
+                }
+            ],
+            "closing": []
+        },
+        {
+            "key": "dawn",
+            "name": "Dawn",
+            "purpose": "The night ends; find shelter before the sun.",
+            "oracles": [],
+            "setup": [],
+            "play": [
+                {
+                    "key": "check-1",
+                    "kind": "check",
+                    "title": "Wake the next night",
+                    "mandatory": true,
+                    "check": "rouse",
+                    "outcomes": [
+                        {
+                            "band": "failure",
+                            "effects": [
+                                {
+                                    "kind": "sheet",
+                                    "field": "hunger",
+                                    "op": "add",
+                                    "value": 1
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "closing": [
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "Where do you sleep, and what do you dream of?",
+                    "effects": [
+                        {
+                            "kind": "tracker",
+                            "tracker": "night",
+                            "op": "add",
+                            "value": 1
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "key": "hunters-strike",
+            "name": "Hunters strike",
+            "purpose": "The hunters close in on you.",
+            "oracles": [
+                "compulsion"
+            ],
+            "setup": [
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "How do the hunters find you?",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "sceneTitle",
+                            "title": "{answer}"
+                        }
+                    ]
+                }
+            ],
+            "play": [
+                {
+                    "key": "check-1",
+                    "kind": "check",
+                    "title": "Fight, flee or hide",
+                    "mandatory": true,
+                    "checks": [
+                        "brawl",
+                        "athletics",
+                        "stealth",
+                        "intimidation"
+                    ],
+                    "outcomes": [
+                        {
+                            "band": "failure",
+                            "next": "end",
+                            "effects": [
+                                {
+                                    "kind": "sheet",
+                                    "field": "health",
+                                    "op": "subtract",
+                                    "value": 3
+                                }
+                            ]
+                        },
+                        {
+                            "band": "success",
+                            "next": "end"
+                        },
+                        {
+                            "band": "exceptional",
+                            "next": "end"
+                        },
+                        {
+                            "special": "bestialFailure",
+                            "next": "compulsion"
+                        }
+                    ]
+                },
+                {
+                    "key": "compulsion",
+                    "kind": "table",
+                    "title": "The Beast takes the wheel",
+                    "prompt": "Your Hunger got the better of you. Play the Compulsion in this scene.",
+                    "mandatory": true,
+                    "table": "compulsion"
+                }
+            ],
+            "closing": [
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "How do you throw them off your trail?",
+                    "effects": [
+                        {
+                            "kind": "tracker",
+                            "tracker": "hunters",
+                            "op": "set",
+                            "value": 0
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "key": "inquisition-raid",
+            "name": "Inquisition raid",
+            "purpose": "The Second Inquisition raids the city's Kindred.",
+            "oracles": [
+                "compulsion"
+            ],
+            "setup": [
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "Whose haven burns tonight?",
+                    "mandatory": true,
+                    "effects": [
+                        {
+                            "kind": "sceneTitle",
+                            "title": "{answer}"
+                        }
+                    ]
+                }
+            ],
+            "play": [
+                {
+                    "key": "check-1",
+                    "kind": "check",
+                    "title": "Get out ahead of it",
+                    "mandatory": true,
+                    "checks": [
+                        "stealth",
+                        "streetwise",
+                        "subterfuge",
+                        "athletics"
+                    ],
+                    "outcomes": [
+                        {
+                            "band": "failure",
+                            "next": "end",
+                            "effects": [
+                                {
+                                    "kind": "sheet",
+                                    "field": "health",
+                                    "op": "subtract",
+                                    "value": 2
+                                },
+                                {
+                                    "kind": "tracker",
+                                    "tracker": "hunters",
+                                    "op": "add",
+                                    "value": 1
+                                }
+                            ]
+                        },
+                        {
+                            "band": "success",
+                            "next": "end"
+                        },
+                        {
+                            "band": "exceptional",
+                            "next": "end"
+                        },
+                        {
+                            "special": "bestialFailure",
+                            "next": "compulsion"
+                        }
+                    ]
+                },
+                {
+                    "key": "compulsion",
+                    "kind": "table",
+                    "title": "The Beast takes the wheel",
+                    "prompt": "Your Hunger got the better of you. Play the Compulsion in this scene.",
+                    "mandatory": true,
+                    "table": "compulsion"
+                }
+            ],
+            "closing": [
+                {
+                    "key": "prompt-1",
+                    "kind": "prompt",
+                    "title": "What does the city learn from the raid?",
+                    "effects": [
+                        {
+                            "kind": "tracker",
+                            "tracker": "masquerade",
+                            "op": "add",
+                            "value": -3
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "flows": [
+        {
+            "key": "chronicle",
+            "name": "Chronicle",
+            "description": "A sandbox chronicle: build the city, then play it night by night.",
+            "introduction": "Session Zero builds the city, its court and your Kindred. After that, each session starts from what you want, and the city answers between scenes.",
+            "default": true,
+            "defaultView": "journal",
+            "oracles": [
+                "night-events",
+                "ally-problems",
+                "arrivals",
+                "hunting-grounds",
+                "compulsion",
+                "is-it-so"
+            ],
+            "trackers": [
+                "masquerade",
+                "hunters",
+                "night"
+            ],
+            "phases": [
+                {
+                    "key": "session-zero",
+                    "name": "Session Zero",
+                    "mode": "once",
+                    "selection": {
+                        "rule": "sequence",
+                        "sceneTypes": [
+                            "city",
+                            "court",
+                            "factions",
+                            "character"
+                        ]
+                    }
+                },
+                {
+                    "key": "chronicle",
+                    "name": "The chronicle",
+                    "mode": "loop",
+                    "selection": {
+                        "rule": "player",
+                        "sceneTypes": [
+                            "elysium",
+                            "hunt",
+                            "investigation",
+                            "intrigue",
+                            "haven",
+                            "dawn"
+                        ]
+                    },
+                    "sessionOpening": [
+                        {
+                            "key": "prompt-1",
+                            "kind": "prompt",
+                            "title": "What do you want this session?",
+                            "prompt": "Your ambition: {fact:ambition}. What do you want this session?",
+                            "mandatory": true,
+                            "effects": [
+                                {
+                                    "kind": "createThread",
+                                    "name": "{answer}"
+                                },
+                                {
+                                    "kind": "fillFact",
+                                    "slot": "desire"
+                                }
+                            ]
+                        }
+                    ],
+                    "sessionClosing": [
+                        {
+                            "key": "choice-1",
+                            "kind": "choice",
+                            "title": "Did you get what you wanted this session?",
+                            "options": [
+                                {
+                                    "key": "yes",
+                                    "label": "Yes",
+                                    "effects": [
+                                        {
+                                            "kind": "closeThread"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "key": "no",
+                                    "label": "No"
+                                }
+                            ],
+                            "skip": "no"
+                        }
+                    ],
+                    "worldTurn": [
+                        {
+                            "key": "inquisition",
+                            "kind": "roll",
+                            "title": "Does the Second Inquisition move?",
+                            "dice": "1d10",
+                            "bands": [
+                                {
+                                    "upTo": {
+                                        "tracker": "masquerade"
+                                    },
+                                    "effects": [
+                                        {
+                                            "kind": "nextScene",
+                                            "sceneType": "inquisition-raid"
+                                        }
+                                    ]
+                                },
+                                {}
+                            ]
+                        },
+                        {
+                            "key": "stir",
+                            "kind": "roll",
+                            "title": "Does the night stir?",
+                            "tip": "On 1 to 3 the night stays quiet.",
+                            "dice": "1d6",
+                            "bands": [
+                                {
+                                    "upTo": 3,
+                                    "next": "end"
+                                },
+                                {}
+                            ]
+                        },
+                        {
+                            "key": "event",
+                            "kind": "table",
+                            "title": "What stirs tonight?",
+                            "table": "night-events",
+                            "branches": [
+                                {
+                                    "entry": "faction-move",
+                                    "next": "faction"
+                                },
+                                {
+                                    "entry": "ally-in-trouble",
+                                    "next": "ally"
+                                },
+                                {
+                                    "entry": "new-arrival",
+                                    "next": "arrival"
+                                },
+                                {
+                                    "entry": "touchstone",
+                                    "next": "touchstone"
+                                },
+                                {
+                                    "entry": "hunter-activity",
+                                    "next": "hunters",
+                                    "effects": [
+                                        {
+                                            "kind": "tracker",
+                                            "tracker": "hunters",
+                                            "op": "add",
+                                            "value": 1
+                                        },
+                                        {
+                                            "kind": "createNpc",
+                                            "name": "Someone asking questions",
+                                            "tags": [
+                                                "hunter"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "key": "faction",
+                            "kind": "pick",
+                            "title": "Which faction moves?",
+                            "of": "npc",
+                            "tags": [
+                                "leader"
+                            ],
+                            "mode": "random",
+                            "branches": {
+                                "none": {
+                                    "next": "end"
+                                }
+                            }
+                        },
+                        {
+                            "key": "faction-move",
+                            "kind": "prompt",
+                            "title": "What does {picked} do toward their agenda?",
+                            "next": "end"
+                        },
+                        {
+                            "key": "ally",
+                            "kind": "pick",
+                            "title": "Which ally is in trouble?",
+                            "of": "npc",
+                            "tags": [
+                                "ally"
+                            ],
+                            "mode": "random",
+                            "branches": {
+                                "none": {
+                                    "next": "end"
+                                }
+                            }
+                        },
+                        {
+                            "key": "ally-trouble",
+                            "kind": "table",
+                            "title": "What trouble is your ally in?",
+                            "next": "end",
+                            "table": "ally-problems"
+                        },
+                        {
+                            "key": "arrival",
+                            "kind": "table",
+                            "title": "Who arrives?",
+                            "next": "end",
+                            "effects": [
+                                {
+                                    "kind": "createNpc",
+                                    "name": "{answer}",
+                                    "tags": [
+                                        "newcomer"
+                                    ]
+                                }
+                            ],
+                            "table": "arrivals"
+                        },
+                        {
+                            "key": "touchstone",
+                            "kind": "pick",
+                            "title": "Whose life shifts?",
+                            "of": "npc",
+                            "tags": [
+                                "touchstone"
+                            ],
+                            "mode": "random",
+                            "branches": {
+                                "none": {
+                                    "next": "end"
+                                }
+                            }
+                        },
+                        {
+                            "key": "touchstone-turn",
+                            "kind": "prompt",
+                            "title": "What happens to {picked}?",
+                            "next": "end"
+                        },
+                        {
+                            "key": "hunters",
+                            "kind": "condition",
+                            "title": "Are the hunters ready?",
+                            "tracker": "hunters",
+                            "bands": [
+                                {
+                                    "upTo": 3
+                                },
+                                {
+                                    "effects": [
+                                        {
+                                            "kind": "nextScene",
+                                            "sceneType": "hunters-strike"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "sheet": {
+        "fields": [
+            {
+                "key": "strength",
+                "label": "Strength",
+                "hint": "Raw power.",
+                "group": "Attributes",
+                "type": "number",
+                "min": 1,
+                "max": 5,
+                "default": 1
+            },
+            {
+                "key": "dexterity",
+                "label": "Dexterity",
+                "hint": "Speed, aim and a light touch.",
+                "group": "Attributes",
+                "type": "number",
+                "min": 1,
+                "max": 5,
+                "default": 1
+            },
+            {
+                "key": "stamina",
+                "label": "Stamina",
+                "hint": "How much punishment you take.",
+                "group": "Attributes",
+                "type": "number",
+                "min": 1,
+                "max": 5,
+                "default": 1
+            },
+            {
+                "key": "charisma",
+                "label": "Charisma",
+                "hint": "Presence that draws others in.",
+                "group": "Attributes",
+                "type": "number",
+                "min": 1,
+                "max": 5,
+                "default": 1
+            },
+            {
+                "key": "manipulation",
+                "label": "Manipulation",
+                "hint": "Bending others to your ends.",
+                "group": "Attributes",
+                "type": "number",
+                "min": 1,
+                "max": 5,
+                "default": 1
+            },
+            {
+                "key": "composure",
+                "label": "Composure",
+                "hint": "Keeping your head when it matters.",
+                "group": "Attributes",
+                "type": "number",
+                "min": 1,
+                "max": 5,
+                "default": 1
+            },
+            {
+                "key": "intelligence",
+                "label": "Intelligence",
+                "hint": "Learning, memory and reasoning.",
+                "group": "Attributes",
+                "type": "number",
+                "min": 1,
+                "max": 5,
+                "default": 1
+            },
+            {
+                "key": "wits",
+                "label": "Wits",
+                "hint": "Quick thinking and sharp senses.",
+                "group": "Attributes",
+                "type": "number",
+                "min": 1,
+                "max": 5,
+                "default": 1
+            },
+            {
+                "key": "resolve",
+                "label": "Resolve",
+                "hint": "Focus and stubbornness.",
+                "group": "Attributes",
+                "type": "number",
+                "min": 1,
+                "max": 5,
+                "default": 1
+            },
+            {
+                "key": "hunger",
+                "label": "Hunger",
+                "hint": "Each point turns a die of every roll into a Hunger die. Feeding lowers it; Rouse checks raise it.",
+                "group": "The Blood",
+                "type": "number",
+                "min": 0,
+                "max": 5,
+                "default": 1
+            },
+            {
+                "key": "humanity",
+                "label": "Humanity",
+                "hint": "What is left of the person you were.",
+                "group": "The Blood",
+                "type": "number",
+                "min": 0,
+                "max": 10,
+                "default": 7
+            },
+            {
+                "key": "health",
+                "label": "Health",
+                "hint": "Damage you can take before you fall into torpor.",
+                "group": "The Blood",
+                "type": "track",
+                "startMax": {
+                    "formula": "{stamina} + 3"
+                }
+            },
+            {
+                "key": "willpower",
+                "label": "Willpower",
+                "hint": "Spend a point to re-roll up to three failed regular dice.",
+                "group": "The Blood",
+                "type": "track",
+                "startMax": {
+                    "formula": "{composure} + {resolve}"
+                }
+            },
+            {
+                "key": "athletics",
+                "label": "Athletics",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5,
+                "default": 0
+            },
+            {
+                "key": "brawl",
+                "label": "Brawl",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5
+            },
+            {
+                "key": "stealth",
+                "label": "Stealth",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5
+            },
+            {
+                "key": "larceny",
+                "label": "Larceny",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5
+            },
+            {
+                "key": "awareness",
+                "label": "Awareness",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5
+            },
+            {
+                "key": "insight",
+                "label": "Insight",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5
+            },
+            {
+                "key": "intimidation",
+                "label": "Intimidation",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5
+            },
+            {
+                "key": "persuasion",
+                "label": "Persuasion",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5
+            },
+            {
+                "key": "subterfuge",
+                "label": "Subterfuge",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5
+            },
+            {
+                "key": "streetwise",
+                "label": "Streetwise",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5
+            },
+            {
+                "key": "investigation",
+                "label": "Investigation",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5
+            },
+            {
+                "key": "occult",
+                "label": "Occult",
+                "group": "Skills",
+                "type": "number",
+                "min": 0,
+                "max": 5
+            },
+            {
+                "key": "concept",
+                "label": "Concept",
+                "hint": "Who you were before the Embrace, in a few words.",
+                "group": "Identity",
+                "type": "text"
+            },
+            {
+                "key": "clan",
+                "label": "Clan",
+                "hint": "Brujah, Gangrel, Malkavian, Nosferatu, Toreador, Tremere, Ventrue, or another.",
+                "group": "Identity",
+                "type": "text"
+            },
+            {
+                "key": "sire",
+                "label": "Sire",
+                "hint": "Who made you, and whether they still care.",
+                "group": "Identity",
+                "type": "text"
+            },
+            {
+                "key": "predator-type",
+                "label": "Predator type",
+                "hint": "How you feed: alley cat, siren, sandman, consensualist…",
+                "group": "Identity",
+                "type": "text"
+            },
+            {
+                "key": "disciplines",
+                "label": "Disciplines",
+                "hint": "Your powers of the Blood and their dots, e.g. \"Dominate 2\".",
+                "group": "Notes",
+                "type": "list",
+                "itemLabel": "Discipline"
+            },
+            {
+                "key": "convictions",
+                "label": "Convictions and touchstones",
+                "hint": "What you will not do, and who reminds you why.",
+                "group": "Notes",
+                "type": "list",
+                "itemLabel": "Conviction"
+            },
+            {
+                "key": "xp",
+                "label": "Experience",
+                "group": "Notes",
+                "type": "number",
+                "min": 0,
+                "max": 100,
+                "default": 0
+            }
+        ],
+        "columns": 2,
+        "groups": [
+            {
+                "name": "Identity",
+                "span": 2
+            },
+            {
+                "name": "Attributes"
+            },
+            {
+                "name": "The Blood"
+            },
+            {
+                "name": "Skills",
+                "span": 2
+            },
+            {
+                "name": "Notes",
+                "span": 2
+            }
+        ],
+        "pointBudgets": [
+            {
+                "key": "points",
+                "label": "Attribute points",
+                "total": 22,
+                "fields": [
+                    "dexterity",
+                    "stamina",
+                    "charisma",
+                    "manipulation",
+                    "composure",
+                    "intelligence",
+                    "wits",
+                    "resolve",
+                    "strength"
+                ],
+                "min": 1,
+                "max": 4
+            },
+            {
+                "key": "skills",
+                "label": "Skill points",
+                "total": 14,
+                "fields": [
+                    "athletics",
+                    "brawl",
+                    "stealth",
+                    "larceny",
+                    "awareness",
+                    "insight",
+                    "intimidation",
+                    "persuasion",
+                    "subterfuge",
+                    "streetwise",
+                    "investigation",
+                    "occult"
+                ],
+                "min": 0,
+                "max": 3
+            }
+        ]
+    },
+    "checks": [
+        {
+            "key": "athletics",
+            "label": "Athletics (Dexterity)",
+            "hint": "Run, climb, leap and keep your footing.",
+            "pool": {
+                "count": {
+                    "formula": "{dexterity} + {athletics}"
+                },
+                "sides": 10,
+                "successAt": 6,
+                "criticals": {
+                    "bonus": 2
+                },
+                "hunger": {
+                    "count": {
+                        "formula": "{hunger}"
+                    }
+                }
+            },
+            "push": {
+                "label": "Spend Willpower",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "willpower",
+                        "op": "subtract",
+                        "value": 1
+                    }
+                ],
+                "maxDice": 3
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it goes wrong, or it costs you",
+                    "upTo": 1
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you get what you went for",
+                    "upTo": 3
+                },
+                {
+                    "key": "exceptional",
+                    "label": "Exceptional: you get it, and more"
+                }
+            ]
+        },
+        {
+            "key": "brawl",
+            "label": "Brawl (Strength)",
+            "hint": "Fight with fists, fangs and whatever is at hand.",
+            "pool": {
+                "count": {
+                    "formula": "{strength} + {brawl}"
+                },
+                "sides": 10,
+                "successAt": 6,
+                "criticals": {
+                    "bonus": 2
+                },
+                "hunger": {
+                    "count": {
+                        "formula": "{hunger}"
+                    }
+                }
+            },
+            "push": {
+                "label": "Spend Willpower",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "willpower",
+                        "op": "subtract",
+                        "value": 1
+                    }
+                ],
+                "maxDice": 3
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it goes wrong, or it costs you",
+                    "upTo": 1
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you get what you went for",
+                    "upTo": 3
+                },
+                {
+                    "key": "exceptional",
+                    "label": "Exceptional: you get it, and more"
+                }
+            ]
+        },
+        {
+            "key": "stealth",
+            "label": "Stealth (Dexterity)",
+            "hint": "Move unseen and unheard.",
+            "pool": {
+                "count": {
+                    "formula": "{dexterity} + {stealth}"
+                },
+                "sides": 10,
+                "successAt": 6,
+                "criticals": {
+                    "bonus": 2
+                },
+                "hunger": {
+                    "count": {
+                        "formula": "{hunger}"
+                    }
+                }
+            },
+            "push": {
+                "label": "Spend Willpower",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "willpower",
+                        "op": "subtract",
+                        "value": 1
+                    }
+                ],
+                "maxDice": 3
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it goes wrong, or it costs you",
+                    "upTo": 1
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you get what you went for",
+                    "upTo": 3
+                },
+                {
+                    "key": "exceptional",
+                    "label": "Exceptional: you get it, and more"
+                }
+            ]
+        },
+        {
+            "key": "larceny",
+            "label": "Larceny (Dexterity)",
+            "hint": "Locks, pockets and alarms.",
+            "pool": {
+                "count": {
+                    "formula": "{dexterity} + {larceny}"
+                },
+                "sides": 10,
+                "successAt": 6,
+                "criticals": {
+                    "bonus": 2
+                },
+                "hunger": {
+                    "count": {
+                        "formula": "{hunger}"
+                    }
+                }
+            },
+            "push": {
+                "label": "Spend Willpower",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "willpower",
+                        "op": "subtract",
+                        "value": 1
+                    }
+                ],
+                "maxDice": 3
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it goes wrong, or it costs you",
+                    "upTo": 1
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you get what you went for",
+                    "upTo": 3
+                },
+                {
+                    "key": "exceptional",
+                    "label": "Exceptional: you get it, and more"
+                }
+            ]
+        },
+        {
+            "key": "awareness",
+            "label": "Awareness (Wits)",
+            "hint": "Notice danger before it notices you.",
+            "pool": {
+                "count": {
+                    "formula": "{wits} + {awareness}"
+                },
+                "sides": 10,
+                "successAt": 6,
+                "criticals": {
+                    "bonus": 2
+                },
+                "hunger": {
+                    "count": {
+                        "formula": "{hunger}"
+                    }
+                }
+            },
+            "push": {
+                "label": "Spend Willpower",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "willpower",
+                        "op": "subtract",
+                        "value": 1
+                    }
+                ],
+                "maxDice": 3
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it goes wrong, or it costs you",
+                    "upTo": 1
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you get what you went for",
+                    "upTo": 3
+                },
+                {
+                    "key": "exceptional",
+                    "label": "Exceptional: you get it, and more"
+                }
+            ]
+        },
+        {
+            "key": "insight",
+            "label": "Insight (Wits)",
+            "hint": "Read what someone wants and fears.",
+            "pool": {
+                "count": {
+                    "formula": "{wits} + {insight}"
+                },
+                "sides": 10,
+                "successAt": 6,
+                "criticals": {
+                    "bonus": 2
+                },
+                "hunger": {
+                    "count": {
+                        "formula": "{hunger}"
+                    }
+                }
+            },
+            "push": {
+                "label": "Spend Willpower",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "willpower",
+                        "op": "subtract",
+                        "value": 1
+                    }
+                ],
+                "maxDice": 3
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it goes wrong, or it costs you",
+                    "upTo": 1
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you get what you went for",
+                    "upTo": 3
+                },
+                {
+                    "key": "exceptional",
+                    "label": "Exceptional: you get it, and more"
+                }
+            ]
+        },
+        {
+            "key": "intimidation",
+            "label": "Intimidation (Charisma)",
+            "hint": "Make them afraid of you.",
+            "pool": {
+                "count": {
+                    "formula": "{charisma} + {intimidation}"
+                },
+                "sides": 10,
+                "successAt": 6,
+                "criticals": {
+                    "bonus": 2
+                },
+                "hunger": {
+                    "count": {
+                        "formula": "{hunger}"
+                    }
+                }
+            },
+            "push": {
+                "label": "Spend Willpower",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "willpower",
+                        "op": "subtract",
+                        "value": 1
+                    }
+                ],
+                "maxDice": 3
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it goes wrong, or it costs you",
+                    "upTo": 1
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you get what you went for",
+                    "upTo": 3
+                },
+                {
+                    "key": "exceptional",
+                    "label": "Exceptional: you get it, and more"
+                }
+            ]
+        },
+        {
+            "key": "persuasion",
+            "label": "Persuasion (Charisma)",
+            "hint": "Talk someone round.",
+            "pool": {
+                "count": {
+                    "formula": "{charisma} + {persuasion}"
+                },
+                "sides": 10,
+                "successAt": 6,
+                "criticals": {
+                    "bonus": 2
+                },
+                "hunger": {
+                    "count": {
+                        "formula": "{hunger}"
+                    }
+                }
+            },
+            "push": {
+                "label": "Spend Willpower",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "willpower",
+                        "op": "subtract",
+                        "value": 1
+                    }
+                ],
+                "maxDice": 3
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it goes wrong, or it costs you",
+                    "upTo": 1
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you get what you went for",
+                    "upTo": 3
+                },
+                {
+                    "key": "exceptional",
+                    "label": "Exceptional: you get it, and more"
+                }
+            ]
+        },
+        {
+            "key": "subterfuge",
+            "label": "Subterfuge (Manipulation)",
+            "hint": "Lie, mislead and keep a straight face.",
+            "pool": {
+                "count": {
+                    "formula": "{manipulation} + {subterfuge}"
+                },
+                "sides": 10,
+                "successAt": 6,
+                "criticals": {
+                    "bonus": 2
+                },
+                "hunger": {
+                    "count": {
+                        "formula": "{hunger}"
+                    }
+                }
+            },
+            "push": {
+                "label": "Spend Willpower",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "willpower",
+                        "op": "subtract",
+                        "value": 1
+                    }
+                ],
+                "maxDice": 3
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it goes wrong, or it costs you",
+                    "upTo": 1
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you get what you went for",
+                    "upTo": 3
+                },
+                {
+                    "key": "exceptional",
+                    "label": "Exceptional: you get it, and more"
+                }
+            ]
+        },
+        {
+            "key": "streetwise",
+            "label": "Streetwise (Wits)",
+            "hint": "Know the city's underside and who runs it.",
+            "pool": {
+                "count": {
+                    "formula": "{wits} + {streetwise}"
+                },
+                "sides": 10,
+                "successAt": 6,
+                "criticals": {
+                    "bonus": 2
+                },
+                "hunger": {
+                    "count": {
+                        "formula": "{hunger}"
+                    }
+                }
+            },
+            "push": {
+                "label": "Spend Willpower",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "willpower",
+                        "op": "subtract",
+                        "value": 1
+                    }
+                ],
+                "maxDice": 3
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it goes wrong, or it costs you",
+                    "upTo": 1
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you get what you went for",
+                    "upTo": 3
+                },
+                {
+                    "key": "exceptional",
+                    "label": "Exceptional: you get it, and more"
+                }
+            ]
+        },
+        {
+            "key": "investigation",
+            "label": "Investigation (Intelligence)",
+            "hint": "Follow a trail of clues and records.",
+            "pool": {
+                "count": {
+                    "formula": "{intelligence} + {investigation}"
+                },
+                "sides": 10,
+                "successAt": 6,
+                "criticals": {
+                    "bonus": 2
+                },
+                "hunger": {
+                    "count": {
+                        "formula": "{hunger}"
+                    }
+                }
+            },
+            "push": {
+                "label": "Spend Willpower",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "willpower",
+                        "op": "subtract",
+                        "value": 1
+                    }
+                ],
+                "maxDice": 3
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it goes wrong, or it costs you",
+                    "upTo": 1
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you get what you went for",
+                    "upTo": 3
+                },
+                {
+                    "key": "exceptional",
+                    "label": "Exceptional: you get it, and more"
+                }
+            ]
+        },
+        {
+            "key": "occult",
+            "label": "Occult (Intelligence)",
+            "hint": "Rituals, curses and the hidden lore of the Blood.",
+            "pool": {
+                "count": {
+                    "formula": "{intelligence} + {occult}"
+                },
+                "sides": 10,
+                "successAt": 6,
+                "criticals": {
+                    "bonus": 2
+                },
+                "hunger": {
+                    "count": {
+                        "formula": "{hunger}"
+                    }
+                }
+            },
+            "push": {
+                "label": "Spend Willpower",
+                "effects": [
+                    {
+                        "kind": "sheet",
+                        "field": "willpower",
+                        "op": "subtract",
+                        "value": 1
+                    }
+                ],
+                "maxDice": 3
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: it goes wrong, or it costs you",
+                    "upTo": 1
+                },
+                {
+                    "key": "success",
+                    "label": "Success: you get what you went for",
+                    "upTo": 3
+                },
+                {
+                    "key": "exceptional",
+                    "label": "Exceptional: you get it, and more"
+                }
+            ]
+        },
+        {
+            "key": "rouse",
+            "label": "Rouse the Blood",
+            "hint": "Call on the Blood; on a failure your Hunger rises.",
+            "pool": {
+                "count": 1,
+                "sides": 10,
+                "successAt": 6
+            },
+            "bands": [
+                {
+                    "key": "failure",
+                    "label": "Failure: your Hunger rises",
+                    "upTo": 0
+                },
+                {
+                    "key": "success",
+                    "label": "Success: the Blood answers"
+                }
+            ]
+        }
+    ]
+}

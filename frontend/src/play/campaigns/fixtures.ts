@@ -78,6 +78,7 @@ export const fanPreset: GameSystemSummary = {
     notice: 'Night Job is unofficial content and is not approved or endorsed by the publisher.',
     license: 'Homebrew Content Policy',
     url: 'https://example.com/homebrew-policy',
+    badge: null,
   },
 }
 

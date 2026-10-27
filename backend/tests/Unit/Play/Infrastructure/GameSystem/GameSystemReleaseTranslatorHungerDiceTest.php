@@ -21,22 +21,17 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Play's anti-corruption layer plays critical pairs, Hunger dice, a push cap and check step outcomes
- * on a special result (ADR 0044), and refuses the credits badge until it plays it (the next commit of
- * preset-vtm-chronicle's slice 3). Run against valid/v2-hunger-dice.
+ * on a special result (ADR 0044). Run against valid/v2-hunger-dice; the credits badge has its own test.
  */
 #[CoversClass(GameSystemReleaseTranslator::class)]
 final class GameSystemReleaseTranslatorHungerDiceTest extends TestCase
 {
     /**
-     * valid/v2-hunger-dice with the credits badge, not played yet, left out.
-     *
      * @return array<mixed>
      */
     private function playable(): array
     {
-        $content = ReleaseViews::fixtureContent('valid/v2-hunger-dice');
-
-        return ReleaseArrays::without($content, 'gameSystem.credits.badge');
+        return ReleaseViews::fixtureContent('valid/v2-hunger-dice');
     }
 
     /**
@@ -128,24 +123,6 @@ final class GameSystemReleaseTranslatorHungerDiceTest extends TestCase
     {
         $this->expectException(InvalidGameSystemRelease::class);
         $this->expectExceptionMessageIsOrContains($at);
-
-        $this->translate(ReleaseArrays::with($this->playable(), $path, $value));
-    }
-
-    /**
-     * @return iterable<string, array{string, mixed, string}> the path set on the playable release, its value and the refusal
-     */
-    public static function unplayedParts(): iterable
-    {
-        yield 'a credits badge' => ['gameSystem.credits.badge', 'dark-pack', 'gameSystem.credits.badge: a credits badge is not played yet (ADR 0044).'];
-    }
-
-    #[Test]
-    #[DataProvider('unplayedParts')]
-    public function itRefusesAPartItDoesNotPlayYet(string $path, mixed $value, string $message): void
-    {
-        $this->expectException(InvalidGameSystemRelease::class);
-        $this->expectExceptionMessageIsOrContains($message);
 
         $this->translate(ReleaseArrays::with($this->playable(), $path, $value));
     }

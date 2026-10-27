@@ -1924,6 +1924,12 @@ export interface components {
              * @example https://rtalsoriangames.com/homebrew-content-policy/
              */
             url: string | null;
+            /**
+             * @description The logo to show beside the notice, one the SPA ships (ADR 0044); null when the release names none.
+             * @example dark-pack
+             * @enum {string|null}
+             */
+            badge: "dark-pack" | null;
         };
         ConditionOptionResponse: {
             /**

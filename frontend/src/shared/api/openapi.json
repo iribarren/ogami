@@ -11051,7 +11051,8 @@
                 "required": [
                     "notice",
                     "license",
-                    "url"
+                    "url",
+                    "badge"
                 ],
                 "properties": {
                     "notice": {
@@ -11070,6 +11071,15 @@
                         "type": "string",
                         "example": "https://rtalsoriangames.com/homebrew-content-policy/",
                         "nullable": true
+                    },
+                    "badge": {
+                        "description": "The logo to show beside the notice, one the SPA ships (ADR 0044); null when the release names none.",
+                        "type": "string",
+                        "example": "dark-pack",
+                        "nullable": true,
+                        "enum": [
+                            "dark-pack"
+                        ]
                     }
                 },
                 "type": "object"

@@ -16,6 +16,7 @@ use App\Play\Domain\GameSystem\Check\CheckPool;
 use App\Play\Domain\GameSystem\Check\CheckPush;
 use App\Play\Domain\GameSystem\Check\SpecialResult;
 use App\Play\Domain\GameSystem\Credits;
+use App\Play\Domain\GameSystem\CreditsBadge;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\Band;
@@ -913,9 +914,8 @@ final readonly class GameSystemReleaseTranslator
 
         $path = 'gameSystem.credits';
         $credits = $this->object($view, $value, $path);
-        $this->refuseUnplayed($view, $credits, $path, 'badge', 'a credits badge is');
         foreach (array_keys($credits) as $name) {
-            if (!\in_array($name, ['notice', 'license', 'url'], true)) {
+            if (!\in_array($name, ['notice', 'license', 'url', 'badge'], true)) {
                 throw $this->invalid($view, $path.'.'.$name, 'unknown property.');
             }
         }
@@ -943,7 +943,9 @@ final readonly class GameSystemReleaseTranslator
             throw $this->invalid($view, $path.'.url', \sprintf('must be at most %d characters.', self::MAX_CREDITS_URL_LENGTH));
         }
 
-        return new Credits($notice, $license, $url);
+        $badge = $this->optionalString($view, $credits['badge'] ?? null, $path.'.badge');
+
+        return new Credits($notice, $license, $url, null === $badge ? null : CreditsBadge::tryFrom($badge) ?? throw $this->invalid($view, $path.'.badge', \sprintf('unknown badge "%s" (ADR 0044).', $badge)));
     }
 
     /**
@@ -1536,19 +1538,6 @@ final readonly class GameSystemReleaseTranslator
         }
 
         return $formula;
-    }
-
-    /**
-     * Refuses a part of ADR 0044 Studio publishes but Play does not play yet (preset-vtm-chronicle
-     * slice 3), present even as null, so a release using it fails closed instead of playing without it.
-     *
-     * @param array<array-key, mixed> $object
-     */
-    private function refuseUnplayed(PublishedReleaseView $view, array $object, string $path, string $name, string $what): void
-    {
-        if (\array_key_exists($name, $object)) {
-            throw $this->invalid($view, $path.'.'.$name, $what.' not played yet (ADR 0044).');
-        }
     }
 
     /**

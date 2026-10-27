@@ -7,6 +7,8 @@ namespace App\Tests\Unit\Play\Infrastructure\GameSystem;
 use App\Formula\Domain\Formula;
 use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Check\CheckPool;
+use App\Play\Domain\GameSystem\Check\SpecialResult;
+use App\Play\Domain\GameSystem\Flow\CheckStep;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
@@ -18,27 +20,23 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Play's anti-corruption layer plays critical pairs, Hunger dice and a push cap (ADR 0044, slice 2)
- * and refuses the parts of preset-vtm-chronicle's slice 3 until it plays them: check step outcomes
- * on a special result and the credits badge. A release using them publishes but cannot be played yet.
- * Run against valid/v2-hunger-dice.
+ * Play's anti-corruption layer plays critical pairs, Hunger dice, a push cap and check step outcomes
+ * on a special result (ADR 0044), and refuses the credits badge until it plays it (the next commit of
+ * preset-vtm-chronicle's slice 3). Run against valid/v2-hunger-dice.
  */
 #[CoversClass(GameSystemReleaseTranslator::class)]
 final class GameSystemReleaseTranslatorHungerDiceTest extends TestCase
 {
     /**
-     * valid/v2-hunger-dice with the parts not played yet left out.
+     * valid/v2-hunger-dice with the credits badge, not played yet, left out.
      *
      * @return array<mixed>
      */
     private function playable(): array
     {
         $content = ReleaseViews::fixtureContent('valid/v2-hunger-dice');
-        $content = ReleaseArrays::without($content, 'gameSystem.credits.badge');
 
-        $content = ReleaseArrays::with($content, 'sceneTypes.0.play.0.outcomes', [['band' => 'fail']]);
-
-        return ReleaseArrays::with($content, 'sceneTypes.0.play.1.outcomes', []);
+        return ReleaseArrays::without($content, 'gameSystem.credits.badge');
     }
 
     /**
@@ -87,7 +85,9 @@ final class GameSystemReleaseTranslatorHungerDiceTest extends TestCase
     #[Test]
     public function aNullCriticalsHungerOrCapIsAbsent(): void
     {
-        $content = ReleaseArrays::with($this->playable(), 'checks.0.pool.criticals', null);
+        // Without the pool parts, the step can no longer branch on the special results they enable.
+        $content = ReleaseArrays::with($this->playable(), 'sceneTypes.0.play.0.outcomes', [['band' => 'fail']]);
+        $content = ReleaseArrays::with($content, 'checks.0.pool.criticals', null);
         $content = ReleaseArrays::with($content, 'checks.0.pool.hunger', null);
         $content = ReleaseArrays::with($content, 'checks.0.push.maxDice', null);
 
@@ -137,8 +137,6 @@ final class GameSystemReleaseTranslatorHungerDiceTest extends TestCase
      */
     public static function unplayedParts(): iterable
     {
-        yield 'an outcome on a special result' => ['sceneTypes.0.play.1.outcomes', [['special' => 'bestialFailure', 'next' => 'compulsion']], 'sceneTypes[0].play[1].outcomes[0].special: outcomes on a special result are not played yet (ADR 0044).'];
-        yield 'a special beside a band' => ['sceneTypes.0.play.0.outcomes.0.special', 'critical', 'sceneTypes[0].play[0].outcomes[0].special: outcomes on a special result are not played yet (ADR 0044).'];
         yield 'a credits badge' => ['gameSystem.credits.badge', 'dark-pack', 'gameSystem.credits.badge: a credits badge is not played yet (ADR 0044).'];
     }
 
@@ -150,5 +148,67 @@ final class GameSystemReleaseTranslatorHungerDiceTest extends TestCase
         $this->expectExceptionMessageIsOrContains($message);
 
         $this->translate(ReleaseArrays::with($this->playable(), $path, $value));
+    }
+
+    #[Test]
+    public function itReadsTheOutcomesOnASpecialResultAheadOfTheBandOnes(): void
+    {
+        $feed = $this->translate($this->playable())->sceneType('hunt')?->play->step('feed');
+
+        self::assertInstanceOf(CheckStep::class, $feed);
+        self::assertSame(['fail'], array_keys($feed->outcomes));
+        self::assertSame(['bestialFailure', 'messyCritical', 'critical'], array_keys($feed->specialOutcomes));
+        self::assertSame('compulsion', $feed->specialOutcomes['bestialFailure']->next);
+        self::assertCount(1, $feed->specialOutcomes['messyCritical']->effects);
+        self::assertSame($feed->specialOutcomes['bestialFailure'], $feed->outcomeFor('fail', SpecialResult::BestialFailure));
+        self::assertSame($feed->outcomes['fail'], $feed->outcomeFor('fail'));
+    }
+
+    /**
+     * @return iterable<string, array{string, mixed, string}> the path set on the playable release, its value and the refusal
+     */
+    public static function malformedSpecialOutcomes(): iterable
+    {
+        yield 'an unknown special' => ['sceneTypes.0.play.0.outcomes.1.special', 'frenzy', 'sceneTypes[0].play[0].outcomes[1].special: unknown special result "frenzy"'];
+        yield 'a special that is not a string' => ['sceneTypes.0.play.0.outcomes.1.special', 3, 'sceneTypes[0].play[0].outcomes[1].special'];
+        yield 'a special twice' => ['sceneTypes.0.play.0.outcomes.2.special', 'bestialFailure', 'sceneTypes[0].play[0].outcomes[2].special: duplicate outcome special "bestialFailure".'];
+        yield 'a band and a special in one entry' => ['sceneTypes.0.play.0.outcomes.1.band', 'win', 'sceneTypes[0].play[0].outcomes[1]: must name exactly one of band and special.'];
+        yield 'a band twice' => ['sceneTypes.0.play.0.outcomes.1', ['band' => 'fail'], 'sceneTypes[0].play[0].outcomes[1].band: duplicate outcome band "fail".'];
+        yield 'an entry naming neither' => ['sceneTypes.0.play.0.outcomes.1', ['next' => 'compulsion'], 'sceneTypes[0].play[0].outcomes[1]: must name exactly one of band and special.'];
+        yield 'a critical of a check without critical pairs' => ['sceneTypes.0.play.1.outcomes.0.special', 'critical', 'sceneTypes[0].play[1].outcomes[0].special: check "frenzy" cannot produce the special result "critical"'];
+        yield 'a bestial failure of a check without Hunger dice' => ['sceneTypes.0.play.0.check', 'aim', 'sceneTypes[0].play[0].outcomes[1].special: check "aim" cannot produce the special result "bestialFailure"'];
+    }
+
+    #[Test]
+    #[DataProvider('malformedSpecialOutcomes')]
+    public function itFailsClosedOnAMalformedSpecialOutcomeWithItsPath(string $path, mixed $value, string $message): void
+    {
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains($message);
+
+        $this->translate(ReleaseArrays::with($this->playable(), $path, $value));
+    }
+
+    #[Test]
+    public function aLiteralHungerCountOfZeroCannotProduceTheHungerResults(): void
+    {
+        $content = ReleaseArrays::with($this->playable(), 'checks.1.pool.hunger.count', 0);
+
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains('check "frenzy" cannot produce the special result "bestialFailure"');
+
+        $this->translate($content);
+    }
+
+    #[Test]
+    public function everyCheckOfASetMustBeAbleToProduceTheSpecialResult(): void
+    {
+        $content = ReleaseArrays::without($this->playable(), 'sceneTypes.0.play.0.check');
+        $content = ReleaseArrays::with($content, 'sceneTypes.0.play.0.checks', ['persuade', 'aim']);
+
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains('check "aim" cannot produce the special result "bestialFailure"');
+
+        $this->translate($content);
     }
 }

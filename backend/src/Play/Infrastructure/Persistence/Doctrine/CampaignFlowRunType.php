@@ -13,6 +13,7 @@ use App\Play\Domain\Campaign\FlowRun\PendingCheck;
 use App\Play\Domain\Campaign\FlowRun\PickedItems;
 use App\Play\Domain\Campaign\FlowRun\ScenePart;
 use App\Play\Domain\Campaign\Hook;
+use App\Play\Domain\GameSystem\Check\SpecialResult;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDbalType;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
@@ -27,7 +28,7 @@ use Doctrine\DBAL\Types\JsonType;
  * Stored shape: {status, phaseIndex, stage, sessionNumber, sceneNumber, sceneType, part, stepKey,
  * sequencePosition, scenesPlayed, answers: {stepKey: text}, forcedNextSceneType, phaseEnding,
  * switchCount, hook, phaseOpened, sessionOpeningDue, picked: {kind, ids} or null, autoPickDue, history: [{event, at, details: {…}}],
- * pendingCheck: {stepKey, entryId, characterId, difficulty, bandKey, checkKey} or null}, every
+ * pendingCheck: {stepKey, entryId, characterId, difficulty, bandKey, checkKey, special} or null}, every
  * field present (null where the FlowRun has none). The details are those of the event's
  * FlowRunHistoryEntry factory (a skip's part is a scene part or a hook). Times keep their
  * microseconds and UTC offset. Reading checks the shape and every enumerated value and fails on
@@ -103,6 +104,7 @@ final class CampaignFlowRunType extends JsonType
                 'difficulty' => $pending->difficulty,
                 'bandKey' => $pending->bandKey,
                 'checkKey' => $pending->checkKey,
+                'special' => $pending->special?->value,
             ] : null,
         ], $platform);
     }
@@ -173,7 +175,7 @@ final class CampaignFlowRunType extends JsonType
         }
 
         try {
-            return new PendingCheck($this->string($pending, 'stepKey'), $this->string($pending, 'entryId'), $this->string($pending, 'characterId'), $this->optionalInt($pending, 'difficulty'), $this->string($pending, 'bandKey'), $this->optionalString($pending, 'checkKey'));
+            return new PendingCheck($this->string($pending, 'stepKey'), $this->string($pending, 'entryId'), $this->string($pending, 'characterId'), $this->optionalInt($pending, 'difficulty'), $this->string($pending, 'bandKey'), $this->optionalString($pending, 'checkKey'), $this->enum(SpecialResult::class, $pending, 'special'));
         } catch (\InvalidArgumentException $e) {
             throw ValueNotConvertible::new('pendingCheck', self::NAME, \sprintf('Stored campaign FlowRun: "pendingCheck" is invalid: %s', $e->getMessage()));
         }

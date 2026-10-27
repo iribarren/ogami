@@ -130,7 +130,7 @@ final readonly class PoolRoll
     /**
      * Rebuilds a roll from the faces it showed, e.g. a stored one.
      *
-     * @param list<int> $faces in roll order, one per die of the pool
+     * @param array<int, int> $faces in roll order, one per die of the pool; the keys are ignored (stored data is not trusted to be a list)
      *
      * @throws InvalidDicePool when there are not as many faces as dice, or a face is outside 1..sides
      */

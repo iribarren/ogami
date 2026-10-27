@@ -411,7 +411,7 @@ A roll **fails** when its total is below its difficulty, for a check that declar
 "outcomes": [{"band": "fail", "next": "retreat"}, {"special": "bestialFailure", "next": "compulsion"}]
 ```
 
-The fixture `valid/v2-hunger-dice.json` has the whole release. Play's translator refuses `criticals`, `hunger` and `maxDice` until `preset-vtm-chronicle` slice 2, and `special` outcomes until slice 3, so a release using them can be published but not played yet.
+The fixture `valid/v2-hunger-dice.json` has the whole release. Play's translator reads `criticals`, `hunger` and `maxDice` and plays them (`preset-vtm-chronicle` slice 2), and reads `special` outcomes too (slice 3): a roll with a special result takes the outcome that names it ahead of the band's, also after Keep or Push on a pending step, where a push recomputes the special result with the band. The translator fails closed with the entry's path on an unknown `special`, a `special` named twice, an entry naming both or neither of `band` and `special`, and a `special` the step's check cannot produce (every check of a check set must be able to).
 
 ### Formulas (ADR 0023)
 

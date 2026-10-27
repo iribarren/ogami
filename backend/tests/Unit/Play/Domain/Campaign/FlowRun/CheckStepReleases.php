@@ -36,7 +36,8 @@ use App\Randomness\Domain\DiceExpression;
  * (a pool of 3d6 with successes on 5+, bands "miss" up to 0, "weak" up to 1 and "strong", pushable
  * at no cost, ADR 0041), "steady" (the same pool without a push) and "thirst" (the pool with critical
  * pairs worth 2 and 2 Hunger dice, a push capped at 1 die, ADR 0044: the dice are 1 regular die,
- * then 2 Hunger dice). For check sets (ADR 0042) each
+ * then 2 Hunger dice), "craving" (4d6, critical pairs worth 2 and 1 Hunger die, the Hunger die last, no push) and
+ * "dread" (the same with a push capped at 1 die). For check sets (ADR 0042) each
  * shares its band keys with a sibling: "knack" (1d10 + hands, the bands of "skill") and "nerve" (the
  * pool of "grit" with a push, the bands of "grit").
  *
@@ -50,10 +51,11 @@ final class CheckStepReleases
      * @param string|non-empty-list<string> $check    the check, or the check set
      * @param array<string, Outcome>        $outcomes
      * @param list<Effect>                  $effects
+     * @param array<string, Outcome>        $specials the Outcome of each special result that has one, by special result (ADR 0044)
      */
-    public static function step(string|array $check = 'skill', int|Formula|null $difficulty = null, array $outcomes = [], ?string $next = null, array $effects = []): CheckStep
+    public static function step(string|array $check = 'skill', int|Formula|null $difficulty = null, array $outcomes = [], ?string $next = null, array $effects = [], array $specials = []): CheckStep
     {
-        return new CheckStep('sneak', 'Sneak past the guard', null, null, false, $next, $effects, (array) $check, $difficulty, $outcomes);
+        return new CheckStep('sneak', 'Sneak past the guard', null, null, false, $next, $effects, (array) $check, $difficulty, $outcomes, $specials);
     }
 
     public static function release(CheckStep $step, bool $inTheWorldTurn = false, int $version = 1): GameSystemSnapshot
@@ -78,6 +80,8 @@ final class CheckStepReleases
             new Check('grit', 'Grit', null, null, null, null, $poolBands, new CheckPool(3, 6, 5), new CheckPush('Push it')),
             new Check('nerve', 'Nerve', null, null, null, null, $poolBands, new CheckPool(3, 6, 5), new CheckPush('Push it')),
             new Check('steady', 'Steady', null, null, null, null, $poolBands, new CheckPool(3, 6, 5)),
+            new Check('craving', 'Craving', null, null, null, null, $poolBands, new CheckPool(4, 6, 5, 2, 1)),
+            new Check('dread', 'Dread', null, null, null, null, $poolBands, new CheckPool(4, 6, 5, 2, 1), new CheckPush('Push it', [], 1)),
             new Check('thirst', 'Thirst', null, null, null, null, $poolBands, new CheckPool(3, 6, 5, 2, 2), new CheckPush('Push it', [], 1)),
         ];
 

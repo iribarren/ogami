@@ -65,6 +65,7 @@ use App\Play\Domain\Campaign\Upgrade\ReleaseUpgradeChanged;
 use App\Play\Domain\Campaign\Upgrade\ReleaseUpgradePlan;
 use App\Play\Domain\Campaign\Upgrade\ReleaseUpgradePlanner;
 use App\Play\Domain\Campaign\Upgrade\UpgradeToAnotherGameSystem;
+use App\Play\Domain\GameSystem\Check\SpecialResult;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
@@ -1336,7 +1337,8 @@ final class Campaign
      * Completes the check step whose roll pends on the rolled band (Keep) or the pushed one (Push),
      * as completeFlowStep() completes a step. All or nothing.
      *
-     * @param ?string $pushedBandKey the band of the pushed roll; null keeps the rolled one
+     * @param ?string        $pushedBandKey the band of the pushed roll; null keeps the rolled one
+     * @param ?SpecialResult $pushedSpecial the special result of the pushed roll, none when the push left none (ADR 0044)
      *
      * @return list<SheetChange> what the step's sheet Effects changed, in apply order
      *
@@ -1348,10 +1350,10 @@ final class Campaign
      *
      * @phpstan-impure
      */
-    public function resolvePendingFlowCheck(string $stepKey, ?string $pushedBandKey, GameSystemSnapshot $release, \DateTimeImmutable $at, ?RandomNumberGenerator $random = null): array
+    public function resolvePendingFlowCheck(string $stepKey, ?string $pushedBandKey, GameSystemSnapshot $release, \DateTimeImmutable $at, ?RandomNumberGenerator $random = null, ?SpecialResult $pushedSpecial = null): array
     {
         $draft = clone $this;
-        $changes = $draft->guided()->resolvePendingCheck($stepKey, $pushedBandKey, $draft->flowContext($release, $at, $random));
+        $changes = $draft->guided()->resolvePendingCheck($stepKey, $pushedBandKey, $draft->flowContext($release, $at, $random), $pushedSpecial);
         $this->adopt($draft);
 
         return $changes;

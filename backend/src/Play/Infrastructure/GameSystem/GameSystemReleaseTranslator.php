@@ -14,6 +14,7 @@ use App\Play\Domain\GameSystem\Check\CheckBand;
 use App\Play\Domain\GameSystem\Check\CheckDifficulty;
 use App\Play\Domain\GameSystem\Check\CheckPool;
 use App\Play\Domain\GameSystem\Check\CheckPush;
+use App\Play\Domain\GameSystem\Check\SpecialResult;
 use App\Play\Domain\GameSystem\Credits;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
@@ -393,9 +394,19 @@ final readonly class GameSystemReleaseTranslator
         }
 
         foreach ($this->list($view, $step['outcomes'] ?? [], $path.'.outcomes') as $index => $outcome) {
-            $band = $this->object($view, $outcome, \sprintf('%s.outcomes[%d]', $path, $index))['band'] ?? null;
-            if (!\is_string($band) || !array_any($check->bands, static fn (CheckBand $candidate): bool => $candidate->key === $band)) {
-                throw $this->invalid($view, \sprintf('%s.outcomes[%d].band', $path, $index), \sprintf('unknown band "%s" of check "%s".', \is_string($band) ? $band : '', $check->key));
+            $outcomePath = \sprintf('%s.outcomes[%d]', $path, $index);
+            [$kind, $name] = $this->outcomeKey($view, $outcome, $outcomePath);
+            if ('special' === $kind) {
+                $special = SpecialResult::from($name);
+                if (!$check->canProduce($special)) {
+                    throw $this->invalid($view, $outcomePath.'.special', \sprintf('check "%s" cannot produce the special result "%s" (ADR 0044).', $check->key, $special->value));
+                }
+
+                continue;
+            }
+
+            if (!array_any($check->bands, static fn (CheckBand $candidate): bool => $candidate->key === $name)) {
+                throw $this->invalid($view, $outcomePath.'.band', \sprintf('unknown band "%s" of check "%s".', $name, $check->key));
             }
         }
     }
@@ -800,16 +811,20 @@ final readonly class GameSystemReleaseTranslator
     {
         $checks = $this->checkKeys($view, $step, $path);
         $outcomes = [];
+        $specialOutcomes = [];
         foreach ($this->list($view, $step['outcomes'] ?? [], $path.'.outcomes') as $index => $outcome) {
             $outcomePath = \sprintf('%s.outcomes[%d]', $path, $index);
-            $this->refuseUnplayed($view, $this->object($view, $outcome, $outcomePath), $outcomePath, 'special', 'outcomes on a special result are');
-            $band = $this->string($view, $this->object($view, $outcome, $outcomePath)['band'] ?? null, $outcomePath.'.band');
-            if (isset($outcomes[$band])) {
-                throw $this->invalid($view, $outcomePath.'.band', \sprintf('duplicate outcome band "%s".', $band));
+            [$kind, $name] = $this->outcomeKey($view, $outcome, $outcomePath);
+            if (isset(('special' === $kind ? $specialOutcomes : $outcomes)[$name])) {
+                throw $this->invalid($view, \sprintf('%s.%s', $outcomePath, $kind), \sprintf('duplicate outcome %s "%s".', $kind, $name));
             }
 
             // The checked Character is known, so an Outcome may change the sheet.
-            $outcomes[$band] = $this->outcome($view, $outcome, $outcomePath, true);
+            if ('special' === $kind) {
+                $specialOutcomes[$name] = $this->outcome($view, $outcome, $outcomePath, true);
+            } else {
+                $outcomes[$name] = $this->outcome($view, $outcome, $outcomePath, true);
+            }
         }
 
         return new CheckStep(
@@ -817,7 +832,33 @@ final readonly class GameSystemReleaseTranslator
             checks: $checks,
             difficulty: null === ($step['difficulty'] ?? null) ? null : $this->value($view, $step['difficulty'], $path.'.difficulty'),
             outcomes: $outcomes,
+            specialOutcomes: $specialOutcomes,
         );
+    }
+
+    /**
+     * What a check step's outcome entry matches (ADR 0044): exactly one of a band or a special result,
+     * as a string; a special result must be one of the closed set. The stored content is not trusted.
+     *
+     * @return array{'band'|'special', string}
+     */
+    private function outcomeKey(PublishedReleaseView $view, mixed $outcome, string $path): array
+    {
+        $outcome = $this->object($view, $outcome, $path);
+        if (\array_key_exists('band', $outcome) === \array_key_exists('special', $outcome)) {
+            throw $this->invalid($view, $path, 'must name exactly one of band and special.');
+        }
+
+        if (!\array_key_exists('special', $outcome)) {
+            return ['band', $this->string($view, $outcome['band'], $path.'.band')];
+        }
+
+        $special = $this->string($view, $outcome['special'], $path.'.special');
+        if (!SpecialResult::tryFrom($special) instanceof SpecialResult) {
+            throw $this->invalid($view, $path.'.special', \sprintf('unknown special result "%s".', $special));
+        }
+
+        return ['special', $special];
     }
 
     /**

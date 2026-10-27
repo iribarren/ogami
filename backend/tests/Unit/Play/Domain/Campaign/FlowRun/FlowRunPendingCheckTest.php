@@ -18,6 +18,7 @@ use App\Play\Domain\Campaign\FlowRun\NoPendingCheck;
 use App\Play\Domain\Campaign\FlowRun\PendingCheck;
 use App\Play\Domain\Campaign\FlowRun\ScenePart;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
+use App\Play\Domain\GameSystem\Check\SpecialResult;
 use App\Play\Domain\GameSystem\Flow\CheckStep;
 use App\Play\Domain\GameSystem\Flow\Outcome;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
@@ -111,7 +112,7 @@ final class FlowRunPendingCheckTest extends FlowRunTestCase
         $release = $this->gritRelease('thirst');
         $campaign = $this->inScene($release);
         $campaign->completeFlowStep('sneak', $this->rolled($release, 'thirst', 1, 1, 2), $release, self::at(), entryId: self::ENTRY);
-        self::assertEquals(new PendingCheck('sneak', self::ENTRY, 'ada', null, 'miss'), self::flowRunOf($campaign)->pendingCheck());
+        self::assertEquals(new PendingCheck('sneak', self::ENTRY, 'ada', null, 'miss', special: SpecialResult::BestialFailure), self::flowRunOf($campaign)->pendingCheck());
 
         $campaign->resolvePendingFlowCheck('sneak', null, $release, self::at());
 

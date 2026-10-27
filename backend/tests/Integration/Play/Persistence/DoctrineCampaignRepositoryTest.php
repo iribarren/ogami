@@ -32,6 +32,7 @@ use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\SceneKind;
 use App\Play\Domain\Campaign\Session;
+use App\Play\Domain\GameSystem\Check\SpecialResult;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
@@ -217,6 +218,8 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'a pending check with a difficulty that is no integer' => [['pendingCheck' => ['difficulty' => '13'] + $pending] + $active, 'Stored campaign FlowRun: "difficulty" must be an integer.'];
         yield 'a pending check with a blank band' => [['pendingCheck' => ['bandKey' => ' '] + $pending] + $active, 'Stored campaign FlowRun: "pendingCheck" is invalid: A pending check needs a bandKey.'];
         yield 'a pending check with a check key that is no string' => [['pendingCheck' => ['checkKey' => 5] + $pending] + $active, 'Stored campaign FlowRun: "checkKey" must be a string.'];
+        yield 'a pending check with a special result that is no string' => [['pendingCheck' => ['special' => 5] + $pending] + $active, 'Stored campaign FlowRun: "special" must be a string.'];
+        yield 'a pending check with an unknown special result' => [['pendingCheck' => ['special' => 'frenzy'] + $pending] + $active, 'Stored campaign FlowRun: "special" must be one of "critical", "messyCritical", "bestialFailure".'];
         yield 'a pending check with a blank check key' => [['pendingCheck' => ['checkKey' => ' '] + $pending] + $active, 'Stored campaign FlowRun: "pendingCheck" is invalid: A pending check needs a checkKey.'];
         yield 'a pending check of another step' => [['pendingCheck' => $pending] + ['stepKey' => 'plan'] + $active, 'Stored campaign FlowRun: "pendingCheck" must be the current step\'s, while guidance is active.'];
         yield 'a pending check while guidance is paused' => [['pendingCheck' => $pending] + ['status' => 'paused'] + $active, 'Stored campaign FlowRun: "pendingCheck" must be the current step\'s, while guidance is active.'];
@@ -340,7 +343,41 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
 
         self::assertEquals($campaign, $loaded);
         self::assertEquals($pending, $loaded?->flowRun()?->pendingCheck());
-        self::assertEquals(['stepKey' => 'case', 'entryId' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001', 'characterId' => 'ada', 'difficulty' => 13, 'bandKey' => 'weak', 'checkKey' => $checkKey], $this->storedFlowRun($id->toString())['pendingCheck']);
+        self::assertEquals(['stepKey' => 'case', 'entryId' => '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001', 'characterId' => 'ada', 'difficulty' => 13, 'bandKey' => 'weak', 'checkKey' => $checkKey, 'special' => null], $this->storedFlowRun($id->toString())['pendingCheck']);
+    }
+
+    #[Test]
+    public function aPendingCheckKeepsItsSpecialResult(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $pending = new PendingCheck('case', '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001', 'ada', 13, 'miss', special: SpecialResult::BestialFailure);
+        $this->repository->add($this->withPendingCheck($id, $pending));
+        $this->forgetLoaded();
+
+        self::assertEquals($pending, $this->repository->ofId($id)?->flowRun()?->pendingCheck());
+        $stored = $this->storedFlowRun($id->toString())['pendingCheck'];
+        self::assertIsArray($stored);
+        self::assertSame('bestialFailure', $stored['special'] ?? null);
+    }
+
+    /**
+     * A pending roll stored before special results (ADR 0044) has no special: it reads without one.
+     */
+    #[Test]
+    public function aPendingCheckStoredBeforeSpecialResultsReadsWithoutOne(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $pending = new PendingCheck('case', '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001', 'ada', 13, 'weak');
+        $this->repository->add($this->withPendingCheck($id, $pending));
+        $legacy = $this->storedFlowRun($id->toString());
+        $stored = $legacy['pendingCheck'];
+        self::assertIsArray($stored);
+        unset($stored['special']);
+        $legacy['pendingCheck'] = $stored;
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET flow_run = ? WHERE id = ?', [json_encode($legacy, \JSON_THROW_ON_ERROR), $id->toString()]);
+        $this->forgetLoaded();
+
+        self::assertEquals($pending, $this->repository->ofId($id)?->flowRun()?->pendingCheck());
     }
 
     /**

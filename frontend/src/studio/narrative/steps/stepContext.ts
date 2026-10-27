@@ -1,4 +1,7 @@
+import type { StoredCheck } from '../../checks/checkDraft'
+import type { GameSystemChecks } from '../../checks/useGameSystemChecks'
 import type { GameSystemNarrative } from '../useGameSystemNarrative'
+import type { CheckSpecial } from './stepDraft'
 
 /** What the step and effect forms pick from: the draft's own tables, likelihood oracles, checks, trackers, tags, Scene Types, fact slots and sheet fields. */
 export interface StepContext {
@@ -13,6 +16,8 @@ export interface StepContext {
     bands: string[]
     /** Null when the check has no difficulty the author sets. */
     difficulty: { default: number; min: number | null; max: number | null } | null
+    /** The special results its pool can produce (ADR 0044); absent when the checks were not loaded, so none is offered or flagged. */
+    specials?: CheckSpecial[]
   }[]
   trackers: { key: string; name: string }[]
   tags: { key: string; name: string }[]
@@ -26,8 +31,37 @@ export interface StepContext {
   sheetFields?: { key: string; name: string; options?: { key: string; name: string }[] }[]
 }
 
-/** The pickers' options from the narrative read model (tables from the catalog, the rest from the sections). */
-export function stepContext(narrative: GameSystemNarrative): StepContext {
+/**
+ * The special results a stored check can produce (ADR 0044): `critical` needs critical pairs,
+ * `bestialFailure` needs Hunger dice and `messyCritical` both. A literal Hunger count of 0 means no
+ * Hunger dice; a formula counts as Hunger dice, as the publisher reads it.
+ */
+export function specialsOf(check: StoredCheck): CheckSpecial[] {
+  const pool = check.pool
+  if (typeof pool !== 'object' || pool === null) {
+    return []
+  }
+  const { criticals, hunger } = pool as Record<string, unknown>
+  const critical = criticals !== undefined && criticals !== null
+  const hungry =
+    hunger !== undefined &&
+    hunger !== null &&
+    !(typeof hunger === 'object' && (hunger as { count?: unknown }).count === 0)
+  return [
+    ...(critical ? (['critical'] as const) : []),
+    ...(critical && hungry ? (['messyCritical'] as const) : []),
+    ...(hungry ? (['bestialFailure'] as const) : []),
+  ]
+}
+
+/**
+ * The pickers' options from the narrative read model (tables from the catalog, the rest from the
+ * sections). With the draft's `checks`, each check also says which special results it can produce.
+ */
+export function stepContext(
+  narrative: GameSystemNarrative,
+  stored?: GameSystemChecks,
+): StepContext {
   const named = (items: { key: string; definition: Record<string, unknown> }[], field: string) =>
     items.map(({ key, definition }) => ({
       key,
@@ -40,12 +74,16 @@ export function stepContext(narrative: GameSystemNarrative): StepContext {
       name,
       levels,
     })),
-    checks: narrative.catalog.checks.map(({ key, label, bands, difficulty }) => ({
-      key,
-      name: label,
-      bands,
-      difficulty,
-    })),
+    checks: narrative.catalog.checks.map(({ key, label, bands, difficulty }) => {
+      const found = stored?.checks.find((check) => check.key === key)
+      return {
+        key,
+        name: label,
+        bands,
+        difficulty,
+        ...(found === undefined ? {} : { specials: specialsOf(found) }),
+      }
+    }),
     trackers: named(narrative.trackers, 'name'),
     tags: named(narrative.tags, 'label'),
     sceneTypes: named(narrative.sceneTypes, 'name'),

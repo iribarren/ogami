@@ -1,5 +1,5 @@
 import { narrative } from '../../fixtures'
-import { stepContext } from './stepContext'
+import { specialsOf, stepContext } from './stepContext'
 
 describe('the step pickers', () => {
   it('read Scene Types, fact slots and sheet fields from the narrative, falling back to the key', () => {
@@ -77,5 +77,53 @@ describe('the step pickers', () => {
       },
     ])
     expect(context.trackers.map((tracker) => tracker.key)).toEqual(['heat', 'alarm', 'mood'])
+  })
+})
+
+describe('the special results a check can produce', () => {
+  const pool = { count: 3, sides: 10, successAt: 6 }
+
+  it.each([
+    ['no pool', { dice: '1d6' }, []],
+    ['a pool without criticals or Hunger dice', { pool }, []],
+    ['null criticals and Hunger dice', { pool: { ...pool, criticals: null, hunger: null } }, []],
+    ['critical pairs', { pool: { ...pool, criticals: { bonus: 2 } } }, ['critical']],
+    ['Hunger dice', { pool: { ...pool, hunger: { count: 1 } } }, ['bestialFailure']],
+    [
+      'a Hunger formula',
+      { pool: { ...pool, hunger: { count: { formula: '{hunger}' } } } },
+      ['bestialFailure'],
+    ],
+    ['a literal Hunger count of 0', { pool: { ...pool, hunger: { count: 0 } } }, []],
+    [
+      'critical pairs and Hunger dice',
+      { pool: { ...pool, criticals: { bonus: 2 }, hunger: { count: 2 } } },
+      ['critical', 'messyCritical', 'bestialFailure'],
+    ],
+    [
+      'critical pairs and a literal Hunger count of 0',
+      { pool: { ...pool, criticals: { bonus: 2 }, hunger: { count: 0 } } },
+      ['critical'],
+    ],
+  ])('for %s', (_, stored, expected) => {
+    expect(specialsOf({ key: 'k', label: 'K', bands: [], ...stored })).toEqual(expected)
+  })
+
+  it('go into the picker only for the checks the draft holds', () => {
+    const checks = {
+      checks: [{ key: 'skill', label: 'Skill', pool: { ...pool, criticals: { bonus: 2 } } }],
+    } as unknown as Parameters<typeof stepContext>[1]
+    const catalog = {
+      ...narrative.catalog,
+      checks: [
+        { key: 'skill', label: 'Skill', bands: ['fail', 'win'], difficulty: null },
+        { key: 'luck', label: 'Luck', bands: ['win'], difficulty: null },
+      ],
+    }
+
+    const [skill, luck] = stepContext({ ...narrative, catalog }, checks).checks
+    expect(skill?.specials).toEqual(['critical'])
+    expect(luck).not.toHaveProperty('specials')
+    expect(stepContext({ ...narrative, catalog }).checks[0]).not.toHaveProperty('specials')
   })
 })

@@ -72,10 +72,25 @@ export type PickOutcome = (typeof pickOutcomes)[number]
 export const pickModes = ['random', 'choose'] as const
 export type PickMode = (typeof pickModes)[number]
 
-/** A check step outcome: the band of the check it is for and what follows it. */
-export interface CheckOutcomeDraft extends OutcomeDraft {
+/** The special results a roll can have (ADR 0044), in the order their outcomes are written. */
+export const checkSpecials = ['critical', 'messyCritical', 'bestialFailure'] as const
+export type CheckSpecial = (typeof checkSpecials)[number]
+
+/** A check step outcome for a band of the check, and what follows it. */
+export interface BandOutcomeDraft extends OutcomeDraft {
   band: string
 }
+
+/** A check step outcome for a special result, which replaces the band's, and what follows it. */
+export interface SpecialOutcomeDraft extends OutcomeDraft {
+  special: CheckSpecial
+}
+
+/** A check step outcome: for a band of the check or for a special result. */
+export type CheckOutcomeDraft = BandOutcomeDraft | SpecialOutcomeDraft
+
+export const isSpecialOutcome = (outcome: CheckOutcomeDraft): outcome is SpecialOutcomeDraft =>
+  'special' in outcome
 
 /** A table step branch: the entry it is for and what follows it. */
 export interface BranchDraft extends OutcomeDraft {
@@ -351,10 +366,20 @@ function readCheck(stored: StoredItem, base: StepBase): StepDraft | null {
     stored.difficulty === undefined
       ? { form: 'integer' as const, text: '' }
       : readValue(stored.difficulty, bandForms)
-  const outcomes = (list ?? []).map((outcome) => {
-    const read = readOutcome(outcome, ['band'])
+  // An entry names exactly one of band and special; anything else is the publisher's to refuse.
+  const outcomes = (list ?? []).map((outcome): CheckOutcomeDraft | null => {
+    const read = readOutcome(outcome, ['band', 'special'])
     const band = isObject(outcome) ? outcome.band : undefined
-    return read === null || typeof band !== 'string' ? null : { ...read, band }
+    const special = isObject(outcome) ? outcome.special : undefined
+    if (read === null || (band === undefined) === (special === undefined)) {
+      return null
+    }
+    if (typeof band === 'string') {
+      return { ...read, band }
+    }
+    return checkSpecials.find((name) => name === special) === undefined
+      ? null
+      : { ...read, special: special as CheckSpecial }
   })
   return list === null ||
     difficulty === null ||
@@ -600,29 +625,69 @@ export function stepKey(step: StepDraft): string {
 }
 
 /**
- * The outcomes with the one of `band` set to `outcome` (added when the band had none), in the order
- * of the check's `bands`; outcomes for no band of it keep their order, last. `origin` says where each
- * had been (null: new), so messages about outcomes follow them.
+ * The outcomes with the one of `target` (a band key, or a special result) set to `outcome` (added
+ * when it had none), bands first in the order of the check's `bands`, then the special results in
+ * their fixed order; outcomes for no band of the check keep their order, last. `origin` says where
+ * each had been (null: new), so messages about outcomes follow them.
  */
-export function setBandOutcome(
+export function setCheckOutcome(
   outcomes: CheckOutcomeDraft[],
   bands: string[],
-  band: string,
+  target: { band: string } | { special: CheckSpecial },
   outcome: OutcomeDraft,
 ) {
   const entries: { outcome: CheckOutcomeDraft; from: number | null }[] = outcomes.map(
     (current, from) => ({ outcome: current, from }),
   )
-  const at = outcomes.findIndex((current) => current.band === band)
-  const edited = { ...outcome, band }
+  const edited: CheckOutcomeDraft = { ...outcome, ...target }
+  const at = outcomes.findIndex((current) =>
+    'band' in target
+      ? !isSpecialOutcome(current) && current.band === target.band
+      : isSpecialOutcome(current) && current.special === target.special,
+  )
   if (at === -1) {
     entries.push({ outcome: edited, from: null })
   } else {
     entries[at] = { outcome: edited, from: at }
   }
-  const rank = (name: string) => (bands.includes(name) ? bands.indexOf(name) : bands.length)
-  entries.sort((a, b) => rank(a.outcome.band) - rank(b.outcome.band))
+  const rank = (current: CheckOutcomeDraft) => {
+    if (isSpecialOutcome(current)) {
+      return bands.length + checkSpecials.indexOf(current.special)
+    }
+    return bands.includes(current.band) ? bands.indexOf(current.band) : bands.length + 3
+  }
+  entries.sort((a, b) => rank(a.outcome) - rank(b.outcome))
   return { outcomes: entries.map((entry) => entry.outcome), origin: entries.map((e) => e.from) }
+}
+
+/** The outcomes with the one of `band` set to `outcome`, as {@link setCheckOutcome}. */
+export const setBandOutcome = (
+  outcomes: CheckOutcomeDraft[],
+  bands: string[],
+  band: string,
+  outcome: OutcomeDraft,
+) => setCheckOutcome(outcomes, bands, { band }, outcome)
+
+export const NO_SUCH_SPECIAL = 'This check cannot produce this special result.'
+
+/**
+ * The special results every check the step names can produce, in their fixed order; null when the
+ * context does not say (a check the pickers lack, or no pool data loaded), so nothing is flagged.
+ */
+export function producibleSpecials(
+  step: Extract<EditedStep, { kind: 'check' }>,
+  context: StepContext,
+): CheckSpecial[] | null {
+  if (checkKeysOf(step).length === 0) {
+    return []
+  }
+  const known = checkKeysOf(step).map(
+    (key) => context.checks.find((check) => check.key === key)?.specials,
+  )
+  if (known.includes(undefined)) {
+    return null
+  }
+  return checkSpecials.filter((name) => known.every((specials) => specials?.includes(name)))
 }
 
 /** The checks a check step names, in order: its one check, or its set. */
@@ -830,8 +895,12 @@ function stepToStored(step: EditedStep, index: number, errors: FieldErrors): Sto
       if (step.difficulty.text.trim() !== '') {
         item.difficulty = valueToStored(step.difficulty, `${String(index)}.difficulty`, errors)
       }
-      const outcomes = step.outcomes.flatMap(({ band, ...outcome }, position) =>
-        isEmptyOutcome(outcome)
+      const outcomes = step.outcomes.flatMap((entry, position) => {
+        const { band, special, ...outcome } = entry as OutcomeDraft & {
+          band?: string
+          special?: CheckSpecial
+        }
+        return isEmptyOutcome(outcome)
           ? []
           : [
               {
@@ -840,10 +909,10 @@ function stepToStored(step: EditedStep, index: number, errors: FieldErrors): Sto
                   `${String(index)}.outcomes.${String(position)}`,
                   errors,
                 ),
-                band,
+                ...(special === undefined ? { band } : { special }),
               },
-            ],
-      )
+            ]
+      })
       if (outcomes.length > 0) {
         item.outcomes = outcomes
       }
@@ -1070,10 +1139,24 @@ export function stepGuides(steps: StepDraft[], context?: StepContext): StepGuide
           guide.difficulty ??= `Outside the range of ${which}: ${rangeOf(range)}.`
         }
       }
+      const producible = context ? producibleSpecials(step, context) : null
       step.outcomes.forEach((entry, position) => {
         outcome(String(position), entry)
-        if (step.outcomes.findIndex((other) => other.band === entry.band) !== position) {
-          guide.items[position] = 'Another outcome has this band.'
+        const special = isSpecialOutcome(entry)
+        const repeated =
+          step.outcomes.findIndex((other) =>
+            special
+              ? isSpecialOutcome(other) && other.special === entry.special
+              : !isSpecialOutcome(other) && other.band === entry.band,
+          ) !== position
+        if (repeated) {
+          guide.items[position] = special
+            ? 'Another outcome has this special result.'
+            : 'Another outcome has this band.'
+        } else if (special) {
+          if (producible !== null && !producible.includes(entry.special)) {
+            guide.items[position] = NO_SUCH_SPECIAL
+          }
         } else if (context && !chosen?.bands.includes(entry.band)) {
           guide.items[position] = 'Not a band of this check.'
         }

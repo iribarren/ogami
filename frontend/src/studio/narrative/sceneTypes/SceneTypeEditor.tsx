@@ -7,6 +7,7 @@ import { Button } from '@/shared/ui/button'
 import { IconTile } from '@/shared/ui/icon-tile'
 
 import { StudioError } from '../../useGameSystems'
+import { useGameSystemChecks } from '../../checks/useGameSystemChecks'
 import { TextField } from '../TextField'
 import { Area, CheckList } from '../steps/fields'
 import { StepListEditor } from '../steps/StepListEditor'
@@ -58,7 +59,9 @@ export function SceneTypeEditor({
   const latest = useGameSystemNarrative(gameSystemKey)
   const navigate = useNavigate()
   // Kept while the narrative is the same, so the step cards below can skip renders.
-  const context = useMemo(() => stepContext(narrative), [narrative])
+  // The checks say which special results a check step may branch on; until they load, none is offered.
+  const checks = useGameSystemChecks(gameSystemKey)
+  const context = useMemo(() => stepContext(narrative, checks.data), [narrative, checks.data])
   const options = [...context.tables, ...context.likelihood]
 
   async function submit(event: SubmitEvent<HTMLFormElement>) {

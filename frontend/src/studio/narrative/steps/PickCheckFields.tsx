@@ -14,19 +14,34 @@ import {
   checkDifficulty,
   DISJOINT_DIFFICULTY,
   checkKeysOf,
+  checkSpecials,
   countTargets,
   pickModes,
+  isSpecialOutcome,
+  NO_SUCH_SPECIAL,
   pickOutcomes,
+  producibleSpecials,
   rangeOf,
   sameBands,
   setBandOutcome,
+  setCheckOutcome,
   type CheckOutcomeDraft,
+  type CheckSpecial,
   type OutcomeDraft,
   type PickOutcome,
 } from './stepDraft'
 import type { StepError } from './stepError'
 
 const outcomeLabels: Record<PickOutcome, string> = { found: 'Found', none: 'None' }
+
+/** As Play words them. */
+const specialLabels: Record<CheckSpecial, string> = {
+  critical: 'Critical',
+  messyCritical: 'Messy critical',
+  bestialFailure: 'Bestial failure',
+}
+
+const blankOutcome: OutcomeDraft = { next: '', effects: [], extra: {} }
 
 const named = (keys: readonly string[], names: Record<string, string> = {}) =>
   keys.map((key) => ({ key, name: names[key] ?? key }))
@@ -106,15 +121,18 @@ function BandRow({
   band,
   outcome,
   errors,
+  startOpen = false,
   ...p
 }: Pick<KindProps, 'context' | 'laterKeys' | 'onRestructure'> & {
   band: string
   outcome: OutcomeDraft
   nextGuide?: string
   errors: StepError[]
+  /** Open on mount, for an outcome the author has just added. */
+  startOpen?: boolean
   onChange: (outcome: OutcomeDraft) => void
 }) {
-  const [open, setOpen] = useState(outcome.next !== '' || outcome.effects.length > 0)
+  const [open, setOpen] = useState(startOpen || outcome.next !== '' || outcome.effects.length > 0)
 
   return (
     <Collapsible open={open || errors.length > 0} onOpenChange={setOpen}>
@@ -150,10 +168,34 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
       .filter((key) => !p.context.checks.some((check) => check.key === key))
       .map((key) => ({ key, name: `${key} (not in this game system)` })),
   ]
-  const at = (band: string) => step.outcomes.findIndex((outcome) => outcome.band === band)
-  const strays = step.outcomes.flatMap((outcome, position) =>
-    bands.includes(outcome.band) && at(outcome.band) === position ? [] : [position],
+  const at = (band: string) =>
+    step.outcomes.findIndex((outcome) => !isSpecialOutcome(outcome) && outcome.band === band)
+  const atSpecial = (name: CheckSpecial) =>
+    step.outcomes.findIndex((outcome) => isSpecialOutcome(outcome) && outcome.special === name)
+  // The special results every check can produce; null when the pools are not known, so the
+  // stored ones are shown as they are and none is offered.
+  const producible = producibleSpecials(step, p.context)
+  const strays = step.outcomes.flatMap((outcome, position) => {
+    if (isSpecialOutcome(outcome)) {
+      const fits = producible === null || producible.includes(outcome.special)
+      return fits && atSpecial(outcome.special) === position ? [] : [position]
+    }
+    return bands.includes(outcome.band) && at(outcome.band) === position ? [] : [position]
+  })
+  // A special result shows a row when the checks can produce it, or when it is stored and unknown.
+  const specials = checkSpecials.filter((name) =>
+    producible === null ? atSpecial(name) !== -1 : producible.includes(name),
   )
+  const outcomeLabel = (outcome: CheckOutcomeDraft | undefined) =>
+    outcome === undefined
+      ? ''
+      : isSpecialOutcome(outcome)
+        ? specialLabels[outcome.special]
+        : outcome.band
+  const remove = (position: number) => {
+    p.onItems(step.outcomes.length, (before) => before.filter((_, row) => row !== position))
+    setOutcomes(step.outcomes.filter((_, row) => row !== position))
+  }
   const messages = (position: number) => p.mine.filter((error) => error.item === position)
   const setOutcomes = (outcomes: CheckOutcomeDraft[]) => {
     p.onChange({ ...step, outcomes })
@@ -256,8 +298,72 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
             />
           )
         })}
+        {specials.length > 0 && (
+          <div role="group" aria-label="Special results" className="space-y-3">
+            <p className="text-sm font-medium">Special results</p>
+            <p className="text-sm text-muted-foreground">
+              A special result&apos;s outcome replaces the band&apos;s. Messy critical does not fall
+              back to Critical.
+            </p>
+            {specials.map((name) => {
+              const position = atSpecial(name)
+              const label = specialLabels[name]
+              const set = (next: OutcomeDraft) => {
+                const { outcomes, origin } = setCheckOutcome(
+                  step.outcomes,
+                  bands,
+                  { special: name },
+                  next,
+                )
+                p.onItems(step.outcomes.length, (before) =>
+                  origin.map((from) => (from === null ? null : (before[from] ?? null))),
+                )
+                setOutcomes(outcomes)
+              }
+              return position === -1 ? (
+                <Button
+                  key={name}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    set(blankOutcome)
+                  }}
+                >
+                  Add outcome for {label}
+                </Button>
+              ) : (
+                <div key={name} className="space-y-2">
+                  <BandRow
+                    band={label}
+                    outcome={step.outcomes[position] ?? blankOutcome}
+                    context={p.context}
+                    laterKeys={p.laterKeys}
+                    nextGuide={p.guide.nexts[position]}
+                    errors={messages(position)}
+                    onRestructure={p.onRestructure}
+                    startOpen
+                    onChange={set}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    aria-label={`Remove outcome for ${label}`}
+                    onClick={() => {
+                      remove(position)
+                    }}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        )}
         {strays.map((position) => {
           const number = String(position + 1)
+          const stray = step.outcomes[position]
           return (
             // The list is edited in place and has no ids: the position is the identity.
             <div
@@ -266,9 +372,12 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
               aria-label={`Outcome ${number}`}
               className="space-y-2 rounded-lg p-3 ring-1 ring-foreground/10"
             >
-              <p className="text-sm font-medium">{step.outcomes[position]?.band}</p>
+              <p className="text-sm font-medium">{outcomeLabel(stray)}</p>
               <p className="text-sm text-destructive">
-                {p.guide.items[position] ?? 'Not a band of this check.'}
+                {p.guide.items[position] ??
+                  (stray !== undefined && isSpecialOutcome(stray)
+                    ? NO_SUCH_SPECIAL
+                    : 'Not a band of this check.')}
               </p>
               {messages(position).map((error, row) => (
                 <p key={row} role="alert" className="text-sm text-destructive">
@@ -281,10 +390,7 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
                 size="sm"
                 aria-label={`Remove outcome ${number}`}
                 onClick={() => {
-                  p.onItems(step.outcomes.length, (before) =>
-                    before.filter((_, row) => row !== position),
-                  )
-                  setOutcomes(step.outcomes.filter((_, row) => row !== position))
+                  remove(position)
                 }}
               >
                 Remove

@@ -548,6 +548,51 @@ describe('a Scene Type that cannot be opened', () => {
     expect(screen.queryByRole('form', { name: 'Scene Type' })).not.toBeInTheDocument()
   })
 
+  it('offers the special results of the checks the draft holds, once they are loaded', async () => {
+    const feed = { key: 'feed', kind: 'check', title: 'Feed', check: 'skill' }
+    const scenes = {
+      ...narrativeScenes,
+      catalog: {
+        ...narrativeScenes.catalog,
+        checks: [{ key: 'skill', label: 'Skill', bands: ['fail', 'win'], difficulty: null }],
+      },
+      sceneTypes: [
+        {
+          key: 'ambush',
+          definition: { ...ambush, play: [feed] },
+          usedBy: [],
+        },
+        ...narrativeScenes.sceneTypes.slice(1),
+      ],
+    }
+    const hunger = {
+      key: 'skill',
+      label: 'Skill',
+      pool: { count: 3, sides: 10, successAt: 6, hunger: { count: { formula: '{hunger}' } } },
+      bands: [
+        { key: 'fail', label: 'Fail', upTo: 0 },
+        { key: 'win', label: 'Win' },
+      ],
+    }
+    await openEditor('ambush', {
+      [`GET ${base}/narrative`]: json(scenes),
+      [`GET ${base}/checks`]: json({
+        version: 5,
+        schemaVersion: 2,
+        checks: [hunger],
+        fields: [],
+        trackers: [],
+        conditions: [],
+        usages: {},
+      }),
+    })
+
+    expect(
+      await card('Play', 1).findByRole('button', { name: 'Add outcome for Bestial failure' }),
+    ).toBeInTheDocument()
+    expect(card('Play', 1).queryByRole('button', { name: /Add outcome for Critical/ })).toBeNull()
+  })
+
   it('says the GameSystem is not found when the narrative is a 404', async () => {
     renderAppAt('/studio/game-systems/my-draft/scene-types/ambush', {
       'GET /api/auth/me': signedInAs('GAME_MANAGER'),

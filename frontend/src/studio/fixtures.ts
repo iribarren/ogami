@@ -666,6 +666,29 @@ export const stepListCheckSet = [
   },
 ]
 
+/** The pickers when the checks have a Hunger pool: `skill` produces every special result, `luck` none (ADR 0044). */
+export const stepPickersHunger = {
+  ...stepPickers,
+  checks: stepPickers.checks.map((check) => ({
+    ...check,
+    specials: check.key === 'skill' ? ['critical', 'messyCritical', 'bestialFailure'] : [],
+  })),
+}
+
+/** A check step on a Hunger check with an outcome for a bestial failure ahead of its bands. */
+export const stepListSpecials = [
+  {
+    key: 'feed',
+    kind: 'check',
+    title: 'Feed',
+    check: 'skill',
+    outcomes: [
+      { band: 'fail', next: 'end' },
+      { special: 'bestialFailure', next: 'end' },
+    ],
+  },
+]
+
 /** A table step that rolls another table in a Chase or a Hideout (ADR 0042). */
 export const stepListTableBySceneType = [
   {

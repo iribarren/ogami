@@ -1073,3 +1073,35 @@ describe('the guides', () => {
     })
   })
 })
+
+describe('the Night Court world turn roll', () => {
+  // The step as stored in backend/presets/vtm-night-court.json: a band bound to the Masquerade tracker, then the open band.
+  const inquisition = {
+    key: 'inquisition',
+    kind: 'roll',
+    title: 'Does the Second Inquisition move?',
+    dice: '1d10',
+    bands: [
+      {
+        upTo: { tracker: 'masquerade' },
+        effects: [{ kind: 'nextScene', sceneType: 'inquisition-raid' }],
+      },
+      {},
+    ],
+  }
+
+  it('is editable and saves back byte-identical', () => {
+    const drafts = stepsToDrafts([inquisition])
+
+    expect(drafts[0]?.kind).toBe('roll')
+    expect(stepsToItems(drafts)).toEqual({ steps: [inquisition] })
+  })
+
+  it('is editable when the server sends the empty last band as an empty array', () => {
+    const [draft] = stepsToDrafts([
+      { ...inquisition, bands: [...inquisition.bands.slice(0, 1), []] },
+    ])
+
+    expect(draft?.kind).toBe('roll')
+  })
+})

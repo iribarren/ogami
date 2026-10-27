@@ -802,6 +802,7 @@ final readonly class GameSystemReleaseTranslator
         $outcomes = [];
         foreach ($this->list($view, $step['outcomes'] ?? [], $path.'.outcomes') as $index => $outcome) {
             $outcomePath = \sprintf('%s.outcomes[%d]', $path, $index);
+            $this->refuseUnplayed($view, $this->object($view, $outcome, $outcomePath), $outcomePath, 'special', 'outcomes on a special result are');
             $band = $this->string($view, $this->object($view, $outcome, $outcomePath)['band'] ?? null, $outcomePath.'.band');
             if (isset($outcomes[$band])) {
                 throw $this->invalid($view, $outcomePath.'.band', \sprintf('duplicate outcome band "%s".', $band));
@@ -871,6 +872,7 @@ final readonly class GameSystemReleaseTranslator
 
         $path = 'gameSystem.credits';
         $credits = $this->object($view, $value, $path);
+        $this->refuseUnplayed($view, $credits, $path, 'badge', 'a credits badge is');
         foreach (array_keys($credits) as $name) {
             if (!\in_array($name, ['notice', 'license', 'url'], true)) {
                 throw $this->invalid($view, $path.'.'.$name, 'unknown property.');
@@ -1238,6 +1240,8 @@ final readonly class GameSystemReleaseTranslator
 
         $path .= '.pool';
         $pool = $this->object($view, $check['pool'], $path);
+        $this->refuseUnplayed($view, $pool, $path, 'criticals', 'critical pairs are');
+        $this->refuseUnplayed($view, $pool, $path, 'hunger', 'Hunger dice are');
         $this->assertProperties($view, $pool, $path, ['count', 'sides', 'successAt']);
         if (\is_array($pool['count'] ?? null)) {
             $count = $this->object($view, $pool['count'], $path.'.count');
@@ -1275,6 +1279,7 @@ final readonly class GameSystemReleaseTranslator
         }
 
         $push = $this->object($view, $check['push'], $path);
+        $this->refuseUnplayed($view, $push, $path, 'maxDice', 'a push cap is');
         $this->assertProperties($view, $push, $path, ['label', 'effects']);
         $label = $this->boundedString($view, $push['label'] ?? null, $path.'.label', CheckPush::MAX_LABEL_LENGTH);
         $raw = $this->list($view, $push['effects'] ?? [], $path.'.effects');
@@ -1465,6 +1470,19 @@ final readonly class GameSystemReleaseTranslator
         }
 
         return $formula;
+    }
+
+    /**
+     * Refuses a part of ADR 0044 Studio publishes but Play does not play yet (preset-vtm-chronicle
+     * slices 2 and 3), present even as null, so a release using it fails closed instead of playing without it.
+     *
+     * @param array<array-key, mixed> $object
+     */
+    private function refuseUnplayed(PublishedReleaseView $view, array $object, string $path, string $name, string $what): void
+    {
+        if (\array_key_exists($name, $object)) {
+            throw $this->invalid($view, $path.'.'.$name, $what.' not played yet (ADR 0044).');
+        }
     }
 
     /**

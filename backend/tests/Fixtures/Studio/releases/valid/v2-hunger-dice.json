@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {
+    "key": "hunger-dice", "name": "Hunger dice", "description": "Critical pairs, Hunger dice, a capped push, check outcomes on a special result and a credits badge (ADR 0044).",
+    "credits": {"notice": "Unofficial fan content.", "license": "Dark Pack Agreement", "url": "https://www.paradoxinteractive.com/games/world-of-darkness/community/dark-pack-agreement", "badge": "dark-pack"}
+  },
+  "oracles": {"tables": [], "likelihood": []},
+  "trackers": [
+    {"key": "masquerade", "name": "Masquerade", "kind": "clock", "segments": 6}
+  ],
+  "factSlots": [],
+  "sceneTypes": [
+    {
+      "key": "hunt", "name": "Hunt", "purpose": "Feed without breaking the Masquerade.", "oracles": [],
+      "setup": [],
+      "play": [
+        {
+          "key": "feed", "kind": "check", "title": "Feed on the street", "check": "persuade",
+          "outcomes": [
+            {"band": "fail", "effects": [{"kind": "tracker", "tracker": "masquerade", "op": "add", "value": 1}]},
+            {"special": "bestialFailure", "next": "compulsion"},
+            {"special": "messyCritical", "next": "compulsion", "effects": [{"kind": "sheet", "field": "hunger", "op": "subtract", "value": 1}]},
+            {"special": "critical", "effects": [{"kind": "sheet", "field": "hunger", "op": "subtract", "value": 2}]}
+          ]
+        },
+        {
+          "key": "resist", "kind": "check", "title": "Resist the frenzy", "check": "frenzy",
+          "outcomes": [{"special": "bestialFailure", "next": "compulsion"}]
+        },
+        {"key": "compulsion", "kind": "prompt", "title": "The Beast takes over"}
+      ],
+      "closing": []
+    }
+  ],
+  "flows": [],
+  "sheet": {
+    "fields": [
+      {"key": "charisma", "label": "Charisma", "type": "number", "min": 1, "max": 5, "default": 2},
+      {"key": "persuasion", "label": "Persuasion", "type": "number", "min": 0, "max": 5, "default": 1},
+      {"key": "hunger", "label": "Hunger", "type": "number", "min": 0, "max": 5, "default": 1},
+      {"key": "willpower", "label": "Willpower", "type": "number", "min": 0, "max": 10, "default": 3}
+    ]
+  },
+  "checks": [
+    {
+      "key": "persuade", "label": "Persuade",
+      "pool": {"count": {"formula": "{charisma} + {persuasion}"}, "sides": 10, "successAt": 6, "criticals": {"bonus": 2}, "hunger": {"count": {"formula": "{hunger}"}}},
+      "difficulty": {"label": "Difficulty", "default": 2, "min": 1, "max": 10},
+      "push": {"label": "Spend Willpower", "maxDice": 3, "effects": [{"kind": "sheet", "field": "willpower", "op": "subtract", "value": 1}]},
+      "bands": [
+        {"key": "fail", "label": "Failure", "upTo": {"formula": "{check:difficulty} - 1"}},
+        {"key": "win", "label": "Win"}
+      ]
+    },
+    {
+      "key": "frenzy", "label": "Frenzy",
+      "pool": {"count": 3, "sides": 10, "successAt": 6, "hunger": {"count": 1}},
+      "bands": [
+        {"key": "fail", "label": "Failure", "upTo": 0},
+        {"key": "win", "label": "Win"}
+      ]
+    },
+    {
+      "key": "aim", "label": "Aim",
+      "pool": {"count": 4, "sides": 10, "successAt": 6, "criticals": {"bonus": 2}},
+      "bands": [
+        {"key": "fail", "label": "Failure", "upTo": 0},
+        {"key": "win", "label": "Win"}
+      ]
+    }
+  ]
+}

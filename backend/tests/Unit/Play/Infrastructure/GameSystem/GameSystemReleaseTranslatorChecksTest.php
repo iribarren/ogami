@@ -326,7 +326,7 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
         yield 'a pool beside dice' => [self::skill(['pool' => $pool, 'modifier' => null]), 'checks[0].pool: a check rolls dice or a pool, not both.'];
         yield 'a pool with a modifier' => [self::skill(['dice' => null, 'pool' => $pool]), 'checks[0].modifier: a pool check has no modifier.'];
         yield 'a pool that is not an object' => [self::skill(['dice' => null, 'modifier' => null, 'pool' => '3d6']), 'checks[0].pool: must be an object.'];
-        yield 'a pool with an unknown property' => [$with(['hunger' => 1]), 'checks[0].pool.hunger: unknown property.'];
+        yield 'a pool with an unknown property' => [$with(['explode' => 1]), 'checks[0].pool.explode: unknown property.'];
         yield 'a missing count' => [$with(['count' => null]), 'checks[0].pool.count: must be an integer.'];
         yield 'a count that is a string' => [$with(['count' => '3']), 'checks[0].pool.count: must be an integer.'];
         yield 'a count of zero' => [$with(['count' => 0]), 'checks[0].pool.count: must be between 1 and 100.'];

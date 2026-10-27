@@ -55,7 +55,7 @@ final class Steps
     private const array CONDITION_COUNT = ['of' => true, 'tags' => false];
     private const array ORACLE_BRANCHES = ['yes' => false, 'no' => false, 'exceptionalYes' => false, 'exceptionalNo' => false];
     private const array OUTCOME = ['next' => false, 'effects' => false];
-    private const array CHECK_OUTCOME = ['band' => true, 'next' => false, 'effects' => false];
+    private const array CHECK_OUTCOME = ['band' => false, 'special' => false, 'next' => false, 'effects' => false];
     private const array TABLE_BRANCH = ['entry' => true, 'next' => false, 'effects' => false];
     private const array OPTION = ['key' => true, 'label' => true, 'next' => false, 'effects' => false];
 
@@ -342,7 +342,7 @@ final class Steps
     /**
      * A check step names one check of the release or a set of them the player picks from (ADR 0042);
      * its difficulty is fixed by an integer, a tracker or a flow formula, and each outcome names a
-     * band the checks share, once.
+     * band the checks share, or a special result every check can produce (ADR 0044), once.
      *
      * @param array<string, mixed> $step
      *
@@ -372,19 +372,17 @@ final class Steps
 
         if (isset($step['outcomes'])) {
             $outcomes = [];
-            foreach (ReleaseFields::sizedList($step['outcomes'], $path.'.outcomes', 0, Checks::MAX_BANDS, 'outcomes') as $index => $outcome) {
+            foreach (ReleaseFields::sizedList($step['outcomes'], $path.'.outcomes', 0, Checks::MAX_OUTCOMES, 'outcomes') as $index => $outcome) {
                 $outcomePath = \sprintf('%s.outcomes[%d]', $path, $index);
                 $outcome = ReleaseFields::object($outcome, $outcomePath, self::CHECK_OUTCOME);
-                $band = ReleaseFields::key($outcome['band'], $outcomePath.'.band');
-                if (!isset($bands[$band])) {
-                    throw InvalidReleaseContent::at($outcomePath.'.band', \sprintf('unknown band "%s" of %s', $band, $named));
+                // Bands and special results are keyed apart, so a band named like a special result never collides.
+                $outcomeKey = isset($outcome['special']) ? 'special:'.self::special($outcome, $outcomePath, $checks) : 'band:'.self::outcomeBand($outcome, $outcomePath, $bands, $named);
+                if (isset($outcomes[$outcomeKey])) {
+                    [$part, $value] = explode(':', $outcomeKey, 2);
+                    throw InvalidReleaseContent::at($outcomePath.'.'.$part, 'band' === $part ? \sprintf('duplicate outcome band "%s"', $value) : \sprintf('duplicate outcome special result "%s"', $value));
                 }
 
-                if (isset($outcomes[$band])) {
-                    throw InvalidReleaseContent::at($outcomePath.'.band', \sprintf('duplicate outcome band "%s"', $band));
-                }
-
-                $outcomes[$band] = array_filter([...$outcome, ...self::outcome($outcome, $outcomePath, $catalog, true)], static fn (mixed $field): bool => [] !== $field);
+                $outcomes[$outcomeKey] = array_filter([...$outcome, ...self::outcome($outcome, $outcomePath, $catalog, true)], static fn (mixed $field): bool => [] !== $field);
             }
 
             $step['outcomes'] = array_values($outcomes);
@@ -407,6 +405,51 @@ final class Steps
         sort($rightKeys);
 
         return $leftKeys === $rightKeys;
+    }
+
+    /**
+     * The band a check step outcome names: required unless it names a special result, and a band of its checks.
+     *
+     * @param array<string, mixed> $outcome
+     * @param array<string, true>  $bands
+     */
+    private static function outcomeBand(array $outcome, string $path, array $bands, string $named): string
+    {
+        if (!isset($outcome['band'])) {
+            throw InvalidReleaseContent::at($path.'.band', 'required unless the outcome names a special result');
+        }
+
+        $band = ReleaseFields::key($outcome['band'], $path.'.band');
+        if (!isset($bands[$band])) {
+            throw InvalidReleaseContent::at($path.'.band', \sprintf('unknown band "%s" of %s', $band, $named));
+        }
+
+        return $band;
+    }
+
+    /**
+     * The special result a check step outcome names (ADR 0044), never beside a band, and one every
+     * check of the step can produce: an outcome no roll reaches would be a dead branch.
+     *
+     * @param array<string, mixed>      $outcome
+     * @param array<string, CheckShape> $checks
+     */
+    private static function special(array $outcome, string $path, array $checks): string
+    {
+        if (isset($outcome['band'])) {
+            throw InvalidReleaseContent::at($path, 'name either a band or a special result, not both');
+        }
+
+        $special = ReleaseFields::oneOf($outcome['special'], $path.'.special', Checks::SPECIALS);
+        foreach ($checks as $checkKey => $check) {
+            if (!isset($check['specials'][$special])) {
+                $needs = ['critical' => 'pool.criticals', 'messyCritical' => 'pool.criticals and pool.hunger', 'bestialFailure' => 'pool.hunger'][$special];
+
+                throw InvalidReleaseContent::at($path.'.special', \sprintf('check "%s" never has a %s, it needs %s', $checkKey, $special, $needs));
+            }
+        }
+
+        return $special;
     }
 
     /**

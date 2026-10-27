@@ -64,4 +64,20 @@ describe('CreditsNotice', () => {
     expect(screen.getByRole('region', { name: 'About this game' })).toContainElement(logo)
     expect(screen.getByText('Fan content.')).toBeInTheDocument()
   })
+
+  it('shows the notice without a logo for a badge this build does not know', () => {
+    render(
+      <CreditsNotice
+        credits={{
+          notice: 'Fan content.',
+          license: null,
+          url,
+          badge: 'future-badge' as 'dark-pack',
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Fan content.')).toBeInTheDocument()
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
+  })
 })

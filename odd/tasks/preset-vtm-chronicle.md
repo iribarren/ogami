@@ -1,7 +1,7 @@
 # Feature: preset-vtm-chronicle
 
 - **Locator:** `odd/tasks/preset-vtm-chronicle.md` · Engram topic `odd/preset-vtm-chronicle/tasks`
-- **Issue:** #301 · **Branch:** `feat/preset-vtm-chronicle-3-play-ui` · **Status:** in progress (slice 3)
+- **Issue:** #301 · **Branch:** `feat/preset-vtm-chronicle-4-studio-checks` · **Status:** in progress (slice 4)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B10 (after `rules-dice-pools`, [ADR 0041](../../docs/adr/0041-dice-pools-pushes-and-conditions.md))
@@ -94,9 +94,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T3 | 1 | Publisher: `Checks` (`criticals`, `hunger`, `maxDice`), flow `check` step outcomes with `special`, `credits.badge`, `DraftReferences` if Hunger formulas reference fields; unit tests and fixtures; Play's translator refuses the new shapes with a clear error | delegated writer (Opus) | [x] | 3318de9 |
 | T4 | 2 | Kernel: dice groups, Hunger dice, critical pairs, special result, push capped at N and never on Hunger dice; unit tests | delegated writer (Sonnet) | [x] | ce45510 |
 | T5 | 2 | Play backend: translator reads `criticals`, `hunger`, `maxDice`; `Check` perform and push; results and journal content (groups, special; legacy entries read); API; `make api`; tests | delegated writer (Sonnet) | [x] | 55fd791, 1f58d52 |
-| T6 | 3 | Play UI: Hunger dice in a second colour, the special result in the roll dialog and the journal, push offer counts regular dice and shows the cap; fixtures and tests | delegated writer (Sonnet) | [x] | |
-| T7 | 3 | Flow: `check` step outcomes on a special (translator, `CheckStep::outcomeFor`, `FlowRun`, pending check Keep/Push); tests | delegated writer (Sonnet) | [x] | |
-| T8 | 3 | Credits badge in Play: translator, `Credits`, responses, the Dark Pack logo asset, `CreditsNotice`; tests | delegated writer (Sonnet) | [x] | |
+| T6 | 3 | Play UI: Hunger dice in a second colour, the special result in the roll dialog and the journal, push offer counts regular dice and shows the cap; fixtures and tests | delegated writer (Sonnet) | [x] | c5769a6 |
+| T7 | 3 | Flow: `check` step outcomes on a special (translator, `CheckStep::outcomeFor`, `FlowRun`, pending check Keep/Push); tests | delegated writer (Sonnet) | [x] | 7a2ba3d (slice 2 fixes 2837504) |
+| T8 | 3 | Credits badge in Play: translator, `Credits`, responses, the Dark Pack logo asset, `CreditsNotice`; tests | delegated writer (Sonnet) | [x] | 019a728 |
 | T9 | 4 | Studio check editor: criticals, Hunger count, push cap; error paths; tests and story | delegated writer | [ ] | |
 | T10 | 4 | Studio sandbox: Hunger dice, criticals, special result, capped push (backend, views, API, UI); tests | delegated writer | [ ] | |
 | T11 | 5 | Studio flow editor: check step outcomes on a special; tests | delegated writer | [ ] | |
@@ -132,6 +132,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-27: T7 flow outcomes on a special: `CheckStep::specialOutcomes` and `outcomeFor($band, ?$special)` (a special entry wins, no fallback from `messyCritical` to `critical`); `PendingCheck` keeps the rolled `special` (stored as `special`, rows without it read null) and `FlowRun::resolvePendingCheck` takes the pushed roll's special, so a push recomputes it with the band; the translator reads `outcomes[]` entries naming `special` and fails closed with a path (unknown, twice, both or neither of band and special, a special the check cannot produce via `Check::canProduce`, for every check of a set). RED: the translator refused specials (27 failures and the new API test class erroring); GREEN: unit and integration Play suites (3,367 tests).
 - 2026-10-27: T8 credits badge: `CreditsBadge` enum (`dark-pack`) on `Credits`, the translator reads `badge` (unknown or non-string fails closed with the path; the `refuseUnplayed` helper is gone), `CreditsResponse.badge` (nullable enum) on the catalog and the pinned release, `make api`; the SPA maps each badge to its image in `shared/credits/badges.ts` (a `Record` over the API enum, so a new badge fails to compile until its image is added) and `CreditsNotice` shows it at 48px on a white disc, which keeps the black logo readable in dark mode. Tests written with the code for the backend; the Vitest cases were RED before the component change (no `img`), then GREEN.
 - 2026-10-27: T6 Play UI: the check definition's push response gains `maxDice` (nullable; the API test was written with the code), `make api`; Hunger dice get a second colour (`border-destructive`), a "Hunger die" label and `data-group`; the special result is text ("Special result: Messy critical") in the journal entry and the roll dialog, and the push line names the first roll's ("Rolled Failure (bestial failure), pushed to Win"); `canPush` counts failed regular dice only (`failedRegularDice`), `PushOffer` shows "Re-roll up to N failed dice." and that Hunger dice are never re-rolled, `PendingCheckForm` shares both; the roll dialog stays open on a roll with a special result even when nothing can be pushed. RED: the new Vitest cases (journal, `canPush`, dialog, pending step) failed against the old components, then GREEN (596 Play tests). Stories for the Hunger entries.
+- 2026-10-27: slice 4 commit 1 (slice 3 review finding): `CreditsNotice` looks the badge up by any string and shows the notice without a logo for one this build does not know. RED: the Vitest case crashed on the undefined entry, then GREEN.
 
 ## Reviews
 
@@ -139,7 +140,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|---|
 | 1 | `review-32fb84966e5a47d6` | d100598, 3318de9 | approved, acknowledged | R3 warning: a literal `hunger.count` 0 still accepts `bestialFailure` / `messyCritical` step outcomes (`Checks.php:147-150`); fixed in slice 2. Note: Studio's sandbox (`CheckTestRoll::readPool`) ignores criticals and Hunger until slice 4 | [#302](https://github.com/iribarren/ogami/pull/302) |
 | 2 | `review-92d91f85ad4060fc` (main..ce45510), `review-095722f7f9626921` (ce45510..1f58d52); 1,936 lines, size accepted by the user | a219e5d, ce45510, 55fd791, 1f58d52 | approved, acknowledged (both) | No test for a negative Hunger formula (the pool clamps it to 0; must not 500); no flow-level test that a roll whose only failed dice are Hunger dice is not pushable on a pending step (`FlowRun::pushable`); `PoolRoll::ofFaces` dropped `array_values` (list contract); optional: `Checks.php:195` literal Hunger `> 0` where the schema already refuses negatives. Fixed in slice 3 | [#303](https://github.com/iribarren/ogami/pull/303) |
+| 3 | `review-742c3094e8c4a81d` | 2837504, 7a2ba3d, 019a728, c5769a6 | approved, acknowledged | R3 suggestion: `CreditsNotice.tsx:17` crashes when the API sends a badge this SPA build does not know (`creditsBadges` lookup undefined); fall back to no logo, with a test. Fixed in slice 4 | [#304](https://github.com/iribarren/ogami/pull/304) |
 
 ## Next step
 
-Slice 3: the writer fixes slice 2's review findings, then Play's UI (T6), flow outcomes on a special (T7) and the credits badge (T8). The Dark Pack logo is the page's black-and-white variant (`darkpack_logo1.png`, resized to 128 px) at `frontend/src/shared/credits/dark-pack.png`.
+Slice 4: the writer fixes slice 3's review finding (unknown credits badge), then Studio's check editor (T9) and sandbox (T10) for criticals, Hunger dice, special results and the push cap.

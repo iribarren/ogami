@@ -11,7 +11,7 @@ use OpenApi\Attributes as OA;
 /**
  * The GameSystem release a campaign is pinned to (ADR 0014).
  */
-#[OA\Schema(required: ['gameSystemKey', 'gameSystemName', 'version', 'theme', 'credits', 'sheet', 'sheetLayout', 'pointBudget', 'pointBudgets'])]
+#[OA\Schema(required: ['gameSystemKey', 'gameSystemName', 'version', 'theme', 'credits', 'sheet', 'sheetLayout', 'pointBudgets'])]
 final readonly class PinnedReleaseResponse
 {
     /**

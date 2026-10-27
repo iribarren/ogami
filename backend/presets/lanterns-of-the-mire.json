@@ -1156,18 +1156,42 @@
                 "span": 2
             }
         ],
-        "pointBudget": {
-            "label": "Attribute points",
-            "total": 12,
-            "fields": [
-                "vigour",
-                "finesse",
-                "reason",
-                "heart"
-            ],
-            "min": 2,
-            "max": 4
-        }
+        "pointBudgets": [
+            {
+                "key": "points",
+                "label": "Attribute points",
+                "total": 12,
+                "fields": [
+                    "vigour",
+                    "finesse",
+                    "reason",
+                    "heart"
+                ],
+                "min": 2,
+                "max": 4
+            },
+            {
+                "key": "skills",
+                "label": "Skill points",
+                "total": 8,
+                "fields": [
+                    "brawl",
+                    "endure",
+                    "haul",
+                    "shoot",
+                    "sneak",
+                    "nimble",
+                    "lore",
+                    "inquiry",
+                    "alertness",
+                    "persuade",
+                    "mend",
+                    "insight"
+                ],
+                "min": 0,
+                "max": 3
+            }
+        ]
     },
     "checks": [
         {

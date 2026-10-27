@@ -78,3 +78,35 @@ export function pointsSpent(budget: PointBudget, drafts: Record<string, Draft>):
     return total + (typeof draft === 'string' ? Number(draft) || 0 : 0)
   }, 0)
 }
+
+/** What a bounded field's range reads as: "between 0 and 3", "at least 1" or "at most 3"; null without bounds. */
+export function rangeText(field: SheetFieldView): string | null {
+  const { min, max } = field
+  if (min != null && max != null) return `between ${String(min)} and ${String(max)}`
+  if (min != null) return `at least ${String(min)}`
+  if (max != null) return `at most ${String(max)}`
+  return null
+}
+
+/**
+ * The budget fields whose typed draft lies outside the range their budget narrows them to, with
+ * that range as text. A blank draft is not out of range (it counts as 0 points); a non-numeric one
+ * is, so it cannot be saved, although the counter also counts it as 0.
+ */
+export function outOfRange(
+  fields: SheetFieldView[],
+  bounded: Map<string, PointBudget>,
+  drafts: Record<string, Draft>,
+): { field: SheetFieldView; range: string }[] {
+  return fields.flatMap((field) => {
+    const budget = bounded.get(field.key)
+    const draft = drafts[field.key]
+    if (budget === undefined || typeof draft !== 'string' || draft.trim() === '') return []
+    const { min, max } = withBudgetBounds(field, budget)
+    const value = Number(draft)
+    const range = rangeText({ ...field, min, max })
+    const outside =
+      Number.isNaN(value) || (min != null && value < min) || (max != null && value > max)
+    return outside && range !== null ? [{ field, range }] : []
+  })
+}

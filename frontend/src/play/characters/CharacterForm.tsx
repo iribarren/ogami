@@ -10,6 +10,7 @@ import type { SheetFieldView, SheetTemplateView } from '@/shared/sheet/types'
 
 import {
   creationPlan,
+  outOfRange,
   pointsSpent,
   withBudgetBounds,
   type CreationMethod,
@@ -101,6 +102,8 @@ export function CharacterForm({
     spent: pointsSpent(budget, drafts),
   }))
   const overBudget = counters.some(({ budget, spent }) => spent > budget.total)
+  // The input attributes bound the field, but a typed value outside them still reaches the draft.
+  const outside = plan === null ? [] : outOfRange(sheet.fields, plan.bounded, drafts)
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -177,6 +180,11 @@ export function CharacterForm({
             {spent > budget.total && ' (over budget)'}
           </p>
         ))}
+        {outside.map(({ field, range }) => (
+          <p key={field.key} role="alert" className="text-sm font-medium text-destructive">
+            {field.label}: {range}.
+          </p>
+        ))}
         <SheetFields
           template={shown}
           drafts={drafts}
@@ -194,7 +202,11 @@ export function CharacterForm({
           free={free}
         />
         <div className="flex gap-2">
-          <Button type="submit" size="sm" disabled={plan?.ready === false || overBudget}>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={plan?.ready === false || overBudget || outside.length > 0}
+          >
             Save
           </Button>
           {onCancel !== undefined && (

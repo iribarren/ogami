@@ -771,6 +771,27 @@ describe('creating a Character by the rules of the sheet', () => {
     expect(panel.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
 
+  it('flags a budget field outside its budget range and blocks Save until it is back', async () => {
+    const { user, panel } = await addCharacter(twoBudgetCampaign)
+
+    await user.click(panel.getByRole('radio', { name: 'Spend points' }))
+    await user.clear(panel.getByLabelText('Lore'))
+    await user.type(panel.getByLabelText('Lore'), '4')
+
+    expect(panel.getByText('Lore: between 0 and 3.')).toBeInTheDocument()
+    expect(panel.getByText('Skill points: 4 / 8')).not.toHaveClass('text-destructive')
+    expect(panel.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await user.clear(panel.getByLabelText('Lore'))
+    await user.type(panel.getByLabelText('Lore'), '3')
+    expect(panel.queryByText(/Lore: between/)).not.toBeInTheDocument()
+    expect(panel.getByRole('button', { name: 'Save' })).toBeEnabled()
+
+    await user.clear(panel.getByLabelText('Strength'))
+    await user.type(panel.getByLabelText('Strength'), '5')
+    expect(panel.getByText('Strength: between 15 and 90.')).toBeInTheDocument()
+    expect(panel.getByRole('button', { name: 'Save' })).toBeDisabled()
+  })
+
   it('needs a method before it can be saved when only one budget is rollable', async () => {
     const { panel } = await addCharacter(twoBudgetCampaign)
 

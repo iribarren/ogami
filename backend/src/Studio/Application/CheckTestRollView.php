@@ -8,12 +8,14 @@ use App\Randomness\Application\RollView;
 use App\Randomness\Domain\Roll;
 use App\Studio\Domain\Check\CheckTestPoolRoll;
 use App\Studio\Domain\Check\CheckTestRollResult;
+use App\Studio\Domain\Check\CheckTestSpecialResult;
 
 /**
  * What a test roll of a check produced: the dice or the pool, the modifier, the situational modifier,
  * the difficulty that applied (none for a check without one), the total (the successes of a pool),
  * every band with its bound and the key of the band the total falls in. A pool check tells the label
- * of its push, and a pushed roll the successes it had before.
+ * of its push and its cap, and the special result of the roll (ADR 0044). A pushed roll tells the
+ * total and the special result it had before.
  */
 final readonly class CheckTestRollView
 {
@@ -31,6 +33,9 @@ final readonly class CheckTestRollView
         public ?CheckTestPoolView $pool = null,
         public ?string $pushLabel = null,
         public ?int $rolledSuccesses = null,
+        public ?int $pushMaxDice = null,
+        public ?CheckTestSpecialResult $special = null,
+        public ?CheckTestSpecialResult $rolledSpecial = null,
     ) {
     }
 
@@ -52,6 +57,9 @@ final readonly class CheckTestRollView
             $result->pool instanceof CheckTestPoolRoll ? CheckTestPoolView::fromPoolRoll($result->pool) : null,
             $result->push?->label,
             $result->rolledSuccesses,
+            $result->push?->maxDice,
+            $result->special,
+            $result->rolledSpecial,
         );
     }
 }

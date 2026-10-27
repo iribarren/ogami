@@ -2,6 +2,9 @@ import { creditsBadges } from '@/shared/credits/badges'
 
 import type { GameSystemSummary } from './useCampaigns'
 
+// Looked up by any string: the API may name a badge this build has no logo for.
+const knownBadges: Partial<Record<string, (typeof creditsBadges)['dark-pack']>> = creditsBadges
+
 /**
  * The credits of a release (ADR 0021): its notice, such as a fan preset's publisher disclaimer,
  * with the license as a link when the release gives its URL, and the logo of its badge (ADR 0044)
@@ -14,7 +17,8 @@ export function CreditsNotice({ credits }: { credits: GameSystemSummary['credits
   // A blank license name never makes an empty link: the URL names itself.
   const name = credits.license?.trim() ? credits.license : null
   const license = name ?? credits.url
-  const badge = credits.badge === null ? null : creditsBadges[credits.badge]
+  // A badge this build does not know (the API is newer than the SPA) shows the notice without a logo.
+  const badge = credits.badge === null ? null : (knownBadges[credits.badge] ?? null)
   return (
     <section
       aria-label="About this game"

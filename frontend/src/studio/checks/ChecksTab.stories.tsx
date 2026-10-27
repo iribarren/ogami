@@ -40,6 +40,7 @@ const rolled = {
   pool: null,
   push: null,
   rolledSuccesses: null,
+  special: null,
   dice: {
     expression: '1d10',
     total: 6,
@@ -217,14 +218,18 @@ const poolRoll = {
     count: 3,
     countFormula: '{pow} + 1',
     dice: [
-      { face: 2, success: false, rerolled: false },
-      { face: 6, success: true, rerolled: false },
-      { face: 1, success: false, rerolled: false },
+      { face: 2, success: false, rerolled: false, group: 'pool' },
+      { face: 6, success: true, rerolled: false, group: 'pool' },
+      { face: 1, success: false, rerolled: false, group: 'pool' },
     ],
     successes: 1,
+    hunger: 0,
+    hungerFormula: null,
+    criticalsBonus: 0,
   },
-  push: { label: 'Take a Condition' },
+  push: { label: 'Take a Condition', maxDice: null, rolledSpecial: null },
   rolledSuccesses: null,
+  special: null,
   modifier: 0,
   situational: 0,
   difficulty: null,
@@ -245,9 +250,9 @@ export const PoolCheck: Story = {
         pool: {
           ...poolRoll.pool,
           dice: [
-            { face: 5, success: true, rerolled: true },
-            { face: 6, success: true, rerolled: false },
-            { face: 3, success: false, rerolled: true },
+            { face: 5, success: true, rerolled: true, group: 'pool' },
+            { face: 6, success: true, rerolled: false, group: 'pool' },
+            { face: 3, success: false, rerolled: true, group: 'pool' },
           ],
           successes: 2,
         },
@@ -314,5 +319,60 @@ export const PushCost: Story = {
     await expect(
       within(canvas.getByRole('group', { name: 'Effect 2' })).getByText('tracker'),
     ).toBeVisible()
+  },
+}
+
+/** A pool check with critical pairs, Hunger dice and a capped push (ADR 0044). */
+export const HungerAndCriticals: Story = {
+  parameters: {
+    api: {
+      [`GET ${base}/checks`]: json({
+        ...checks,
+        checks: [
+          {
+            ...pool,
+            pool: {
+              count: { formula: '{pow} + 1' },
+              sides: 10,
+              successAt: 6,
+              criticals: { bonus: 2 },
+              hunger: { count: { formula: '{pow}' } },
+            },
+            push: { label: 'Spend Willpower', maxDice: 3 },
+          },
+        ],
+      }),
+      [`GET ${base}/sheet`]: json(sheet),
+      [`POST ${base}/checks/sneak/test-rolls`]: json({
+        ...poolRoll,
+        pool: {
+          ...poolRoll.pool,
+          dice: [
+            { face: 10, success: true, rerolled: false, group: 'pool' },
+            { face: 3, success: false, rerolled: false, group: 'pool' },
+            { face: 10, success: true, rerolled: false, group: 'hunger' },
+          ],
+          successes: 2,
+          hunger: 1,
+          hungerFormula: '{pow}',
+          criticalsBonus: 2,
+        },
+        push: { label: 'Spend Willpower', maxDice: 3, rolledSpecial: null },
+        special: 'messyCritical',
+        total: 4,
+      }),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit sneak' }))
+    await expect(canvas.getByLabelText('Critical pairs bonus')).toHaveValue('2')
+    await expect(canvas.getByLabelText('Hunger dice')).toHaveValue('{pow}')
+    await expect(canvas.getByLabelText('Dice cap')).toHaveValue('3')
+    const sandbox = within(await canvas.findByRole('region', { name: 'Test roll sandbox' }))
+    await userEvent.click(sandbox.getByRole('button', { name: 'Roll the check' }))
+    await expect(await sandbox.findByText('Messy critical')).toBeVisible()
+    await expect(sandbox.getByText('Hunger die')).toBeVisible()
+    await expect(sandbox.getByText(/Re-roll up to 3 failed dice/)).toBeVisible()
   },
 }

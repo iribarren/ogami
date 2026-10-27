@@ -9,9 +9,10 @@ use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 
 /**
- * The pool of a test-rolled pool check (ADR 0041): its size, dice and successes.
+ * The pool of a test-rolled pool check (ADR 0041): its size, dice and successes, with the Hunger dice
+ * and the critical pairs bonus it rolled (ADR 0044).
  */
-#[OA\Schema(required: ['size', 'sides', 'successAt', 'count', 'countFormula', 'dice', 'successes'])]
+#[OA\Schema(required: ['size', 'sides', 'successAt', 'count', 'countFormula', 'dice', 'successes', 'hunger', 'hungerFormula', 'criticalsBonus'])]
 final readonly class CheckTestRollPoolResponse
 {
     /**
@@ -34,8 +35,14 @@ final readonly class CheckTestRollPoolResponse
             items: new OA\Items(ref: new Model(type: CheckTestRollPoolDieResponse::class)),
         )]
         public array $dice,
-        #[OA\Property(description: 'How many dice succeeded; the total of the check.', example: 2)]
+        #[OA\Property(description: 'How many dice succeeded, before the bonus of critical pairs; the total of the response adds that bonus.', example: 2)]
         public int $successes,
+        #[OA\Property(description: 'How many of the dice are Hunger dice (the last ones in roll order): the check\'s Hunger count, or what its formula gave for the samples, clamped to the size (0 when it has none).', example: 2)]
+        public int $hunger,
+        #[OA\Property(description: 'The formula that gave the Hunger count; null when the check gives a number or has no Hunger dice.', example: '{hunger}', nullable: true)]
+        public ?string $hungerFormula,
+        #[OA\Property(description: 'The successes every pair of dice showing the top face adds; 0 for a check without critical pairs.', example: 2)]
+        public int $criticalsBonus,
     ) {
     }
 
@@ -49,6 +56,9 @@ final readonly class CheckTestRollPoolResponse
             $view->countFormula,
             array_map(CheckTestRollPoolDieResponse::fromView(...), $view->dice),
             $view->successes,
+            $view->hunger,
+            $view->hungerFormula,
+            $view->criticalsBonus,
         );
     }
 }

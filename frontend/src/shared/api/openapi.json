@@ -15591,6 +15591,52 @@
                         "description": "A die showing this or more is a success, 1 to `sides`.",
                         "type": "integer",
                         "example": 6
+                    },
+                    "criticals": {
+                        "description": "Critical pairs (ADR 0044): every pair of dice showing the top face adds `bonus` successes. Absent: no bonus.",
+                        "required": [
+                            "bonus"
+                        ],
+                        "properties": {
+                            "bonus": {
+                                "description": "1 to 10.",
+                                "type": "integer",
+                                "example": 2
+                            }
+                        },
+                        "type": "object",
+                        "nullable": true
+                    },
+                    "hunger": {
+                        "description": "Hunger dice (ADR 0044): that many dice of the pool, in a second colour, are never re-rolled by a push. Absent: none.",
+                        "required": [
+                            "count"
+                        ],
+                        "properties": {
+                            "count": {
+                                "description": "An integer from 0 to 100, or a formula over the sheet read as a modifier; clamped to the size of the pool.",
+                                "oneOf": [
+                                    {
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    {
+                                        "required": [
+                                            "formula"
+                                        ],
+                                        "properties": {
+                                            "formula": {
+                                                "type": "string",
+                                                "example": "{hunger}"
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "nullable": true
                     }
                 },
                 "type": "object"
@@ -15617,6 +15663,14 @@
                         },
                         "nullable": true,
                         "maxItems": 10
+                    },
+                    "maxDice": {
+                        "description": "The most failed regular dice a push re-rolls, 1 to 100 (ADR 0044); Hunger dice are never re-rolled. Absent: every failed die.",
+                        "type": "integer",
+                        "example": 3,
+                        "nullable": true,
+                        "maximum": 100,
+                        "minimum": 1
                     }
                 },
                 "type": "object"
@@ -16054,7 +16108,8 @@
                 "required": [
                     "face",
                     "success",
-                    "rerolled"
+                    "rerolled",
+                    "group"
                 ],
                 "properties": {
                     "face": {
@@ -16071,6 +16126,15 @@
                         "description": "Whether a push re-rolled this die; always false before a push.",
                         "type": "boolean",
                         "example": false
+                    },
+                    "group": {
+                        "description": "The group of dice the die belongs to: \"pool\" for a regular die, \"hunger\" for a Hunger die, which a push never re-rolls (ADR 0044).",
+                        "type": "string",
+                        "example": "pool",
+                        "enum": [
+                            "pool",
+                            "hunger"
+                        ]
                     }
                 },
                 "type": "object"
@@ -16083,7 +16147,10 @@
                     "count",
                     "countFormula",
                     "dice",
-                    "successes"
+                    "successes",
+                    "hunger",
+                    "hungerFormula",
+                    "criticalsBonus"
                 ],
                 "properties": {
                     "size": {
@@ -16120,22 +16187,63 @@
                         }
                     },
                     "successes": {
-                        "description": "How many dice succeeded; the total of the check.",
+                        "description": "How many dice succeeded, before the bonus of critical pairs; the total of the response adds that bonus.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "hunger": {
+                        "description": "How many of the dice are Hunger dice (the last ones in roll order): the check's Hunger count, or what its formula gave for the samples, clamped to the size (0 when it has none).",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "hungerFormula": {
+                        "description": "The formula that gave the Hunger count; null when the check gives a number or has no Hunger dice.",
+                        "type": "string",
+                        "example": "{hunger}",
+                        "nullable": true
+                    },
+                    "criticalsBonus": {
+                        "description": "The successes every pair of dice showing the top face adds; 0 for a check without critical pairs.",
                         "type": "integer",
                         "example": 2
                     }
                 },
                 "type": "object"
             },
+            "CheckTestSpecialResult": {
+                "type": "string",
+                "enum": [
+                    "critical",
+                    "messyCritical",
+                    "bestialFailure"
+                ]
+            },
             "CheckTestRollPushResponse": {
                 "required": [
-                    "label"
+                    "label",
+                    "maxDice",
+                    "rolledSpecial"
                 ],
                 "properties": {
                     "label": {
                         "description": "What the push costs, in the words of the check.",
                         "type": "string",
                         "example": "Take a Condition"
+                    },
+                    "maxDice": {
+                        "description": "The most failed regular dice a push re-rolls (ADR 0044); null re-rolls every one. Hunger dice are never re-rolled.",
+                        "type": "integer",
+                        "example": 3,
+                        "nullable": true
+                    },
+                    "rolledSpecial": {
+                        "description": "Only on a pushed roll: the special result the roll had before the push; null for none, and before a push.",
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckTestSpecialResult"
+                            }
+                        ]
                     }
                 },
                 "type": "object"
@@ -16170,6 +16278,7 @@
                     "pool",
                     "push",
                     "rolledSuccesses",
+                    "special",
                     "modifier",
                     "situational",
                     "difficulty",
@@ -16206,10 +16315,19 @@
                         "description": "The push the pool check declares: it can be pushed when a die failed; null for a check that declares none, and for a dice check."
                     },
                     "rolledSuccesses": {
-                        "description": "Only on a pushed roll: the successes the roll had before the push.",
+                        "description": "Only on a pushed roll: the total the roll had before the push.",
                         "type": "integer",
                         "example": 1,
                         "nullable": true
+                    },
+                    "special": {
+                        "description": "The special result of the roll as it stands, after a push the push's (ADR 0044): critical, messy critical or bestial failure. Null for none, and for a dice check.",
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckTestSpecialResult"
+                            }
+                        ]
                     },
                     "modifier": {
                         "description": "The value of the check's modifier formula for the samples; 0 when it has none, and for a pool check.",
@@ -16228,7 +16346,7 @@
                         "nullable": true
                     },
                     "total": {
-                        "description": "The dice, plus the modifier, plus the situational modifier; the successes of a pool.",
+                        "description": "The dice, plus the modifier, plus the situational modifier; the successes of a pool plus the bonus of its critical pairs.",
                         "type": "integer",
                         "example": 13
                     },

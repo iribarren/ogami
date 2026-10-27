@@ -1486,4 +1486,80 @@ describe('the push of a pool check in the check editor', () => {
     })
     expect(sent[0]).toEqual({ expectedVersion: 5, check: { ...stored, label: 'Raid!' } })
   })
+
+  const vampire = {
+    ...raid,
+    pool: {
+      count: { formula: '{pow} + 1' },
+      sides: 10,
+      successAt: 6,
+      criticals: { bonus: 2 },
+      hunger: { count: 2 },
+    },
+    push: { label: 'Spend Willpower', maxDice: 3 },
+  }
+
+  it('reads criticals, Hunger dice and the push cap, and saves them unchanged', async () => {
+    const { sent, handler } = recorder(Response.json({ ...withRaid, version: 6 }))
+    const { user, form } = await editRaid(vampire, { [`PUT ${base}/checks/raid`]: handler })
+
+    expect(form.getByLabelText('Critical pairs bonus')).toHaveValue('2')
+    expect(form.getByLabelText('Hunger dice')).toHaveValue('2')
+    expect(form.getByLabelText('Dice cap')).toHaveValue('3')
+    await replaceText(user, form.getByLabelText('Dice cap'), '2')
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+    expect(sent[0]).toEqual({
+      expectedVersion: 5,
+      check: { ...vampire, push: { label: 'Spend Willpower', maxDice: 2 } },
+    })
+  })
+
+  it('sends a Hunger formula, and nothing for the inputs left empty', async () => {
+    const { sent, handler } = recorder(Response.json({ ...withRaid, version: 6 }))
+    const { user, form } = await editRaid(raid, { [`PUT ${base}/checks/raid`]: handler })
+
+    await typeText(user, form.getByLabelText('Hunger dice'), '{pow}')
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+    expect(sent[0]).toEqual({
+      expectedVersion: 5,
+      check: { ...raid, pool: { ...raid.pool, hunger: { count: { formula: '{pow}' } } } },
+    })
+  })
+
+  it('asks for a bonus and a cap in range without calling the API', async () => {
+    const { sent, handler } = recorder(Response.json(withRaid))
+    const { user, form } = await editRaid(vampire, { [`PUT ${base}/checks/raid`]: handler })
+
+    await replaceText(user, form.getByLabelText('Critical pairs bonus'), '0')
+    await replaceText(user, form.getByLabelText('Dice cap'), '0')
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    expect(await form.findByText(/The bonus must be a whole number from 1 to 10/)).toBeVisible()
+    expect(form.getByText(/The cap must be a whole number from 1 to 100/)).toBeVisible()
+    expect(form.getByLabelText('Critical pairs bonus')).toBeInvalid()
+    expect(form.getByLabelText('Dice cap')).toBeInvalid()
+    expect(sent).toHaveLength(0)
+  })
+
+  it('shows the publisher refusals on the inputs of the new fields', async () => {
+    const { user, form } = await editRaid(vampire, {
+      [`PUT ${base}/checks/raid`]: json(
+        { error: 'checks[2].pool.hunger.count: must be at most 100, 101 given.' },
+        422,
+      ),
+    })
+
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    expect(await form.findByText('must be at most 100, 101 given.')).toBeVisible()
+    expect(form.getByLabelText('Hunger dice')).toBeInvalid()
+  })
 })

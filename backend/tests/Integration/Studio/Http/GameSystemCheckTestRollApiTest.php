@@ -44,6 +44,8 @@ final class GameSystemCheckTestRollApiTest extends WebTestCase
     private const string PATH = self::BASE.'/mine/checks/skill/test-rolls';
     private const string GRIT = self::BASE.'/mine/checks/grit/test-rolls';
     private const string GRIT_PUSH = self::GRIT.'/push';
+    /** Four hands: three regular dice and one Hunger die of ten sides, a pair of 10s worth 2 more. */
+    private const array VAMPIRE_POOL = ['count' => ['formula' => '{hands}'], 'sides' => 10, 'successAt' => 6, 'criticals' => ['bonus' => 2], 'hunger' => ['count' => ['formula' => '{hands} - 3']]];
 
     private KernelBrowser $client;
     private int $releases = 0;
@@ -87,6 +89,7 @@ final class GameSystemCheckTestRollApiTest extends WebTestCase
             'pool' => null,
             'push' => null,
             'rolledSuccesses' => null,
+            'special' => null,
             'modifier' => 6,
             'situational' => 0,
             'difficulty' => 13,
@@ -346,11 +349,15 @@ final class GameSystemCheckTestRollApiTest extends WebTestCase
                 'successAt' => 5,
                 'count' => 3,
                 'countFormula' => '{hands}',
-                'dice' => [['face' => 1, 'success' => false, 'rerolled' => false], ['face' => 5, 'success' => true, 'rerolled' => false], ['face' => 6, 'success' => true, 'rerolled' => false]],
+                'dice' => [['face' => 1, 'success' => false, 'rerolled' => false, 'group' => 'pool'], ['face' => 5, 'success' => true, 'rerolled' => false, 'group' => 'pool'], ['face' => 6, 'success' => true, 'rerolled' => false, 'group' => 'pool']],
                 'successes' => 2,
+                'hunger' => 0,
+                'hungerFormula' => null,
+                'criticalsBonus' => 0,
             ],
-            'push' => ['label' => 'Take a Condition'],
+            'push' => ['label' => 'Take a Condition', 'maxDice' => null, 'rolledSpecial' => null],
             'rolledSuccesses' => null,
+            'special' => null,
             'modifier' => 0,
             'situational' => 0,
             'difficulty' => null,
@@ -453,11 +460,15 @@ final class GameSystemCheckTestRollApiTest extends WebTestCase
                 'successAt' => 5,
                 'count' => 3,
                 'countFormula' => '{hands}',
-                'dice' => [['face' => 6, 'success' => true, 'rerolled' => true], ['face' => 5, 'success' => true, 'rerolled' => false], ['face' => 2, 'success' => false, 'rerolled' => true]],
+                'dice' => [['face' => 6, 'success' => true, 'rerolled' => true, 'group' => 'pool'], ['face' => 5, 'success' => true, 'rerolled' => false, 'group' => 'pool'], ['face' => 2, 'success' => false, 'rerolled' => true, 'group' => 'pool']],
                 'successes' => 2,
+                'hunger' => 0,
+                'hungerFormula' => null,
+                'criticalsBonus' => 0,
             ],
-            'push' => ['label' => 'Take a Condition'],
+            'push' => ['label' => 'Take a Condition', 'maxDice' => null, 'rolledSpecial' => null],
             'rolledSuccesses' => 1,
+            'special' => null,
             'modifier' => 0,
             'situational' => 0,
             'difficulty' => null,
@@ -575,7 +586,7 @@ final class GameSystemCheckTestRollApiTest extends WebTestCase
         $this->testRoll(self::GRIT_PUSH, ['faces' => [5, 6, 5, 6]]);
 
         self::assertResponseStatusCodeSame(409);
-        self::assertSame('Check "grit" cannot be pushed: no die failed.', $this->error());
+        self::assertSame('Check "grit" cannot be pushed: no regular die failed.', $this->error());
     }
 
     #[Test]
@@ -674,17 +685,186 @@ final class GameSystemCheckTestRollApiTest extends WebTestCase
         self::assertStringStartsWith('schemaVersion: ', $this->error());
     }
 
+    #[Test]
+    public function aHungerRollMarksItsLastDiceAndACriticalPairAddsItsBonusToTheTotal(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit(self::VAMPIRE_POOL);
+        // Three regular dice and one Hunger die: a pair of 10s, one of them the Hunger die.
+        $this->scriptRolls(10, 3, 6, 10);
+
+        $this->testRoll(self::GRIT, []);
+
+        self::assertResponseStatusCodeSame(200);
+        $roll = $this->json();
+        self::assertIsArray($roll['pool']);
+        self::assertSame(['pool', 'pool', 'pool', 'hunger'], array_column((array) $roll['pool']['dice'], 'group'));
+        self::assertSame([3, 1, '{hands} - 3', 2], [$roll['pool']['successes'], $roll['pool']['hunger'], $roll['pool']['hungerFormula'], $roll['pool']['criticalsBonus']]);
+        // Three successes and a pair worth two more; the Hunger die in the pair makes it messy.
+        self::assertSame([5, 'strong', 'messyCritical'], [$roll['total'], $roll['band'], $roll['special']]);
+    }
+
+    /**
+     * @return iterable<string, array{list<int>, int, string, ?string}> the faces rolled, the total, the band and the special result
+     */
+    public static function specials(): iterable
+    {
+        yield 'a critical pair without a Hunger die' => [[10, 10, 2, 3], 4, 'strong', 'critical'];
+        yield 'a bestial failure: failed with a Hunger 1' => [[2, 3, 4, 1], 0, 'miss', 'bestialFailure'];
+        yield 'a Hunger 1 on a roll that did not fail' => [[6, 6, 4, 1], 2, 'strong', null];
+        yield 'no pair, no Hunger 1' => [[6, 3, 4, 5], 1, 'weak', null];
+    }
+
+    /**
+     * @param list<int> $faces
+     */
+    #[Test]
+    #[DataProvider('specials')]
+    public function theSpecialResultFollowsAdr0044(array $faces, int $total, string $band, ?string $special): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        // Three regular dice and one Hunger die, with 4 hands; the bands are miss up to 0, weak up to 1, strong above.
+        $this->saveGrit(['count' => ['formula' => '{hands}'], 'sides' => 10, 'successAt' => 6, 'criticals' => ['bonus' => 2], 'hunger' => ['count' => 1]]);
+        $this->scriptRolls(...$faces);
+
+        $this->testRoll(self::GRIT, []);
+
+        self::assertResponseStatusCodeSame(200);
+        $roll = $this->json();
+        self::assertSame([$total, $band, $special], [$roll['total'], $roll['band'], $roll['special']]);
+    }
+
+    #[Test]
+    public function aFailedRollIsBelowTheDifficultyWhenTheCheckDeclaresOneNotInItsFirstBand(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit(['count' => 3, 'sides' => 10, 'successAt' => 6, 'hunger' => ['count' => 1]], null, ['label' => 'Difficulty', 'default' => 2, 'min' => 1, 'max' => 5]);
+        // One success and a Hunger 1: in the second band, yet below the difficulty of 2.
+        $this->scriptRolls(6, 2, 1);
+
+        $this->testRoll(self::GRIT, []);
+
+        self::assertResponseStatusCodeSame(200);
+        $roll = $this->json();
+        self::assertSame([1, 'weak', 'bestialFailure'], [$roll['total'], $roll['band'], $roll['special']]);
+    }
+
+    #[Test]
+    public function aCappedPushReRollsTheFirstFailedRegularDicesAndNeverAHungerDie(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit(self::VAMPIRE_POOL, ['label' => 'Spend Willpower', 'maxDice' => 1]);
+        $this->scriptRolls(6);
+
+        // Faces in roll order, the Hunger die last: two regular dice failed and so did the Hunger die.
+        $this->testRoll(self::GRIT_PUSH, ['faces' => [2, 3, 2, 1]]);
+
+        self::assertResponseStatusCodeSame(200);
+        $roll = $this->json();
+        self::assertIsArray($roll['pool']);
+        self::assertSame([[6, true, 'pool'], [3, false, 'pool'], [2, false, 'pool'], [1, false, 'hunger']], array_map(static fn (mixed $die): array => \is_array($die) ? [$die['face'], $die['rerolled'], $die['group']] : [], (array) $roll['pool']['dice']));
+        self::assertSame(['label' => 'Spend Willpower', 'maxDice' => 1, 'rolledSpecial' => 'bestialFailure'], $roll['push']);
+        // The roll failed with a Hunger 1; after the push it has one success, which is no longer the first band.
+        self::assertSame([0, 1, 'weak', null], [$roll['rolledSuccesses'], $roll['total'], $roll['band'], $roll['special']]);
+    }
+
+    #[Test]
+    public function aPushCanBringACriticalPairAndTheSpecialIsComputedAgain(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit(self::VAMPIRE_POOL);
+        $this->scriptRolls(10, 10);
+
+        $this->testRoll(self::GRIT_PUSH, ['faces' => [10, 2, 3, 6]]);
+
+        self::assertResponseStatusCodeSame(200);
+        $roll = $this->json();
+        // The two failed regular dice become 10s: three 10s are a pair, the Hunger 6 is outside it.
+        self::assertSame([2, 6, 'critical'], [$roll['rolledSuccesses'], $roll['total'], $roll['special']]);
+        self::assertSame(['label' => 'Take a Condition', 'maxDice' => null, 'rolledSpecial' => null], $roll['push']);
+    }
+
+    #[Test]
+    public function aRollWhoseOnlyFailedDiceAreHungerDiceCannotBePushed(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit(self::VAMPIRE_POOL);
+        $this->scriptRolls();
+
+        $this->testRoll(self::GRIT_PUSH, ['faces' => [6, 7, 8, 1]]);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('Check "grit" cannot be pushed: no regular die failed.', $this->error());
+    }
+
+    #[Test]
+    public function aHungerFormulaThatFailsForTheSamplesIsRefusedAndNothingIsRolled(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit(['count' => 4, 'sides' => 10, 'successAt' => 6, 'hunger' => ['count' => ['formula' => '10 / ({hands} - 4)']]]);
+        $this->scriptRolls();
+
+        $this->testRoll(self::GRIT, []);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertTrue(str_starts_with($this->error(), 'Check "grit" cannot be test-rolled: '), $this->error());
+    }
+
+    #[Test]
+    public function aNegativeHungerFormulaRollsNoHungerDie(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit(['count' => 2, 'sides' => 10, 'successAt' => 6, 'hunger' => ['count' => ['formula' => '{hands} - 10']]]);
+        $this->scriptRolls(6, 2);
+
+        $this->testRoll(self::GRIT, []);
+
+        self::assertResponseStatusCodeSame(200);
+        $pool = $this->json()['pool'];
+        self::assertIsArray($pool);
+        self::assertSame([0, ['pool', 'pool']], [$pool['hunger'], array_column((array) $pool['dice'], 'group')]);
+    }
+
+    #[Test]
+    public function aCheckWithoutCriticalsOrHungerRollsAsBefore(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $this->saveGrit();
+        $this->scriptRolls(6, 6, 1);
+
+        $this->testRoll(self::GRIT, ['sheet' => ['hands' => 3]]);
+
+        $roll = $this->json();
+        self::assertIsArray($roll['pool']);
+        // A pair of top faces is worth nothing without the bonus, and nothing is special.
+        self::assertSame([2, 2, 0, null], [$roll['total'], $roll['pool']['successes'], $roll['pool']['criticalsBonus'], $roll['special']]);
+    }
+
     /**
      * Saves the pool check "grit" in the draft "mine".
      *
      * @param array<string, mixed>  $pool
      * @param ?array<string, mixed> $push
+     * @param ?array<string, mixed> $difficulty
      */
-    private function saveGrit(array $pool = ['count' => ['formula' => '{hands}'], 'sides' => 6, 'successAt' => 5], ?array $push = ['label' => 'Take a Condition']): void
+    private function saveGrit(array $pool = ['count' => ['formula' => '{hands}'], 'sides' => 6, 'successAt' => 5], ?array $push = ['label' => 'Take a Condition'], ?array $difficulty = null, string $key = 'grit'): void
     {
-        $check = ['key' => 'grit', 'label' => 'Grit', 'pool' => $pool, 'bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => 0], ['key' => 'weak', 'label' => 'Weak', 'upTo' => 1], ['key' => 'strong', 'label' => 'Strong']]];
+        $check = ['key' => $key, 'label' => 'Grit', 'pool' => $pool, 'bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => 0], ['key' => 'weak', 'label' => 'Weak', 'upTo' => 1], ['key' => 'strong', 'label' => 'Strong']]];
         if (null !== $push) {
             $check['push'] = $push;
+        }
+
+        if (null !== $difficulty) {
+            $check['difficulty'] = $difficulty;
         }
 
         $this->client->jsonRequest('POST', self::BASE.'/mine/checks', ['expectedVersion' => $this->checks()['version'], 'check' => $check]);

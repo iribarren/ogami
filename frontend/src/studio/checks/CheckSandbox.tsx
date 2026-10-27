@@ -335,6 +335,17 @@ interface SandboxRoll {
 
 type TestPool = NonNullable<CheckTestRoll['pool']>
 
+/** The special results of a pool roll (ADR 0044), as the person reads them. */
+const specialLabels: Record<NonNullable<CheckTestRoll['special']>, string> = {
+  critical: 'Critical',
+  messyCritical: 'Messy critical',
+  bestialFailure: 'Bestial failure',
+}
+
+/** How many regular dice failed: the only ones a push re-rolls, never the Hunger dice. */
+const failedRegularDice = (pool: TestPool) =>
+  pool.dice.filter(({ group, success }) => group === 'pool' && !success).length
+
 /** One test roll: the total and the band reached, the dice and modifiers, every band with the reached one marked. */
 function RollResult({
   result,
@@ -359,7 +370,7 @@ function RollResult({
     pool !== null &&
     push !== null &&
     result.rolledSuccesses === null &&
-    pool.dice.some((die) => !die.success)
+    failedRegularDice(pool) > 0
 
   return (
     <div className="space-y-2 text-sm">
@@ -371,6 +382,11 @@ function RollResult({
         </p>
         {reached && <p className="text-[13px] font-[550]">{reached.label}</p>}
       </div>
+      {result.special !== null && (
+        <p>
+          <span>Special result:</span> <strong>{specialLabels[result.special]}</strong>
+        </p>
+      )}
       {push !== null && result.rolledSuccesses !== null && (
         <p>
           <strong>Pushed: {push.label}</strong>
@@ -378,9 +394,10 @@ function RollResult({
             <>
               {' · '}
               <span>
+                {`Rolled ${rolled.label}${push.rolledSpecial === null ? '' : ` (${specialLabels[push.rolledSpecial].toLowerCase()})`}, `}
                 {rolled.key === reached.key
-                  ? `Rolled ${rolled.label}, still ${reached.label}`
-                  : `Rolled ${rolled.label}, pushed to ${reached.label}`}
+                  ? `still ${reached.label}`
+                  : `pushed to ${reached.label}`}
               </span>
             </>
           )}
@@ -415,6 +432,8 @@ function RollResult({
                 ? pool.count
                 : `${pool.countFormula} = ${String(pool.count)}`}
             </span>
+            {pool.hunger > 0 && <span>{pool.hunger} Hunger</span>}
+            {pool.criticalsBonus > 0 && <span>Critical pairs +{pool.criticalsBonus} each</span>}
           </>
         )}
         {pool === null && <span>Modifier {result.modifier}</span>}
@@ -427,6 +446,12 @@ function RollResult({
             Push the roll
           </Button>
           <span className="text-muted-foreground">Cost: {push.label}</span>
+          <span className="text-muted-foreground">
+            {push.maxDice === null
+              ? 'Re-roll every failed regular die.'
+              : `Re-roll up to ${String(push.maxDice)} failed ${push.maxDice === 1 ? 'die' : 'dice'}.`}
+            {pool.hunger > 0 && ' Hunger dice are never re-rolled.'}
+          </span>
         </div>
       )}
       <ol aria-label="Bands" className="space-y-1">
@@ -462,14 +487,20 @@ function PoolDice({ pool }: { pool: TestPool }) {
         <li
           // A pool can show the same face many times; the position is the identity.
           key={index}
-          className={
+          data-group={die.group}
+          className={cn(
+            'min-w-8 rounded-md px-1.5 py-0.5 text-center',
             die.success
-              ? 'min-w-8 rounded-md border-2 border-foreground px-1.5 py-0.5 text-center font-bold'
-              : 'min-w-8 rounded-md border border-dashed border-muted-foreground px-1.5 py-0.5 text-center text-muted-foreground'
-          }
+              ? 'border-2 border-foreground font-bold'
+              : 'border border-dashed border-muted-foreground text-muted-foreground',
+            // The second colour of the Hunger dice; the label below says it in text too.
+            die.group === 'hunger' &&
+              'border-destructive bg-destructive/10 text-destructive dark:bg-destructive/20',
+          )}
         >
           {die.face}
           <span className="sr-only">{die.success ? ' (success)' : ' (no success)'}</span>
+          {die.group === 'hunger' && <span className="block text-xs font-normal">Hunger die</span>}
           {die.rerolled && <span className="block text-xs font-normal">re-rolled</span>}
         </li>
       ))}

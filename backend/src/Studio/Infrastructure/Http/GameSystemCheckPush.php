@@ -23,6 +23,8 @@ final readonly class GameSystemCheckPush
         public string $label,
         #[OA\Property(description: 'The cost: sheet and tracker effect objects as the release contract defines them (at most 10). A mark without an option lets the player pick one.', type: 'array', items: new OA\Items(type: 'object', additionalProperties: true), nullable: true, maxItems: 10)]
         public ?array $effects,
+        #[OA\Property(description: 'The most failed regular dice a push re-rolls, 1 to 100 (ADR 0044); Hunger dice are never re-rolled. Absent: every failed die.', example: 3, nullable: true, maximum: 100, minimum: 1)]
+        public ?int $maxDice,
     ) {
     }
 }

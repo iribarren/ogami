@@ -10,7 +10,8 @@ use App\Randomness\Domain\Roll;
  * What a test roll produced: the dice or the pool rolled, the modifier, the situational modifier and
  * the difficulty that applied, their total (the successes of a pool), every band with the bound it
  * had for these samples (the last has none) and the band the total falls in. A pool check also tells
- * its push, and a pushed roll the successes it had before the push.
+ * its push, and a pushed roll the total and special result it had before the push. A pool check
+ * can also have a special result (ADR 0044).
  */
 final readonly class CheckTestRollResult
 {
@@ -30,6 +31,8 @@ final readonly class CheckTestRollResult
         public ?CheckTestPoolRoll $pool = null,
         public ?CheckTestPush $push = null,
         public ?int $rolledSuccesses = null,
+        public ?CheckTestSpecialResult $special = null,
+        public ?CheckTestSpecialResult $rolledSpecial = null,
     ) {
     }
 }

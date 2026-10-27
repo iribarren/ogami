@@ -90,7 +90,8 @@ export function rangeText(field: SheetFieldView): string | null {
 
 /**
  * The budget fields whose typed draft lies outside the range their budget narrows them to, with
- * that range as text. A blank or non-numeric draft is not out of range: it counts as 0 points.
+ * that range as text. A blank draft is not out of range (it counts as 0 points); a non-numeric one
+ * is, so it cannot be saved, although the counter also counts it as 0.
  */
 export function outOfRange(
   fields: SheetFieldView[],

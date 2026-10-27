@@ -46,7 +46,7 @@ export const draft: GameSystem = {
   kind: 'game-system',
   name: 'My draft',
   description: 'A game of my own.',
-  credits: { notice: 'Unofficial fan content.', license: 'CC BY 4.0', url: null },
+  credits: { notice: 'Unofficial fan content.', license: 'CC BY 4.0', url: null, badge: null },
   theme: 'noir',
   schemaVersion: 2,
   sectionCounts: { oracleTables: 2, trackers: 1, flows: 0, checks: 3 },
@@ -663,6 +663,29 @@ export const stepListCheckSet = [
     title: 'Defy disaster',
     checks: ['skill', 'finesse'],
     difficulty: 12,
+  },
+]
+
+/** The pickers when the checks have a Hunger pool: `skill` produces every special result, `luck` none (ADR 0044). */
+export const stepPickersHunger = {
+  ...stepPickers,
+  checks: stepPickers.checks.map((check) => ({
+    ...check,
+    specials: check.key === 'skill' ? ['critical', 'messyCritical', 'bestialFailure'] : [],
+  })),
+}
+
+/** A check step on a Hunger check with an outcome for a bestial failure ahead of its bands. */
+export const stepListSpecials = [
+  {
+    key: 'feed',
+    kind: 'check',
+    title: 'Feed',
+    check: 'skill',
+    outcomes: [
+      { band: 'fail', next: 'end' },
+      { special: 'bestialFailure', next: 'end' },
+    ],
   },
 ]
 

@@ -809,6 +809,26 @@ describe('criticals, Hunger dice and the push cap', () => {
     })
   })
 
+  it('reads a stored null criticals, Hunger or push cap as absent and writes them out', () => {
+    const nulled: StoredCheck = {
+      ...vampire,
+      pool: { count: 4, sides: 10, successAt: 6, criticals: null, hunger: null },
+      push: { label: 'Spend Willpower', maxDice: null },
+    }
+    const draft = drafted(nulled)
+
+    expect(draft.pool?.criticalsBonus).toBeUndefined()
+    expect(draft.pool?.hunger).toBeUndefined()
+    expect(draft.push?.maxDice).toBeUndefined()
+    expect(writeCheck(draft)).toEqual({
+      check: {
+        ...vampire,
+        pool: { count: 4, sides: 10, successAt: 6 },
+        push: { label: 'Spend Willpower' },
+      },
+    })
+  })
+
   it.each([
     ['criticals that are not an object', { criticals: 2 }],
     ['criticals with another property', { criticals: { bonus: 2, extra: 1 } }],

@@ -17,7 +17,7 @@ use App\Studio\Domain\Release\Version2\ReleaseVersion2;
 final readonly class GameSystemMetadata
 {
     /**
-     * @param array{notice: string, license?: string, url?: string}|null $credits
+     * @param array{notice: string, license?: string, url?: string, badge?: string}|null $credits
      */
     private function __construct(
         public string $name,
@@ -28,7 +28,7 @@ final readonly class GameSystemMetadata
     }
 
     /**
-     * @param array<mixed>|null $credits {notice, license?, url?}
+     * @param array<mixed>|null $credits {notice, license?, url?, badge?}
      *
      * @throws InvalidGameSystemMetadata naming the first offending field
      */

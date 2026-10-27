@@ -38,7 +38,7 @@ final readonly class CheckTestPool
         }
 
         if ($criticalsBonus < 0 || $criticalsBonus > self::MAX_CRITICALS_BONUS) {
-            throw new \InvalidArgumentException(\sprintf('The critical pairs bonus must be in 1..%d, %d given.', self::MAX_CRITICALS_BONUS, $criticalsBonus));
+            throw new \InvalidArgumentException(\sprintf('The critical pairs bonus must be 0 for none or in 1..%d, %d given.', self::MAX_CRITICALS_BONUS, $criticalsBonus));
         }
 
         try {

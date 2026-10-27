@@ -9,6 +9,7 @@ import { SaveState, type SaveStateValue } from '@/shared/ui/save-state'
 
 import { StudioError } from '../../useGameSystems'
 import { moveItem } from '../steps/draftParts'
+import { useGameSystemChecks } from '../../checks/useGameSystemChecks'
 import { stepContext } from '../steps/stepContext'
 import {
   useGameSystemNarrative,
@@ -74,7 +75,9 @@ export function FlowEditor({
   const latest = useGameSystemNarrative(gameSystemKey)
   const navigate = useNavigate()
   // Kept while the narrative is the same, so the step cards below can skip renders.
-  const context = useMemo(() => stepContext(narrative), [narrative])
+  // The checks say which special results a check step may branch on; until they load, none is offered.
+  const checks = useGameSystemChecks(gameSystemKey)
+  const context = useMemo(() => stepContext(narrative, checks.data), [narrative, checks.data])
   const node = resolveNode(draft, selected)
   const path = nodePath(node)
   useEffect(() => {

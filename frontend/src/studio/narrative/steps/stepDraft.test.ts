@@ -2,17 +2,21 @@ import {
   DISJOINT_DIFFICULTY,
   checkDifficulty,
   newStep,
+  producibleSpecials,
   setBandOutcome,
+  setCheckOutcome,
   stepGuides,
   stepKey,
   stepsToDrafts,
   stepsToItems,
   type BandDraft,
+  type CheckOutcomeDraft,
   type EditedStep,
   type StepDraft,
 } from './stepDraft'
 import type { EffectDraft } from './effectDraft'
 import { stepPickers } from '../../fixtures'
+import type { StepContext } from './stepContext'
 
 const prompt = {
   key: 'intro',
@@ -132,6 +136,10 @@ function draftOf<K extends EditedStep['kind']>(stored: unknown, kind: K) {
   }
   return draft as Extract<EditedStep, { kind: K }>
 }
+
+/** The band or special result an outcome is for. */
+const named = (outcome: CheckOutcomeDraft) =>
+  'special' in outcome ? outcome.special : outcome.band
 
 function round(stored: Record<string, unknown>) {
   return stepsToItems(stepsToDrafts([stored]))
@@ -370,11 +378,7 @@ describe('a step draft', () => {
     const stray = [{ band: 'ghost', next: 'end' }, { band: 'fail' }, { band: 'fail', next: 'end' }]
     const stored = { ...check, outcomes: stray }
 
-    expect(draftOf(stored, 'check').outcomes.map((outcome) => outcome.band)).toEqual([
-      'ghost',
-      'fail',
-      'fail',
-    ])
+    expect(draftOf(stored, 'check').outcomes.map(named)).toEqual(['ghost', 'fail', 'fail'])
     expect(round(stored)).toEqual({
       steps: [{ ...stored, outcomes: [stray[0], stray[2]] }],
     })
@@ -414,15 +418,179 @@ describe('a step draft', () => {
     const edited = { next: 'end', effects: [], extra: {} }
 
     const inserted = setBandOutcome(outcomes, bands, 'partial', edited)
-    expect(inserted.outcomes.map((outcome) => outcome.band)).toEqual(['fail', 'partial', 'success'])
+    expect(inserted.outcomes.map(named)).toEqual(['fail', 'partial', 'success'])
     expect(inserted.origin).toEqual([0, null, 1])
 
     const reordered = setBandOutcome([...outcomes].reverse(), bands, 'fail', edited)
-    expect(reordered.outcomes.map((outcome) => outcome.band)).toEqual(['fail', 'success'])
+    expect(reordered.outcomes.map(named)).toEqual(['fail', 'success'])
     expect(reordered.origin).toEqual([1, 0])
 
     const stray = setBandOutcome([{ ...edited, band: 'ghost' }, ...outcomes], bands, 'fail', edited)
-    expect(stray.outcomes.map((outcome) => outcome.band)).toEqual(['fail', 'success', 'ghost'])
+    expect(stray.outcomes.map(named)).toEqual(['fail', 'success', 'ghost'])
+  })
+
+  describe('with special results', () => {
+    const special = {
+      ...check,
+      outcomes: [
+        { band: 'fail', next: 'end' },
+        { special: 'bestialFailure', next: 'end', note: 'x' },
+        { special: 'critical', effects: [sheetEffect] },
+      ],
+    }
+    const bands = ['fail', 'success']
+    const blank = { next: 'end', effects: [], extra: {} }
+
+    it('reads an entry naming a special and writes the step back as stored', () => {
+      expect(draftOf(special, 'check').outcomes).toMatchObject([
+        { band: 'fail' },
+        { special: 'bestialFailure' },
+        { special: 'critical' },
+      ])
+      expect(round(special)).toEqual({ steps: [special] })
+    })
+
+    it('keeps a step as stored when an entry names both, neither or an unknown special', () => {
+      for (const entry of [
+        { band: 'fail', special: 'critical' },
+        { next: 'end' },
+        { special: 'epic' },
+        { special: 3 },
+      ]) {
+        const odd = { ...check, outcomes: [entry] }
+        const [draft] = stepsToDrafts([odd])
+
+        expect(draft?.kind).toBe('stored')
+        expect(round(odd)).toEqual({ steps: [odd] })
+      }
+    })
+
+    it('omits an empty special outcome like an empty band outcome', () => {
+      expect(round({ ...check, outcomes: [{ special: 'critical' }] })).toEqual({
+        steps: [
+          {
+            key: 'lock',
+            kind: 'check',
+            title: 'Pick the lock',
+            check: 'skill',
+            difficulty: check.difficulty,
+          },
+        ],
+      })
+    })
+
+    it('writes bands first in the check band order, then the specials in their fixed order, strays last', () => {
+      const { outcomes } = draftOf(
+        { ...check, outcomes: [{ band: 'ghost', next: 'end' }, ...special.outcomes] },
+        'check',
+      )
+
+      const added = setCheckOutcome(outcomes, bands, { special: 'messyCritical' }, blank)
+      expect(added.outcomes.map(named)).toEqual([
+        'fail',
+        'critical',
+        'messyCritical',
+        'bestialFailure',
+        'ghost',
+      ])
+      expect(added.origin).toEqual([1, 3, null, 2, 0])
+
+      const edited = setCheckOutcome(outcomes, bands, { band: 'success' }, blank)
+      expect(edited.outcomes.map(named)).toEqual([
+        'fail',
+        'success',
+        'critical',
+        'bestialFailure',
+        'ghost',
+      ])
+    })
+
+    it('replaces the outcome of a special instead of adding another, and does not confuse it with a band', () => {
+      const { outcomes } = draftOf(special, 'check')
+      const edited = setCheckOutcome(outcomes, bands, { special: 'critical' }, blank)
+
+      expect(edited.outcomes).toHaveLength(3)
+      expect(edited.outcomes[1]).toEqual({ ...blank, special: 'critical' })
+      expect(edited.origin).toEqual([0, 2, 1])
+    })
+
+    describe('and the pools of the checks', () => {
+      const withSpecials = (...specials: StepContext['checks'][number]['specials'][]) =>
+        ({
+          ...stepPickers,
+          checks: specials.map((names, at) => ({
+            ...stepPickers.checks[0],
+            key: `c${String(at)}`,
+            specials: names,
+          })),
+        }) as StepContext
+      const stepOf = (...checks: string[]) =>
+        draftOf(
+          checks.length === 1
+            ? { ...check, check: checks[0], outcomes: [] }
+            : { ...check, check: undefined, checks, outcomes: [] },
+          'check',
+        )
+
+      it('offers a check its own specials, and none when it names no check', () => {
+        const context = withSpecials(['critical', 'messyCritical', 'bestialFailure'], [])
+
+        expect(producibleSpecials(stepOf('c0'), context)).toEqual([
+          'critical',
+          'messyCritical',
+          'bestialFailure',
+        ])
+        expect(producibleSpecials(stepOf('c1'), context)).toEqual([])
+        expect(producibleSpecials({ ...stepOf('c0'), check: '' }, context)).toEqual([])
+      })
+
+      it('offers a set only the specials every check of it can produce', () => {
+        const context = withSpecials(
+          ['critical', 'messyCritical', 'bestialFailure'],
+          ['critical', 'bestialFailure'],
+          ['bestialFailure'],
+        )
+
+        expect(producibleSpecials(stepOf('c0', 'c1'), context)).toEqual([
+          'critical',
+          'bestialFailure',
+        ])
+        expect(producibleSpecials(stepOf('c0', 'c1', 'c2'), context)).toEqual(['bestialFailure'])
+      })
+
+      it('does not say when a check is unknown or its pool was not loaded', () => {
+        expect(producibleSpecials(stepOf('c0'), withSpecials(undefined))).toBeNull()
+        expect(producibleSpecials(stepOf('gone'), withSpecials(['critical']))).toBeNull()
+        expect(
+          producibleSpecials(stepOf('c0', 'c1'), withSpecials(['critical'], undefined)),
+        ).toBeNull()
+      })
+
+      it('flags a special the check cannot produce and one given twice, and keeps both', () => {
+        const stored = {
+          ...check,
+          check: 'c0',
+          outcomes: [
+            { special: 'critical', next: 'end' },
+            { special: 'bestialFailure', next: 'end' },
+            { special: 'critical', next: 'end' },
+          ],
+        }
+        const [guide] = stepGuides(stepsToDrafts([stored]), withSpecials(['critical']))
+
+        expect(guide?.items).toEqual({
+          1: 'This check cannot produce this special result.',
+          2: 'Another outcome has this special result.',
+        })
+        expect(round(stored)).toEqual({ steps: [stored] })
+      })
+
+      it('flags nothing when the pools are unknown', () => {
+        const stored = { ...check, check: 'c0', outcomes: [{ special: 'critical', next: 'end' }] }
+
+        expect(stepGuides(stepsToDrafts([stored]), withSpecials(undefined))[0]?.items).toEqual({})
+      })
+    })
   })
 
   it('says which limits are not whole numbers and sends nothing', () => {

@@ -443,7 +443,7 @@ final class GameSystemDraftApiTest extends WebTestCase
         self::assertResponseIsSuccessful();
         $edited = $this->json();
         self::assertSame(
-            ['Renamed', 'About it.', ['notice' => 'Fan content.', 'license' => 'CC BY', 'url' => 'https://example.com/license'], 'noir'],
+            ['Renamed', 'About it.', ['notice' => 'Fan content.', 'license' => 'CC BY', 'url' => 'https://example.com/license', 'badge' => null], 'noir'],
             [$edited['name'], $edited['description'], $edited['credits'], $edited['theme']],
         );
 
@@ -451,10 +451,35 @@ final class GameSystemDraftApiTest extends WebTestCase
 
         self::assertResponseIsSuccessful();
         self::assertSame(
-            ['Plain', null, ['notice' => 'Only a notice.', 'license' => null, 'url' => null], null],
+            ['Plain', null, ['notice' => 'Only a notice.', 'license' => null, 'url' => null, 'badge' => null], null],
             [$this->json()['name'], $this->json()['description'], $this->json()['credits'], $this->json()['theme']],
             'What the body leaves out is cleared.',
         );
+    }
+
+    #[Test]
+    public function aBadgeIsSavedReadBackAndClearedByTheNextSave(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->createDraft('mine');
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/metadata', ['name' => 'Mine', 'credits' => ['notice' => 'Fan content.', 'badge' => 'dark-pack']]);
+
+        self::assertResponseIsSuccessful();
+        $stored = ['notice' => 'Fan content.', 'license' => null, 'url' => null, 'badge' => 'dark-pack'];
+        self::assertSame($stored, $this->json()['credits']);
+        $this->client->request('GET', self::BASE.'/mine');
+        self::assertSame($stored, $this->json()['credits'], 'The draft reads it back.');
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/metadata', ['name' => 'Mine', 'credits' => ['notice' => 'Fan content.', 'badge' => null]]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([...$stored, 'badge' => null], $this->json()['credits'], 'A null badge clears it.');
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/metadata', ['name' => 'Mine', 'credits' => ['notice' => 'Fan content.', 'badge' => 'dark-pack']]);
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/metadata', ['name' => 'Mine', 'credits' => ['notice' => 'Fan content.']]);
+
+        self::assertSame([...$stored, 'badge' => null], $this->json()['credits'], 'What the body leaves out is cleared.');
     }
 
     /**
@@ -471,6 +496,7 @@ final class GameSystemDraftApiTest extends WebTestCase
         yield 'credits without notice' => [['name' => 'Mine', 'credits' => ['license' => 'CC BY']]];
         yield 'credits notice not a string' => [['name' => 'Mine', 'credits' => ['notice' => 5]]];
         yield 'credits license not a string' => [['name' => 'Mine', 'credits' => ['notice' => 'x', 'license' => 5]]];
+        yield 'credits badge not a string' => [['name' => 'Mine', 'credits' => ['notice' => 'x', 'badge' => 5]]];
         yield 'credits url not a string' => [['name' => 'Mine', 'credits' => ['notice' => 'x', 'url' => 5]]];
     }
 
@@ -500,6 +526,7 @@ final class GameSystemDraftApiTest extends WebTestCase
         yield 'unknown theme' => [['name' => 'Renamed', 'theme' => 'pastel'], 'theme'];
         yield 'http url' => [['name' => 'Renamed', 'credits' => ['notice' => 'x', 'url' => 'http://example.com']], 'gameSystem.credits.url'];
         yield 'credits with an unknown member' => [['name' => 'Renamed', 'credits' => ['notice' => 'x', 'author' => 'Me']], 'gameSystem.credits'];
+        yield 'unknown badge' => [['name' => 'Renamed', 'credits' => ['notice' => 'x', 'badge' => 'camarilla']], 'credits.badge'];
         yield 'credits notice too long' => [['name' => 'Renamed', 'credits' => ['notice' => str_repeat('x', 2001)]], 'gameSystem.credits.notice'];
     }
 

@@ -21,6 +21,7 @@ use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -318,6 +319,17 @@ final class CheckTestRollPoolTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         $build();
+    }
+
+    #[Test]
+    #[TestWith([-1])]
+    #[TestWith([11])]
+    public function aCriticalPairsBonusIsZeroForNoneOrOneToTen(int $bonus): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('must be 0 for none or in 1..10');
+
+        new CheckTestPool(3, 10, 6, null, $bonus);
     }
 
     #[Test]

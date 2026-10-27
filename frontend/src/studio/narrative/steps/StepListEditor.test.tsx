@@ -1203,6 +1203,169 @@ describe('the step list editor', () => {
     })
   })
 
+  describe('with special results on a check step', () => {
+    const all = ['critical', 'messyCritical', 'bestialFailure'] as const
+    const context: StepContext = {
+      ...stepPickers,
+      checks: [
+        { ...stepPickers.checks[0], specials: [...all] },
+        { ...stepPickers.checks[1], specials: [] },
+        { ...stepPickers.checks[2], specials: ['critical', 'bestialFailure'] },
+      ] as StepContext['checks'],
+    }
+    const stepOf = (changes: Record<string, unknown> = {}) => ({
+      key: 'feed',
+      kind: 'check',
+      title: 'Feed',
+      check: 'skill',
+      outcomes: [{ band: 'fail', next: 'end' }],
+      ...changes,
+    })
+    const specials = () => within(card(1).getByRole('group', { name: 'Special results' }))
+    const addButtons = () =>
+      specials()
+        .getAllByRole('button', { name: /^Add outcome for / })
+        .map((button) => button.textContent)
+
+    it('offers the specials the pool of the check can produce, and none for a check that cannot', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={[stepOf()]} context={context} />)
+
+      expect(addButtons()).toEqual([
+        'Add outcome for Critical',
+        'Add outcome for Messy critical',
+        'Add outcome for Bestial failure',
+      ])
+      expect(
+        specials().getByText(/outcome replaces the band's\. Messy critical does not fall back/),
+      ).toBeInTheDocument()
+
+      await chooseOption(user, 'Check', 'luck', card(1))
+
+      expect(screen.queryByRole('group', { name: 'Special results' })).not.toBeInTheDocument()
+    })
+
+    it('offers no special, and shows no group, while the pools are not known', () => {
+      render(<Harness stored={[stepOf()]} />)
+
+      expect(screen.queryByRole('group', { name: 'Special results' })).not.toBeInTheDocument()
+    })
+
+    it('offers a set only the specials every check of it can produce', () => {
+      render(
+        <Harness
+          stored={[stepOf({ check: undefined, checks: ['skill', 'finesse'] })]}
+          context={context}
+        />,
+      )
+
+      expect(addButtons()).toEqual(['Add outcome for Critical', 'Add outcome for Bestial failure'])
+    })
+
+    it('adds the outcome of a special after the bands, edits it, and removes it', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={[stepOf()]} context={context} />)
+
+      await user.click(specials().getByRole('button', { name: 'Add outcome for Bestial failure' }))
+      await chooseOption(
+        user,
+        'Next',
+        'end',
+        within(card(1).getByRole('group', { name: 'Outcome Bestial failure' })),
+      )
+      await user.click(specials().getByRole('button', { name: 'Add outcome for Critical' }))
+      await chooseOption(
+        user,
+        'Next',
+        'end',
+        within(card(1).getByRole('group', { name: 'Outcome Critical' })),
+      )
+
+      expect(addButtons()).toEqual(['Add outcome for Messy critical'])
+      expect(saved(0)).toMatchObject({
+        outcomes: [
+          { band: 'fail', next: 'end' },
+          { special: 'critical', next: 'end' },
+          { special: 'bestialFailure', next: 'end' },
+        ],
+      })
+
+      await user.click(specials().getByRole('button', { name: 'Remove outcome for Critical' }))
+
+      expect(addButtons()).toEqual(['Add outcome for Critical', 'Add outcome for Messy critical'])
+      expect(saved(0)).toMatchObject({
+        outcomes: [
+          { band: 'fail', next: 'end' },
+          { special: 'bestialFailure', next: 'end' },
+        ],
+      })
+    })
+
+    it('shows a stored special as a row and gives the step back as stored', () => {
+      const stored = stepOf({
+        outcomes: [
+          { band: 'fail', next: 'end' },
+          { special: 'messyCritical', next: 'end' },
+        ],
+      })
+      render(<Harness stored={[stored]} context={context} />)
+
+      expect(card(1).getByRole('group', { name: 'Outcome Messy critical' })).toBeInTheDocument()
+      expect(addButtons()).toEqual(['Add outcome for Critical', 'Add outcome for Bestial failure'])
+      expect(latest.written).toEqual({ steps: [stored] })
+    })
+
+    it('flags a stored special the check cannot produce and one given twice, until they are removed', async () => {
+      const user = userEvent.setup()
+      const stored = stepOf({
+        check: 'luck',
+        outcomes: [
+          { special: 'critical', next: 'end' },
+          { special: 'critical', next: 'end' },
+        ],
+      })
+      render(<Harness stored={[stored]} context={context} />)
+
+      expect(
+        card(1).getByText('This check cannot produce this special result.'),
+      ).toBeInTheDocument()
+      expect(card(1).getByText('Another outcome has this special result.')).toBeInTheDocument()
+      expect(saved(0)).toMatchObject({
+        outcomes: [{ special: 'critical' }, { special: 'critical' }],
+      })
+
+      await user.click(card(1).getByRole('button', { name: 'Remove outcome 1' }))
+      await user.click(card(1).getByRole('button', { name: 'Remove outcome 1' }))
+
+      expect(
+        card(1).queryByText('This check cannot produce this special result.'),
+      ).not.toBeInTheDocument()
+      expect(saved(0)).not.toHaveProperty('outcomes')
+    })
+
+    it('shows a server message about a special on its row', () => {
+      const stored = stepOf({
+        outcomes: [
+          { band: 'fail', next: 'end' },
+          { special: 'critical', next: 'end' },
+        ],
+      })
+      render(
+        <Harness
+          stored={[stored]}
+          context={context}
+          errors={[mapStepError('steps', 'steps[0].outcomes[1].special: bad special')]}
+        />,
+      )
+
+      expect(
+        within(card(1).getByRole('group', { name: 'Outcome Critical' })).getByText(
+          'special: bad special',
+        ),
+      ).toBeVisible()
+    })
+  })
+
   describe('with pick and check steps', () => {
     const inside = (cardNumber: number, name: string) =>
       within(card(cardNumber).getByRole('group', { name }))

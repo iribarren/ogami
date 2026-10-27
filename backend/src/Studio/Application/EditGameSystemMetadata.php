@@ -12,7 +12,7 @@ use App\Shared\Application\Bus\Command;
 final readonly class EditGameSystemMetadata implements Command
 {
     /**
-     * @param array<mixed>|null $credits {notice, license?, url?}
+     * @param array<mixed>|null $credits {notice, license?, url?, badge?}
      */
     public function __construct(
         public string $ownerId,

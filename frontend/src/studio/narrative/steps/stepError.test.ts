@@ -23,6 +23,19 @@ describe('mapping a server error to a step', () => {
     })
   })
 
+  it('finds the check outcome of a special result and its field', () => {
+    expect(
+      mapStepError(base, 'sceneTypes[2].play[1].outcomes[2].special: this check cannot produce it'),
+    ).toEqual({
+      index: 1,
+      band: null,
+      effect: null,
+      item: 2,
+      field: 'special',
+      message: 'this check cannot produce it',
+    })
+  })
+
   it('names the field of an indexed value, and the step itself when the path stops there', () => {
     expect(mapStepError(base, 'sceneTypes[2].play[0].inspiration[1]: unknown table')).toMatchObject(
       {

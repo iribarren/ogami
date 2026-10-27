@@ -248,6 +248,7 @@ final readonly class GameSystemController
             && $this->hasJsonObjectAt($request, 'credits')
             && \is_string($credits['notice'] ?? null)
             && \is_string($credits['license'] ?? '')
-            && \is_string($credits['url'] ?? '');
+            && \is_string($credits['url'] ?? '')
+            && \is_string($credits['badge'] ?? '');
     }
 }

@@ -1,7 +1,7 @@
 # Feature: preset-vaesen
 
 - **Locator:** `odd/tasks/preset-vaesen.md` · Engram topic `odd/preset-vaesen/tasks`
-- **Issue:** #294 · **Branch:** `feat/preset-vaesen-5-skill-budget` · **Status:** in progress (slice 5)
+- **Issue:** #294 · **Branch:** `feat/preset-vaesen-5-skill-budget` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B9 (after `rules-dice-pools`, [ADR 0041](../../docs/adr/0041-dice-pools-pushes-and-conditions.md), and `rules-flow-choices`, [ADR 0042](../../docs/adr/0042-flow-choices-check-sets-and-scene-tables.md))
@@ -84,11 +84,11 @@ Point budget map (explorer, 2026-10-26): publisher `Studio/Domain/Release/Versio
 | T9 | 3 | Play character form: one counter per budget, submit blocked when any is over; tests | delegated writer (Sonnet) | [x] | f2b77c5 |
 | T10 | 3 | S27: the effect-kind select shows every kind (no clipped tenth row); test | delegated writer (Sonnet) | [x] | af9d94d |
 | T11 | 4 | Remove the single-budget Studio endpoints (`PUT` / `DELETE …/sheet/point-budget`, commands, `several_point_budgets`), the Studio view's `pointBudget` and Play's pinned `pointBudget` (ADR 0043); slice 2 finding A-S goes with them; `make api` | delegated writer (Sonnet) | [x] | d25fe23, 76990ad |
-| T12 | 5 | Lanterns: skill budget (8, at most 3) in Studio, publish, re-export unedited; `PresetsTest` update | parent (browser) + delegated writer | [x] | |
-| T15 | 5 | P18: the Play character form flags a budget field above its budget's max (or below its min) and blocks Save; tests | delegated writer | [x] | |
-| T13 | 5 | Flow unit test (Clues and Nightfall, Nightfall ends the phase, a pushed step marks a Condition, Respite clears) and e2e spec (credits, a pool roll in the journal) | delegated writer | [x] | |
-| T14 | 5 | Wrap-up: follow-up issue for the UX findings (P3, P6, P7, P9, P13, Studio polish); roadmap B9 done; this doc closed | parent (closing doc commit) | [ ] | |
-| T16 | 5 | Slice 5 review suggestion R3-001: `outOfRange` comment contradicts its non-numeric branch, untested; fix the comment, unit test | parent (inline, one file + test) | [x] | |
+| T12 | 5 | Lanterns: skill budget (8, at most 3) in Studio, publish, re-export unedited; `PresetsTest` update | parent (browser) + delegated writer | [x] | 8725f72 |
+| T15 | 5 | P18: the Play character form flags a budget field above its budget's max (or below its min) and blocks Save; tests | delegated writer | [x] | 07c9081 |
+| T13 | 5 | Flow unit test (Clues and Nightfall, Nightfall ends the phase, a pushed step marks a Condition, Respite clears) and e2e spec (credits, a pool roll in the journal) | delegated writer | [x] | 56bb5b1, 634ee28 |
+| T14 | 5 | Wrap-up: follow-up issue for the UX findings (P3, P6, P7, P9, P13, Studio polish); roadmap B9 done; this doc closed | parent (closing doc commit) | [x] | this commit |
+| T16 | 5 | Slice 5 review suggestion R3-001: `outOfRange` comment contradicts its non-numeric branch, untested; fix the comment, unit test | parent (inline, one file + test) | [x] | 15d5fd9 |
 
 ## Studio findings
 
@@ -96,21 +96,21 @@ Authored 2026-10-26 by a Claude in Chrome worker as `mire-author@ogami.test` (~1
 
 | ID | Finding | Severity | Plan |
 |---|---|---|---|
-| S1 | Checks: band label capped at 100 characters; the error shows only on Create, no live counter | Low | → Studio polish |
+| S1 | Checks: band label capped at 100 characters; the error shows only on Create, no live counter | Low | → [#300](https://github.com/iribarren/ogami/issues/300) |
 | S2 | Sheet: "Declare layout" needs a field first; each group's columns and span are edited in its own dialog | Low | — |
 | S5 | Overview: themes none, parchment, neon, noir, eldritch, starship | — | Info |
 | S6, S10 | Checks: Duplicate prefills a copy; oracle tables: Paste entries takes a whole table | — | Positive |
 | S7 | Checks sandbox: pool of 5d6 rolled, push re-rolled the 4 missed dice and showed the cost "not applied in a test roll" | — | Works |
-| S8 | Checks: the push cost field select lists number fields before conditions fields, not in sheet order | Low | → Studio polish |
-| S11 | Likelihood oracle: levels cannot be reordered; a third level goes last | Low | → Studio polish |
-| S14 | Flow steps: a condition step's band label is capped at 80 characters (checks allow 100); the error shows only on Save | Medium | → Studio polish |
-| S15, S16 | Scene types: tall step cards; per-band effects of a check set in collapsed accordions | Low | → Studio polish |
-| S17 | Scene types: no `sheet` effect on the Respite choice. By design ([ADR 0042](../../docs/adr/0042-flow-choices-check-sets-and-scene-tables.md)): a Scene Type's Setup runs before a Character is known, so its steps take none; the spec put the choice in Setup. The editor does not say why the kind is missing | Medium | Content: choice moved to Play (T3); the missing-kind hint → Studio polish |
+| S8 | Checks: the push cost field select lists number fields before conditions fields, not in sheet order | Low | → [#300](https://github.com/iribarren/ogami/issues/300) |
+| S11 | Likelihood oracle: levels cannot be reordered; a third level goes last | Low | → [#300](https://github.com/iribarren/ogami/issues/300) |
+| S14 | Flow steps: a condition step's band label is capped at 80 characters (checks allow 100); the error shows only on Save | Medium | → [#300](https://github.com/iribarren/ogami/issues/300) |
+| S15, S16 | Scene types: tall step cards; per-band effects of a check set in collapsed accordions | Low | → [#300](https://github.com/iribarren/ogami/issues/300) |
+| S17 | Scene types: no `sheet` effect on the Respite choice. By design ([ADR 0042](../../docs/adr/0042-flow-choices-check-sets-and-scene-tables.md)): a Scene Type's Setup runs before a Character is known, so its steps take none; the spec put the choice in Setup. The editor does not say why the kind is missing | Medium | Content: choice moved to Play (T3); the missing-kind hint → [#300](https://github.com/iribarren/ogami/issues/300) |
 | S20 | Flow hooks: `sheet` effect reported missing on the Unmasking XP choices and the closing prompt. Wrong: it is offered (S27) | — | — |
 | S27 | Effects editor: the effect-kind select shows nine rows and `sheet` is the tenth, visible only by scrolling the open list; it misled the authoring twice (S17, S20) | High | Fixed in this feature (T10); checked in Chrome 2026-10-27: all ten kinds show without a scrollbar |
-| S21 | Flow hooks: a suggested choice must name its Skip option; the error shows only after adding the step | Low | → Studio polish |
-| S22, S23 | Flows: a phase needs a Scene Type to save; the first phase key does not follow its name | Low | → Studio polish |
-| S26 | Sheet: no bulk add or duplicate for fields (23 fields ≈ 450 actions, the costliest part) | Medium | → Studio polish |
+| S21 | Flow hooks: a suggested choice must name its Skip option; the error shows only after adding the step | Low | → [#300](https://github.com/iribarren/ogami/issues/300) |
+| S22, S23 | Flows: a phase needs a Scene Type to save; the first phase key does not follow its name | Low | → [#300](https://github.com/iribarren/ogami/issues/300) |
+| S26 | Sheet: no bulk add or duplicate for fields (23 fields ≈ 450 actions, the costliest part) | Medium | → [#300](https://github.com/iribarren/ogami/issues/300) |
 | S3, S4, S12, S13, S18, S19 | Layout shifts, Radix option clicks by reference, slow screenshots | — | None (automation) |
 
 ## Playtest findings
@@ -121,19 +121,19 @@ Played 2026-10-26 by a Claude in Chrome worker as `mire-author@ogami.test`: camp
 |---|---|---|---|---|
 | P1 | Credits notice under the GameSystem and in "About this game", with the license link | — | — | Works |
 | P2 | Character step: the attribute budget counts 12; the 8 skill points have no counter or cap (one `pointBudget` per sheet, [ADR 0040](../../docs/adr/0040-structured-character-creation.md)) | Gap | Medium | Built in this feature (user, 2026-10-26): several point budgets per sheet |
-| P3 | Check step: the pool size shows only after rolling; before, the formula with names | UX | Low | Follow-up |
+| P3 | Check step: the pool size shows only after rolling; before, the formula with names | UX | Low | [#300](https://github.com/iribarren/ogami/issues/300) |
 | P4, P5, P8, P11 | Push and Keep in a step, push from the sheet (band effects rightly not applied), Respite clears, Stand Fast marks Dread, XP questions and the closing clear | — | — | Works |
-| P6 | Oracle question field shows a placeholder that is not used when left blank | UX | Low | Follow-up |
-| P7 | Table step: "then say how it fits" but no text field follows the roll | UX | Low | Follow-up |
-| P9 | A `condition` step's outcome shows only as a journal "Flow outcome", not in the guided step area | UX | Medium | Follow-up |
+| P6 | Oracle question field shows a placeholder that is not used when left blank | UX | Low | [#300](https://github.com/iribarren/ogami/issues/300) |
+| P7 | Table step: "then say how it fits" but no text field follows the roll | UX | Low | [#300](https://github.com/iribarren/ogami/issues/300) |
+| P9 | A `condition` step's outcome shows only as a journal "Flow outcome", not in the guided step area | UX | Medium | [#300](https://github.com/iribarren/ogami/issues/300) |
 | P10 | Nothing happens when Nightfall fills | Content | Medium | v3: Investigation scene closing `condition` on Nightfall with `endPhase` ([ADR 0018](../../docs/adr/0018-narrativeflow-control-flow-and-cast.md)) |
 | P12 | Six of eight skill rolls had no six; 30d6 summed 88 | — | — | Chance: the kernel uses `random_int` (`SecureRandomNumberGenerator.php:16`); 88 is −1.8σ |
-| P13 | The letter writer NPC is not in the arrival scene's cast; added by hand | UX | Low | Follow-up |
+| P13 | The letter writer NPC is not in the arrival scene's cast; added by hand | UX | Low | [#300](https://github.com/iribarren/ogami/issues/300) |
 | P14 | Push is offered on a success; the introduction said "a failed roll" | Content | Low | v3 wording: ADR 0041 pushes any roll with a missed die |
 | P15 | "Flow complete. Play on freely."; End session keeps the journal | — | — | Works |
 | P16 | "Upgrade to v3" restarts guidance at the first phase; trackers and the Character carry over, the character step offers the existing one | — | — | Works |
 | P18 | v4 (slice 4 Chrome pass): a skill field takes 4 or 5 above the Skill points max of 3 with no counter error and Save looking enabled (`CharacterForm.tsx:30` passes the bounds only as input attributes) | Bug | Medium | Fixed in this feature (T15) |
-| P17 | v3: Nightfall 6 at a scene's end writes "Night has fallen… The phase ends after this scene" and goes straight to the Confrontation; the condition step form starts with only the Otherwise band and an empty tracker | — | Low | Works; form defaults → Studio polish |
+| P17 | v3: Nightfall 6 at a scene's end writes "Night has fallen… The phase ends after this scene" and goes straight to the Confrontation; the condition step form starts with only the Otherwise band and an empty tracker | — | Low | Works; form defaults → [#300](https://github.com/iribarren/ogami/issues/300) |
 
 ## Progress
 
@@ -161,6 +161,7 @@ Played 2026-10-26 by a Claude in Chrome worker as `mire-author@ogami.test`: camp
 - 2026-10-27: T12 done (writer, Sonnet): exported v4 over `backend/presets/lanterns-of-the-mire.json` with `app:gamesystem:export` (diff +36/-12: only `pointBudget` becomes `pointBudgets` with `points` and `skills`; the file carries no version or hash); re-export to a scratch path `cmp` identical (deleted); `make presets` prints `Unchanged lanterns-of-the-mire (v4, managed in Studio)`. `PresetsTest` now asserts both budgets (keys, totals 12 and 8, skills 0..3, the twelve skills). RED: the new assertion failed against the v3 file, GREEN against v4 (9 tests).
 - 2026-10-27: T13 done (writer, Sonnet): `LanternsOfTheMirePresetFlowTest` (7 tests on the real preset: a strong roll and a kept success add a Clue, a kept failure adds Nightfall, a pushed Lore roll marks the Condition the player picks (the push cost applied through `CampaignEffects` as `CheckPusher` does) and resolves on the new band, Respite clears the chosen Condition and adds Nightfall, Nightfall 6 at the Investigation scene's end moves on to the Unmasking while 5 does not) and `play-lanterns-of-the-mire.spec.ts` (License notice and link in the new-campaign form, a Brawl pool roll kept or done, in the journal). Both pass against existing behaviour, so no RED; proved live by temporary breaks (flipped expected Clues, Nightfall, marked option, phase: 6 of 7 tests failed, the Respite one included; e2e: the license text and the journal label each failed), then restored.
 - 2026-10-27: T16 (parent): slice 5 review suggestion R3-001. Kept the fail-closed behaviour (a non-numeric draft is out of range and blocks Save) and fixed the `outOfRange` comment; `creation.test.ts` covers above max, in range, blank and non-numeric. Tests written after the code; the non-numeric case proved live by removing the NaN clause (1 of 3 failed), restored. `vitest run src/play/characters` 48 passed; `make frontend-qa` clean.
+- 2026-10-27: T14 done: follow-up issue [#300](https://github.com/iribarren/ogami/issues/300) (label `follow-up`, roadmap B7m) holds the UX findings P3, P6, P7, P9, P13, P17 and the Studio polish (S1, S8, S11, S14, S15, S16, S17 hint, S21, S22, S23, S26); roadmap B9 done. Feature closed in five slices (PRs #295–#299).
 
 ## Reviews
 
@@ -170,7 +171,8 @@ Played 2026-10-26 by a Claude in Chrome worker as `mire-author@ogami.test`: camp
 | 2 | `review-87aecb3c8f1fd2f6` (35c7f86–01bde98), `review-47259e8074827396` (8cd0e3a–4b816a3) | 35c7f86, 01bde98, 8cd0e3a, 4b816a3 | Both parts approved and acknowledged; ~3,060 lines (user-approved oversize). Findings: A-W `GameSystemSheetPointBudgetsTest.php:205-210` the malformed-list test throws in its fixture, the guard is untested (fixed in slice 3); A-S `GameSystem.php:588-591` the single `PUT` renames a keyed one-entry budget to `points` (goes with the endpoint in T11); B-W `GetCampaignHandler.php:59` a several-budget release is playable but the Play form reads only `pointBudget` (fixed by T9); B-S `SheetTemplate.php:56-57` a field repeated in one budget gives a misleading message, untested (fixed in slice 3) | [#296](https://github.com/iribarren/ogami/pull/296) |
 | 3 | `review-8145f8989b106d27` | e598ed0, c656d70, f2b77c5, af9d94d | Approved and acknowledged; ~965 lines. Finding: W `SheetPointBudgetPanel.tsx:95-97` Add checks only the key format, not whether the key is taken, so the keyed `PUT` silently replaces an existing budget (label "Points" gives key `points`, the legacy budget) (fixed in slice 4). Open: S27 list height in Chrome (checked in slice 5, passed) | [#297](https://github.com/iribarren/ogami/pull/297) |
 | 4 | `review-7f4696b64bc88589` | 040d703, d25fe23, 76990ad | Approved and acknowledged; ~1,499 lines. Findings: W `openapi.json:11337-11338`, `:17683-17684` still list `pointBudget` in the `required` of `PinnedReleaseResponse` and `GameSystemSheetResponse` (stale `OA\Schema(required: …)` on the PHP responses) (fixed in slice 5); S the in-use guard on a legacy single `sheet.pointBudget` lost its integration test (`GameSystemSheetHandlersTest.php:335`) (fixed in slice 5) | [#298](https://github.com/iribarren/ogami/pull/298) |
+| 5 | `review-fd80f78785d88929` (031126b–634ee28); T16 offered, skipped by the user | 031126b, 07c9081, 8725f72, 56bb5b1, 634ee28, 15d5fd9 | Approved and acknowledged; ~498 lines. Finding: S R3-001 `creation.ts:93-108` the `outOfRange` comment says a non-numeric draft is not out of range while the code flags it, untested (fixed in T16). UX findings: issue [#300](https://github.com/iribarren/ogami/issues/300) (B7m) | [#299](https://github.com/iribarren/ogami/pull/299) |
 
 ## Next step
 
-Slice 5: slice 4 review fixes, T15 (P18), T12 export and `PresetsTest`, T13 tests; review, PR; closing doc commit (T14, follow-up issue, roadmap).
+None. Every finding is fixed (slice 5 R3-001 in T16, P18 in T15) or tracked in [#300](https://github.com/iribarren/ogami/issues/300).

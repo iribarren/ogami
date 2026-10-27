@@ -16,6 +16,10 @@ import {
   pushedGritEntry,
   sneakCheckEntry,
   stormyWeather,
+  bestialFailureEntry,
+  hungerOnlyFailedEntry,
+  messyCriticalEntry,
+  pushedBestialEntry,
 } from './fixtures'
 import { JournalEntryView } from './JournalEntryView'
 
@@ -394,6 +398,50 @@ describe('JournalEntryView icon tile', () => {
     ])
     expect(screen.getByText('Successes').nextElementSibling).toHaveTextContent('2 successes')
     expect(screen.getByText(/Vi: Wounds/)).toHaveTextContent('Vi: Wounds 0 → 1')
+  })
+
+  it('tells Hunger dice from regular dice by text and by a flag, never by colour alone', () => {
+    render(<JournalEntryView entry={bestialFailureEntry} />)
+
+    const dice = within(screen.getByRole('list', { name: 'Pool dice' })).getAllByRole('listitem')
+    expect(dice.map((die) => die.textContent)).toEqual([
+      '2 (no success)',
+      '3 (no success)',
+      '7 (success)',
+      '1 (no success)Hunger die',
+      '4 (no success)Hunger die',
+    ])
+    expect(dice.map((die) => die.dataset.group)).toEqual([
+      'pool',
+      'pool',
+      'pool',
+      'hunger',
+      'hunger',
+    ])
+  })
+
+  it.each([
+    [bestialFailureEntry, 'Bestial failure'],
+    [messyCriticalEntry, 'Messy critical'],
+  ])('shows the special result of a roll as text', (entry, label) => {
+    render(<JournalEntryView entry={entry} />)
+
+    expect(screen.getByText('Special result:').parentElement).toHaveTextContent(label)
+  })
+
+  it('shows no special result for a roll without one', () => {
+    render(<JournalEntryView entry={hungerOnlyFailedEntry} />)
+
+    expect(screen.queryByText('Special result:')).not.toBeInTheDocument()
+  })
+
+  it('shows the special result of the first roll and of the pushed one', () => {
+    render(<JournalEntryView entry={pushedBestialEntry} />)
+
+    expect(
+      screen.getByText(/Rolled Failure \(bestial failure\), pushed to Win/),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Special result:').parentElement).toHaveTextContent('Critical')
   })
 
   it('shows an unpushed pool check without a push line', () => {

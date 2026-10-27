@@ -4,20 +4,20 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { gritCheck } from '../campaigns/fixtures'
+import { gritCheck, persuadeCheck } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { conditionsField, nightJobCampaign, sheet, viCharacter } from '../characters/fixtures'
-import { gritEntry } from '../journal/fixtures'
+import { bestialFailureEntry, gritEntry, hungerOnlyFailedEntry } from '../journal/fixtures'
 import { atStep, guidedWithCharacters, promptStep, checkStep, pendingGritStep } from './fixtures'
 import type { FlowStep } from './useFlowRun'
 
 const path = `/api/campaigns/${nightJobCampaign.id}`
 
 /** The Night Job guided on `step`, with the pushable "Grit" and Vi's conditions field "Wounds" (hurt marked). */
-function guidedOnGrit(step: FlowStep): Campaign {
+function guidedOnGrit(step: FlowStep, check: Campaign['checks'][number] = gritCheck): Campaign {
   return {
     ...guidedWithCharacters(atStep(step)),
-    checks: [gritCheck],
+    checks: [check],
     pinnedRelease: { ...nightJobCampaign.pinnedRelease, sheet: [...sheet, conditionsField] },
     characters: [{ ...viCharacter, values: { ...viCharacter.values, wounds: ['hurt'] } }],
   }
@@ -34,11 +34,13 @@ function renderGrit(
     refuse,
     journal = () => Response.json([gritEntry]),
     unpushable = false,
+    check = gritCheck,
     hold,
   }: {
     refuse?: Response
     journal?: FakeHandler
     unpushable?: boolean
+    check?: Campaign['checks'][number]
     hold?: Promise<void>
   } = {},
 ) {
@@ -51,13 +53,11 @@ function renderGrit(
       await hold
       return refuse?.clone() ?? Response.json(afterStep)
     }
-  const campaign = guidedOnGrit(step)
+  const campaign = guidedOnGrit(step, check)
   renderAppAt(`/play/campaigns/${nightJobCampaign.id}`, {
     'GET /api/auth/me': signedInAs('SOLO_PLAYER'),
     [`GET ${path}`]: () =>
-      Response.json(
-        unpushable ? { ...campaign, checks: [{ ...gritCheck, push: null }] } : campaign,
-      ),
+      Response.json(unpushable ? { ...campaign, checks: [{ ...check, push: null }] } : campaign),
     [`GET ${path}/journal`]: journal,
     [`POST ${path}/flow-run/keep`]: answer(sent.keep),
     [`POST ${path}/flow-run/push`]: answer(sent.push),
@@ -70,6 +70,33 @@ async function card() {
     await screen.findByRole('region', { name: `Current step: ${pendingGritStep.title}` }),
   )
 }
+
+describe('a Hunger roll that pends', () => {
+  const pendingId = pendingGritStep.pending?.entryId ?? ''
+
+  it('shows the special result and the cap of the push', async () => {
+    renderGrit(pendingGritStep, {
+      check: persuadeCheck,
+      journal: () => Response.json([{ ...bestialFailureEntry, id: pendingId }]),
+    })
+
+    const step = await card()
+    expect(await step.findByText('Re-roll up to 3 failed dice.')).toBeInTheDocument()
+    expect(step.getByText('Special result:').parentElement).toHaveTextContent('Bestial failure')
+    expect(step.getByRole('button', { name: 'Push' })).toBeEnabled()
+  })
+
+  it('offers only Keep when the dice that failed are Hunger dice', async () => {
+    renderGrit(pendingGritStep, {
+      check: persuadeCheck,
+      journal: () => Response.json([{ ...hungerOnlyFailedEntry, id: pendingId }]),
+    })
+
+    const step = await card()
+    expect(await step.findByRole('button', { name: 'Keep' })).toBeEnabled()
+    expect(step.queryByRole('button', { name: 'Push' })).not.toBeInTheDocument()
+  })
+})
 
 describe('a check step whose roll pends', () => {
   it('shows the pending roll and the push offer, with no roll form and no Skip', async () => {

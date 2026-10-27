@@ -116,11 +116,11 @@ final class JournalCheckPushApiTest extends WebTestCase
         $checks = array_column($this->campaignJson($id)['checks'], 'push', 'key');
 
         self::assertSame([
-            'grit' => ['label' => 'Take a point of stress', 'picks' => []],
-            'wounded' => ['label' => 'Take two Conditions', 'picks' => ['physical', 'physical']],
-            'mixed' => ['label' => 'Pay in kind', 'picks' => ['physical']],
-            'cursed' => ['label' => 'Pay', 'picks' => []],
-            'fragile' => ['label' => 'Pay', 'picks' => []],
+            'grit' => ['label' => 'Take a point of stress', 'picks' => [], 'maxDice' => null],
+            'wounded' => ['label' => 'Take two Conditions', 'picks' => ['physical', 'physical'], 'maxDice' => null],
+            'mixed' => ['label' => 'Pay in kind', 'picks' => ['physical'], 'maxDice' => null],
+            'cursed' => ['label' => 'Pay', 'picks' => [], 'maxDice' => null],
+            'fragile' => ['label' => 'Pay', 'picks' => [], 'maxDice' => null],
             'plain' => null,
             'knife' => null,
         ], $checks);

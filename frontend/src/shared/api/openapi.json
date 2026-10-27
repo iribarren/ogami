@@ -12432,7 +12432,8 @@
             "CheckPushResponse": {
                 "required": [
                     "label",
-                    "picks"
+                    "picks",
+                    "maxDice"
                 ],
                 "properties": {
                     "label": {
@@ -12447,6 +12448,12 @@
                             "type": "string",
                             "example": "physical"
                         }
+                    },
+                    "maxDice": {
+                        "description": "The most failed regular dice a push re-rolls, the first ones in roll order (Hunger dice are never re-rolled); null when it re-rolls every failed regular die (ADR 0044).",
+                        "type": "integer",
+                        "example": 3,
+                        "nullable": true
                     }
                 },
                 "type": "object"

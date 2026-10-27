@@ -86,6 +86,24 @@ final class JournalHungerDiceApiTest extends WebTestCase
     }
 
     #[Test]
+    public function theCampaignTellsTheCapOfEachPush(): void
+    {
+        [$id] = $this->campaignInAScene();
+
+        $this->client->request('GET', '/api/campaigns/'.$id);
+
+        self::assertResponseIsSuccessful();
+        $campaign = json_decode((string) $this->client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR);
+        self::assertIsArray($campaign);
+        self::assertIsArray($campaign['checks'] ?? null);
+        $pushes = array_column($campaign['checks'], 'push', 'key');
+        self::assertSame(['label' => 'Spend Willpower', 'picks' => [], 'maxDice' => 2], $pushes['persuade']);
+        self::assertSame(['label' => 'Push', 'picks' => [], 'maxDice' => null], $pushes['uncapped']);
+        self::assertArrayHasKey('frenzy', $pushes);
+        self::assertNull($pushes['frenzy']);
+    }
+
+    #[Test]
     public function aHungerRollJournalsTheGroupOfEachDieTheBonusAndTheMessyCritical(): void
     {
         [$id, $vi] = $this->campaignInAScene();

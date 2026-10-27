@@ -22,8 +22,9 @@ import { usePushCheck } from './usePushCheck'
 /**
  * "Roll a check" for one Character of the sheet: a dialog with the check form. The result is
  * recorded in the journal, and the dialog closes on success; a refusal stays in the form. The roll
- * of a pool check that can be pushed, with a die that failed, keeps the dialog open on the result,
- * which offers Push (with its cost and the options the player picks) or Keep (ADR 0041).
+ * of a pool check that can be pushed, with a regular die that failed, keeps the dialog open on the result,
+ * which offers Push (with its cost and the options the player picks) or Keep (ADR 0041). So does a
+ * roll with a special result (ADR 0044), which the player reads before closing.
  */
 export function RollCheckDialog({
   campaign,
@@ -113,7 +114,10 @@ export function RollCheckDialog({
                 { check, character: character.id, difficulty, situational },
                 {
                   onSuccess: (entry) => {
-                    if (canPush(campaign, entry)) {
+                    if (
+                      canPush(campaign, entry) ||
+                      (entry.content.kind === 'check' && entry.content.special !== null)
+                    ) {
                       setResult(entry)
                     } else {
                       setOpen(false)

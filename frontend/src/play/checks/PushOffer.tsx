@@ -6,7 +6,7 @@ import { NativeSelect } from '@/shared/ui/native-select'
 
 import type { Campaign } from '../campaigns/useCampaigns'
 import type { JournalEntry } from '../journal/useJournal'
-import { pushOf } from './pushing'
+import { hasHungerDice, pushOf } from './pushing'
 
 type Character = Campaign['characters'][number]
 
@@ -22,6 +22,7 @@ function markedOf(character: Character | undefined, field: string) {
  * The cost of the push and one select per option the player picks (each `push.picks` field, listing
  * its options not marked yet, counting the picks above it). A field with every option marked asks
  * for nothing. Push is possible once every select has an option; Keep leaves the roll as it is.
+ * It tells the cap of the push, and that Hunger dice are never re-rolled (ADR 0044).
  */
 export function PushOffer({
   campaign,
@@ -58,12 +59,23 @@ export function PushOffer({
   })
   const shown = asks.filter(({ options }) => options.length > 0)
   const picks = shown.map(({ index }) => chosen[index] ?? '')
+  const pool = entry.content.kind === 'check' ? entry.content.pool : null
+  const rerolls =
+    push.maxDice === null
+      ? 'Re-roll every failed regular die.'
+      : `Re-roll up to ${String(push.maxDice)} failed ${push.maxDice === 1 ? 'die' : 'dice'}.`
 
   return (
     <div className="space-y-3">
       <p className="text-sm">
         Push: <strong>{push.label}</strong>
       </p>
+      {(push.maxDice !== null || (pool !== null && hasHungerDice(pool))) && (
+        <p className="text-sm text-muted-foreground">
+          <span>{rerolls}</span>
+          {pool !== null && hasHungerDice(pool) && <span> Hunger dice are never re-rolled.</span>}
+        </p>
+      )}
       {shown.map(({ field, index, options }) => {
         const label = campaign.pinnedRelease.sheet.find(({ key }) => key === field)?.label ?? field
         return (

@@ -381,8 +381,22 @@ export const gritCheck: CampaignCheck = {
   hint: null,
   dice: null,
   pool: { count: 3, countFormula: null, countText: null, sides: 6, successAt: 5 },
-  push: { label: 'Take a Condition', picks: ['wounds'] },
+  push: { label: 'Take a Condition', picks: ['wounds'], maxDice: null },
   difficulty: null,
+}
+
+/**
+ * A Hunger pool check: 5d10, a success on 6+, against a difficulty of 3 by default; the push costs
+ * nothing to pick and re-rolls at most 3 failed regular dice (ADR 0044).
+ */
+export const persuadeCheck: CampaignCheck = {
+  key: 'persuade',
+  label: 'Persuade',
+  hint: null,
+  dice: null,
+  pool: { count: 5, countFormula: null, countText: null, sides: 10, successAt: 6 },
+  push: { label: 'Spend Willpower', picks: [], maxDice: 3 },
+  difficulty: { label: 'Difficulty', default: 3, min: 1, max: 10 },
 }
 
 /** `freeJournal` as a release newer than the one `lostMineCampaign` is pinned to. */

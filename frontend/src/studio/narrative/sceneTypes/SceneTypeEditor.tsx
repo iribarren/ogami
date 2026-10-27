@@ -5,6 +5,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Alert } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
 import { IconTile } from '@/shared/ui/icon-tile'
+import { SaveState, type SaveStateValue } from '@/shared/ui/save-state'
 
 import { StudioError } from '../../useGameSystems'
 import { useGameSystemChecks } from '../../checks/useGameSystemChecks'
@@ -50,6 +51,9 @@ export function SceneTypeEditor({
   const [draft, setDraft] = useState(initial)
   const [readAt, setReadAt] = useState(version)
   const [current, setCurrent] = useState(original)
+  // The draft as last saved or loaded, to tell unsaved changes from a saved form; `savedAt` is null until a save.
+  const [baseline, setBaseline] = useState(() => JSON.stringify(initial))
+  const [savedAt, setSavedAt] = useState<Date | null>(null)
   const [answer, setAnswer] = useState<SceneTypeAnswer>(noAnswer)
   // Why a reload did not replace the draft; the old version is kept then, so a save still conflicts.
   const [reloadNote, setReloadNote] = useState<string | null>(null)
@@ -87,6 +91,8 @@ export function SceneTypeEditor({
       })
       setReadAt(saved.version)
       setCurrent(key)
+      setBaseline(JSON.stringify(draft))
+      setSavedAt(new Date())
     } catch (error) {
       const index = narrative.sceneTypes.findIndex((item) => item.key === current)
       const message = error instanceof Error ? error.message : 'Saving the item failed.'
@@ -109,6 +115,20 @@ export function SceneTypeEditor({
     }
   }
 
+  const errors =
+    Object.keys(answer.fields).length +
+    scenePartNames.reduce((total, part) => total + answer.lists[part].length, 0) +
+    (answer.page === null ? 0 : 1)
+  const saveState: SaveStateValue | null = save.isPending
+    ? { kind: 'saving' }
+    : errors > 0
+      ? { kind: 'failed', errors }
+      : JSON.stringify(draft) !== baseline
+        ? { kind: 'unsaved' }
+        : savedAt === null
+          ? null
+          : { kind: 'saved', at: savedAt }
+
   async function reload() {
     const result = await latest.refetch()
     if (result.isError || result.data === undefined) {
@@ -128,6 +148,7 @@ export function SceneTypeEditor({
       return
     }
     setDraft(reloaded)
+    setBaseline(JSON.stringify(reloaded))
     setReadAt(result.data.version)
     setReloadNote(null)
     setAnswer(noAnswer)
@@ -241,6 +262,7 @@ export function SceneTypeEditor({
       {reloadNote !== null && <Alert role="alert">{reloadNote}</Alert>}
       <div className="panel">
         <div className="action-bar">
+          {saveState && <SaveState state={saveState} />}
           {answer.conflict && (
             <Button
               type="button"

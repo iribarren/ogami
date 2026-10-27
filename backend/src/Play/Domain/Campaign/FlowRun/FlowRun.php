@@ -715,7 +715,7 @@ final class FlowRun
      */
     public function view(GameSystemSnapshot $release, Flow $flow, ?int $sessionNumber, array $trackerValues, array $factValues, array $pickedNames, \Closure $candidatesOf, \Closure $charactersOf): FlowRunView
     {
-        $placeholders = new Placeholders($trackerValues, $this->answers, $factValues, picked: $pickedNames);
+        $placeholders = new Placeholders($trackerValues, $this->answers, $factValues, picked: $pickedNames, dashEmptyPicked: true);
         if (FlowRunStatus::Completed === $this->status) {
             return new FlowRunView($this->status, false, null, null, null, false, 'Flow complete', false);
         }

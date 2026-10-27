@@ -9,8 +9,8 @@ namespace App\Play\Domain\Campaign\FlowRun;
  * matching \{[a-z]+(:[a-z0-9-]+)?\}. "{tracker:key}" is the Tracker's current value,
  * "{step:key}" the latest answer text of that step ("—" while unanswered) and "{answer}" the
  * answer text of the step whose Effect it renders ("—" without one), "{picked}" the names of the
- * items picked in the current Scene joined with ", " (empty before any pick) and "{fact:key}" the value of a Fact slot (empty while it is
- * unfilled). Other braces are text. A placeholder the release contract does not allow (schema
+ * items picked in the current Scene joined with ", " (empty before any pick, or "—" in step text, which a view renders with
+ * $dashEmptyPicked) and "{fact:key}" the value of a Fact slot (empty while it is unfilled). Other braces are text. A placeholder the release contract does not allow (schema
  * version 2) cannot be rendered, nor can one naming a Tracker or Fact slot the release lacks.
  */
 final readonly class Placeholders
@@ -20,11 +20,12 @@ final readonly class Placeholders
     private const string UNANSWERED = '—';
 
     /**
-     * @param array<string, int>    $trackers the current value of every Tracker of the pinned release, by key
-     * @param array<string, string> $answers  the latest answer text by step key
-     * @param array<string, string> $facts    the value of every Fact slot of the pinned release, by slot key ('' while unfilled); required, so no caller can omit it
-     * @param ?string               $answer   the answer text "{answer}" stands for, null for none
-     * @param list<string>          $picked   the current names of the items "{picked}" stands for
+     * @param array<string, int>    $trackers        the current value of every Tracker of the pinned release, by key
+     * @param array<string, string> $answers         the latest answer text by step key
+     * @param array<string, string> $facts           the value of every Fact slot of the pinned release, by slot key ('' while unfilled); required, so no caller can omit it
+     * @param ?string               $answer          the answer text "{answer}" stands for, null for none
+     * @param list<string>          $picked          the current names of the items "{picked}" stands for
+     * @param bool                  $dashEmptyPicked whether "{picked}" reads "—" instead of nothing when no item is picked: for the text a player reads, not for an Effect's name or Fact value
      */
     public function __construct(
         private array $trackers,
@@ -32,6 +33,7 @@ final readonly class Placeholders
         private array $facts,
         private ?string $answer = null,
         private array $picked = [],
+        private bool $dashEmptyPicked = false,
     ) {
     }
 
@@ -54,7 +56,7 @@ final readonly class Placeholders
             'tracker' === $match[1] && '' !== $key => (string) ($this->trackers[$key] ?? throw new \LogicException(\sprintf('The pinned release has no Tracker "%s".', $key))),
             'step' === $match[1] && '' !== $key => $this->answers[$key] ?? self::UNANSWERED,
             'fact' === $match[1] && '' !== $key => $this->facts[$key] ?? throw new \LogicException(\sprintf('The pinned release has no Fact slot "%s".', $key)),
-            'picked' === $match[1] && '' === $key => implode(', ', $this->picked),
+            'picked' === $match[1] && '' === $key => [] === $this->picked && $this->dashEmptyPicked ? self::UNANSWERED : implode(', ', $this->picked),
             'answer' === $match[1] && '' === $key => $this->answer ?? self::UNANSWERED,
             default => throw new \LogicException(\sprintf('Placeholder %s is not supported.', $match[0])),
         };

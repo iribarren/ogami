@@ -200,6 +200,10 @@ const outcomeFields = ['next', 'effects']
 export const bandForms = ['integer', 'tracker', 'formula'] as const satisfies readonly ValueForm[]
 
 function readBand(stored: unknown): BandDraft | null {
+  // An empty band is `{}` in the release, but the server decodes stored content to arrays and sends it back as `[]`.
+  if (Array.isArray(stored) && stored.length === 0) {
+    return readBand({})
+  }
   if (!isObject(stored)) {
     return null
   }

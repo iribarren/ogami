@@ -16,6 +16,8 @@ use App\Play\Domain\GameSystem\Flow\RollStep;
 use App\Play\Domain\GameSystem\Flow\SheetEffect;
 use App\Play\Domain\GameSystem\Flow\SheetOperation;
 use App\Play\Domain\GameSystem\Flow\TableStep;
+use App\Play\Domain\GameSystem\Flow\TrackerEffect;
+use App\Play\Domain\GameSystem\Flow\TrackerOperation;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Sheet\ConditionsField;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
@@ -490,6 +492,12 @@ final class PresetsTest extends KernelTestCase
         self::assertSame('compulsion', $hunt->specialOutcomes['bestialFailure']->next ?? null);
         self::assertContains('messyCritical', array_keys($hunt->specialOutcomes));
         self::assertSame('end', $hunt->specialOutcomes['messyCritical']->next);
+        // The messy critical feeds (Hunger −2) and exposes (Masquerade +1); a plain failure only exposes.
+        self::assertEquals(
+            [new SheetEffect('hunger', SheetOperation::Subtract, 2), new TrackerEffect('masquerade', TrackerOperation::Add, 1)],
+            $hunt->specialOutcomes['messyCritical']->effects,
+        );
+        self::assertEquals([new TrackerEffect('masquerade', TrackerOperation::Add, 1)], $hunt->outcomes['failure']->effects);
 
         // The world turn rolls the Second Inquisition against the Masquerade tracker.
         $flow = $snapshot->defaultFlow();

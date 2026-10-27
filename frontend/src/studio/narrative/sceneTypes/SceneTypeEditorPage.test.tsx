@@ -67,6 +67,9 @@ function recorder(respond: (sent: Sent[]) => Response) {
   return { sent, handler }
 }
 
+// The page message above the form; a refused save also puts "Not saved: n errors" in an alert beside Save.
+const pageAlert = async () => (await screen.findAllByRole('alert'))[0]
+
 const withScene = (definition: Record<string, unknown>, version = 6) => ({
   ...narrativeScenes,
   version,
@@ -164,6 +167,20 @@ describe('the Scene Type editor', () => {
         play: [first, { ...second, title: 'Run' }],
       },
     })
+  })
+
+  it('confirms a save with the time and flags later edits as unsaved', async () => {
+    const saved = recorder(() => Response.json(withScene({ ...ambush, name: 'Trap' })))
+    const { user } = await openEditor('ambush', { [put]: saved.handler })
+    expect(screen.queryByText(/Unsaved changes|Saved at|Not saved/)).not.toBeInTheDocument()
+
+    await replace(user, screen.getByLabelText('Name'), 'Trap')
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+    await user.click(save())
+    expect(await screen.findByRole('status')).toHaveTextContent(/^Saved at/)
+
+    await replace(user, screen.getByLabelText('Name'), 'Trap again')
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
   })
 
   it('sends the version of the last save with the next one', async () => {
@@ -371,6 +388,7 @@ describe('a refused save', () => {
     expect(await card('Closing', 1).findByText('must not be blank')).toBeInTheDocument()
     expect(list('Setup').queryByText('must not be blank')).not.toBeInTheDocument()
     expect(list('Play').queryByText('must not be blank')).not.toBeInTheDocument()
+    expect(screen.getByText('Not saved: 1 error')).toBeInTheDocument()
   })
 
   it.each([
@@ -407,7 +425,8 @@ describe('a refused save', () => {
     await user.click(save())
 
     expect(await screen.findByText('must be at most 500 characters')).toBeInTheDocument()
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    // Only the save state: a field message needs no page alert.
+    expect(screen.getByRole('alert')).toHaveTextContent('Not saved: 1 error')
   })
 
   it('shows any other message on the page, with its path', async () => {
@@ -417,7 +436,7 @@ describe('a refused save', () => {
 
     await user.click(save())
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
+    expect(await pageAlert()).toHaveTextContent(
       'flows[0].phases[0].selection: unknown Scene Type "x"',
     )
   })
@@ -429,9 +448,7 @@ describe('a refused save', () => {
 
     await user.click(save())
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The draft has no Scene Type "ambush".',
-    )
+    expect(await pageAlert()).toHaveTextContent('The draft has no Scene Type "ambush".')
   })
 })
 
@@ -453,7 +470,7 @@ describe('a conflict', () => {
 
     await replace(user, screen.getByLabelText('Name'), 'Mine')
     await user.click(save())
-    expect(await screen.findByRole('alert')).toHaveTextContent('was changed by another request')
+    expect(await pageAlert()).toHaveTextContent('was changed by another request')
     await user.click(screen.getByRole('button', { name: 'Reload the latest version' }))
 
     await waitFor(() => {

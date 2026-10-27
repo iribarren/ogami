@@ -76,7 +76,7 @@ final class FlowRunPickTest extends FlowRunTestCase
 
         $campaign->completeFlowStep('who', StepResult::pick(ItemKind::Npc, []), $this->release, self::at());
 
-        self::assertSame([['setup', 'nobody'], ['who' => ''], 'Nobody: []'], [self::position($campaign), self::flowRunOf($campaign)->answers(), $this->view($campaign)->step?->title]);
+        self::assertSame([['setup', 'nobody'], ['who' => ''], 'Nobody: [—]'], [self::position($campaign), self::flowRunOf($campaign)->answers(), $this->view($campaign)->step?->title]);
     }
 
     #[Test]
@@ -154,7 +154,7 @@ final class FlowRunPickTest extends FlowRunTestCase
 
         $campaign->skipFlowStep('maybe', $this->release, self::at());
 
-        self::assertSame([['setup', 'rest'], [], 'Rest []'], [self::position($campaign), self::flowRunOf($campaign)->answers(), $this->view($campaign)->step?->title]);
+        self::assertSame([['setup', 'rest'], [], 'Rest [—]'], [self::position($campaign), self::flowRunOf($campaign)->answers(), $this->view($campaign)->step?->title]);
     }
 
     #[Test]
@@ -183,7 +183,7 @@ final class FlowRunPickTest extends FlowRunTestCase
 
         $campaign->pickSceneType('quiet', $this->release, self::at());
 
-        self::assertSame('Picked: []', $this->view($campaign)->step?->title);
+        self::assertSame('Picked: [—]', $this->view($campaign)->step?->title);
     }
 
     private function campaign(): Campaign

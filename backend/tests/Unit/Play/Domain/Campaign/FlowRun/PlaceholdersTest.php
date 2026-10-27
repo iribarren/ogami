@@ -49,6 +49,13 @@ final class PlaceholdersTest extends TestCase
     }
 
     #[Test]
+    public function pickedIsDashedWhenNothingIsPickedInStepText(): void
+    {
+        self::assertSame('Meet —.', new Placeholders([], [], [], dashEmptyPicked: true)->render('Meet {picked}.'));
+        self::assertSame('Meet Ana.', new Placeholders([], [], [], picked: ['Ana'], dashEmptyPicked: true)->render('Meet {picked}.'));
+    }
+
+    #[Test]
     public function aFactIsTheValueOfItsSlotAndEmptyWhileTheSlotIsUnfilled(): void
     {
         $placeholders = new Placeholders([], [], ['city' => 'Prague', 'prince' => '']);

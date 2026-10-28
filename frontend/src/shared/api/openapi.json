@@ -14965,8 +14965,7 @@
                     },
                     "characterId": {
                         "description": "The Character who traded.",
-                        "type": "string",
-                        "format": "uuid"
+                        "type": "string"
                     },
                     "characterName": {
                         "description": "The name of the Character when the step completed.",

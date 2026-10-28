@@ -3832,10 +3832,7 @@ export interface components {
              * @enum {string}
              */
             kind: "shop";
-            /**
-             * Format: uuid
-             * @description The Character who traded.
-             */
+            /** @description The Character who traded. */
             characterId: string;
             /**
              * @description The name of the Character when the step completed.

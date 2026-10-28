@@ -80,7 +80,6 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $this->endScene($campaign);
         $campaign->completeFlowStep('take-it', StepResult::choice('yes'), $this->release, self::at());
         self::assertSame(0, $campaign->trackerValue($this->tracker('alarm')));
-        $this->quietStreet($campaign);
         self::assertSame('legwork', self::flowRunOf($campaign)->forcedNextSceneType());
 
         // An edge from the legwork, then "go" chains into the job.
@@ -90,7 +89,6 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $this->endScene($campaign);
         $campaign->completeFlowStep('gain-edge', StepResult::choice('yes'), $this->release, self::at());
         $campaign->completeFlowStep('more-or-go', StepResult::choice('go'), $this->release, self::at());
-        $this->quietStreet($campaign);
 
         // A "no" and a patrol raise the alarm to 2; the spare edge lowers it to 1.
         $campaign->pickSceneType('job', $this->release, self::at());
@@ -101,7 +99,6 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep('spend-edge', StepResult::choice('yes'), $this->release, self::at());
         self::assertSame([0, 1], [$campaign->trackerValue($this->tracker('edge')), $campaign->trackerValue($this->tracker('alarm'))]);
         $campaign->completeFlowStep('ending', self::prompt('The van burns'), $this->release, self::at());
-        $this->quietStreet($campaign);
 
         // A clean job earns 2 rep, and the pay is 200 eb plus 50 eb a point of rep, for the Character the player picks.
         $campaign->pickSceneType('gig-payday', $this->release, self::at());
@@ -124,7 +121,6 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $this->endScene($campaign, skipping: ['client', 'gig']);
         self::assertSame(4, $campaign->trackerValue($this->tracker('alarm')));
         $campaign->completeFlowStep('take-it', StepResult::choice('yes'), $this->release, self::at());
-        $this->quietStreet($campaign);
 
         $campaign->pickSceneType('legwork', $this->release, self::at());
         self::assertSame([0, 'legwork'], [$campaign->trackerValue($this->tracker('alarm')), $campaign->currentScene()?->sceneType()]);
@@ -151,12 +147,10 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $campaign->pickSceneType('gig-offer', $this->release, self::at());
         $this->endScene($campaign, skipping: ['client', 'gig']);
         $campaign->completeFlowStep('take-it', StepResult::choice('yes'), $this->release, self::at());
-        $this->quietStreet($campaign);
         $campaign->pickSceneType('legwork', $this->release, self::at());
         $this->endScene($campaign, skipping: ['dig', 'find']);
         $campaign->skipFlowStep('gain-edge', $this->release, self::at());
         $campaign->completeFlowStep('more-or-go', StepResult::choice('go'), $this->release, self::at());
-        $this->quietStreet($campaign);
 
         // An exceptional no (+2) and "Spotted!" (+2) fill the alarm to 4 with no edge to spend.
         $campaign->pickSceneType('job', $this->release, self::at());
@@ -164,7 +158,6 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep('trouble', $this->rolled('complications', 3), $this->release, self::at());
         $this->endScene($campaign);
         $campaign->completeFlowStep('ending', self::prompt('Sirens'), $this->release, self::at());
-        $this->quietStreet($campaign);
         $campaign->pickSceneType('gig-payday', $this->release, self::at());
 
         self::assertSame([4, 1], [$campaign->trackerValue($this->tracker('alarm')), $campaign->trackerValue($this->tracker('rep'))]);
@@ -190,6 +183,149 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep('clear', self::prompt('Over the rooftops'), $this->release, self::at());
 
         self::assertSame(4, $campaign->trackerValue($this->tracker('heat')));
+    }
+
+    #[Test]
+    public function aHitSquadDueDuringAGigWaitsForThePaydayAndThenComes(): void
+    {
+        $campaign = $this->actOne();
+        $campaign->setTrackerValue($this->tracker('heat'), 8, self::at());
+
+        // The street waits for the whole chain: no world turn, so the hit squad never replaces a gig scene.
+        $this->takeAGig($campaign);
+        self::assertSame('legwork', self::flowRunOf($campaign)->forcedNextSceneType());
+        $this->goToTheJob($campaign);
+        self::assertSame('job', self::flowRunOf($campaign)->forcedNextSceneType());
+        $campaign->pickSceneType('job', $this->release, self::at());
+        $campaign->completeFlowStep('plan', self::oracle(YesNoAnswer::Yes), $this->release, self::at());
+        $this->endScene($campaign);
+        $campaign->completeFlowStep('ending', self::prompt('Clean getaway'), $this->release, self::at());
+        self::assertSame('gig-payday', self::flowRunOf($campaign)->forcedNextSceneType());
+
+        // After the payday the street is back: the squad is due.
+        $campaign->pickSceneType('gig-payday', $this->release, self::at());
+        $this->endScene($campaign, skipping: ['collect']);
+        $campaign->skipFlowStep('loose-ends', $this->release, self::at());
+        self::assertSame('street', self::flowRunOf($campaign)->stepKey());
+        $this->quietStreet($campaign);
+        self::assertSame('hit-squad', self::flowRunOf($campaign)->forcedNextSceneType());
+    }
+
+    #[Test]
+    public function goBigIsNotAskedMidGigButAfterThePayday(): void
+    {
+        $campaign = $this->actOne();
+        $campaign->setTrackerValue($this->tracker('rep'), 4, self::at());
+        $this->recruit($campaign, 'Ada', 'netrunner');
+        $this->quietStreet($campaign);
+        $this->recruit($campaign, 'Rook', 'nomad');
+        $this->quietStreet($campaign);
+        $campaign->setTrackerValue($this->tracker('rep'), 5, self::at());
+
+        $this->takeAGig($campaign);
+        self::assertNotSame('go-big', self::flowRunOf($campaign)->stepKey());
+        self::assertSame('legwork', self::flowRunOf($campaign)->forcedNextSceneType());
+
+        $this->goToTheJob($campaign);
+        $campaign->pickSceneType('job', $this->release, self::at());
+        $campaign->completeFlowStep('plan', self::oracle(YesNoAnswer::Yes), $this->release, self::at());
+        $this->endScene($campaign);
+        $campaign->completeFlowStep('ending', self::prompt('Clean getaway'), $this->release, self::at());
+        self::assertNotSame('go-big', self::flowRunOf($campaign)->stepKey());
+        $campaign->pickSceneType('gig-payday', $this->release, self::at());
+        $this->endScene($campaign, skipping: ['collect']);
+        $campaign->skipFlowStep('loose-ends', $this->release, self::at());
+
+        self::assertSame('go-big', self::flowRunOf($campaign)->stepKey());
+    }
+
+    #[Test]
+    public function theGigTrackerIsOnFromTakingTheOfferAndStaysOffWhenTheOfferIsTurnedDown(): void
+    {
+        $campaign = $this->actOne();
+        $campaign->pickSceneType('gig-offer', $this->release, self::at());
+        $this->endScene($campaign, skipping: ['client', 'gig']);
+        $campaign->completeFlowStep('take-it', StepResult::choice('no'), $this->release, self::at());
+        self::assertSame(0, $campaign->trackerValue($this->tracker('gig')));
+        $this->quietStreet($campaign);
+
+        $this->takeAGig($campaign);
+        self::assertSame(1, $campaign->trackerValue($this->tracker('gig')));
+        $campaign->pickSceneType('legwork', $this->release, self::at());
+        self::assertSame(1, $campaign->trackerValue($this->tracker('gig')));
+    }
+
+    #[Test]
+    public function thePaydayEndsTheGig(): void
+    {
+        $campaign = $this->actOne();
+        $this->takeAGig($campaign);
+        $this->goToTheJob($campaign);
+        $campaign->pickSceneType('job', $this->release, self::at());
+        $this->endScene($campaign, skipping: ['plan', 'trouble']);
+        $campaign->completeFlowStep('ending', self::prompt('Clean getaway'), $this->release, self::at());
+        self::assertSame(1, $campaign->trackerValue($this->tracker('gig')));
+
+        $campaign->pickSceneType('gig-payday', $this->release, self::at());
+
+        self::assertSame(0, $campaign->trackerValue($this->tracker('gig')));
+    }
+
+    #[Test]
+    public function aDroppedGigNeverBlocksActTwo(): void
+    {
+        $campaign = $this->actOne();
+        $campaign->setTrackerValue($this->tracker('gig'), 1, self::at());
+        $campaign->moveOn('making-a-name', $this->release, self::at());
+        $campaign->completeFlowStep('big-job', self::prompt('The Arasaka vault'), $this->release, self::at());
+
+        self::assertSame(0, $campaign->trackerValue($this->tracker('gig')));
+    }
+
+    #[Test]
+    public function skippingTheStreetRollGoesStraightToTheHeatCheck(): void
+    {
+        $campaign = $this->socialWithHeat(8);
+        $campaign->skipFlowStep('street', $this->release, self::at());
+
+        self::assertSame('hit-squad', self::flowRunOf($campaign)->forcedNextSceneType());
+    }
+
+    #[Test]
+    public function skippingTheStreetEventsTableGoesStraightToTheHeatCheck(): void
+    {
+        $campaign = $this->socialWithHeat(8);
+        $campaign->completeFlowStep('street', self::roll('1d6', 6), $this->release, self::at());
+        self::assertSame('event', self::flowRunOf($campaign)->stepKey());
+        $campaign->skipFlowStep('event', $this->release, self::at());
+
+        self::assertSame('hit-squad', self::flowRunOf($campaign)->forcedNextSceneType());
+    }
+
+    #[Test]
+    public function skippingTheRivalPickGoesStraightToTheHeatCheckAndPickingOneAsksWhatItWants(): void
+    {
+        $campaign = $this->socialWithHeat(8);
+        $campaign->completeFlowStep('street', self::roll('1d6', 6), $this->release, self::at());
+        $campaign->completeFlowStep('event', $this->rolled('street-events', 1), $this->release, self::at());
+        self::assertSame('rival', self::flowRunOf($campaign)->stepKey());
+        $campaign->skipFlowStep('rival', $this->release, self::at());
+        self::assertSame('hit-squad', self::flowRunOf($campaign)->forcedNextSceneType());
+    }
+
+    #[Test]
+    public function aYesOnTheJobPlanSkipsWhatGoesWrong(): void
+    {
+        $campaign = $this->actOne();
+        $this->takeAGig($campaign);
+        $this->goToTheJob($campaign);
+        $campaign->pickSceneType('job', $this->release, self::at());
+        $campaign->completeFlowStep('plan', self::oracle(YesNoAnswer::Yes), $this->release, self::at());
+
+        // Open play: no trouble table, the scene can end.
+        self::assertNotSame('trouble', self::flowRunOf($campaign)->stepKey());
+        $this->endScene($campaign);
+        self::assertSame('ending', self::flowRunOf($campaign)->stepKey());
     }
 
     #[Test]
@@ -436,6 +572,40 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
     private function quietStreet(Campaign $campaign): void
     {
         $campaign->completeFlowStep('street', self::roll('1d6', 2), $this->release, self::at());
+    }
+
+    /**
+     * The legwork played through and "go" chosen: the job is next.
+     */
+    private function goToTheJob(Campaign $campaign): void
+    {
+        $campaign->pickSceneType('legwork', $this->release, self::at());
+        $this->endScene($campaign, skipping: ['dig', 'find']);
+        $campaign->skipFlowStep('gain-edge', $this->release, self::at());
+        $campaign->completeFlowStep('more-or-go', StepResult::choice('go'), $this->release, self::at());
+    }
+
+    /**
+     * A social scene with the given heat, its steps skipped, waiting at the world turn's street roll.
+     */
+    private function socialWithHeat(int $heat): Campaign
+    {
+        $campaign = $this->actOne();
+        $campaign->setTrackerValue($this->tracker('heat'), $heat, self::at());
+        $campaign->pickSceneType('social', $this->release, self::at());
+        $this->endScene($campaign, skipping: ['talk', 'reaction']);
+
+        return $campaign;
+    }
+
+    /**
+     * A gig offer taken: the offer's steps skipped, "Take it?" answered yes.
+     */
+    private function takeAGig(Campaign $campaign): void
+    {
+        $campaign->pickSceneType('gig-offer', $this->release, self::at());
+        $this->endScene($campaign, skipping: ['client', 'gig']);
+        $campaign->completeFlowStep('take-it', StepResult::choice('yes'), $this->release, self::at());
     }
 
     private function createYourCharacter(Campaign $campaign, ?int $eddies = null): void

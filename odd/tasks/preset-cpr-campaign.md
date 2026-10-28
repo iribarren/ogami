@@ -37,6 +37,8 @@ Out of scope: carrying a heist campaign into the new flow (B13 `play-campaign-tr
 | Downtime and Night Market order (writer, slice 1) | `nextScene` keeps the last effect, so Downtime's closing runs `month` +1, then "Hit the Night Market?" (yes → `nextScene` Night Market and skips the rent check), then "Is the rent due?". Night Market's closing repeats the rent check, so a market visit on the fourth Downtime still ends in Month's end |
 | Gig alarm reset (Claude, slice 1 review) | The `alarm` reset moves from the optional "What is the gig?" prompt to the "Take it?" Yes option, so skipping the prompt never starts a gig with a dirty alarm |
 | Rent effects (writer slice 1, Claude slice 1 review) | A literal sheet effect value is limited to ±1,000; all four rents use `{formula: "<amount>"}` (500, 1000, 1500, 2500), so they read alike despite the ±1,000 literal cap; every skip option names `next: debt` explicitly |
+| Gig guard (user, slice 2 play pass) | Only the last `nextScene` counts, so the world turn's hit squad or special gig replaced a pending Legwork, Job or Gig payday (pay and rep lost), and "Go big? Yes" could end Act 1 mid-gig. New `campaign` tracker `gig` (counter 0–1, "On a gig", levels No / Yes): `take-it` Yes sets 1; Gig payday's `clean` bands and `planning`'s `phaseOpening` set 0; the first step of `making-a-name`'s `worldTurn` and `sceneClosing` is a condition on `gig` (upTo 0 continues, rest `next: end`). The Hit squad `clear` step also sets `gig` 0: the guard's condition otherwise draws the "nextScene hit-squad does not lower tracker gig" authoring warning. Not guarded (reported): Downtime's `nextScene` Night Market or Month's end can still be replaced by a hit squad or a special gig in the world turn |
+| Skip targets (Claude, slice 2 play pass) | A skipped step follows its own `next`, else the following step, which landed on branch-only steps. In `worldTurn`: `street` has `next: heat` and its "stirs" band `next: event`; `event` has `next: heat`; `rival` has `next: heat` and `found` → `rival-after`. The audit of the other campaign hooks and Scene Types found no other fall-through. `job`: a Yes or exceptional Yes on `plan` ends open play (`next: end`), so "What goes wrong?" only follows a no |
 | Authoring route (Claude) | The writer authors the JSON by hand, in the file's style, not in Studio: the Studio editors were exercised in `play-items-economy`. A Chrome play pass (slice 2) replaces a separate playtest |
 | Content rule ([ADR 0018](../../docs/adr/0018-narrativeflow-control-flow-and-cast.md) decision 29, [ADR 0021](../../docs/adr/0021-release-credits-for-fan-presets.md)) | Original wording only, no book text, rules summaries in own words; names that are common Cyberpunk RED terms (eddies, Night Market, Kibble, Prepak, fixer, netrunner) are used as game terms; the RTG Homebrew Content Policy notice already in the credits covers the release |
 
@@ -44,7 +46,7 @@ Out of scope: carrying a heist campaign into the new flow (B13 `play-campaign-tr
 
 ### Flow `campaign` "Making a Name"
 
-`defaultView: focus`; an introduction in the heist's style (solo play in one paragraph, the three acts, rep and heat, eddies and Month's end, rules come from the book). `flow.trackers`: rep, heat, lifestyle, housing, month, alarm, edge, objective. `flow.oracles`: every table the flow and its reachable Scene Types roll or shortcut.
+`defaultView: focus`; an introduction in the heist's style (solo play in one paragraph, the three acts, rep and heat, eddies and Month's end, rules come from the book). `flow.trackers`: rep, heat, lifestyle, housing, month, gig, alarm, edge, objective. `flow.oracles`: every table the flow and its reachable Scene Types roll or shortcut.
 
 | Act | Phase | Mode | Selection | Scene Types |
 |---|---|---|---|---|
@@ -55,10 +57,11 @@ Out of scope: carrying a heist campaign into the new flow (B13 `play-campaign-tr
 | Act 2: The big job | `fallout` | once | sequence | `getaway` → `fallout` |
 | Act 3: The twist and conclusion | `finale` | once | sequence | `betrayal` → `showdown` → `epilogue` |
 
-- `making-a-name` hooks as example 4: `worldTurn` (1d6; 5–6 → `street-events` with per-entry branches: rival crew, gang war, corp sweep heat +1, special gig → `gig-offer`, grudge → createNpc [rival] then fill `nemesis`; then heat ≥ 8 → `hit-squad`, whose closing sets heat 4); `sceneClosing` gate (rep ≥ 5, then NPC [crew] count ≥ 2, then "Go big?" yes → `endPhase`).
+- `making-a-name` hooks as example 4, each starting with a guard (condition on `gig`: upTo 0 continues, rest ends the hook, so a running gig is never interrupted): `worldTurn` (1d6; 5–6 → `street-events` with per-entry branches: rival crew, gang war, corp sweep heat +1, special gig → `gig-offer`, grudge → createNpc [rival] then fill `nemesis`; then heat ≥ 8 → `hit-squad`, whose closing sets heat 4); `sceneClosing` gate (rep ≥ 5, then NPC [crew] count ≥ 2, then "Go big?" yes → `endPhase`).
 - `recruit`: who joins (createNpc [crew] plus a specialty tag through a choice: netrunner, solo, nomad).
 - `downtime`: a prompt with the Night Market tables as shortcut oracles; closing: "A week slips by" (`month` +1), "Hit the Night Market?" (yes → `night-market`), then "Is the rent due?" (month ≥ 4 → `months-end`). Night Market's closing repeats the rent check.
-- `planning` `phaseOpening`: prompt "Act 2: The big job. What is it?" → fillFact `big-job`; alarm, edge and objective set 0.
+- `planning` `phaseOpening`: prompt "Act 2: The big job. What is it?" → fillFact `big-job`; `gig`, alarm, edge and objective set 0.
+- `job`: an oracle question (`plan`: a yes ends open play, a no raises the alarm and rolls `complications`), then an edge spend and "How does the job end?" → `gig-payday`. `gig-offer` Yes sets `gig` 1; `gig-payday` sets it 0.
 - `betrayal`: pick NPC [fixer], `none` → pick NPC [client], `none` → prompt "Who sold you out?"; table `twists` → fillFact `twist`, its tip reading "{picked} sold you to {fact:nemesis}". `showdown` and `epilogue` read `{fact:nemesis}`, `{fact:twist}`, `{fact:big-job}`, `{fact:crew-name}`.
 - New tables: `gigs` (inspiration for Gig offer), `street-events`, `twists`, `night-market-stalls` and `night-market-finds` (Downtime's shortcuts).
 - Publishing prints no new warning (e.g. a threshold consequence that does not lower its tracker).
@@ -86,7 +89,7 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 | T2 | 1 | Release v2 base in `night-job.json`: description, tags, fact slots, trackers, sheet economy (eddies, currency, `gear` and `cyberware` inventories), gear catalog; heist untouched; `PresetsTest` (v2, inventories, currency, catalog) and `NightJobPresetFlowTest` updated | delegated writer (slice 1) | [x] | e29b0a66 |
 | T3 | 1 | Flow `campaign` with its Scene Types and tables; `PresetsTest` campaign assertions (non-default flow, acts, phases, trackers); `NightJobCampaignPresetFlowTest` unit test playing street zero, a gig chain, a world turn hit squad, the act gate, a Month's end (rent refused when broke, debt thread) and the finale's betrayal fallback | delegated writer (slice 1) | [x] | 32ab4d8d, 843cde2e |
 | T4 | 2 | Slice 1 review fixes; e2e `frontend/e2e/play-night-job-campaign.spec.ts`: start the campaign flow, play street zero, buy at the Night Market | delegated writer (slice 2) | [x] | |
-| T5 | 2 | Chrome play pass of Act 1 and a Month's end; fixes | | [ ] | |
+| T5 | 2 | Chrome play pass of Act 1 and a Month's end; fixes | parent Chrome pass + delegated writer (slice 2) | [x] | |
 | T6 | 2 | Closing: Reviews, roadmap `Done:` line under B12 | | [ ] | |
 
 ## Progress
@@ -99,6 +102,8 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 - 2026-10-28: `play-night-job.spec.ts` needed `getByLabel('Name', { exact: true })`: the new inventory fields add "Free stack name" inputs to the crew step. Passes with the other night-job specs (`play-checks`, `play-derived-values`, `studio-sheet-builder`, `studio-check-editor`) against the seeded release v2. `make verify`: backend-qa, backend-test and api-check pass.
 - 2026-10-28: T4 review fixes. RED: `NightJobCampaignPresetFlowTest` 2 failures (alarm still reset on the `gig` prompt, so the skipped-prompt gig kept alarm 4). GREEN after the JSON: `--filter 'NightJob|Presets'` 58 tests OK. Gig alarm reset moved to the `take-it` Yes option; all four rents use formulas; conapt skip names `next: debt`. New tests: skipped prompt then Yes resets alarm, No leaves it, studio formula rent paid, conapt skip.
 - 2026-10-28: T4 e2e `play-night-job-campaign.spec.ts` written against existing behaviour (no RED). Plays street zero, Downtime and a Night Market purchase; the world turn roll and the random stock are handled generically (roll, skip any event steps; buy the first item). 6 runs green, `play-night-job` green.
+- 2026-10-28: T5 play pass findings: (1) world turn and gate broke a gig chain: `gig` tracker and guards; (2) skip fell through into branch-only world-turn steps: explicit `next`s; (3) `job` asked "What goes wrong?" after a Yes; (4) gig prompt tip promised the pay; (5) a shop step offered Skip although the server refuses it (separate `fix(play)` commit, hidden for `kind === 'shop'`; the test lives in `ShopStep.test.tsx`, there is no StepCard test file).
+- 2026-10-28: T5 RED: `NightJobCampaignPresetFlowTest` 7 failures and 5 errors against the old JSON (no `gig` tracker, hit squad replacing the chain, skips falling through, Go big mid-gig); `ShopStep.test.tsx` Skip visible on a non-mandatory shop. GREEN: `--filter 'NightJob|Presets'` 67 tests OK, `vitest src/play/flow` 183 OK, `make presets` prints only the heist's `flows[0]` warning, e2e `play-night-job-campaign` passes.
 
 ## Reviews
 

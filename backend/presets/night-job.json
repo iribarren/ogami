@@ -282,7 +282,8 @@
     {"key": "heat", "name": "Heat", "hint": "At 8+ someone sends a hit squad", "kind": "counter", "min": 0, "max": 10, "initial": 0},
     {"key": "lifestyle", "name": "Lifestyle", "hint": "What you eat, month after month", "kind": "counter", "min": 0, "max": 3, "initial": 1, "levels": [{"upTo": 0, "label": "Kibble"}, {"upTo": 1, "label": "Prepak"}, {"upTo": 2, "label": "Good prepak"}, {"label": "Fresh food"}]},
     {"key": "housing", "name": "Housing", "hint": "Where you sleep, and what it costs", "kind": "counter", "min": 0, "max": 3, "initial": 0, "levels": [{"upTo": 0, "label": "Cube hotel"}, {"upTo": 1, "label": "Cargo container"}, {"upTo": 2, "label": "Studio apartment"}, {"label": "Two-room conapt"}]},
-    {"key": "month", "name": "Month", "hint": "At 4/4 the rent is due", "kind": "clock", "segments": 4}
+    {"key": "month", "name": "Month", "hint": "At 4/4 the rent is due", "kind": "clock", "segments": 4},
+    {"key": "gig", "name": "On a gig", "hint": "1 while a gig runs: the street waits. Set it to 0 if you drop the gig.", "kind": "counter", "min": 0, "max": 1, "initial": 0, "levels": [{"upTo": 0, "label": "No"}, {"label": "Yes"}]}
   ],
   "factSlots": [
     {"key": "client", "label": "Client", "type": "npc"},
@@ -501,11 +502,11 @@
       "oracles": ["gigs", "npc-name"],
       "setup": [
         {"key": "client", "kind": "prompt", "title": "Who offers the gig?", "tip": "Just a street name: it becomes the NPC's name. Skip it if the fixer is the one asking.", "inspiration": ["npc-name"], "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["client"]}]},
-        {"key": "gig", "kind": "prompt", "title": "What is the gig?", "tip": "One sentence: what they want done and what it pays.", "inspiration": ["gigs"]}
+        {"key": "gig", "kind": "prompt", "title": "What is the gig?", "tip": "One sentence: what they want done, and what they are not saying.", "inspiration": ["gigs"]}
       ],
       "play": [],
       "closing": [
-        {"key": "take-it", "kind": "choice", "title": "Take it?", "tip": "Yes starts the gig with some legwork. No leaves the offer behind.", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "set", "value": 0}, {"kind": "nextScene", "sceneType": "legwork"}]}, {"key": "no", "label": "No"}], "skip": "no"}
+        {"key": "take-it", "kind": "choice", "title": "Take it?", "tip": "Yes starts the gig with some legwork. No leaves the offer behind.", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "gig", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "legwork"}]}, {"key": "no", "label": "No"}], "skip": "no"}
       ]
     },
     {
@@ -532,7 +533,7 @@
       "oracles": ["fate", "complications"],
       "setup": [],
       "play": [
-        {"key": "plan", "kind": "oracle", "title": "Does it go to plan?", "tip": "A no raises the alarm by one, an exceptional no by two.", "oracle": "fate", "likelihood": "even", "branches": {"no": {"effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, "exceptionalNo": {"effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 2}]}}},
+        {"key": "plan", "kind": "oracle", "title": "Does it go to plan?", "tip": "A yes skips the trouble. A no raises the alarm by one, an exceptional no by two.", "oracle": "fate", "likelihood": "even", "branches": {"yes": {"next": "end"}, "exceptionalYes": {"next": "end"}, "no": {"effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, "exceptionalNo": {"effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 2}]}}},
         {"key": "trouble", "kind": "table", "title": "What goes wrong?", "tip": "Some entries move the alarm for you.", "table": "complications"}
       ],
       "closing": [
@@ -548,7 +549,7 @@
       "tips": "A clean job earns more rep. The pay grows with your rep, so a good name pays for itself. Any loose end can come back later.",
       "oracles": [],
       "setup": [
-        {"key": "clean", "kind": "condition", "title": "How clean was it?", "tip": "Decided by the alarm: 3 or less earns 2 rep, more earns 1.", "tracker": "alarm", "bands": [{"upTo": 3, "label": "Clean", "effects": [{"kind": "tracker", "tracker": "rep", "op": "add", "value": 2}]}, {"label": "Messy", "effects": [{"kind": "tracker", "tracker": "rep", "op": "add", "value": 1}]}]}
+        {"key": "clean", "kind": "condition", "title": "How clean was it?", "tip": "Decided by the alarm: 3 or less earns 2 rep, more earns 1.", "tracker": "alarm", "bands": [{"upTo": 3, "label": "Clean", "effects": [{"kind": "tracker", "tracker": "gig", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "rep", "op": "add", "value": 2}]}, {"label": "Messy", "effects": [{"kind": "tracker", "tracker": "gig", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "rep", "op": "add", "value": 1}]}]}
       ],
       "play": [
         {"key": "collect", "kind": "choice", "title": "Collect the pay", "tip": "Choose your Character: the pay is 200 eb plus 50 eb for each point of rep.", "options": [{"key": "collect", "label": "Collect the pay", "effects": [{"kind": "sheet", "field": "eddies", "op": "add", "value": {"formula": "200 + 50 * {tracker:rep}"}}]}, {"key": "leave", "label": "Leave it"}], "skip": "leave"}
@@ -599,7 +600,7 @@
         {"key": "squad", "kind": "table", "title": "Who comes for you?", "table": "security-response"}
       ],
       "closing": [
-        {"key": "clear", "kind": "prompt", "title": "How do you get clear?", "tip": "Answering lowers the heat to 4.", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "heat", "op": "set", "value": 4}]}
+        {"key": "clear", "kind": "prompt", "title": "How do you get clear?", "tip": "Answering lowers the heat to 4 and drops any gig.", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "heat", "op": "set", "value": 4}, {"kind": "tracker", "tracker": "gig", "op": "set", "value": 0}]}
       ]
     },
     {
@@ -766,7 +767,7 @@
       "introduction": "Solo play means you are the whole table: you describe what happens, roll the dice and make the calls. This guide gives you the questions so you can keep the story moving.\n\nYou play a campaign in three acts. In Act 1 you make a name: take gigs from your fixer, grow your rep, recruit a crew and spend your downtime. Rep opens doors. Heat closes them: at 8 or more someone sends a hit squad. In Act 2 you plan and pull the big job. In Act 3 the twist arrives: someone you trusted sold you out, and you face your nemesis.\n\nBetween gigs you live on eddies. Every four Downtime scenes the month ends: pay the rent or take the debt, eat better if you can and move up if you dare. Spend your eddies at the Night Market on gear, food and chrome.\n\nEach step asks you something or tells you what to roll. Steps marked mandatory must be done; the others are suggested and you can skip them. Rules for fighting, hacking and skills come from your Cyberpunk RED book: this guide only decides what happens next.",
       "defaultView": "focus",
       "oracles": ["fate", "npc-name", "gigs", "complications", "net-floors", "black-ice", "security-response", "street-events", "twists", "night-market-stalls", "night-market-finds"],
-      "trackers": ["rep", "heat", "lifestyle", "housing", "month", "alarm", "edge", "objective"],
+      "trackers": ["rep", "heat", "lifestyle", "housing", "month", "gig", "alarm", "edge", "objective"],
       "phases": [
         {"key": "street-zero", "name": "Street zero", "description": "Make your character, claim your turf and meet your fixer. Done when the fixer scene ends.", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["edgerunner", "turf", "fixer"]}},
         {
@@ -777,14 +778,16 @@
           "mode": "loop",
           "selection": {"rule": "player", "sceneTypes": ["gig-offer", "downtime", "recruit", "social"]},
           "sceneClosing": [
+            {"key": "on-a-gig", "kind": "condition", "title": "Is a gig running?", "tip": "While a gig runs the street waits and Act 1 cannot end.", "tracker": "gig", "bands": [{"upTo": 0}, {"next": "end"}]},
             {"key": "rep", "kind": "condition", "title": "Is your rep high enough?", "tracker": "rep", "bands": [{"upTo": 4, "next": "end"}, {}]},
             {"key": "crew-size", "kind": "condition", "title": "Is the crew big enough?", "count": {"of": "npc", "tags": ["crew"]}, "bands": [{"upTo": 1, "next": "end"}, {}]},
             {"key": "go-big", "kind": "choice", "title": "Go big?", "tip": "Your name is out there and you have a crew. Yes ends Act 1 and starts planning the big job.", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "endPhase"}]}, {"key": "no", "label": "No"}], "skip": "no"}
           ],
           "worldTurn": [
-            {"key": "street", "kind": "roll", "title": "Does the street stir?", "tip": "Roll 1d6. On 5 or 6 something happens in the streets.", "dice": "1d6", "bands": [{"upTo": 4, "label": "Quiet", "next": "heat"}, {"label": "The street stirs"}]},
-            {"key": "event", "kind": "table", "title": "What happens on the street?", "table": "street-events", "branches": [{"entry": "rival-crew", "next": "rival"}, {"entry": "gang-war", "next": "gang-war"}, {"entry": "corp-sweep", "next": "heat", "effects": [{"kind": "tracker", "tracker": "heat", "op": "add", "value": 1}]}, {"entry": "special-gig", "next": "heat", "effects": [{"kind": "nextScene", "sceneType": "gig-offer"}]}, {"entry": "grudge", "next": "grudge"}]},
-            {"key": "rival", "kind": "pick", "title": "Which rival crew moves?", "of": "npc", "tags": ["rival"], "mode": "random", "branches": {"none": {"next": "heat"}}},
+            {"key": "on-a-gig", "kind": "condition", "title": "Is a gig running?", "tip": "While a gig runs the street waits.", "tracker": "gig", "bands": [{"upTo": 0}, {"next": "end"}]},
+            {"key": "street", "kind": "roll", "title": "Does the street stir?", "tip": "Roll 1d6. On 5 or 6 something happens in the streets.", "dice": "1d6", "next": "heat", "bands": [{"upTo": 4, "label": "Quiet", "next": "heat"}, {"label": "The street stirs", "next": "event"}]},
+            {"key": "event", "kind": "table", "title": "What happens on the street?", "table": "street-events", "next": "heat", "branches": [{"entry": "rival-crew", "next": "rival"}, {"entry": "gang-war", "next": "gang-war"}, {"entry": "corp-sweep", "next": "heat", "effects": [{"kind": "tracker", "tracker": "heat", "op": "add", "value": 1}]}, {"entry": "special-gig", "next": "heat", "effects": [{"kind": "nextScene", "sceneType": "gig-offer"}]}, {"entry": "grudge", "next": "grudge"}]},
+            {"key": "rival", "kind": "pick", "title": "Which rival crew moves?", "of": "npc", "tags": ["rival"], "mode": "random", "next": "heat", "branches": {"found": {"next": "rival-after"}, "none": {"next": "heat"}}},
             {"key": "rival-after", "kind": "prompt", "title": "What is the rival crew after?", "prompt": "What is {picked} after?", "next": "heat"},
             {"key": "gang-war", "kind": "prompt", "title": "Whose streets burn?", "next": "heat"},
             {"key": "grudge", "kind": "prompt", "title": "Who holds a grudge against you?", "tip": "Just a street name: it becomes the NPC and your nemesis.", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["rival"]}, {"kind": "fillFact", "slot": "nemesis"}]},
@@ -799,7 +802,7 @@
           "mode": "loop",
           "selection": {"rule": "player", "sceneTypes": ["social", "exploration", "recruit", "gear-up"]},
           "phaseOpening": [
-            {"key": "big-job", "kind": "prompt", "title": "Act 2: The big job. What is it?", "tip": "One sentence: the target, and why it is worth everything you built.", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "big-job"}, {"kind": "tracker", "tracker": "alarm", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "edge", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "objective", "op": "set", "value": 0}]}
+            {"key": "big-job", "kind": "prompt", "title": "Act 2: The big job. What is it?", "tip": "One sentence: the target, and why it is worth everything you built.", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "big-job"}, {"kind": "tracker", "tracker": "gig", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "alarm", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "edge", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "objective", "op": "set", "value": 0}]}
           ]
         },
         {

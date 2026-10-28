@@ -1,0 +1,276 @@
+import { useState } from 'react'
+
+import { stacksOf } from '@/shared/sheet/sheetValues'
+import { Button } from '@/shared/ui/button'
+import { Input } from '@/shared/ui/input'
+
+import type { Campaign } from '../campaigns/useCampaigns'
+import { effectiveCharacterId } from './effectiveCharacterId'
+import { SheetCharacterSelect } from './SheetCharacterSelect'
+import type { FlowStep } from './useFlowRun'
+
+type Shop = NonNullable<FlowStep['shop']>
+interface BuyLine {
+  gear: string
+  quantity: number
+}
+interface SellLine {
+  field: string
+  gear: string
+  quantity: number
+}
+
+const maxQuantity = 9999
+
+/** A quantity draft as a count: empty is none; anything but a whole number in 0..max is null (invalid). */
+function parseQuantity(draft: string | undefined, max: number): number | null {
+  if (draft === undefined || draft.trim() === '') {
+    return 0
+  }
+  const quantity = Number(draft)
+  return Number.isInteger(quantity) && quantity >= 0 && quantity <= max ? quantity : null
+}
+
+/** What the shop pays for one unit: the sell rate (percent) of its cost, rounded down. */
+function sellPrice(cost: number, sellRate: number): number {
+  return Math.floor((cost * sellRate) / 100)
+}
+
+/**
+ * The control of a `shop` step (ADR 0045): the player names the Character, fills a cart of the gear
+ * on sale and, when the shop buys, of the Character's catalog stacks to sell, sees what it spends,
+ * earns and leaves, and completes the step with one transaction. An empty cart leaves the shop. The
+ * balance warning is a hint; the server decides and its refusal shows with the cart untouched.
+ */
+export function ShopStepForm({
+  campaign,
+  shop,
+  pending,
+  onComplete,
+}: {
+  campaign: Campaign
+  shop: Shop
+  pending: boolean
+  onComplete: (characterId: string, buy: BuyLine[], sell: SellLine[]) => void
+}) {
+  const [chosenCharacterId, setCharacterId] = useState('')
+  const [buyDrafts, setBuyDrafts] = useState<Record<string, string>>({})
+  const [sellDrafts, setSellDrafts] = useState<Record<string, string>>({})
+  const characterId = effectiveCharacterId(campaign, chosenCharacterId)
+  const { sheet, gear } = campaign.pinnedRelease
+  const character = campaign.characters.find(({ id }) => id === characterId)
+  const moneyField = sheet.find(({ key }) => key === shop.currency.field)
+  const moneyLabel = moneyField?.label ?? shop.currency.field
+  const floor = moneyField?.min ?? 0
+  const money = (amount: number) =>
+    shop.currency.unit === null ? String(amount) : `${String(amount)} ${shop.currency.unit}`
+
+  const stored = character?.values[shop.currency.field]
+  const current = typeof stored === 'number' ? stored : 0
+
+  // The Character's catalog stacks the shop can buy: free stacks have no price and are never sold.
+  const sellable =
+    shop.sellRate === null || character === undefined
+      ? []
+      : sheet
+          .filter(({ type }) => type === 'inventory')
+          .flatMap((field) =>
+            stacksOf(character.values[field.key]).flatMap((stack) => {
+              const entry = 'gear' in stack ? gear.find(({ key }) => key === stack.gear) : undefined
+              return 'gear' in stack && entry !== undefined && shop.sellRate !== null
+                ? [
+                    {
+                      id: `${field.key}:${stack.gear}`,
+                      field,
+                      entry,
+                      held: stack.quantity,
+                      price: sellPrice(entry.cost, shop.sellRate),
+                    },
+                  ]
+                : []
+            }),
+          )
+
+  const buyQuantities = shop.onSale.map((entry) => ({
+    entry,
+    quantity: parseQuantity(buyDrafts[entry.key], maxQuantity),
+  }))
+  const sellQuantities = sellable.map((line) => ({
+    line,
+    quantity: parseQuantity(sellDrafts[line.id], Math.min(maxQuantity, line.held)),
+  }))
+  const invalid =
+    buyQuantities.some(({ quantity }) => quantity === null) ||
+    sellQuantities.some(({ quantity }) => quantity === null)
+
+  const spend = buyQuantities.reduce(
+    (sum, { entry, quantity }) => sum + entry.cost * (quantity ?? 0),
+    0,
+  )
+  const earn = sellQuantities.reduce(
+    (sum, { line, quantity }) => sum + line.price * (quantity ?? 0),
+    0,
+  )
+  const balance = current - spend + earn
+  const belowFloor = balance < floor
+  const empty =
+    !invalid &&
+    buyQuantities.every(({ quantity }) => quantity === 0) &&
+    sellQuantities.every(({ quantity }) => quantity === 0)
+
+  function submit() {
+    onComplete(
+      characterId,
+      buyQuantities.flatMap(({ entry, quantity }) =>
+        quantity === null || quantity === 0 ? [] : [{ gear: entry.key, quantity }],
+      ),
+      sellQuantities.flatMap(({ line, quantity }) =>
+        quantity === null || quantity === 0
+          ? []
+          : [{ field: line.field.key, gear: line.entry.key, quantity }],
+      ),
+    )
+  }
+
+  return (
+    <form
+      className="space-y-3"
+      onSubmit={(event) => {
+        event.preventDefault()
+        submit()
+      }}
+    >
+      <SheetCharacterSelect
+        campaign={campaign}
+        value={characterId}
+        onChange={(next) => {
+          setCharacterId(next)
+          // Another Character holds other stacks: a sale drafted for the last one means nothing.
+          setSellDrafts({})
+        }}
+      />
+      <section aria-label="Buy" className="space-y-1">
+        <h5 className="text-sm font-medium">Buy</h5>
+        <ul className="space-y-2">
+          {shop.onSale.map((entry) => (
+            <li key={entry.key} className="flex flex-wrap items-center gap-2">
+              <span className="min-w-0 flex-1 break-words">
+                <span className="font-medium">{entry.name}</span> · {money(entry.cost)}
+                <span className="text-xs text-muted-foreground">
+                  {' '}
+                  · {entry.slots} {entry.slots === 1 ? 'slot' : 'slots'}
+                  {entry.category !== null && ` · ${entry.category}`}
+                </span>
+                {entry.description !== null && (
+                  <span className="block text-xs text-muted-foreground">{entry.description}</span>
+                )}
+              </span>
+              <QuantityInput
+                label={`Buy ${entry.name}`}
+                draft={buyDrafts[entry.key] ?? ''}
+                valid={parseQuantity(buyDrafts[entry.key], maxQuantity) !== null}
+                onChange={(draft) => {
+                  setBuyDrafts((drafts) => ({ ...drafts, [entry.key]: draft }))
+                }}
+              />
+            </li>
+          ))}
+        </ul>
+      </section>
+      {shop.sellRate !== null && (
+        <section aria-label="Sell" className="space-y-1">
+          <h5 className="text-sm font-medium">Sell</h5>
+          {sellable.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {character === undefined
+                ? 'Choose a Character to see what they can sell.'
+                : 'This Character has nothing the shop buys.'}
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {sellable.map((line) => (
+                <li key={line.id} className="flex flex-wrap items-center gap-2">
+                  <span className="min-w-0 flex-1 break-words">
+                    <span className="font-medium">{line.entry.name}</span> · pays{' '}
+                    {money(line.price)} each
+                    <span className="text-xs text-muted-foreground">
+                      {' '}
+                      · {line.field.label}, holds {line.held}
+                    </span>
+                  </span>
+                  <QuantityInput
+                    label={`Sell ${line.entry.name} from ${line.field.label}`}
+                    draft={sellDrafts[line.id] ?? ''}
+                    max={Math.min(maxQuantity, line.held)}
+                    valid={
+                      parseQuantity(sellDrafts[line.id], Math.min(maxQuantity, line.held)) !== null
+                    }
+                    onChange={(draft) => {
+                      setSellDrafts((drafts) => ({ ...drafts, [line.id]: draft }))
+                    }}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 text-sm tabular-nums" aria-label="Totals">
+        <dt className="text-muted-foreground">Spend</dt>
+        <dd>{money(spend)}</dd>
+        <dt className="text-muted-foreground">Earn</dt>
+        <dd>{money(earn)}</dd>
+        <dt className="text-muted-foreground">{moneyLabel} now</dt>
+        <dd>{money(current)}</dd>
+        <dt className="text-muted-foreground">{moneyLabel} after</dt>
+        <dd className={belowFloor ? 'font-medium text-destructive' : undefined}>
+          {money(balance)}
+        </dd>
+      </dl>
+      {invalid && (
+        <p role="alert" className="text-sm text-destructive">
+          Every quantity must be a whole number, at most what is on sale or held.
+        </p>
+      )}
+      {belowFloor && !invalid && (
+        <p role="alert" className="text-sm text-destructive">
+          Not enough {moneyLabel}: this would leave {money(balance)}, under {money(floor)}.
+        </p>
+      )}
+      <Button type="submit" disabled={pending || characterId === '' || invalid || belowFloor}>
+        {empty ? 'Leave the shop' : 'Confirm'}
+      </Button>
+    </form>
+  )
+}
+
+/** A quantity box that may stay empty (none) while the player types; an invalid draft is flagged. */
+function QuantityInput({
+  label,
+  draft,
+  valid,
+  max = maxQuantity,
+  onChange,
+}: {
+  label: string
+  draft: string
+  valid: boolean
+  max?: number
+  onChange: (draft: string) => void
+}) {
+  return (
+    <Input
+      type="number"
+      className="w-20"
+      aria-label={label}
+      aria-invalid={!valid}
+      min={0}
+      max={max}
+      placeholder="0"
+      value={draft}
+      onChange={(event) => {
+        onChange(event.target.value)
+      }}
+    />
+  )
+}

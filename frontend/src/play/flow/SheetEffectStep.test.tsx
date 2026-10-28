@@ -11,6 +11,7 @@ import {
   atStep,
   choiceStep,
   guidedWithCharacters,
+  guidedWithShop,
   promptStep,
   sheetChoiceStep,
   sheetPromptStep,
@@ -197,5 +198,25 @@ describe('a prompt that changes a sheet', () => {
     await waitFor(() => {
       expect(sent).toEqual([{ stepKey: 'intro', text: 'Ada' }])
     })
+  })
+
+  it('says in money terms when an option, a prompt or a character step spends too much', async () => {
+    const user = userEvent.setup()
+    renderAppAt(`/play/campaigns/${lostMineCampaign.id}`, {
+      'GET /api/auth/me': signedInAs('SOLO_PLAYER'),
+      [`GET ${path}`]: () => Response.json(guidedWithShop(atStep(sheetChoiceStep))),
+      [`GET ${path}/journal`]: () => Response.json([]),
+      [`POST ${path}/flow-run/answer`]: () =>
+        Response.json(
+          { error: 'Not enough "eddies": raw', code: 'insufficient_funds' },
+          { status: 422 },
+        ),
+    })
+
+    const step = await card(sheetChoiceStep)
+    await user.click(step.getByRole('button', { name: 'Learned' }))
+    await user.click(step.getByRole('button', { name: 'Confirm' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Not enough Eddies for that.')
   })
 })

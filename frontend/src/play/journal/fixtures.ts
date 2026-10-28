@@ -614,3 +614,42 @@ export function noteAttaching(
 ): JournalEntry {
   return recordedEntry({ kind: 'note', text: 'The door gives way.', attachments }, id)
 }
+
+/** Vi bought two Knives and sold a Used pistol: 100 → 80 eddies. */
+export const shopEntry: JournalEntry = {
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7020',
+  sessionNumber: 2,
+  sceneNumber: 1,
+  recordedAt: '2026-10-06T12:20:00+00:00',
+  kind: 'shop',
+  content: {
+    kind: 'shop',
+    characterId: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9001',
+    characterName: 'Vi',
+    bought: [{ field: null, gear: 'knife', name: 'Knife', quantity: 2, price: 10 }],
+    sold: [{ field: 'pack', gear: 'used-pistol', name: 'Used pistol', quantity: 1, price: 25 }],
+    before: 100,
+    after: 105,
+  },
+  flowStep: { key: 'stalls', title: 'What do you buy?', prompt: null },
+}
+
+/** A shop visit that only bought: no sold lines. */
+export const shopBoughtOnlyEntry: JournalEntry = {
+  ...shopEntry,
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7021',
+  content: { ...shopEntry.content, sold: [], before: 100, after: 80 } as JournalEntry['content'],
+}
+
+/** Leaving the shop with an empty transaction. */
+export const shopLeftEntry: JournalEntry = {
+  ...shopEntry,
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7022',
+  content: {
+    ...shopEntry.content,
+    bought: [],
+    sold: [],
+    before: 100,
+    after: 100,
+  } as JournalEntry['content'],
+}

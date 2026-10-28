@@ -18,6 +18,7 @@ import type {
   PickContent,
   RollContent,
   SheetChangeContent,
+  ShopContent,
 } from './useJournal'
 
 type ChoiceContent = Extract<JournalEntry['content'], { kind: 'choice' }>
@@ -150,15 +151,40 @@ function EntryContent({
     case 'sheet-change':
       return <SheetChangeView content={content} sheet={sheet} />
     case 'shop':
-      // Its lines land with play-items-economy slice 6.
-      return (
-        <p className="text-sm">
-          {content.characterName}: {content.before} → {content.after}
-        </p>
-      )
+      return <ShopView content={content} />
     case 'flowOutcome':
       return <FlowOutcomeView content={content} />
   }
+}
+
+/** A shop visit: the gear bought and sold with unit prices, and the Character's money before and after. */
+function ShopView({ content }: { content: ShopContent }) {
+  const lines = (title: string, items: ShopContent['bought']) =>
+    items.length > 0 && (
+      <div>
+        <p className="text-xs font-medium text-muted-foreground">{title}</p>
+        <ul className="text-sm tabular-nums">
+          {items.map((line) => (
+            <li key={`${line.field ?? ''}-${line.gear}`}>
+              {`${String(line.quantity)} × ${line.name} @ ${String(line.price)}`}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+
+  return (
+    <div className="space-y-1">
+      {content.bought.length === 0 && content.sold.length === 0 && (
+        <p className="text-sm">Left the shop without buying or selling.</p>
+      )}
+      {lines('Bought', content.bought)}
+      {lines('Sold', content.sold)}
+      <p className="text-sm tabular-nums">
+        {content.characterName}: {`${String(content.before)} → ${String(content.after)}`}
+      </p>
+    </div>
+  )
 }
 
 /** What a Flow step's sheet Effects changed: one line per field, with the dice each rolled. */

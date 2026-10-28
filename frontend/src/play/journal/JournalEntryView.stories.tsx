@@ -13,6 +13,7 @@ import {
   pickedTwo,
   plainAnswer,
   pushedBestialEntry,
+  shopEntry,
   skillCheckEntry,
   stormyWeather,
 } from './fixtures'
@@ -74,3 +75,5 @@ export const NoteNeon: Story = onTheme('neon', Note)
 export const NoteNoir: Story = onTheme('noir', Note)
 export const NoteEldritch: Story = onTheme('eldritch', Note)
 export const NoteStarship: Story = onTheme('starship', Note)
+
+export const Shop: Story = { args: { entry: shopEntry } }

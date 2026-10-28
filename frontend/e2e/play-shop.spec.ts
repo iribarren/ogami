@@ -18,7 +18,7 @@ test('a solo player buys gear at a shop, sees the money go down, the gear in the
   await expect(page).toHaveURL(/\/play\/campaigns\/[0-9a-f-]{36}$/)
 
   await page.getByRole('button', { name: 'Start session' }).click()
-  await page.getByRole('button', { name: 'Play Market' }).click()
+  // The Flow's only Scene Type is picked when the session starts, so there is no card to click.
   const guide = page.getByRole('region', { name: 'Focus mode' })
 
   // The shop needs a Character: create one in the first step.

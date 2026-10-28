@@ -307,7 +307,7 @@ final readonly class FlowRunContext
     {
         $id = $result->characterId ?? '';
         if (null === $this->characterName($id)) {
-            throw InvalidStepResult::unknownCharacter($step->key, $id);
+            throw InvalidStepResult::unknownSheetCharacter($step->key, StepKind::Shop, $id);
         }
 
         return $this->effects()->applyShopTrade($step, $onSale, $id, $result->buy, $result->sell);

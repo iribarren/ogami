@@ -26,6 +26,7 @@ const kindLabels: Record<FlowStep['kind'], string> = {
   pick: 'Pick',
   character: 'Character',
   check: 'Check',
+  shop: 'Shop',
 }
 
 interface StepProps {
@@ -198,6 +199,9 @@ function StepForm({ campaign, step, pending, onCommand }: StepProps) {
         )
       }
       return <CheckStepForm campaign={campaign} step={step} pending={pending} onRoll={answer} />
+    case 'shop':
+      // Its cart lands with play-items-economy slice 6.
+      return <p className="text-sm text-muted-foreground">This shop cannot be played here yet.</p>
   }
 }
 

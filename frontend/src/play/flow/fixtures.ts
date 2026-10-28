@@ -49,6 +49,7 @@ function step(fields: Partial<FlowStep> & Pick<FlowStep, 'key' | 'kind' | 'title
     inspiration: [],
     changesSheet: false,
     pending: null,
+    shop: null,
     ...fields,
   }
 }

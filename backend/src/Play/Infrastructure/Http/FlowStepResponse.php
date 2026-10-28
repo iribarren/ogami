@@ -8,6 +8,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowStepView;
 use App\Play\Domain\Campaign\FlowRun\PendingCheck;
 use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\PickView;
+use App\Play\Domain\Campaign\FlowRun\ShopView;
 use App\Play\Domain\GameSystem\Flow\CharacterStep;
 use App\Play\Domain\GameSystem\Flow\CheckStep;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
@@ -16,6 +17,7 @@ use App\Play\Domain\GameSystem\Flow\OracleStep;
 use App\Play\Domain\GameSystem\Flow\PickStep;
 use App\Play\Domain\GameSystem\Flow\PromptStep;
 use App\Play\Domain\GameSystem\Flow\RollStep;
+use App\Play\Domain\GameSystem\Flow\ShopStep;
 use App\Play\Domain\GameSystem\Flow\TableStep;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
@@ -25,7 +27,7 @@ use OpenApi\Attributes as OA;
  * empty). Effects, bands, branches and the next and skip targets are rules the server applies, so
  * they are not exposed. The title, prompt and tip have their placeholders rendered.
  */
-#[OA\Schema(required: ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'oracle', 'likelihood', 'table', 'dice', 'options', 'pick', 'fills', 'check', 'checks', 'difficulty', 'difficultyFixed', 'characters', 'inspiration', 'changesSheet', 'pending'])]
+#[OA\Schema(required: ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'oracle', 'likelihood', 'table', 'dice', 'options', 'pick', 'fills', 'check', 'checks', 'difficulty', 'difficultyFixed', 'characters', 'inspiration', 'changesSheet', 'pending', 'shop'])]
 final readonly class FlowStepResponse
 {
     /**
@@ -38,7 +40,7 @@ final readonly class FlowStepResponse
     private function __construct(
         #[OA\Property(example: 'slip-past')]
         public string $key,
-        #[OA\Property(description: 'How the step is completed; a condition step never waits, so it is never the current one.', example: 'prompt', enum: ['prompt', 'oracle', 'table', 'roll', 'choice', 'pick', 'character', 'check'])]
+        #[OA\Property(description: 'How the step is completed; a condition step never waits, so it is never the current one.', example: 'prompt', enum: ['prompt', 'oracle', 'table', 'roll', 'choice', 'pick', 'character', 'check', 'shop'])]
         public string $kind,
         #[OA\Property(example: 'Who is on the crew?')]
         public string $title,
@@ -98,6 +100,8 @@ final readonly class FlowStepResponse
         public bool $changesSheet,
         #[OA\Property(ref: new Model(type: FlowStepPendingResponse::class), description: 'The roll the check step waits on until the player keeps or pushes it (ADR 0041); null while none does, and for the other kinds. While a roll pends, every other FlowRun command is refused.', nullable: true)]
         public ?FlowStepPendingResponse $pending,
+        #[OA\Property(ref: new Model(type: FlowShopStepResponse::class), description: 'What the shop step trades (ADR 0045): the gear on sale, its sell rate and the currency; null for the other kinds. The answer names the Character with "characterId" and lists "buy" and "sell".', nullable: true)]
+        public ?FlowShopStepResponse $shop,
     ) {
     }
 
@@ -115,6 +119,7 @@ final readonly class FlowStepResponse
             $step instanceof RollStep => self::of($view, dice: $step->dice),
             $step instanceof CheckStep => self::of($view, check: $step->singleCheck(), checks: $step->isSet() ? $step->checks : []),
             $step instanceof ChoiceStep => self::of($view, options: array_map(FlowStepOptionResponse::of(...), $step->options)),
+            $step instanceof ShopStep => self::of($view, shop: $view->shop instanceof ShopView ? FlowShopStepResponse::fromView($view->shop) : throw new \LogicException(\sprintf('Shop step "%s" has no shop view.', $step->key))),
             $step instanceof PickStep => self::of($view, pick: $view->pick instanceof PickView ? FlowPickStepResponse::fromView($view->pick) : throw new \LogicException(\sprintf('Pick step "%s" has no pick view.', $step->key))),
             $step instanceof ConditionStep => throw new \LogicException(\sprintf('Condition step "%s" never waits: it cannot be the current step.', $step->key)),
             default => throw new \LogicException(\sprintf('No response for step %s.', $step::class)),
@@ -125,11 +130,11 @@ final readonly class FlowStepResponse
      * @param list<FlowStepOptionResponse> $options
      * @param list<string>                 $checks
      */
-    private static function of(FlowStepView $view, ?string $oracle = null, ?string $likelihood = null, ?string $table = null, ?string $dice = null, array $options = [], ?FlowPickStepResponse $pick = null, ?string $check = null, array $checks = []): self
+    private static function of(FlowStepView $view, ?string $oracle = null, ?string $likelihood = null, ?string $table = null, ?string $dice = null, array $options = [], ?FlowPickStepResponse $pick = null, ?string $check = null, array $checks = [], ?FlowShopStepResponse $shop = null): self
     {
         $step = $view->step;
         $checkView = $view->check;
 
-        return new self($step->key, $view->kind->value, $view->title, $view->prompt, $view->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options, $pick, array_map(FactSlotResponse::fromSlot(...), $view->fills), $check, $checks, $checkView?->difficulty, $checkView->difficultyFixed ?? false, array_map(static fn (PickedItem $character): ItemRefResponse => ItemRefResponse::of($character->id, $character->name), $checkView->characters ?? []), $step instanceof PromptStep ? $step->inspiration : [], $step instanceof PromptStep && $step->changesSheet(), $view->pending instanceof PendingCheck ? FlowStepPendingResponse::fromPending($view->pending) : null);
+        return new self($step->key, $view->kind->value, $view->title, $view->prompt, $view->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options, $pick, array_map(FactSlotResponse::fromSlot(...), $view->fills), $check, $checks, $checkView?->difficulty, $checkView->difficultyFixed ?? false, array_map(static fn (PickedItem $character): ItemRefResponse => ItemRefResponse::of($character->id, $character->name), $checkView->characters ?? []), $step instanceof PromptStep ? $step->inspiration : [], $step instanceof PromptStep && $step->changesSheet(), $view->pending instanceof PendingCheck ? FlowStepPendingResponse::fromPending($view->pending) : null, $shop);
     }
 }

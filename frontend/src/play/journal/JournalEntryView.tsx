@@ -61,6 +61,8 @@ function entryLabel(content: JournalEntry['content']) {
       return `Check ${content.checkLabel}`
     case 'sheet-change':
       return `Sheet ${content.characterName}`
+    case 'shop':
+      return `Shop ${content.characterName}`
     case 'flowOutcome':
       return 'Flow outcome'
   }
@@ -82,6 +84,7 @@ function entryIcon(content: JournalEntry['content']) {
     case 'pick':
       return <Users />
     case 'sheet-change':
+    case 'shop':
       return <ClipboardList />
     case 'flowOutcome':
       return <Flag />
@@ -146,6 +149,13 @@ function EntryContent({
       return <CheckView content={content} sheet={sheet} />
     case 'sheet-change':
       return <SheetChangeView content={content} sheet={sheet} />
+    case 'shop':
+      // Its lines land with play-items-economy slice 6.
+      return (
+        <p className="text-sm">
+          {content.characterName}: {content.before} → {content.after}
+        </p>
+      )
     case 'flowOutcome':
       return <FlowOutcomeView content={content} />
   }

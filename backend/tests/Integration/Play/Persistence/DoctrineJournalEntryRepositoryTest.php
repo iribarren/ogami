@@ -20,6 +20,7 @@ use App\Tests\Support\Play\JournalEntryRepositoryContract;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use App\Tests\Unit\Play\Domain\Journal\CheckPoolContentTest;
 use App\Tests\Unit\Play\Domain\Journal\CheckPushContentTest;
+use App\Tests\Unit\Play\Domain\Journal\ShopContentTest;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
@@ -339,6 +340,20 @@ final class DoctrineJournalEntryRepositoryTest extends KernelTestCase
     {
         $this->givenCampaign(self::CAMPAIGN);
         $entry = $this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00', CheckPoolContentTest::sneak());
+        $this->repository->add($entry);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($entry->id());
+
+        self::assertEquals($entry, $loaded);
+        self::assertSame($entry->content()->toArray(), $loaded?->content()->toArray());
+    }
+
+    #[Test]
+    public function aShopTransactionRoundTripsWithItsLines(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        $entry = $this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00', ShopContentTest::market());
         $this->repository->add($entry);
         $this->forgetLoaded();
 

@@ -313,7 +313,7 @@ final class FlowRunShopTest extends FlowRunTestCase
         $step = $campaign->activeFlowRunView($release)->step;
         self::assertInstanceOf(FlowStepView::class, $step);
 
-        return array_map(static fn (GearEntry $entry): string => $entry->key, $step->onSale ?? []);
+        return array_map(static fn (GearEntry $entry): string => $entry->key, $step->shop->onSale ?? []);
     }
 
     private function afterTitle(Campaign $campaign, GameSystemSnapshot $release): ?string

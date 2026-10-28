@@ -119,7 +119,7 @@ final class CampaignFlowRunApiTest extends WebTestCase
      */
     public static function currentSteps(): iterable
     {
-        $step = static fn (string $key, string $kind, string $title, array $fields = []): array => array_replace(['key' => $key, 'kind' => $kind, 'title' => $title, 'prompt' => null, 'tip' => null, 'mandatory' => false, 'oracle' => null, 'likelihood' => null, 'table' => null, 'dice' => null, 'options' => [], 'pick' => null, 'fills' => [], 'check' => null, 'checks' => [], 'difficulty' => null, 'difficultyFixed' => false, 'characters' => [], 'inspiration' => [], 'changesSheet' => false, 'pending' => null], $fields);
+        $step = static fn (string $key, string $kind, string $title, array $fields = []): array => array_replace(['key' => $key, 'kind' => $kind, 'title' => $title, 'prompt' => null, 'tip' => null, 'mandatory' => false, 'oracle' => null, 'likelihood' => null, 'table' => null, 'dice' => null, 'options' => [], 'pick' => null, 'fills' => [], 'check' => null, 'checks' => [], 'difficulty' => null, 'difficultyFixed' => false, 'characters' => [], 'inspiration' => [], 'changesSheet' => false, 'pending' => null, 'shop' => null], $fields);
 
         yield 'a prompt' => ['intro', 1, 'Setup: Push your luck', $step('intro', 'prompt', 'Who walks in?', ['prompt' => 'Describe the first person.', 'inspiration' => ['omens']])];
         yield 'a roll' => ['dice', 2, 'Setup: Read the omen', $step('dice', 'roll', 'Push your luck', ['dice' => '1d6'])];

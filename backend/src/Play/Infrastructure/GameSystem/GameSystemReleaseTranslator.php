@@ -57,12 +57,15 @@ use App\Play\Domain\GameSystem\Flow\TrackerEffect;
 use App\Play\Domain\GameSystem\Flow\TrackerOperation;
 use App\Play\Domain\GameSystem\FlowStep;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\GearEntry;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\Sheet\ConditionOption;
 use App\Play\Domain\GameSystem\Sheet\ConditionsField;
+use App\Play\Domain\GameSystem\Sheet\Currency;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
+use App\Play\Domain\GameSystem\Sheet\InventoryField;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
 use App\Play\Domain\GameSystem\Sheet\PointBudget;
@@ -136,7 +139,16 @@ final readonly class GameSystemReleaseTranslator
         'track' => ['max', 'startMax'],
         'derived' => ['formula'],
         'conditions' => ['options'],
+        'inventory' => ['capacity', 'maxStacks', 'categories'],
     ];
+
+    // The gear limits of the contract (ADR 0045).
+    private const int MAX_GEAR = 500;
+    private const int MAX_GEAR_NAME_LENGTH = 60;
+    private const int MAX_GEAR_COST = 1_000_000;
+    private const int MAX_GEAR_CATEGORY_LENGTH = 40;
+    private const int MAX_GEAR_DESCRIPTION_LENGTH = 500;
+    private const int MAX_CURRENCY_UNIT_LENGTH = 10;
 
     // The check limits of the contract (v2.schema.json), re-checked because a stored release is not trusted.
     private const int MAX_CHECKS = 50;
@@ -187,7 +199,6 @@ final readonly class GameSystemReleaseTranslator
     private function fromSchemaVersion2(PublishedReleaseView $view): GameSystemSnapshot
     {
         $content = $view->content;
-        $this->refuseUnplayed($view, $content, '', 'gear', 'a gear catalog is');
         $gameSystem = $this->object($view, $content['gameSystem'] ?? null, 'gameSystem');
         $oracles = $this->object($view, $content['oracles'] ?? null, 'oracles');
         $tables = $this->list($view, $oracles['tables'] ?? null, 'oracles.tables');
@@ -217,8 +228,10 @@ final readonly class GameSystemReleaseTranslator
         // Read first: a derived field of the sheet may read any Tracker of the release.
         $trackers = $this->trackers($view, $this->list($view, $content['trackers'] ?? null, 'trackers'));
         $trackerKeys = array_map(static fn (Tracker $tracker): string => $tracker->key, $trackers);
+        // The gear catalog, which the inventory fields of the sheet accept from.
+        $gear = $this->gear($view, $content['gear'] ?? null);
         // Then the sheet, which the modifier and the bands of a check read.
-        $sheet = $this->sheet($view, $content['sheet'] ?? null, $trackerKeys);
+        $sheet = $this->sheet($view, $content['sheet'] ?? null, $trackerKeys, $gear);
         $snapshot = new GameSystemSnapshot(
             $view->gameSystemKey,
             $this->string($view, $gameSystem['name'] ?? null, 'gameSystem.name'),
@@ -236,6 +249,7 @@ final readonly class GameSystemReleaseTranslator
             $this->credits($view, $gameSystem['credits'] ?? null),
             $sheet,
             $this->checks($view, $content['checks'] ?? [], $sheet, $trackerKeys),
+            $gear,
         );
         $this->assertTagsExist($view, $content, '', $snapshot);
 
@@ -448,6 +462,7 @@ final readonly class GameSystemReleaseTranslator
             $field instanceof TrackField => 'track',
             $field instanceof DerivedField => 'derived',
             $field instanceof TextField => 'text',
+            $field instanceof InventoryField => 'inventory',
             default => 'list',
         };
         $op = $effect['op'] ?? null;
@@ -957,14 +972,14 @@ final readonly class GameSystemReleaseTranslator
      * The character sheet template of a schema version 2 release (ADR 0022). Studio checks every
      * rule on publish; the stored content is not trusted.
      *
-     * @param list<string> $trackerKeys the Trackers of the release, which derived fields may read
+     * @param list<string>    $trackerKeys the Trackers of the release, which derived fields may read
+     * @param list<GearEntry> $gear        the gear catalog, which inventory fields accept from
      */
-    private function sheet(PublishedReleaseView $view, mixed $value, array $trackerKeys): SheetTemplate
+    private function sheet(PublishedReleaseView $view, mixed $value, array $trackerKeys, array $gear): SheetTemplate
     {
         $sheet = $this->object($view, $value ?? [], 'sheet');
-        $this->refuseUnplayed($view, $sheet, 'sheet', 'currency', 'a currency is');
         foreach (array_keys($sheet) as $name) {
-            if (!\in_array($name, ['fields', 'columns', 'groups', 'pointBudget', 'pointBudgets'], true)) {
+            if (!\in_array($name, ['fields', 'columns', 'groups', 'pointBudget', 'pointBudgets', 'currency'], true)) {
                 throw $this->invalid($view, 'sheet.'.$name, 'unknown property.');
             }
         }
@@ -977,7 +992,7 @@ final readonly class GameSystemReleaseTranslator
         $layout = $this->sheetLayout($view, $sheet);
         $fields = $paths = [];
         foreach ($list as $index => $raw) {
-            $field = $this->sheetField($view, $raw, $paths[] = $path = \sprintf('sheet.fields[%d]', $index));
+            $field = $this->sheetField($view, $raw, $paths[] = $path = \sprintf('sheet.fields[%d]', $index), $gear);
             $this->assertFieldFitsTheLayout($view, $layout, $field, \is_array($raw) && null !== ($raw['span'] ?? null), $path);
             if (isset($fields[$field->key])) {
                 throw $this->invalid($view, \sprintf('sheet.fields[%d].key', $index), \sprintf('duplicate field key "%s".', $field->key));
@@ -987,13 +1002,79 @@ final readonly class GameSystemReleaseTranslator
         }
 
         $this->assertDerivedFieldsReadable($view, $fields, array_combine(array_keys($fields), $paths), $trackerKeys);
+        $this->assertStartMaxReadable($view, $fields, array_combine(array_keys($fields), $paths));
 
         $budgets = $this->pointBudgets($view, $sheet);
+        $currency = $this->currency($view, $sheet['currency'] ?? null);
+        if ($currency instanceof Currency && !($fields[$currency->field] ?? null) instanceof NumberField) {
+            throw $this->invalid($view, 'sheet.currency.field', \sprintf('"%s" is not a number field.', $currency->field));
+        }
+
         try {
-            return new SheetTemplate(array_values($fields), $layout, $budgets);
+            return new SheetTemplate(array_values($fields), $layout, $budgets, $currency);
         } catch (\InvalidArgumentException $invalid) {
             throw $this->invalid($view, null !== ($sheet['pointBudgets'] ?? null) && [] !== $sheet['pointBudgets'] ? 'sheet.pointBudgets' : 'sheet.pointBudget', $invalid->getMessage());
         }
+    }
+
+    /**
+     * The sheet currency (ADR 0045): the number field money is kept in and the unit shown after
+     * amounts. SheetTemplate checks that the field is a number field.
+     */
+    private function currency(PublishedReleaseView $view, mixed $value): ?Currency
+    {
+        if (null === $value) {
+            return null;
+        }
+
+        $currency = $this->object($view, $value, 'sheet.currency');
+        $this->assertProperties($view, $currency, 'sheet.currency', ['field', 'unit']);
+        $unit = $this->optionalString($view, $currency['unit'] ?? null, 'sheet.currency.unit');
+        if (null !== $unit) {
+            $unit = $this->boundedString($view, $unit, 'sheet.currency.unit', self::MAX_CURRENCY_UNIT_LENGTH);
+        }
+
+        return new Currency($this->key($view, $currency['field'] ?? null, 'sheet.currency.field'), $unit);
+    }
+
+    /**
+     * The gear catalog (ADR 0045): up to 500 entries with unique keys and names, the name trimmed
+     * and ignoring case. Studio checks every rule on publish; the stored content is not trusted.
+     *
+     * @return list<GearEntry>
+     */
+    private function gear(PublishedReleaseView $view, mixed $value): array
+    {
+        $list = $this->list($view, $value ?? [], 'gear');
+        if (\count($list) > self::MAX_GEAR) {
+            throw $this->invalid($view, 'gear', \sprintf('at most %d gear entries.', self::MAX_GEAR));
+        }
+
+        $entries = $names = [];
+        foreach ($list as $index => $raw) {
+            $path = \sprintf('gear[%d]', $index);
+            $entry = $this->object($view, $raw, $path);
+            $this->assertProperties($view, $entry, $path, ['key', 'name', 'cost', 'slots', 'category', 'description']);
+            $name = $this->boundedString($view, $entry['name'] ?? null, $path.'.name', self::MAX_GEAR_NAME_LENGTH);
+            $folded = mb_strtolower(trim($name));
+            if (isset($names[$folded])) {
+                throw $this->invalid($view, $path.'.name', \sprintf('duplicate gear name "%s".', trim($name)));
+            }
+
+            $names[$folded] = true;
+            $category = $this->optionalString($view, $entry['category'] ?? null, $path.'.category');
+            $description = $this->optionalString($view, $entry['description'] ?? null, $path.'.description');
+            $entries[] = new GearEntry(
+                $this->key($view, $entry['key'] ?? null, $path.'.key'),
+                trim($name),
+                $this->requiredInt($view, $entry['cost'] ?? null, $path.'.cost', 0, self::MAX_GEAR_COST),
+                $this->optionalInt($view, $entry['slots'] ?? null, $path.'.slots', 0, GearEntry::MAX_SLOTS) ?? GearEntry::DEFAULT_SLOTS,
+                null === $category ? null : $this->boundedString($view, $category, $path.'.category', self::MAX_GEAR_CATEGORY_LENGTH),
+                null === $description ? null : $this->boundedString($view, $description, $path.'.description', self::MAX_GEAR_DESCRIPTION_LENGTH, false),
+            );
+        }
+
+        return $entries;
     }
 
     /**
@@ -1193,6 +1274,35 @@ final readonly class GameSystemReleaseTranslator
     }
 
     /**
+     * A track's start max reads number and derived fields only (an inventory, a text or a list is
+     * not a number): Studio checks this on publish; the stored content is not trusted.
+     *
+     * @param array<string, Field>  $fields by key
+     * @param array<string, string> $paths  the path of each field, by key
+     */
+    private function assertStartMaxReadable(PublishedReleaseView $view, array $fields, array $paths): void
+    {
+        foreach ($fields as $key => $field) {
+            if (!$field instanceof TrackField || !$field->startMax instanceof Formula) {
+                continue;
+            }
+
+            foreach ($field->startMax->references() as $reference) {
+                $target = $fields[$reference->key] ?? null;
+                $problem = match (true) {
+                    ReferenceKind::Field !== $reference->kind => 'a start max formula reads number and derived fields only',
+                    !$target instanceof Field => \sprintf('unknown field "%s"', $reference->key),
+                    !$target instanceof NumberField && !$target instanceof DerivedField => \sprintf('field "%s" is not a number or derived field, a start max formula reads number and derived fields only', $reference->key),
+                    default => null,
+                };
+                if (null !== $problem) {
+                    throw $this->invalid($view, $paths[$key].'.startMax.formula', \sprintf('{%s}: %s.', $reference->toString(), $problem));
+                }
+            }
+        }
+    }
+
+    /**
      * @param array<string, Field> $fields
      * @param list<string>         $trackerKeys
      */
@@ -1217,7 +1327,7 @@ final readonly class GameSystemReleaseTranslator
 
         return $field instanceof NumberField || $field instanceof TrackField || $field instanceof DerivedField || $field instanceof ConditionsField
             ? null
-            : \sprintf('field "%s" is a text or list field, a formula reads number, track and derived fields only', $reference->key);
+            : \sprintf('field "%s" is a text, list or inventory field, a formula reads number, track, conditions and derived fields only', $reference->key);
     }
 
     /**
@@ -1547,19 +1657,6 @@ final readonly class GameSystemReleaseTranslator
     }
 
     /**
-     * Refuses a part of ADR 0045 Studio publishes but Play does not play yet (play-items-economy
-     * slices 2 and 3), present even as null, so a release using it fails closed instead of playing without it.
-     *
-     * @param array<array-key, mixed> $object
-     */
-    private function refuseUnplayed(PublishedReleaseView $view, array $object, string $path, string $name, string $what): void
-    {
-        if (\array_key_exists($name, $object)) {
-            throw $this->invalid($view, '' === $path ? $name : $path.'.'.$name, $what.' not played yet (ADR 0045).');
-        }
-    }
-
-    /**
      * @param array<mixed> $object
      * @param list<string> $allowed
      */
@@ -1582,14 +1679,13 @@ final readonly class GameSystemReleaseTranslator
         return $key;
     }
 
-    private function sheetField(PublishedReleaseView $view, mixed $value, string $path): Field
+    /**
+     * @param list<GearEntry> $gear
+     */
+    private function sheetField(PublishedReleaseView $view, mixed $value, string $path, array $gear): Field
     {
         $field = $this->object($view, $value, $path);
         $type = $this->string($view, $field['type'] ?? null, $path.'.type');
-        if ('inventory' === $type) {
-            throw $this->invalid($view, $path.'.type', 'inventory fields are not played yet (ADR 0045).');
-        }
-
         if (!isset(self::FIELD_PROPERTIES[$type])) {
             throw $this->invalid($view, $path.'.type', \sprintf('unknown field type "%s".', $type));
         }
@@ -1624,8 +1720,39 @@ final readonly class GameSystemReleaseTranslator
             ),
             'derived' => new DerivedField(...$common, formula: $this->fieldFormula($view, $field['formula'] ?? null, $path.'.formula')),
             'conditions' => new ConditionsField(...$common, options: $this->conditionOptions($view, $field['options'] ?? null, $path.'.options')),
+            'inventory' => $this->inventoryField($view, $common, $field, $path, $gear),
             default => $this->trackField($view, $common, $field, $path),
         };
+    }
+
+    /**
+     * An inventory field (ADR 0045): its limits and the categories of gear it accepts.
+     *
+     * @param array{0: string, 1: string, 2: ?string, 3: ?string, span: int} $common key, label, hint, group, span
+     * @param array<mixed>                                                   $field
+     * @param list<GearEntry>                                                $gear
+     */
+    private function inventoryField(PublishedReleaseView $view, array $common, array $field, string $path, array $gear): InventoryField
+    {
+        $categories = null;
+        if (null !== ($field['categories'] ?? null)) {
+            $categories = [];
+            foreach ($this->list($view, $field['categories'], $path.'.categories') as $index => $category) {
+                $categories[] = $this->boundedString($view, $category, \sprintf('%s.categories[%d]', $path, $index), self::MAX_GEAR_CATEGORY_LENGTH);
+            }
+        }
+
+        try {
+            return new InventoryField(
+                ...$common,
+                capacity: $this->optionalInt($view, $field['capacity'] ?? null, $path.'.capacity', 1, InventoryField::MAX_CAPACITY),
+                maxStacks: $this->optionalInt($view, $field['maxStacks'] ?? null, $path.'.maxStacks', 1, InventoryField::MAX_STACKS) ?? InventoryField::DEFAULT_MAX_STACKS,
+                categories: $categories,
+                catalog: $gear,
+            );
+        } catch (\InvalidArgumentException $invalid) {
+            throw $this->invalid($view, $path, $invalid->getMessage());
+        }
     }
 
     /**

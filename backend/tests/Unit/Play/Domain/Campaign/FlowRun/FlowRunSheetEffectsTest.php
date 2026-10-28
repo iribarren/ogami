@@ -316,7 +316,7 @@ final class FlowRunSheetEffectsTest extends FlowRunTestCase
     }
 
     /**
-     * @return int|string|list<string>|array{current: int, max: int}|null
+     * @return int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}|null
      */
     private function value(Campaign $campaign, string $character, string $field): int|string|array|null
     {

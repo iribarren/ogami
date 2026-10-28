@@ -16,10 +16,10 @@ use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
 final readonly class CharacterView
 {
     /**
-     * @param list<string>                                                         $tags     release Tag keys
-     * @param list<string>                                                         $freeTags
-     * @param array<string, int|string|list<string>|array{current: int, max: int}> $values   one per stored sheet field, in field order
-     * @param array<string, ?int>                                                  $derived  one per derived field, in field order
+     * @param list<string>                                                                                         $tags     release Tag keys
+     * @param list<string>                                                                                         $freeTags
+     * @param array<string, int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}> $values   one per stored sheet field, in field order
+     * @param array<string, ?int>                                                                                  $derived  one per derived field, in field order
      */
     public function __construct(
         public string $id,

@@ -38,6 +38,9 @@ final readonly class GameSystemSnapshot
     /** @var array<string, Check> */
     private array $checks;
 
+    /** @var array<string, GearEntry> */
+    private array $gear;
+
     /**
      * @param ?OracleTableSet                         $oracleTables      null when the release has no oracle tables
      * @param list<SnapshotLikelihoodOracle>          $likelihoodOracles in definition order, unique keys
@@ -52,8 +55,9 @@ final readonly class GameSystemSnapshot
      * @param ?Credits                                $credits           the notice, license and link the release carries, null without
      * @param ?SheetTemplate                          $sheet             the character sheet, null for an empty one
      * @param list<Check>                             $checks            in definition order, unique keys
+     * @param list<GearEntry>                         $gear              the gear catalog (ADR 0045) in definition order, unique keys
      *
-     * @throws InvalidGameSystemRelease when two likelihood oracles, flow steps, trackers, Scene Types, flows, tags or checks share a key,
+     * @throws InvalidGameSystemRelease when two likelihood oracles, flow steps, trackers, Scene Types, flows, tags, checks or gear entries share a key,
      *                                  or two flows are the default
      */
     public function __construct(
@@ -73,6 +77,7 @@ final readonly class GameSystemSnapshot
         private ?Credits $credits = null,
         private ?SheetTemplate $sheet = null,
         array $checks = [],
+        array $gear = [],
     ) {
         $byKey = [];
         foreach ($likelihoodOracles as $index => $oracle) {
@@ -92,6 +97,7 @@ final readonly class GameSystemSnapshot
         $this->flows = $this->byKey($flows, 'flows');
         $this->tags = $this->byKey($tags, 'tags');
         $this->checks = $this->byKey($checks, 'checks');
+        $this->gear = $this->byKey($gear, 'gear');
         $defaults = array_keys(array_filter($flows, static fn (Flow $flow): bool => $flow->default));
         if (\count($defaults) > 1) {
             throw InvalidGameSystemRelease::of($gameSystemKey, $releaseVersion, \sprintf('flows[%d].default', $defaults[1]), 'only one flow may be the default.');
@@ -242,6 +248,21 @@ final readonly class GameSystemSnapshot
         return array_values($this->checks);
     }
 
+    /**
+     * The gear catalog (ADR 0045); empty for a release without one.
+     *
+     * @return list<GearEntry> in definition order
+     */
+    public function gear(): array
+    {
+        return array_values($this->gear);
+    }
+
+    public function gearEntry(string $key): ?GearEntry
+    {
+        return $this->gear[$key] ?? null;
+    }
+
     public function check(string $key): ?Check
     {
         return $this->checks[$key] ?? null;
@@ -336,7 +357,7 @@ final readonly class GameSystemSnapshot
     }
 
     /**
-     * @template T of Tracker|SceneType|Flow|Tag|Check
+     * @template T of Tracker|SceneType|Flow|Tag|Check|GearEntry
      *
      * @param list<T> $parts
      *

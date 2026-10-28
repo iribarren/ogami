@@ -38,9 +38,11 @@ use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\Flow\StepList;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\GearEntry;
 use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\Sheet\ConditionOption;
 use App\Play\Domain\GameSystem\Sheet\ConditionsField;
+use App\Play\Domain\GameSystem\Sheet\InventoryField;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
 use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
@@ -1071,6 +1073,52 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
     }
 
     #[Test]
+    public function theStacksOfAnInventoryAreSavedAndReadBackAsTheyWereGiven(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $release = $this->releaseWithInventory();
+        $campaign = Campaign::create($id, self::OWNER, 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', [], [], ['pack' => [['quantity' => 2, 'gear' => 'pistol'], ['slots' => 1, 'name' => ' Rope ', 'quantity' => 1]]], $release);
+        $campaign->addCharacter(CharacterId::fromString('c-2'), 'Mira', [], [], [], $release);
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertSame([['gear' => 'pistol', 'quantity' => 2], ['name' => 'Rope', 'quantity' => 1, 'slots' => 1]], $loaded?->character(CharacterId::fromString('c-1'))?->values()['pack']);
+        self::assertSame([], $loaded->character(CharacterId::fromString('c-2'))?->values()['pack']);
+        /** @var array{values: array{pack: list<array<string, int|string>>}} $stored */
+        $stored = $this->storedList($id->toString(), 'characters')[0];
+        // JSONB keeps the keys of an object in its own order; the domain reads them back in the canonical one.
+        self::assertEquals([['gear' => 'pistol', 'quantity' => 2], ['name' => 'Rope', 'quantity' => 1, 'slots' => 1]], $stored['values']['pack']);
+
+        $loaded->editCharacter(CharacterId::fromString('c-2'), 'Mira', [], [], ['pack' => [['gear' => 'pistol', 'quantity' => 1]]], $release);
+        $this->repository->save($loaded);
+        $this->forgetLoaded();
+
+        self::assertEquals($loaded, $this->repository->ofId($id));
+    }
+
+    #[Test]
+    public function aCharacterStoredBeforeInventoriesExistedReadsUnchanged(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaign($id->toString(), self::OWNER, '2026-10-06'));
+        $legacy = [['id' => 'c-1', 'name' => 'Vi', 'tags' => ['ally'], 'freeTags' => ['Fixer'], 'values' => ['role' => 'Solo', 'reflexes' => 7, 'hp' => ['current' => 12, 'max' => 40], 'gear' => ['Knife', 'Pistol'], 'wounds' => ['shaken']], 'promotedFrom' => null]];
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET characters = ? WHERE id = ?', [json_encode($legacy, \JSON_THROW_ON_ERROR), $id->toString()]);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertNotNull($loaded);
+        self::assertEquals($legacy[0]['values'], $loaded->character(CharacterId::fromString('c-1'))?->values());
+        $this->repository->save($loaded);
+        $this->forgetLoaded();
+        self::assertEquals($legacy[0]['values'], $this->repository->ofId($id)?->character(CharacterId::fromString('c-1'))?->values());
+    }
+
+    #[Test]
     public function aRowStoredBeforeCharactersExistedReadsWithNoCharacters(): void
     {
         $connection = $this->entityManager->getConnection();
@@ -1229,6 +1277,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'character values not an object' => ['characters', $character(['values' => 'many']), 'Stored campaign characters: "values" must be an object.'];
         yield 'character value of no field type' => ['characters', $character(['values' => ['luck' => 1.5]]), 'Field "luck" holds a value of no field type.'];
         yield 'character track above its max' => ['characters', $character(['values' => ['hp' => ['current' => 5, 'max' => 3]]]), 'The current of field "hp" must be 0 to 3, got 5.'];
+        yield 'character inventory with a quantity of zero' => ['characters', $character(['values' => ['pack' => [['gear' => 'pistol', 'quantity' => 0]]]]), 'The quantity of a stack of field "pack" must be an integer from 1 to 9999.'];
         yield 'character promoted from a blank NPC id' => ['characters', $character(['promotedFrom' => ' ']), 'An NPC id must not be blank.'];
         yield 'character promoted from a non-string' => ['characters', $character(['promotedFrom' => 4]), 'Stored campaign characters: "promotedFrom" must be a string.'];
         yield 'character duplicate id' => ['characters', json_encode([$characterRow([]), $characterRow(['name' => 'Mira'])], \JSON_THROW_ON_ERROR), 'Stored campaign characters: id "c-1" is listed twice.'];
@@ -1330,6 +1379,15 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
             new ListField('gear', 'Gear'),
             new ConditionsField('wounds', 'Wounds', options: [new ConditionOption('hurt', 'Hurt'), new ConditionOption('shaken', 'Shaken')]),
         ]));
+    }
+
+    private function releaseWithInventory(): GameSystemSnapshot
+    {
+        $gear = [new GearEntry('pistol', 'Pistol', 50, 1, 'Gear'), new GearEntry('optic', 'Optic', 500, 0, 'Chrome')];
+
+        return new GameSystemSnapshot('heist', 'Heist', 1, null, [], [], sheet: new SheetTemplate([
+            new InventoryField('pack', 'Pack', capacity: 5, categories: ['Gear'], catalog: $gear),
+        ]), gear: $gear);
     }
 
     /**

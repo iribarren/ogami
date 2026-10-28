@@ -31,7 +31,7 @@ final class CharacterCreation
     /**
      * @param array<mixed> $given field key to value
      *
-     * @return array<string, int|string|list<string>|array{current: int, max: int}> one value per stored field of the sheet
+     * @return array<string, int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}> one value per stored field of the sheet
      *
      * @throws InvalidCharacter when the method does not fit the sheet, a value is set by the server, breaks a budget or does not fit its field
      */
@@ -59,7 +59,7 @@ final class CharacterCreation
      * The values of an NPC promoted to a Character: it has none of its own, so the server rolls
      * every dice default, whatever the budgets.
      *
-     * @return array<string, int|string|list<string>|array{current: int, max: int}>
+     * @return array<string, int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}>
      */
     public static function promoted(SheetTemplate $sheet, ?RandomNumberGenerator $random): array
     {
@@ -139,7 +139,7 @@ final class CharacterCreation
      * @param array<mixed> $given
      * @param list<string> $spent the keys of the fields the player spends points on, which are not rolled
      *
-     * @return array<string, int|string|list<string>|array{current: int, max: int}>
+     * @return array<string, int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}>
      */
     private static function create(SheetTemplate $sheet, array $given, array $spent, ?RandomNumberGenerator $random): array
     {

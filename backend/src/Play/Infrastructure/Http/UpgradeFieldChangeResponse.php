@@ -14,8 +14,8 @@ use OpenApi\Attributes as OA;
 final readonly class UpgradeFieldChangeResponse
 {
     /**
-     * @param int|string|list<string>|array{current: int, max: int}|null $before
-     * @param int|string|list<string>|array{current: int, max: int}|null $after
+     * @param int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}|null $before
+     * @param int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}|null $after
      */
     private function __construct(
         #[OA\Property(example: 'reflexes')]

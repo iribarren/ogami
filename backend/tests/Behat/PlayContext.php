@@ -983,7 +983,12 @@ final class PlayContext implements Context
     {
         Assert::assertSame(
             array_map(static fn (array $row): array => [$row['name'], (int) $row['reflexes'], $row['hit points']], $table->getColumnsHash()),
-            array_map(static fn (CharacterView $character): array => [$character->name, $character->values['reflexes'] ?? null, \sprintf('%d/%d', $character->values['hp']['current'] ?? -1, $character->values['hp']['max'] ?? -1)], $this->myCampaign()->characters),
+            array_map(static function (CharacterView $character): array {
+                /** @var array{current?: int, max?: int} $hp */
+                $hp = $character->values['hp'] ?? [];
+
+                return [$character->name, $character->values['reflexes'] ?? null, \sprintf('%d/%d', $hp['current'] ?? -1, $hp['max'] ?? -1)];
+            }, $this->myCampaign()->characters),
         );
     }
 

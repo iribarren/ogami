@@ -10,8 +10,8 @@ namespace App\Play\Domain\Campaign\Upgrade;
 final readonly class FittedValues
 {
     /**
-     * @param array<string, int|string|list<string>|array{current: int, max: int}> $values  one per stored field of the target sheet, in sheet order
-     * @param list<FieldChange>                                                    $changes
+     * @param array<string, int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}> $values  one per stored field of the target sheet, in sheet order
+     * @param list<FieldChange>                                                                                    $changes
      */
     public function __construct(
         public array $values,

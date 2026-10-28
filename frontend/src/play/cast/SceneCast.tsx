@@ -5,6 +5,8 @@ import { NativeSelect } from '@/shared/ui/native-select'
 
 import type { Campaign } from '../campaigns/useCampaigns'
 import { CharacterSheetDialog } from '../characters/CharacterSheetDialog'
+import type { SheetEconomy } from '@/shared/sheet/types'
+
 import type { SheetField } from '../characters/useCharacters'
 import { useEditSceneCast } from './useSceneCast'
 
@@ -22,6 +24,8 @@ interface SceneCastProps {
   editable: boolean
   /** The release's sheet: with it, each Character in the cast has a "View sheet" button. */
   sheet?: SheetField[]
+  /** The release's gear catalog and currency, for the sheet's stacks and money. */
+  economy?: SheetEconomy
 }
 
 /** "View sheet" for a member that is a Character of the campaign; nothing for an NPC. */
@@ -29,14 +33,16 @@ function MemberSheet({
   value,
   characters,
   sheet,
+  economy,
 }: {
   value: string
   characters: Campaign['characters']
   sheet: SheetField[]
+  economy: SheetEconomy | undefined
 }) {
   const character = characters.find(({ id }) => `character:${id}` === value)
   return character === undefined ? null : (
-    <CharacterSheetDialog character={character} sheet={sheet} />
+    <CharacterSheetDialog character={character} sheet={sheet} economy={economy} />
   )
 }
 
@@ -53,6 +59,7 @@ export function SceneCast({
   scene,
   editable,
   sheet,
+  economy,
 }: SceneCastProps) {
   const [editing, setEditing] = useState(false)
   const edit = useEditSceneCast(campaignId)
@@ -114,7 +121,12 @@ export function SceneCast({
               <li key={value} className="flex items-center gap-1">
                 <span className="font-medium">{name}</span>
                 {sheet !== undefined && (
-                  <MemberSheet value={value} characters={characters} sheet={sheet} />
+                  <MemberSheet
+                    value={value}
+                    characters={characters}
+                    sheet={sheet}
+                    economy={economy}
+                  />
                 )}
                 {editing && (
                   <Button

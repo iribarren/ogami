@@ -1,11 +1,11 @@
-import type { SheetFieldView, SheetStack, SheetValue } from './types'
+import type { SheetEconomy, SheetFieldView, SheetGear, SheetStack, SheetValue } from './types'
 
 /**
  * What a field holds while it is edited: text as typed, so a number can be empty for a moment
  * (the browser then refuses the form), the rows of a list, the marked option keys of a conditions
- * field, an inventory's stacks (kept as stored until its control lands), a track's current and max.
+ * field, an inventory's stacks, a track's current and max.
  */
-export type Draft = string | string[] | { current: string; max: string }
+export type Draft = string | string[] | SheetStack[] | { current: string; max: string }
 
 /**
  * The fields a Character stores a value for: every field but the derived ones, which the API
@@ -42,7 +42,7 @@ export function toDraft(field: SheetFieldView, stored: SheetValue | undefined): 
     return String(value)
   }
   if (field.type === 'inventory') {
-    return JSON.stringify(value)
+    return stacksOf(value)
   }
   if (typeof value === 'object' && !Array.isArray(value)) {
     return { current: String(value.current), max: String(value.max) }
@@ -61,29 +61,60 @@ function isStack(item: unknown): item is SheetStack {
   return 'gear' in item || ('name' in item && 'slots' in item)
 }
 
-/**
- * The stacks of an inventory travel through its draft as JSON until the control of play-items-economy
- * slice 4 edits them: an edit sends the stored stacks as they are.
- */
-function parseStacks(draft: string): SheetStack[] {
-  try {
-    const parsed: unknown = JSON.parse(draft)
-    return Array.isArray(parsed) ? parsed.filter(isStack) : []
-  } catch {
-    return []
-  }
+/** The well-formed stacks of a stored value or a draft; anything else (a malformed stored value) reads as none. */
+export function stacksOf(value: unknown): SheetStack[] {
+  return Array.isArray(value) ? value.filter(isStack) : []
+}
+
+/** The catalog entry a stack names; null for a free stack or gear the catalog no longer has. */
+export function stackGear(stack: SheetStack, gear: SheetGear[]): SheetGear | null {
+  return 'gear' in stack ? (gear.find(({ key }) => key === stack.gear) ?? null) : null
+}
+
+/** What a stack is called: a free stack's own name, else the catalog name (the key when the catalog lacks it). */
+export function stackName(stack: SheetStack, gear: SheetGear[]): string {
+  return 'name' in stack ? stack.name : (stackGear(stack, gear)?.name ?? stack.gear)
+}
+
+/** The slots all the units of a stack take; gear missing from the catalog counts for none. */
+export function stackSlots(stack: SheetStack, gear: SheetGear[]): number {
+  const perUnit = 'slots' in stack ? stack.slots : (stackGear(stack, gear)?.slots ?? 0)
+  return perUnit * stack.quantity
+}
+
+export function slotsUsed(stacks: SheetStack[], gear: SheetGear[]): number {
+  return stacks.reduce((total, stack) => total + stackSlots(stack, gear), 0)
+}
+
+/** "Name" for one unit, "Name ×n" for more. */
+export function stackText(stack: SheetStack, gear: SheetGear[]): string {
+  const name = stackName(stack, gear)
+  return stack.quantity > 1 ? `${name} ×${String(stack.quantity)}` : name
+}
+
+/** "12 eb" with the currency's unit; the bare amount for any other field or a currency without one. */
+export function withUnit(
+  field: SheetFieldView,
+  amount: string,
+  economy: SheetEconomy | undefined,
+): string {
+  const unit = economy?.currency?.field === field.key ? economy.currency.unit : null
+  return unit === null ? amount : `${amount} ${unit}`
 }
 
 /** The value to send for a draft; blank list rows are dropped. */
 export function fromDraft(field: SheetFieldView, draft: Draft): SheetValue {
   if (field.type === 'inventory') {
-    return typeof draft === 'string' ? parseStacks(draft) : []
+    return stacksOf(draft)
   }
   if (typeof draft === 'string') {
     return field.type === 'number' ? Number(draft) : draft
   }
   if (Array.isArray(draft)) {
-    return draft.map((item) => item.trim()).filter((item) => item !== '')
+    return draft
+      .filter(isText)
+      .map((item) => item.trim())
+      .filter((item) => item !== '')
   }
   return { current: Number(draft.current), max: Number(draft.max) }
 }
@@ -125,6 +156,7 @@ export function summarize(
   field: SheetFieldView,
   stored: SheetValue | undefined,
   derived: Record<string, number | null> = {},
+  economy?: SheetEconomy,
 ): string | null {
   if (field.type === 'derived') {
     // Computed by the server, never here.
@@ -135,7 +167,8 @@ export function summarize(
     return value === '' ? null : `${field.label}: ${cut(value)}`
   }
   if (field.type === 'inventory' && Array.isArray(value)) {
-    return `${field.label}: ${String(value.length)}`
+    const names = stacksOf(value).map((stack) => stackText(stack, economy?.gear ?? []))
+    return `${field.label}: ${names.length === 0 ? '0' : summarizeItems(names)}`
   }
   if (field.type === 'conditions' && Array.isArray(value)) {
     const labels = markedLabels(field, value.filter(isText))
@@ -148,5 +181,5 @@ export function summarize(
   if (typeof value === 'object') {
     return `${field.label}: ${String(value.current)}/${String(value.max)}`
   }
-  return `${field.label}: ${String(value)}`
+  return `${field.label}: ${withUnit(field, String(value), economy)}`
 }

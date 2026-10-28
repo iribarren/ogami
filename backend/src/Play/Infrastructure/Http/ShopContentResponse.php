@@ -21,7 +21,7 @@ final readonly class ShopContentResponse
     private function __construct(
         #[OA\Property(enum: [ShopContent::KIND])]
         public string $kind,
-        #[OA\Property(description: 'The Character who traded.', format: 'uuid')]
+        #[OA\Property(description: 'The Character who traded.')]
         public string $characterId,
         #[OA\Property(description: 'The name of the Character when the step completed.', example: 'Vi')]
         public string $characterName,

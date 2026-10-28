@@ -442,6 +442,16 @@ export const lostMineUpgrade: ReleaseUpgrade = {
             after: '',
           },
           { fieldKey: 'fame', fieldName: 'Fame', kind: 'removed', before: 3, after: null },
+          {
+            fieldKey: 'pack',
+            fieldName: 'Pack',
+            kind: 'converted',
+            before: ['Pistol', 'Rope'],
+            after: [
+              { gear: 'pistol', quantity: 1 },
+              { name: 'Rope', quantity: 2, slots: 0 },
+            ],
+          },
         ],
         droppedTags: ['thief'],
       },

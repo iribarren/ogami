@@ -1,5 +1,13 @@
-import { fromDraft, markedLabels, summarize, toDraft, valueOrDefault } from './sheetValues'
-import type { SheetFieldView } from './types'
+import {
+  fromDraft,
+  markedLabels,
+  slotsUsed,
+  stackText,
+  summarize,
+  toDraft,
+  valueOrDefault,
+} from './sheetValues'
+import type { SheetEconomy, SheetFieldView, SheetGear, SheetStack, SheetValue } from './types'
 
 const gear: SheetFieldView = {
   key: 'gear',
@@ -89,25 +97,50 @@ describe('a conditions field', () => {
 
 describe('an inventory field (ADR 0045)', () => {
   const pack: SheetFieldView = { ...gear, key: 'pack', label: 'Pack', type: 'inventory' }
-  const stacks = [
+  const catalog: SheetGear[] = [
+    { key: 'used-pistol', name: 'Used pistol', slots: 1, category: 'Weapons' },
+    { key: 'katana', name: 'Katana', slots: 3, category: 'Weapons' },
+  ]
+  const economy: SheetEconomy = { gear: catalog, currency: { field: 'eddies', unit: 'eb' } }
+  const stacks: SheetStack[] = [
     { gear: 'used-pistol', quantity: 2 },
     { name: 'Rope', quantity: 1, slots: 2 },
   ]
 
-  it('starts empty and sends the stored stacks back as they are', () => {
+  it('starts empty and sends the stacks back as they are', () => {
     expect(valueOrDefault(pack, undefined)).toEqual([])
     expect(fromDraft(pack, toDraft(pack, undefined))).toEqual([])
+    expect(toDraft(pack, stacks)).toEqual(stacks)
     expect(fromDraft(pack, toDraft(pack, stacks))).toEqual(stacks)
   })
 
-  it('drops a draft that is not stacks instead of sending it', () => {
-    expect(fromDraft(pack, '[{"gear":4}]')).toEqual([])
-    expect(fromDraft(pack, 'not json')).toEqual([])
+  it('reads a malformed stored value as no stacks, and keeps only the well-formed ones', () => {
+    expect(toDraft(pack, [{ gear: 4 }, 'Rope'] as unknown as SheetValue)).toEqual([])
+    expect(toDraft(pack, [...stacks, { quantity: 1 }] as unknown as SheetValue)).toEqual(stacks)
+    expect(fromDraft(pack, '[{"gear":"x","quantity":1}]')).toEqual([])
     expect(fromDraft(pack, ['Rope'])).toEqual([])
   })
 
-  it('summarizes the number of stacks', () => {
-    expect(summarize(pack, stacks)).toBe('Pack: 2')
+  it('names stacks by the catalog, a free stack by itself and unknown gear by its key', () => {
+    expect(stackText({ gear: 'used-pistol', quantity: 2 }, catalog)).toBe('Used pistol ×2')
+    expect(stackText({ name: 'Rope', quantity: 1, slots: 2 }, catalog)).toBe('Rope')
+    expect(stackText({ gear: 'gone', quantity: 1 }, catalog)).toBe('gone')
+  })
+
+  it('adds up the slots of every unit, free stacks and catalog gear alike', () => {
+    expect(slotsUsed(stacks, catalog)).toBe(4)
+    expect(slotsUsed([{ gear: 'gone', quantity: 5 }], catalog)).toBe(0)
+  })
+
+  it('summarizes the stacks by name like a list, and 0 when empty', () => {
+    expect(summarize(pack, stacks, {}, economy)).toBe('Pack: Used pistol ×2, Rope')
     expect(summarize(pack, undefined)).toBe('Pack: 0')
+  })
+
+  it('puts the currency unit after the money of the currency field only', () => {
+    const eddies: SheetFieldView = { ...gear, key: 'eddies', label: 'Eddies', type: 'number' }
+    expect(summarize(eddies, 120, {}, economy)).toBe('Eddies: 120 eb')
+    expect(summarize({ ...eddies, key: 'luck', label: 'Luck' }, 3, {}, economy)).toBe('Luck: 3')
+    expect(summarize(eddies, 120)).toBe('Eddies: 120')
   })
 })

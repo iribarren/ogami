@@ -26,6 +26,7 @@ use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\GearEntry;
 use App\Play\Domain\GameSystem\Sheet\ConditionOption;
 use App\Play\Domain\GameSystem\Sheet\ConditionsField;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
@@ -84,9 +85,24 @@ final class ReleaseUpgradePlanTest extends TestCase
         yield 'a conditions field that became a list is reset' => [self::conditions('hurt'), new ListField('f', 'F'), ['hurt'], FieldChangeKind::Reset, []];
         yield 'a number that became a conditions field is reset' => [new NumberField('f', 'F'), self::conditions('hurt'), 2, FieldChangeKind::Reset, []];
         yield 'a kept inventory with valid stacks is kept' => [self::pack(6), self::pack(6), [['gear' => 'pistol', 'quantity' => 2]], null, [['gear' => 'pistol', 'quantity' => 2]]];
-        yield 'an inventory whose stacks no longer fit the lowered capacity is reset' => [self::pack(6), self::pack(1), [['gear' => 'pistol', 'quantity' => 3]], FieldChangeKind::Reset, []];
-        yield 'a list that became an inventory is reset' => [new ListField('f', 'F'), self::pack(6), ['pistol'], FieldChangeKind::Reset, []];
-        yield 'an inventory that became a list is reset' => [self::pack(6), new ListField('f', 'F'), [['gear' => 'pistol', 'quantity' => 1]], FieldChangeKind::Reset, []];
+        yield 'an inventory whose stacks no longer fit the lowered capacity drops them from the end' => [self::pack(6), self::pack(1), [['gear' => 'pistol', 'quantity' => 3]], FieldChangeKind::Trimmed, []];
+        yield 'an inventory keeps the stacks within the lowered capacity' => [self::pack(6), self::pack(3), [['gear' => 'pistol', 'quantity' => 2], ['gear' => 'jacket', 'quantity' => 2]], FieldChangeKind::Trimmed, [['gear' => 'pistol', 'quantity' => 2]]];
+        yield 'an inventory over the lowered stack limit drops the last stacks' => [self::pack(6), new InventoryField('f', 'F', maxStacks: 1, catalog: InventoryFieldTest::catalog()), [['gear' => 'pistol', 'quantity' => 1], ['gear' => 'kibble', 'quantity' => 1]], FieldChangeKind::Trimmed, [['gear' => 'pistol', 'quantity' => 1]]];
+        yield 'an inventory whose gear is gone from the catalog keeps it as a free stack' => [self::pack(6), new InventoryField('f', 'F', capacity: 6, catalog: [new GearEntry('kibble', 'Kibble', 10, 1, 'Food')]), [['gear' => 'jacket', 'quantity' => 2], ['gear' => 'kibble', 'quantity' => 1]], FieldChangeKind::Converted, [['name' => 'Jacket', 'quantity' => 2, 'slots' => 2], ['gear' => 'kibble', 'quantity' => 1]]];
+        yield 'an inventory whose gear the categories no longer accept keeps it as a free stack' => [self::pack(6), new InventoryField('f', 'F', categories: ['Food'], catalog: InventoryFieldTest::catalog()), [['gear' => 'optic', 'quantity' => 1]], FieldChangeKind::Converted, [['name' => 'Cyberoptic', 'quantity' => 1, 'slots' => 0]]];
+        yield 'a free stack of an inventory is kept' => [self::pack(6), self::pack(6), [['name' => 'Rope', 'quantity' => 2, 'slots' => 1]], null, [['name' => 'Rope', 'quantity' => 2, 'slots' => 1]]];
+        yield 'a converted stack that still does not fit is dropped and the change stays converted' => [self::pack(6), new InventoryField('f', 'F', capacity: 1, categories: ['Food'], catalog: InventoryFieldTest::catalog()), [['gear' => 'pistol', 'quantity' => 1], ['gear' => 'kibble', 'quantity' => 1]], FieldChangeKind::Converted, [['name' => 'Pistol', 'quantity' => 1, 'slots' => 1]]];
+        yield 'a list that became an inventory matches names ignoring case' => [new ListField('f', 'F'), self::pack(6), ['PISTOL', 'jacket'], FieldChangeKind::Converted, [['gear' => 'pistol', 'quantity' => 1], ['gear' => 'jacket', 'quantity' => 1]]];
+        yield 'a list that became an inventory adds duplicates up' => [new ListField('f', 'F'), self::pack(6), ['Pistol', 'Kibble', 'pistol'], FieldChangeKind::Converted, [['gear' => 'pistol', 'quantity' => 2], ['gear' => 'kibble', 'quantity' => 1]]];
+        yield 'a list string with no catalog name becomes a free stack' => [new ListField('f', 'F'), self::pack(6), ['Rope'], FieldChangeKind::Converted, [['name' => 'Rope', 'quantity' => 1, 'slots' => 0]]];
+        yield 'a list string of a category the inventory does not accept becomes a free stack' => [new ListField('f', 'F'), new InventoryField('f', 'F', categories: ['Food'], catalog: InventoryFieldTest::catalog()), ['Pistol', 'Kibble'], FieldChangeKind::Converted, [['name' => 'Pistol', 'quantity' => 1, 'slots' => 0], ['gear' => 'kibble', 'quantity' => 1]]];
+        yield 'a list that became an inventory is fitted to its capacity' => [new ListField('f', 'F'), self::pack(1), ['Pistol', 'Jacket'], FieldChangeKind::Converted, [['gear' => 'pistol', 'quantity' => 1]]];
+        yield 'an empty list that became an inventory is kept empty' => [new ListField('f', 'F'), self::pack(6), [], null, []];
+        yield 'an inventory that became a list names its stacks with their quantity' => [self::pack(6), new ListField('f', 'F'), [['gear' => 'pistol', 'quantity' => 2], ['name' => 'Rope', 'quantity' => 1, 'slots' => 0], ['gear' => 'kibble', 'quantity' => 1]], FieldChangeKind::Converted, ['Pistol ×2', 'Rope', 'Kibble']];
+        yield 'an inventory that became a list is cut to its item limit from the end' => [self::pack(6), new ListField('f', 'F', maxItems: 1), [['gear' => 'pistol', 'quantity' => 2], ['gear' => 'kibble', 'quantity' => 1]], FieldChangeKind::Converted, ['Pistol ×2']];
+        yield 'an empty inventory that became a list is kept empty' => [self::pack(6), new ListField('f', 'F'), [], null, []];
+        yield 'an inventory that became a text is reset' => [self::pack(6), new TextField('f', 'F'), [['gear' => 'pistol', 'quantity' => 1]], FieldChangeKind::Reset, ''];
+        yield 'a conditions field that became an inventory is reset' => [self::conditions('hurt'), self::pack(6), ['hurt'], FieldChangeKind::Reset, []];
     }
 
     private static function pack(?int $capacity): InventoryField
@@ -132,7 +148,7 @@ final class ReleaseUpgradePlanTest extends TestCase
     #[DataProvider('fieldRules')]
     public function aStoredValueIsFittedToTheNewField(Field $old, Field $new, mixed $value, ?FieldChangeKind $kind, mixed $expected): void
     {
-        $pinned = UpgradeFixtures::release(1, [$old]);
+        $pinned = UpgradeFixtures::release(1, [$old], gear: InventoryFieldTest::catalog());
         $campaign = UpgradeFixtures::campaign($pinned);
         $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', [], [], ['f' => $value], $pinned);
 
@@ -148,6 +164,21 @@ final class ReleaseUpgradePlanTest extends TestCase
         $change = $plan->characters[0]->changes[0];
         self::assertSame(['f', 'F', $kind, $value, $expected], [$change->fieldKey, $change->fieldName, $change->kind, $change->before, $change->after]);
         self::assertCount(1, $plan->characters[0]->changes);
+    }
+
+    /**
+     * A Character stores no blank list item, so the conversion drops one only by reading it the safe
+     * way, pinned through the private fitting rule.
+     */
+    #[Test]
+    public function blankListStringsAreDroppedWhenItBecomesAnInventory(): void
+    {
+        $field = self::pack(6);
+        $planner = new ReleaseUpgradePlanner(UpgradeFixtures::release(1, [new ListField('f', 'F')]), UpgradeFixtures::release(2, [$field]));
+
+        $fitted = new \ReflectionMethod($planner, 'fitValue')->invoke($planner, $field, ['', '   ', 'Kibble']);
+
+        self::assertSame([[['gear' => 'kibble', 'quantity' => 1]], FieldChangeKind::Converted], $fitted);
     }
 
     #[Test]
@@ -177,6 +208,21 @@ final class ReleaseUpgradePlanTest extends TestCase
         self::assertSame($plan->fingerprint(), $campaign->planReleaseUpgrade($pinned, $target)->fingerprint());
         $campaign->upgradeRelease($pinned, $target, $plan->fingerprint(), new \DateTimeImmutable('2026-10-18T10:00:00+00:00'));
         self::assertSame(['f' => ['tired', 'hurt']], $campaign->character(CharacterId::fromString('c-1'))?->values());
+    }
+
+    #[Test]
+    public function applyingAListToInventoryUpgradeStoresTheConvertedStacksAndFingerprintsThem(): void
+    {
+        $pinned = UpgradeFixtures::release(1, [new ListField('f', 'F')], gear: InventoryFieldTest::catalog());
+        $target = UpgradeFixtures::release(2, [self::pack(6)]);
+        $campaign = UpgradeFixtures::campaign($pinned);
+        $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', [], [], ['f' => ['pistol', 'Rope']], $pinned);
+
+        $plan = $campaign->planReleaseUpgrade($pinned, $target);
+
+        self::assertSame($plan->fingerprint(), $campaign->planReleaseUpgrade($pinned, $target)->fingerprint());
+        $campaign->upgradeRelease($pinned, $target, $plan->fingerprint(), new \DateTimeImmutable('2026-10-18T10:00:00+00:00'));
+        self::assertSame(['f' => [['gear' => 'pistol', 'quantity' => 1], ['name' => 'Rope', 'quantity' => 1, 'slots' => 0]]], $campaign->character(CharacterId::fromString('c-1'))?->values());
     }
 
     #[Test]

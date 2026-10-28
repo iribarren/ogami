@@ -106,6 +106,7 @@ final class CampaignReleaseUpgradeApiTest extends WebTestCase
             [[['fieldKey' => 'gear', 'fieldName' => 'Gear', 'kind' => 'converted', 'before' => ['pistol', 'Rope'], 'after' => [['gear' => 'pistol', 'quantity' => 1], ['name' => 'Rope', 'quantity' => 1, 'slots' => 0]]]]],
             array_column($planned, 'changes'),
         );
+        self::assertSame([['key' => 'pistol', 'name' => 'Pistol', 'cost' => 50, 'slots' => 1, 'category' => null, 'description' => null]], $plan['gear'] ?? null);
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/release-upgrade', $id), ['toVersion' => 2, 'fingerprint' => $plan['fingerprint']]);
         self::assertResponseStatusCodeSame(200);
         self::assertSame([[['gear' => 'pistol', 'quantity' => 1], ['name' => 'Rope', 'quantity' => 1, 'slots' => 0]]], array_column(array_column((array) ($this->json()['characters'] ?? null), 'values'), 'gear'));

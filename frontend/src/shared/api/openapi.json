@@ -13761,6 +13761,7 @@
                     "trackers",
                     "facts",
                     "flow",
+                    "gear",
                     "fingerprint"
                 ],
                 "properties": {
@@ -13807,6 +13808,13 @@
                     },
                     "flow": {
                         "$ref": "#/components/schemas/UpgradeFlowChangeResponse"
+                    },
+                    "gear": {
+                        "description": "The gear catalog of the release the campaign moves to, in order (ADR 0045): names the gear a converted stack holds after the upgrade. Empty when that release has none.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GearEntryResponse"
+                        }
                     },
                     "fingerprint": {
                         "description": "Stands for exactly this change (SHA-256 of the plan). The upgrade is refused when the campaign or the releases changed since, so the confirmed change is the previewed one.",

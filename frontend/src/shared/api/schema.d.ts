@@ -3168,6 +3168,8 @@ export interface components {
             /** @description The slot facts that become free facts, in creation order. */
             facts: components["schemas"]["UpgradeUnslottedFactResponse"][];
             flow: components["schemas"]["UpgradeFlowChangeResponse"];
+            /** @description The gear catalog of the release the campaign moves to, in order (ADR 0045): names the gear a converted stack holds after the upgrade. Empty when that release has none. */
+            gear: components["schemas"]["GearEntryResponse"][];
             /**
              * @description Stands for exactly this change (SHA-256 of the plan). The upgrade is refused when the campaign or the releases changed since, so the confirmed change is the previewed one.
              * @example 9f2c4e0a7b1d3c5e8f6a0b2d4c6e8f1a3b5d7c9e0f2a4b6c8d0e1f3a5b7c9d1e

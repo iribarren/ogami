@@ -27,6 +27,6 @@ final readonly class ReleaseUpgradeResponse
 
     public static function fromPreview(ReleaseUpgradePreview $preview): self
     {
-        return new self($preview->upToDate(), $preview->currentVersion, $preview->plan instanceof ReleaseUpgradePlan ? ReleaseUpgradePlanResponse::fromPlan($preview->plan) : null);
+        return new self($preview->upToDate(), $preview->currentVersion, $preview->plan instanceof ReleaseUpgradePlan ? ReleaseUpgradePlanResponse::fromPlan($preview->plan, $preview->targetGear) : null);
     }
 }

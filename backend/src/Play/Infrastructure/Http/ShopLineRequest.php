@@ -16,7 +16,7 @@ final readonly class ShopLineRequest
     public function __construct(
         #[OA\Property(description: 'The key of the gear on sale to buy.', example: 'used-pistol')]
         public string $gear,
-        #[OA\Property(description: 'How many units, 1 to 9999.', example: 2, minimum: 1, maximum: 9999)]
+        #[OA\Property(description: 'How many units, 1 to 9999.', example: 2, maximum: 9999, minimum: 1)]
         public int $quantity,
     ) {
     }

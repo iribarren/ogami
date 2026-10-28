@@ -143,7 +143,7 @@ function UpgradePlan({ plan, gear }: { plan: ReleaseUpgradePlan; gear: SheetGear
               <span className="font-medium">{character.name}</span>
               <ul className="ml-4 list-disc">
                 {character.changes.map((change) => (
-                  <li key={change.fieldKey}>{fieldChangeText(change, gear)}</li>
+                  <li key={change.fieldKey}>{fieldChangeText(change, gear, plan.gear)}</li>
                 ))}
               </ul>
             </li>
@@ -205,7 +205,7 @@ type FieldValue = UpgradeFieldChange['before']
 
 /**
  * A stored value as a player reads it: a track as "current/max", a list joined, an inventory's
- * stacks as "Name ×n" (gear named by the catalog the campaign plays, else by its key), nothing as "none".
+ * stacks as "Name ×n" (gear named by the catalog it is read against, else by its key), nothing as "none".
  */
 function valueText(value: FieldValue, gear: SheetGear[]): string {
   if (value === null) {
@@ -222,11 +222,18 @@ function valueText(value: FieldValue, gear: SheetGear[]): string {
   return value === '' ? 'empty' : String(value)
 }
 
+/**
+ * Before values are named by the catalog the campaign plays and after values by the catalog of the
+ * release it moves to; a key is shown raw only when neither catalog has it.
+ */
 function fieldChangeText(
   { fieldName, kind, before, after }: UpgradeFieldChange,
-  gear: SheetGear[],
+  pinnedGear: SheetGear[],
+  targetGear: SheetGear[],
 ) {
-  return `${fieldName} (${kind}): ${valueText(before, gear)} → ${valueText(after, gear)}`
+  const beforeText = valueText(before, [...pinnedGear, ...targetGear])
+  const afterText = valueText(after, [...targetGear, ...pinnedGear])
+  return `${fieldName} (${kind}): ${beforeText} → ${afterText}`
 }
 
 function trackerChangeText({ name, kind, before, after }: UpgradeTrackerChange) {

@@ -98,7 +98,7 @@ describe('the release upgrade', () => {
     expect(within(characters).getByText('Motto (reset): Never again → empty')).toBeInTheDocument()
     expect(within(characters).getByText('Fame (removed): 3 → none')).toBeInTheDocument()
     expect(
-      within(characters).getByText('Pack (converted): Pistol, Rope → pistol, Rope ×2'),
+      within(characters).getByText('Pack (converted): Pistol, Rope → Pistol, Rope ×2'),
     ).toBeInTheDocument()
     const tags = within(dialog).getByRole('region', { name: 'Tags' })
     expect(tags).toHaveTextContent('Vi (Character) loses thief')

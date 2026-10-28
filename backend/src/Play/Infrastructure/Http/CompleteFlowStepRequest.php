@@ -22,7 +22,7 @@ use OpenApi\Attributes as OA;
 final readonly class CompleteFlowStepRequest
 {
     /**
-     * @param list<string>|null          $pickedIds
+     * @param list<string>|null              $pickedIds
      * @param list<ShopLineRequest>|null     $buy
      * @param list<ShopSellLineRequest>|null $sell
      */

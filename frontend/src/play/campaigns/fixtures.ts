@@ -473,6 +473,9 @@ export const lostMineUpgrade: ReleaseUpgrade = {
       },
     ],
     flow: { fromFlowKey: 'full', toFlowKey: 'quick', restarted: true },
+    gear: [
+      { key: 'pistol', name: 'Pistol', cost: 50, slots: 1, category: null, description: null },
+    ],
     fingerprint: 'a'.repeat(64),
   },
 }
@@ -490,6 +493,7 @@ export const trackerOnlyUpgrade: ReleaseUpgrade = {
     trackers: [{ trackerKey: 'heat', name: 'Heat', kind: 'clamped', before: 9, after: 6 }],
     facts: [],
     flow: { fromFlowKey: null, toFlowKey: null, restarted: false },
+    gear: [],
     fingerprint: 'b'.repeat(64),
   },
 }

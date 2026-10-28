@@ -18,7 +18,7 @@ final readonly class ShopSellLineRequest
         public string $field,
         #[OA\Property(description: 'The key of the catalog gear of the stack.', example: 'used-pistol')]
         public string $gear,
-        #[OA\Property(description: 'How many units, 1 to 9999, at most what the stack holds.', example: 1, minimum: 1, maximum: 9999)]
+        #[OA\Property(description: 'How many units, 1 to 9999, at most what the stack holds.', example: 1, maximum: 9999, minimum: 1)]
         public int $quantity,
     ) {
     }

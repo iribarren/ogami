@@ -23,6 +23,7 @@ use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\SheetChange;
 use App\Play\Domain\Campaign\FlowRun\StepKind;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
+use App\Play\Domain\Campaign\InsufficientFunds;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
 use App\Play\Domain\GameSystem\Check\CheckDifficultyNotDeclared;
 use App\Play\Domain\GameSystem\Check\CheckDifficultyOutOfRange;
@@ -93,6 +94,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
      * @throws FlowRunPositionMismatch         when the FlowRun waits for another step, or for none
      * @throws InvalidStepResult               when a field does not belong to the step's kind, a required one is missing, the text is blank, the option unknown, a picked id is no candidate, the Character is unknown or (check step) not in the scene, or a difficulty is sent for a step that fixes one
      * @throws FlowFormulaFailed               when a check step's difficulty formula, or an Effect's formula, cannot be evaluated
+     * @throws InsufficientFunds               when a choice option's, a prompt's or a character step's Effect would take the currency under its floor
      * @throws CheckDifficultyNotDeclared      when a difficulty is sent for a check that declares none
      * @throws CheckDifficultyOutOfRange       when the difficulty is outside the min..max of the check
      * @throws SituationalModifierOutOfRange   when the Situational modifier is outside -100..100

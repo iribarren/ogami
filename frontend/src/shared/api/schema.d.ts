@@ -3246,6 +3246,14 @@ export interface components {
              */
             checkKey?: string | null;
         };
+        /** @enum {string} */
+        FlowRunErrorCode: "insufficient_funds";
+        FlowRunErrorResponse: {
+            /** @description A human-readable message. */
+            error: string;
+            /** @description Which rule of the sheet the step broke; the client branches on this, never on the message. Absent for any other refusal. */
+            code?: components["schemas"]["FlowRunErrorCode"] | null;
+        };
         SkipFlowStepRequest: {
             /**
              * @description The step the player means to skip; refused when the FlowRun waits for another, or the step is mandatory.
@@ -8768,13 +8776,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character, or its check set is given no "checkKey" or one outside the set, or a single-check step is given one. Or a formula of a band bound, a tracker or sheet Effect value or a step's difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed. */
+            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character, or its check set is given no "checkKey" or one outside the set, or a single-check step is given one. Or a formula of a band bound, a tracker or sheet Effect value or a step's difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed. Or a choice option, a prompt or a character step spends more of the release's currency than the Character has (code "insufficient_funds"); nothing changed. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["FlowRunErrorResponse"];
                 };
             };
         };

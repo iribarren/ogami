@@ -11,6 +11,7 @@ use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Facts\Fact;
 use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\Hook;
+use App\Play\Domain\Campaign\InsufficientFunds;
 use App\Play\Domain\Campaign\InvalidSceneTitle;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
@@ -266,17 +267,19 @@ final readonly class FlowRunContext
 
     /**
      * Applies a sheet Effect to a Character (ADR 0027, 0041; see CampaignEffects): the Flow never
-     * asks for a pick, so a mark without an option cannot reach it.
+     * asks for a pick, so a mark without an option cannot reach it. A voluntary effect (a choice
+     * option's, a prompt's or a character step's) is refused when it would take the currency under its floor.
      *
      * @throws FlowFormulaFailed when the value's formula divides by zero, overflows or reads a value the sheet lacks
+     * @throws InsufficientFunds when a voluntary effect would take the currency under its floor
      */
-    public function applySheetEffect(SheetEffect $effect, string $characterId): SheetChange
+    public function applySheetEffect(SheetEffect $effect, string $characterId, bool $voluntary = false): SheetChange
     {
         if (SheetOperation::Mark === $effect->op && null === $effect->value) {
             throw new \LogicException(\sprintf('Marking conditions field "%s" needs an option.', $effect->field));
         }
 
-        return $this->effects()->applySheetEffect($effect, $characterId);
+        return $this->effects()->applySheetEffect($effect, $characterId, refuseBelowFloor: $voluntary);
     }
 
     /**

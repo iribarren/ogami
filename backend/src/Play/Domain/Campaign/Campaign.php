@@ -1309,6 +1309,7 @@ final class Campaign
      * @throws InvalidStepResult       when the result does not complete the step
      * @throws CampaignLimitReached    when the next scene does not fit the session
      * @throws FlowFormulaFailed       when an Effect's formula cannot be evaluated; nothing changes
+     * @throws InsufficientFunds       when a choice option's, a prompt's or a character step's Effect would take the currency under its floor; nothing changes
      *
      * @phpstan-impure
      */

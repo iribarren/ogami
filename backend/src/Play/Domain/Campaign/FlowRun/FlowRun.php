@@ -9,6 +9,7 @@ use App\Formula\Domain\FormulaEvaluationFailed;
 use App\Play\Domain\Campaign\Facts\Fact;
 use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\Hook;
+use App\Play\Domain\Campaign\InsufficientFunds;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\Thread;
@@ -276,6 +277,7 @@ final class FlowRun
      * @throws FlowRunPositionMismatch when the current step is not this one
      * @throws InvalidStepResult       when the result does not complete the step
      * @throws FlowFormulaFailed       when an Effect's formula cannot be evaluated
+     * @throws InsufficientFunds       when a choice option's, a prompt's or a character step's Effect would take the currency under its floor
      *
      * @phpstan-impure
      */
@@ -1195,15 +1197,19 @@ final class FlowRun
      * @param ?string      $characterId the Character sheet Effects change; a character or check step, a choice option or a prompt with sheet Effects names one
      *
      * @return list<SheetChange> what the sheet Effects changed, in apply order
+     *
+     * @throws InsufficientFunds when a choice option's, a prompt's or a character step's Effect would take the currency under its floor
      */
     private function finish(Step $step, ?Outcome $outcome, array $effects, ?string $answer, FlowRunContext $context, ?string $characterId = null): array
     {
         $switched = false;
         $changes = [];
+        // The player chooses these steps, so they cannot spend what the Character lacks; a check outcome, a roll or a table cannot be refused and clamps.
+        $voluntary = $step instanceof ChoiceStep || $step instanceof PromptStep || $step instanceof CharacterStep;
         foreach ($effects as $effect) {
             if ($effect instanceof SheetEffect) {
                 // The translator keeps sheet Effects where a Character is known.
-                $changes[] = $context->applySheetEffect($effect, $characterId ?? throw new \LogicException(\sprintf('Step "%s" changes the sheet without a Character.', $step->key)));
+                $changes[] = $context->applySheetEffect($effect, $characterId ?? throw new \LogicException(\sprintf('Step "%s" changes the sheet without a Character.', $step->key)), $voluntary);
                 continue;
             }
 

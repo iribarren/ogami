@@ -43,7 +43,8 @@ interface StepProps {
 
 /**
  * The step the FlowRun waits on, with the control that completes it by kind (the rolls happen on
- * the server) and "Skip" unless the step is mandatory. A check step whose roll pends offers Keep or
+ * the server) and "Skip" unless the step is mandatory or a shop (an empty transaction leaves it;
+ * the server refuses to skip it). A check step whose roll pends offers Keep or
  * Push instead of both. Key it by the step and its place (scene,
  * part), so the same step in the next scene of a loop starts with an empty form.
  */
@@ -90,7 +91,7 @@ export function StepCard({ campaign, step, pending, onCommand, frame = false }: 
         <InspirationRolls key={step.key} campaign={campaign} keys={step.inspiration} />
       )}
       <StepForm campaign={campaign} step={step} pending={pending} onCommand={onCommand} />
-      {!step.mandatory && step.pending === null && (
+      {!step.mandatory && step.kind !== 'shop' && step.pending === null && (
         <Button
           type="button"
           variant="ghost"

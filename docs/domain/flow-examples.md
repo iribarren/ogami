@@ -314,7 +314,7 @@ A long campaign: the crew starts small, survives on gigs and rises in three acts
 
 | Part | Content |
 |---|---|
-| Trackers | `rep` counter 0–10; `heat` counter 0–10, hint "At 8+ someone sends a hit squad"; `alarm` clock 6 and `edge` counter 0–3 (as in example 2); `lifestyle` counter with levels Kibble / Prepak / Good prepak / Fresh food; `housing` counter with named levels; `month` clock 4 |
+| Trackers | `rep` counter 0–10; `heat` counter 0–10, hint "At 8+ someone sends a hit squad"; `alarm` clock 6 and `edge` counter 0–3 (as in example 2); `lifestyle` counter with levels Kibble / Prepak / Good prepak / Fresh food; `housing` counter with named levels; `month` clock 4; `gig` counter 0–1 ("On a gig") |
 | Sheet | `eddies` number (min 0, default 500), the currency with unit "eb"; `gear` inventory (20 slots, categories Gear and Food); `cyberware` inventory (10 stacks, category Chrome) |
 | Gear catalog | Gear (used pistol, armor jacket, burner agent, climbing gear), Food (kibble, real coffee) and Chrome (cheap cyberoptic, neural link), each with a cost and slots |
 | Fact slots | `turf`, `crew-name`, `big-job`, `twist` (text); `fixer`, `nemesis` (npc) |
@@ -338,25 +338,26 @@ Focus mode progress reads e.g. `Act 1: Making a name › making-a-name › Legwo
 **Act 1: a gig is a `nextScene` chain**
 
 ```
-Gig offer   setup:   alarm set 0
-            closing: choice "Take it?"  yes → nextScene Legwork; no → —
+Gig offer   closing: choice "Take it?"  yes → alarm set 0, gig set 1, nextScene Legwork; no → —
 Legwork     closing: choice "More legwork, or go?"  more → nextScene Legwork; go → nextScene Job
 Job         a compressed heist (oracle, alarm, edge)  → nextScene Payday
-Payday      condition alarm: upTo 3 → rep +2; rest → rep +1
+Payday      condition alarm: upTo 3 → gig set 0, rep +2; rest → gig set 0, rep +1
             choice "Collect the pay"  yes → eddies +(200 + 50 * rep)   (a sheet effect: the player picks the Character)
             prompt "Any loose ends?" → createThread
 Recruit     prompt "Who joins, and what do they do?" → createNpc [crew, plus a specialty tag]
 
 worldTurn
+  condition gig: upTo 0 → —; rest → end   (the street waits while a gig runs)
   roll 1d6: upTo 4 → —; rest → table street-events, branching per entry:
     Rival crew    → pick NPC [rival] → prompt "What is {picked} after?"
     Gang war      → prompt "Whose streets burn?"
     Corp sweep    → heat +1
     Special gig   → nextScene Gig offer
     Grudge        → createNpc → fillFact nemesis
-  condition heat: upTo 7 → —; rest → nextScene Hit squad   (Hit squad closing: heat set 4)
+  condition heat: upTo 7 → —; rest → nextScene Hit squad   (Hit squad closing: heat set 4, gig set 0)
 
 sceneClosing (the act ends)
+  condition gig: upTo 0 → —; rest → end
   condition rep: upTo 4 → —
     rest → condition count NPC [crew]: upTo 1 → —
       rest → choice "Go big?"  yes → endPhase; no → —
@@ -367,7 +368,7 @@ sceneClosing (the act ends)
 ```
 planning phaseOpening
   prompt "Act 2: The big job. What is it?" → fillFact big-job
-  → alarm set 0, edge set 0
+  → gig set 0, alarm set 0, edge set 0
 
 Betrayal
   pick NPC [fixer]  none → pick NPC [client]
@@ -415,7 +416,7 @@ Month's end
 
 **Notes**
 - Phases only go forward: a failed big job carries forward into `fallout` (accepted limit).
-- Scene chains such as a gig are not shown as a group (accepted limit).
+- Scene chains such as a gig are not shown as a group (accepted limit). Only the last `nextScene` of a scene counts, so the `gig` guard keeps the world turn and the gate from replacing a pending Legwork, Job or Payday.
 - Gear changes only through the shop and the player's sheet edits: a gig pays no gear (flow effects on gear are out of scope).
 
 ## 5. West Marches

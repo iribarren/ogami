@@ -168,7 +168,7 @@ final class PresetsTest extends KernelTestCase
         self::assertSame(['the-job', 'legwork', 'the-heist', 'escape', 'epilogue'], array_map(static fn (\App\Play\Domain\GameSystem\Flow\Phase $phase): string => $phase->key, $flow->phases ?? []));
         // The heist uses three trackers; the release also holds the campaign's (a Campaign keeps tracker values, not the flow).
         self::assertSame(['alarm', 'edge', 'objective'], $flow->trackers ?? []);
-        self::assertSame(['alarm', 'edge', 'objective', 'rep', 'heat', 'lifestyle', 'housing', 'month'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
+        self::assertSame(['alarm', 'edge', 'objective', 'rep', 'heat', 'lifestyle', 'housing', 'month', 'gig'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
 
         // Every table of the flow resolves at both ends; "rumors" is for free play only.
         foreach (['job-clients' => 12, 'job-targets' => 12, 'complications' => 12, 'net-floors' => 12, 'black-ice' => 10, 'security-response' => 12, 'npc-name' => 16, 'rumors' => 12] as $table => $entries) {
@@ -277,7 +277,7 @@ final class PresetsTest extends KernelTestCase
         self::assertNotNull($campaign);
         self::assertSame(['Making a Name', false, FlowView::Focus], [$campaign->name, $campaign->default, $campaign->defaultView]);
         self::assertNotEmpty($campaign->introduction);
-        self::assertSame(['rep', 'heat', 'lifestyle', 'housing', 'month', 'alarm', 'edge', 'objective'], $campaign->trackers);
+        self::assertSame(['rep', 'heat', 'lifestyle', 'housing', 'month', 'gig', 'alarm', 'edge', 'objective'], $campaign->trackers);
 
         // Three acts as phases, in the order of flow example 4.
         $phases = [];

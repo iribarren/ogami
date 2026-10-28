@@ -162,6 +162,7 @@ describe('the section rail', () => {
       'Scene Types',
       'Flows0',
       'Sheet',
+      'Gear',
       'Checks3',
       'Library',
     ])

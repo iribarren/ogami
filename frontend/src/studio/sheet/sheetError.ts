@@ -26,6 +26,9 @@ const inputs = [
   'roll',
   'startMax',
   'options',
+  'capacity',
+  'maxStacks',
+  'categories',
 ]
 
 /**
@@ -104,4 +107,39 @@ export function sheetPointBudgetAnswer(text: string, index: number): SheetPointB
     }
   }
   return { inputs: {}, fields: null, form: text }
+}
+
+/** Where a refused save of a gear entry belongs in its dialog. */
+export interface GearAnswer {
+  inputs: Partial<Record<'name' | 'cost' | 'slots' | 'category' | 'description', string>>
+  form: string | null
+}
+
+/**
+ * Reads the publisher's `path: message` for the entry at `index` of the draft's catalog:
+ * `gear[i].<name|cost|slots|category|description>` go to their inputs. Everything else comes back
+ * whole as a form message, including the catalog as a whole and other entries.
+ */
+export function gearAnswer(text: string, index: number): GearAnswer {
+  const prefix = `gear[${String(index)}].`
+  const input = text.startsWith(prefix)
+    ? /^(name|cost|slots|category|description): (.*)$/s.exec(text.slice(prefix.length))
+    : null
+  return input?.[1] !== undefined && input[2] !== undefined
+    ? { inputs: { [input[1]]: input[2] }, form: null }
+    : { inputs: {}, form: text }
+}
+
+/** Where a refused save of the currency belongs in its form. */
+export interface CurrencyAnswer {
+  inputs: Partial<Record<'field' | 'unit', string>>
+  form: string | null
+}
+
+/** Reads `sheet.currency.<field|unit>: message` into its input; anything else comes back whole. */
+export function currencyAnswer(text: string): CurrencyAnswer {
+  const input = /^sheet\.currency\.(field|unit): (.*)$/s.exec(text)
+  return input?.[1] !== undefined && input[2] !== undefined
+    ? { inputs: { [input[1]]: input[2] }, form: null }
+    : { inputs: {}, form: text }
 }

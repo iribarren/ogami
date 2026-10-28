@@ -5,6 +5,7 @@ import { phaseHooks } from './narrative/flows/flowDraft'
 import { hookLabels, nodePath } from './narrative/flows/flowNode'
 import { useGameSystemNarrative, type NarrativeItem } from './narrative/useGameSystemNarrative'
 import { useGameSystemOracles } from './oracles/useGameSystemOracles'
+import { useGameSystemSheet } from './sheet/useGameSystemSheet'
 
 /** An item of the draft as the editors read it: its key and its definition as in a release. */
 export interface NamedItem {
@@ -21,6 +22,7 @@ export interface LocatorNames {
   trackers: NamedItem[]
   tags: NamedItem[]
   factSlots: NamedItem[]
+  gear: NamedItem[]
 }
 
 export const noNames: LocatorNames = {
@@ -31,6 +33,7 @@ export const noNames: LocatorNames = {
   trackers: [],
   tags: [],
   factSlots: [],
+  gear: [],
 }
 
 /** Where "Go to field" leads. */
@@ -125,6 +128,7 @@ const pathHeads = new Set<string>([
   ...Object.keys(sections),
   'oracles',
   'sheet',
+  'gear',
   'checks',
   'library',
   'gameSystem',
@@ -227,7 +231,17 @@ export function locateError(path: string, names: LocatorNames): ErrorLocation {
       }
     }
     case 'sheet':
-      return tab('sheet', 'Sheet')
+      // `sheet.currency…` is the Sheet tab's currency panel.
+      return second !== undefined && 'name' in second && second.name === 'currency'
+        ? tab('sheet', 'Sheet · Currency', rest)
+        : tab('sheet', 'Sheet')
+    case 'gear': {
+      // A catalog entry: `gear[1].cost` opens the Gear section, named after the entry when known.
+      const at = second !== undefined && 'index' in second ? second.index : undefined
+      return at === undefined
+        ? tab('gear', 'Gear')
+        : tab('gear', `Gear · ${itemName(names.gear[at], at)}`, rest)
+    }
     case 'checks':
       return tab('checks', 'Checks')
     case 'library':
@@ -293,8 +307,10 @@ function flowLocation(group: string, flow: NamedItem, rest: Token[]): ErrorLocat
 export function useNames(gameSystemKey: string): LocatorNames {
   const narrative = useGameSystemNarrative(gameSystemKey)
   const oracles = useGameSystemOracles(gameSystemKey)
+  const sheet = useGameSystemSheet(gameSystemKey)
   const narrativeData = narrative.data
   const oraclesData = oracles.data
+  const sheetData = sheet.data
   return useMemo(() => {
     const items = (list: NarrativeItem[] | undefined): NamedItem[] => list ?? []
     const oracleItems = (list: { definition: object }[] | undefined): NamedItem[] =>
@@ -311,6 +327,7 @@ export function useNames(gameSystemKey: string): LocatorNames {
       factSlots: items(narrativeData?.factSlots),
       tables: oracleItems(oraclesData?.tables),
       likelihood: oracleItems(oraclesData?.likelihood),
+      gear: (sheetData?.gear ?? []).map((entry) => ({ key: entry.key, definition: { ...entry } })),
     }
-  }, [narrativeData, oraclesData])
+  }, [narrativeData, oraclesData, sheetData])
 }

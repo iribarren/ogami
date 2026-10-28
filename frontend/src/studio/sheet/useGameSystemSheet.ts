@@ -275,3 +275,98 @@ export function useRemoveSheetPointBudgetEntry(key: string) {
     },
   )
 }
+
+/** What `PUT /gear/{gear}` takes besides the version; what is left out is unset. */
+export type GearRequest = Omit<components['schemas']['SaveGearEntryRequest'], 'expectedVersion'>
+
+/** `PUT /gear/{gear}`: replaces that catalog entry in place, else appends it. */
+export function useSaveGearEntry(key: string) {
+  const api = useApiClient()
+
+  return useSheetWrite(
+    key,
+    async ({
+      expectedVersion,
+      gear,
+      request,
+    }: {
+      expectedVersion: number
+      gear: string
+      request: GearRequest
+    }) => {
+      const { data, error, response } = await api.PUT(
+        '/api/studio/game-systems/{key}/gear/{gear}',
+        {
+          params: { path: { key, gear } },
+          body: { expectedVersion, ...request },
+        },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw sheetError(response, error, 'Saving the gear')
+    },
+  )
+}
+
+/** `DELETE /gear/{gear}?expectedVersion=N`: refused while a shop offers the entry. */
+export function useRemoveGearEntry(key: string) {
+  const api = useApiClient()
+
+  return useSheetWrite(
+    key,
+    async ({ expectedVersion, gear }: { expectedVersion: number; gear: string }) => {
+      const { data, error, response } = await api.DELETE(
+        '/api/studio/game-systems/{key}/gear/{gear}',
+        { params: { path: { key, gear }, query: { expectedVersion } } },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw sheetError(response, error, 'Deleting the gear')
+    },
+  )
+}
+
+/** `PUT /sheet/currency`: the number field Characters spend, and the unit shown after amounts. */
+export function useSaveSheetCurrency(key: string) {
+  const api = useApiClient()
+
+  return useSheetWrite(
+    key,
+    async ({
+      expectedVersion,
+      field,
+      unit,
+    }: {
+      expectedVersion: number
+      field: string
+      unit: string | null
+    }) => {
+      const { data, error, response } = await api.PUT(
+        '/api/studio/game-systems/{key}/sheet/currency',
+        { params: { path: { key } }, body: { expectedVersion, field, unit } },
+      )
+      if (data !== undefined) {
+        return data
+      }
+      throw sheetError(response, error, 'Saving the currency')
+    },
+  )
+}
+
+/** `DELETE /sheet/currency?expectedVersion=N`. */
+export function useRemoveSheetCurrency(key: string) {
+  const api = useApiClient()
+
+  return useSheetWrite(key, async ({ expectedVersion }: { expectedVersion: number }) => {
+    const { data, error, response } = await api.DELETE(
+      '/api/studio/game-systems/{key}/sheet/currency',
+      { params: { path: { key }, query: { expectedVersion } } },
+    )
+    if (data !== undefined) {
+      return data
+    }
+    throw sheetError(response, error, 'Removing the currency')
+  })
+}

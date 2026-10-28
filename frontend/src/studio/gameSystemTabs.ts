@@ -6,6 +6,7 @@ export const gameSystemTabs = [
   'sceneTypes',
   'flows',
   'sheet',
+  'gear',
   'checks',
   'library',
   'validation',

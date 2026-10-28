@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import {
+  Backpack,
   BookOpen,
   Clapperboard,
   Eye,
@@ -55,6 +56,7 @@ const author: Section[] = [
   },
   { tab: 'flows', label: 'Flows', icon: <Route />, pack: false, counts: ['flows'] },
   { tab: 'sheet', label: 'Sheet', icon: <UserRound />, pack: false, counts: ['sheetFields'] },
+  { tab: 'gear', label: 'Gear', icon: <Backpack />, pack: false },
   {
     tab: 'checks',
     label: 'Checks',

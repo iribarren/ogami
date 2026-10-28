@@ -39,7 +39,7 @@ test('a solo player sees the disclaimer and the introduction, creates their Char
   // Session Zero starts with the player's own Character: no Character exists yet, so the step shows the sheet.
   const you = guide.getByRole('region', { name: 'Current step: Who are you?' })
   await expect(you.getByRole('group', { name: 'Stats' })).toBeVisible()
-  await you.getByLabel('Name').fill('Vi')
+  await you.getByLabel('Name', { exact: true }).fill('Vi')
   await you.getByLabel('Role').fill('Netrunner')
   await you.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByRole('region', { name: 'Characters' })).toContainText('Vi')

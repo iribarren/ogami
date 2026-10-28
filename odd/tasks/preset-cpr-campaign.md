@@ -95,6 +95,7 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 
 - 2026-10-28: T2 done. RED: 3 PresetsTest failures (trackers, sheet fields, economy test); GREEN after the JSON: `phpunit --filter 'NightJob|nightJob'` 33 tests OK, `PresetsTest` 11 OK. `PresetsTest` publishes into an empty test database, so `releaseVersion()` stays 1 there (v2 only exists in a database that already holds v1). Heist flow and phases untouched; only the hard-coded fact list of `NightJobPresetFlowTest` changed.
 - 2026-10-28: T3 done. RED: `PresetsTest` campaign test failed on the flow list (one flow) before the JSON. GREEN: `PresetsTest` 12 OK; `NightJobCampaignPresetFlowTest` 12 tests OK (street zero, gig chain, messy job, hit squad, grudge, act gate, closed gate, Month's end refused then skipped, rent paid, Night Market from Gear up, Night Market before Month's end, betrayal fallback to a client and the finished Flow). Publishing prints only the heist's existing warning (`flows[0]` Firefight); none for `flows[1]`.
+- 2026-10-28: `play-night-job.spec.ts` needed `getByLabel('Name', { exact: true })`: the new inventory fields add "Free stack name" inputs to the crew step. Passes with the other night-job specs (`play-checks`, `play-derived-values`, `studio-sheet-builder`, `studio-check-editor`) against the seeded release v2. `make verify`: backend-qa, backend-test and api-check pass.
 
 ## Reviews
 

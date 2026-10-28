@@ -1107,3 +1107,98 @@ describe('the Night Court world turn roll', () => {
     expect(stepsToItems(draft ? [draft] : [])).toEqual({ steps: [inquisition] })
   })
 })
+
+describe('a shop step', () => {
+  const shop = {
+    key: 'market',
+    kind: 'shop',
+    title: 'The Night Market',
+    prompt: 'What do you buy?',
+    offer: { gear: ['medkit', 'rope'], categories: ['Weapons'] },
+    stock: 3,
+    sellRate: 50,
+    futureField: { nested: [1] },
+  }
+
+  it.each([
+    shop,
+    { ...shop, stock: { dice: '1d4+2' } },
+    { ...shop, stock: undefined, sellRate: undefined },
+    { ...shop, offer: { categories: ['Weapons'], note: 'kept' } },
+    { key: 'market', kind: 'shop', title: 'Market', offer: { gear: ['rope'] } },
+  ])('gives the shop back as it was stored, unknown fields included', (stored) => {
+    const expected = JSON.parse(JSON.stringify(stored)) as unknown
+    expect(round(stored)).toEqual({ steps: [expected] })
+  })
+
+  it('reads the offer, the stock form and the sell rate as text', () => {
+    const [draft] = stepsToDrafts([shop])
+    const [dice] = stepsToDrafts([{ ...shop, stock: { dice: '1d4' } }])
+
+    expect(draft).toMatchObject({
+      kind: 'shop',
+      gear: ['medkit', 'rope'],
+      categories: ['Weapons'],
+      stockForm: 'fixed',
+      stock: '3',
+      sellRate: '50',
+    })
+    expect(dice).toMatchObject({ kind: 'shop', stockForm: 'dice', stock: '1d4' })
+  })
+
+  it('omits what the author left empty instead of sending null', () => {
+    const draft = newStep('shop', [])
+    if (draft.kind !== 'shop') {
+      throw new Error('Expected a shop step.')
+    }
+
+    expect(stepsToItems([{ ...draft, title: 'Market', gear: ['rope'] }])).toEqual({
+      steps: [{ key: 'shop-1', kind: 'shop', title: 'Market', offer: { gear: ['rope'] } }],
+    })
+    expect(stepsToItems([draft])).toEqual({
+      steps: [{ key: 'shop-1', kind: 'shop', title: '' }],
+    })
+  })
+
+  it('writes a fixed stock as a number and a dice stock as {dice}', () => {
+    const [draft] = stepsToDrafts([{ ...shop, stock: undefined }])
+    if (draft?.kind !== 'shop') {
+      throw new Error('Expected a shop step.')
+    }
+
+    expect(stepsToItems([{ ...draft, stockForm: 'fixed', stock: '2' }])).toMatchObject({
+      steps: [{ stock: 2 }],
+    })
+    expect(stepsToItems([{ ...draft, stockForm: 'dice', stock: ' 1d6 ' }])).toMatchObject({
+      steps: [{ stock: { dice: '1d6' } }],
+    })
+    expect(stepsToItems([{ ...draft, stockForm: 'none', stock: '2' }])).toMatchObject({
+      steps: [{ title: 'The Night Market' }],
+    })
+  })
+
+  it('refuses a stock or sell rate that is not a whole number, where it was typed', () => {
+    const [draft] = stepsToDrafts([shop])
+    if (draft?.kind !== 'shop') {
+      throw new Error('Expected a shop step.')
+    }
+
+    expect(stepsToItems([{ ...draft, stock: 'many', sellRate: '5.5' }])).toEqual({
+      errors: { '0.stock': 'Use a whole number.', '0.sellRate': 'Use a whole number.' },
+    })
+  })
+
+  it.each([
+    ['an offer that is not an object', { ...shop, offer: ['rope'] }],
+    ['gear that is not a list of keys', { ...shop, offer: { gear: [1] } }],
+    ['a stock that is a fraction', { ...shop, stock: 1.5 }],
+    ['a stock object that is not only dice', { ...shop, stock: { dice: '1d4', more: 1 } }],
+    ['a sell rate that is text', { ...shop, sellRate: '50' }],
+    ['a title that is not text', { ...shop, title: 5 }],
+  ])('keeps a shop with %s as stored, read-only', (_, stored) => {
+    const [draft] = stepsToDrafts([stored])
+
+    expect(draft).toEqual({ kind: 'stored', stored })
+    expect(stepsToItems(stepsToDrafts([stored]))).toEqual({ steps: [stored] })
+  })
+})

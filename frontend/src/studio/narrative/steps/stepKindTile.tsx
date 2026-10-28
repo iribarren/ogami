@@ -5,6 +5,7 @@ import {
   GitBranch,
   List,
   MessageSquare,
+  ShoppingBag,
   Split,
   UserRound,
 } from 'lucide-react'
@@ -26,6 +27,7 @@ const icons: Record<StepKind, ReactNode> = {
   choice: <GitBranch />,
   pick: <Check />,
   check: <DieShape sides={20} />,
+  shop: <ShoppingBag />,
 }
 
 const kinds = Object.keys(icons)

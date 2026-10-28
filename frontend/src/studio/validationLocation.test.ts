@@ -102,6 +102,28 @@ describe('where a validation error is', () => {
     ])
   })
 
+  it('places an error about a shop on its step, offer list and stock', () => {
+    const play = [{ title: 'Night Market', kind: 'shop' }]
+    const withShop = { ...names, sceneTypes: [item('ambush', { name: 'Ambush', play })] }
+
+    expect(locateError('sceneTypes[0].play[0].offer.gear[1]', withShop)).toMatchObject({
+      group: 'Scene Types · Ambush',
+      trail: ['Play', 'Step 1 “Night Market”', 'Offer', 'Gear 2'],
+      target: { kind: 'sceneType', sceneType: 'ambush' },
+    })
+    expect(locateError('sceneTypes[0].play[0].stock.dice', withShop).trail).toEqual([
+      'Play',
+      'Step 1 “Night Market”',
+      'Stock',
+      'Dice',
+    ])
+    expect(locateError('sceneTypes[0].play[0].sellRate', withShop).trail).toEqual([
+      'Play',
+      'Step 1 “Night Market”',
+      'Sell rate',
+    ])
+  })
+
   it('links the other sections to their tab', () => {
     const tab = (path: string) => locateError(path, names).target
     expect(tab('trackers[0].max')).toEqual({ kind: 'tab', tab: 'narrative' })

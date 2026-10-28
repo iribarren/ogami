@@ -10,6 +10,7 @@ import { SaveState, type SaveStateValue } from '@/shared/ui/save-state'
 import { StudioError } from '../../useGameSystems'
 import { moveItem } from '../steps/draftParts'
 import { useGameSystemChecks } from '../../checks/useGameSystemChecks'
+import { useGameSystemSheet } from '../../sheet/useGameSystemSheet'
 import { stepContext } from '../steps/stepContext'
 import {
   useGameSystemNarrative,
@@ -77,7 +78,12 @@ export function FlowEditor({
   // Kept while the narrative is the same, so the step cards below can skip renders.
   // The checks say which special results a check step may branch on; until they load, none is offered.
   const checks = useGameSystemChecks(gameSystemKey)
-  const context = useMemo(() => stepContext(narrative, checks.data), [narrative, checks.data])
+  // The sheet gives a shop step its gear catalog and tells it whether a currency exists.
+  const sheet = useGameSystemSheet(gameSystemKey)
+  const context = useMemo(
+    () => stepContext(narrative, checks.data, sheet.data),
+    [narrative, checks.data, sheet.data],
+  )
   const node = resolveNode(draft, selected)
   const path = nodePath(node)
   useEffect(() => {

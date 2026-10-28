@@ -675,6 +675,32 @@ export const stepPickersHunger = {
   })),
 }
 
+/** The pickers of a draft with a gear catalog and a currency, which a shop step picks from (ADR 0045). */
+export const stepPickersEconomy = {
+  ...stepPickers,
+  economy: {
+    gear: [
+      { key: 'used-pistol', name: 'Used pistol', category: 'Weapons' },
+      { key: 'medkit', name: 'Medkit', category: 'Medical' },
+      { key: 'rope', name: 'Rope', category: null },
+    ],
+    currency: true,
+  },
+}
+
+/** A shop step offering a gear entry and a category, with a dice stock and a sell rate. */
+export const stepListShop = [
+  {
+    key: 'market',
+    kind: 'shop',
+    title: 'The Night Market',
+    prompt: 'What do you buy or sell?',
+    offer: { gear: ['rope'], categories: ['Weapons'] },
+    stock: { dice: '1d4+1' },
+    sellRate: 50,
+  },
+]
+
 /** A check step on a Hunger check with an outcome for a bestial failure ahead of its bands. */
 export const stepListSpecials = [
   {

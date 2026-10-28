@@ -22,6 +22,7 @@ import { BandsEditor, NextPicker, type BandProblems } from './BandsEditor'
 import { ChoiceFields, OracleFields, TableFields } from './BranchingFields'
 import { moveItem } from './draftParts'
 import { CheckFields, PickFields } from './PickCheckFields'
+import { ShopFields } from './ShopFields'
 import { EffectsEditor } from './EffectsEditor'
 import { Area, CheckList } from './fields'
 import type { StepContext } from './stepContext'
@@ -112,6 +113,7 @@ function StepFields({
       step.kind === 'check'
         ? ['check', 'checks', ...(checkDifficulty(step, context).show ? ['difficulty'] : [])]
         : [],
+    shop: ['offer', 'offer.gear', 'offer.categories', 'stock', 'stock.dice', 'sellRate'],
   }
   const inline = ['key', 'title', 'prompt', 'tip', 'next', ...(ownFields[step.kind] ?? [])]
   const bands = 'bands' in step ? step.bands.length : 0
@@ -196,7 +198,7 @@ function StepFields({
           }}
         />
       </div>
-      {step.kind !== 'condition' && (
+      {step.kind !== 'condition' && step.kind !== 'shop' && (
         <SegmentedControl
           aria-label="Requirement"
           value={step.mandatory ? 'mandatory' : 'suggested'}
@@ -329,6 +331,7 @@ function StepFields({
           <CheckFields step={step} {...kindProps} />
         </div>
       )}
+      {step.kind === 'shop' && <ShopFields step={step} {...kindProps} />}
       {(step.kind === 'roll' || step.kind === 'condition') && (
         <div className={wide}>
           <BandsEditor
@@ -722,18 +725,21 @@ export function StepListEditor({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          {stepKinds.map((option) => (
-            <DropdownMenuItem
-              key={option}
-              onSelect={() => {
-                setOrigin([...origins, null])
-                onChange([...steps, newStep(option, steps)])
-              }}
-            >
-              <StepKindTile kind={option} />
-              {option}
-            </DropdownMenuItem>
-          ))}
+          {stepKinds
+            // A Scene Type's setup has no Character, which a shop needs: the publisher refuses it there.
+            .filter((option) => !(setup && option === 'shop'))
+            .map((option) => (
+              <DropdownMenuItem
+                key={option}
+                onSelect={() => {
+                  setOrigin([...origins, null])
+                  onChange([...steps, newStep(option, steps)])
+                }}
+              >
+                <StepKindTile kind={option} />
+                {option}
+              </DropdownMenuItem>
+            ))}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

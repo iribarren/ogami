@@ -1,5 +1,6 @@
 import type { StoredCheck } from '../../checks/checkDraft'
 import type { GameSystemChecks } from '../../checks/useGameSystemChecks'
+import type { GameSystemSheet } from '../../sheet/useGameSystemSheet'
 import type { GameSystemNarrative } from '../useGameSystemNarrative'
 import type { CheckSpecial } from './stepDraft'
 
@@ -29,6 +30,11 @@ export interface StepContext {
    * which carry their `options` (the effect marks or clears one of them).
    */
   sheetFields?: { key: string; name: string; options?: { key: string; name: string }[] }[]
+  /**
+   * The draft's economy for a shop step (ADR 0045): the gear catalog, with its categories, and
+   * whether the sheet declares a currency. Absent until the sheet loads, so nothing is flagged.
+   */
+  economy?: { gear: { key: string; name: string; category: string | null }[]; currency: boolean }
 }
 
 /**
@@ -56,11 +62,13 @@ export function specialsOf(check: StoredCheck): CheckSpecial[] {
 
 /**
  * The pickers' options from the narrative read model (tables from the catalog, the rest from the
- * sections). With the draft's `checks`, each check also says which special results it can produce.
+ * sections). With the draft's `checks`, each check also says which special results it can produce;
+ * with its `sheet`, a shop step can pick from the gear catalog.
  */
 export function stepContext(
   narrative: GameSystemNarrative,
   stored?: GameSystemChecks,
+  sheet?: GameSystemSheet,
 ): StepContext {
   const named = (items: { key: string; definition: Record<string, unknown> }[], field: string) =>
     items.map(({ key, definition }) => ({
@@ -100,5 +108,13 @@ export function stepContext(
         ? {}
         : { options: options.map((option) => ({ key: option.key, name: option.label })) }),
     })),
+    ...(sheet === undefined
+      ? {}
+      : {
+          economy: {
+            gear: sheet.gear.map(({ key, name, category }) => ({ key, name, category })),
+            currency: sheet.currency !== null,
+          },
+        }),
   }
 }

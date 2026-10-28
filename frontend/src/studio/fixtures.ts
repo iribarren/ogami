@@ -750,6 +750,8 @@ export const sheet = {
   trackers: [{ key: 'heat', label: 'Heat', max: 10 }],
   publishedFieldKeys: ['hp'],
   pointBudgets: [],
+  gear: [],
+  currency: null,
 }
 
 /** The sheet with a conditions field, Physical, marked from Hurt and Tired. */
@@ -803,6 +805,8 @@ export const sheetUngrouped = {
   trackers: [],
   publishedFieldKeys: [],
   pointBudgets: [],
+  gear: [],
+  currency: null,
 }
 
 /** A schema version 1 draft's sheet: no fields. */

@@ -33,6 +33,9 @@ Out of scope: carrying a heist campaign into the new flow (B13 `play-campaign-tr
 | The big job (Claude) | `the-job` (loop, player) selects the heist `infiltration`, `netrun` and `grab` (Firefight and Chase stay reachable through their switches). `grab`'s closing sets `objective` 1 and ends the phase, which here moves to `fallout`. `the-job` copies the heist's `the-heist` hooks (alarm lockdown ends the phase at 6). `fallout` (once, sequence) is `getaway` → `fallout`, an amendment to example 4 (which lists Fallout only): the getaway belongs after the grab. Fallout: `objective` 1 → rep +3 and a "Collect the score" choice (eddies `{formula: "1000 + 100 * {tracker:rep}"}`); 0 → heat +3; then "Who knows it was you?" (`createThread`) |
 | Month's end (Claude, amends example 4) | Downtime closing: `month` +1, then month ≥ 4 → `nextScene` Month's end. Month's end `play`: a housing condition with one band per level, each to a "Pay the rent?" choice: pay → eddies −500 / −1,000 / −1,500 / −2,500 (refused with `insufficient_funds` when the Character cannot pay, so the player skips); skip → `lifestyle` −1 and a pick of NPC [fixer] → `createThread` "Debt to {picked}". **Both options set `month` 0** (example 4 resets only on pay, which would bring Month's end back after every Downtime). Then "Eat better?" (yes → `lifestyle` +1, eddies −300) and "Move up?" (yes → `housing` +1) |
 | Night Market (example 4) | Reached by `nextScene` from Downtime ("Hit the Night Market?") and Gear up. `play`: a `shop` "What do you buy or sell?" offering categories Gear, Food and Chrome, stock `{dice: "1d4+2"}`, sellRate 50 |
+| `the-job` world turn (writer, slice 1) | The heist's world turn forces a Firefight that does not lower `alarm`, which would print a second authoring warning. `the-job` keeps the heist's `sceneOpening` and `sceneClosing` (lockdown at 6) and replaces the world turn with "Do the guards close in?" (1d6, 1–2 → `alarm` +1), so publishing prints no new warning |
+| Downtime and Night Market order (writer, slice 1) | `nextScene` keeps the last effect, so Downtime's closing runs `month` +1, then "Hit the Night Market?" (yes → `nextScene` Night Market and skips the rent check), then "Is the rent due?". Night Market's closing repeats the rent check, so a market visit on the fourth Downtime still ends in Month's end |
+| Rent amounts (writer, slice 1) | A literal sheet effect value is limited to ±1,000, so the rents 1,500 and 2,500 are `{formula: "1500"}` and `{formula: "2500"}` |
 | Authoring route (Claude) | The writer authors the JSON by hand, in the file's style, not in Studio: the Studio editors were exercised in `play-items-economy`. A Chrome play pass (slice 2) replaces a separate playtest |
 | Content rule ([ADR 0018](../../docs/adr/0018-narrativeflow-control-flow-and-cast.md) decision 29, [ADR 0021](../../docs/adr/0021-release-credits-for-fan-presets.md)) | Original wording only, no book text, rules summaries in own words; names that are common Cyberpunk RED terms (eddies, Night Market, Kibble, Prepak, fixer, netrunner) are used as game terms; the RTG Homebrew Content Policy notice already in the credits covers the release |
 
@@ -80,7 +83,7 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; example 4 in `docs/domain/flow-examples.md` amended (Month's end resets `month` on both options; `fallout` is Getaway → Fallout; `planning` reuses Social and Exploration; gig payday pays eddies) | delegated writer (slice 1) | [x] | |
 | T2 | 1 | Release v2 base in `night-job.json`: description, tags, fact slots, trackers, sheet economy (eddies, currency, `gear` and `cyberware` inventories), gear catalog; heist untouched; `PresetsTest` (v2, inventories, currency, catalog) and `NightJobPresetFlowTest` updated | delegated writer (slice 1) | [x] | |
-| T3 | 1 | Flow `campaign` with its Scene Types and tables; `PresetsTest` campaign assertions (non-default flow, acts, phases, trackers); `NightJobCampaignPresetFlowTest` unit test playing street zero, a gig chain, a world turn hit squad, the act gate, a Month's end (rent refused when broke, debt thread) and the finale's betrayal fallback | | [ ] | |
+| T3 | 1 | Flow `campaign` with its Scene Types and tables; `PresetsTest` campaign assertions (non-default flow, acts, phases, trackers); `NightJobCampaignPresetFlowTest` unit test playing street zero, a gig chain, a world turn hit squad, the act gate, a Month's end (rent refused when broke, debt thread) and the finale's betrayal fallback | delegated writer (slice 1) | [x] | |
 | T4 | 2 | Slice 1 review fixes; e2e `frontend/e2e/play-night-job-campaign.spec.ts`: start the campaign flow, play street zero, buy at the Night Market | | [ ] | |
 | T5 | 2 | Chrome play pass of Act 1 and a Month's end; fixes | | [ ] | |
 | T6 | 2 | Closing: Reviews, roadmap `Done:` line under B12 | | [ ] | |
@@ -91,6 +94,7 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 - 2026-10-28: T1 done: feature doc added; example 4 amended (planning, fallout, gig payday, Night Market entry points, month reset on both Month's end options).
 
 - 2026-10-28: T2 done. RED: 3 PresetsTest failures (trackers, sheet fields, economy test); GREEN after the JSON: `phpunit --filter 'NightJob|nightJob'` 33 tests OK, `PresetsTest` 11 OK. `PresetsTest` publishes into an empty test database, so `releaseVersion()` stays 1 there (v2 only exists in a database that already holds v1). Heist flow and phases untouched; only the hard-coded fact list of `NightJobPresetFlowTest` changed.
+- 2026-10-28: T3 done. RED: `PresetsTest` campaign test failed on the flow list (one flow) before the JSON. GREEN: `PresetsTest` 12 OK; `NightJobCampaignPresetFlowTest` 12 tests OK (street zero, gig chain, messy job, hit squad, grudge, act gate, closed gate, Month's end refused then skipped, rent paid, Night Market from Gear up, Night Market before Month's end, betrayal fallback to a client and the finished Flow). Publishing prints only the heist's existing warning (`flows[0]` Firefight); none for `flows[1]`.
 
 ## Reviews
 
@@ -99,4 +103,4 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 
 ## Next step
 
-Slice 1: T1–T3 on `feat/preset-cpr-campaign-1-release`.
+Slice 1: native review of T1–T3 on `feat/preset-cpr-campaign-1-release`, then the PR (the parent).

@@ -175,6 +175,77 @@
           {"text": "The client has hired two crews for the same job"},
           {"text": "Something in the basement is not on any plan"}
         ]
+      },
+      {
+        "key": "gigs",
+        "name": "Gigs",
+        "entries": [
+          {"text": "Lift a data shard from a rival crew's stash"},
+          {"text": "Escort a nervous courier across three districts"},
+          {"text": "Break a friend out of a corp holding cell"},
+          {"text": "Torch a warehouse before the insurance audit"},
+          {"text": "Tail a cheating exec and sell what you see"},
+          {"text": "Plant a rumor and watch who bites"},
+          {"text": "Pull a prototype off a delivery truck"},
+          {"text": "Collect a debt from someone who cannot pay"},
+          {"text": "Guard a street doc through a long night shift"},
+          {"text": "Swap a package in a crowded night market"},
+          {"text": "Wipe a name off a corp watchlist"},
+          {"text": "Hunt down a stolen drone before dawn"}
+        ]
+      },
+      {
+        "key": "street-events",
+        "name": "Street events",
+        "entries": [
+          {"key": "rival-crew", "text": "A rival crew moves in"},
+          {"key": "gang-war", "text": "A gang war spills over"},
+          {"key": "corp-sweep", "text": "A corp security sweep"},
+          {"key": "special-gig", "text": "A fixer has a special gig"},
+          {"key": "grudge", "text": "Someone holds a grudge"}
+        ]
+      },
+      {
+        "key": "twists",
+        "name": "Twists",
+        "entries": [
+          {"text": "The client wanted you caught"},
+          {"text": "The target was bait from the start"},
+          {"text": "Your fixer sold the crew for a clean slate"},
+          {"text": "Someone on the crew made a quiet deal"},
+          {"text": "The big job was a test, and you failed it"},
+          {"text": "Your nemesis owns the building you hit"},
+          {"text": "Your biggest rival was the buyer all along"},
+          {"text": "The score you stole was never real"}
+        ]
+      },
+      {
+        "key": "night-market-stalls",
+        "name": "Night Market stalls",
+        "entries": [
+          {"text": "A noodle cart with a second menu in the back"},
+          {"text": "A tarp stall of salvaged weapons"},
+          {"text": "A cyberware clinic in a shipping container"},
+          {"text": "A woman selling stolen access badges by the dozen"},
+          {"text": "A lamp-lit table of medkits and patches"},
+          {"text": "A vendor trading rare coffee beans for favors"},
+          {"text": "A ripperdoc who hums while she haggles"},
+          {"text": "A kid who sells directions, rumors and lies"}
+        ]
+      },
+      {
+        "key": "night-market-finds",
+        "name": "Night Market finds",
+        "entries": [
+          {"text": "A crate of mismatched cables, cheap and clean"},
+          {"text": "A jacket that stops more than it looks like it should"},
+          {"text": "A secondhand pistol with a story"},
+          {"text": "A dented medkit someone swears is fresh"},
+          {"text": "Coffee that smells like another decade"},
+          {"text": "An eye in a jar, still blinking"},
+          {"text": "A pair of climbing gloves with a short history"},
+          {"text": "A neural link nobody asked questions about"}
+        ]
       }
     ],
     "likelihood": [
@@ -384,6 +455,260 @@
       ],
       "play": [],
       "closing": []
+    },
+    {
+      "key": "edgerunner",
+      "name": "Edgerunner",
+      "purpose": "Make the character you will play.",
+      "tips": "Start with a street name and a role. You can edit the sheet any time in the Characters panel. You begin with 500 eb and an empty kit: the Night Market sells the rest.",
+      "oracles": [],
+      "setup": [
+        {"key": "you", "kind": "character", "title": "Who are you?", "tip": "Make your character: a street name, a role, a few stats and your kit.", "mandatory": true}
+      ],
+      "play": [],
+      "closing": []
+    },
+    {
+      "key": "turf",
+      "name": "Turf",
+      "purpose": "Claim your corner of the city and name your crew.",
+      "tips": "Think small: a block, a bar, a stairwell. Where you start shapes every gig that follows.",
+      "oracles": [],
+      "setup": [
+        {"key": "block", "kind": "prompt", "title": "Which block is your turf?", "tip": "A district, a street or a building. Write what makes it yours.", "effects": [{"kind": "fillFact", "slot": "turf"}]},
+        {"key": "crew-name", "kind": "prompt", "title": "What do you call your crew?", "tip": "Even a crew of one needs a name people can whisper.", "effects": [{"kind": "fillFact", "slot": "crew-name"}]}
+      ],
+      "play": [],
+      "closing": []
+    },
+    {
+      "key": "fixer",
+      "name": "Fixer",
+      "purpose": "Meet the person who brings you work.",
+      "tips": "A fixer wants a cut and a favor. Decide what yours is hiding.",
+      "oracles": ["npc-name"],
+      "setup": [
+        {"key": "fixer", "kind": "prompt", "title": "Who is your fixer?", "tip": "Just a street name: it becomes the NPC's name. Write what they want from you in a note.", "inspiration": ["npc-name"], "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["fixer"]}, {"kind": "fillFact", "slot": "fixer"}]}
+      ],
+      "play": [],
+      "closing": []
+    },
+    {
+      "key": "gig-offer",
+      "name": "Gig offer",
+      "purpose": "Hear a job offer and decide whether to take it.",
+      "tips": "Who is asking, what do they want and what are they not saying? Taking the gig starts a chain: legwork, the job, then payday. The alarm starts at zero for every gig.",
+      "oracles": ["gigs", "npc-name"],
+      "setup": [
+        {"key": "client", "kind": "prompt", "title": "Who offers the gig?", "tip": "Just a street name: it becomes the NPC's name. Skip it if the fixer is the one asking.", "inspiration": ["npc-name"], "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["client"]}]},
+        {"key": "gig", "kind": "prompt", "title": "What is the gig?", "tip": "One sentence: what they want done and what it pays.", "inspiration": ["gigs"], "effects": [{"kind": "tracker", "tracker": "alarm", "op": "set", "value": 0}]}
+      ],
+      "play": [],
+      "closing": [
+        {"key": "take-it", "kind": "choice", "title": "Take it?", "tip": "Yes starts the gig with some legwork. No leaves the offer behind.", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "nextScene", "sceneType": "legwork"}]}, {"key": "no", "label": "No"}], "skip": "no"}
+      ]
+    },
+    {
+      "key": "legwork",
+      "name": "Legwork",
+      "purpose": "Learn what you need before the gig goes loud.",
+      "tips": "Scout, ask around, call in a favor. Each scene should give you one useful fact. When you know enough, go.",
+      "oracles": ["fate", "npc-name"],
+      "setup": [],
+      "play": [
+        {"key": "dig", "kind": "prompt", "title": "What do you dig up?"},
+        {"key": "find", "kind": "oracle", "title": "Does someone talk?", "tip": "Ask for something fair as 50/50.", "oracle": "fate", "likelihood": "even"}
+      ],
+      "closing": [
+        {"key": "gain-edge", "kind": "choice", "title": "Did you gain an edge?", "tip": "Choose Yes if the legwork taught you something that will help on the job.", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "edge", "op": "add", "value": 1}]}, {"key": "no", "label": "No"}], "skip": "no"},
+        {"key": "more-or-go", "kind": "choice", "title": "More legwork, or go?", "mandatory": true, "options": [{"key": "more", "label": "More legwork", "effects": [{"kind": "nextScene", "sceneType": "legwork"}]}, {"key": "go", "label": "Go", "effects": [{"kind": "nextScene", "sceneType": "job"}]}]}
+      ]
+    },
+    {
+      "key": "job",
+      "name": "Job",
+      "purpose": "Do the gig in one scene.",
+      "tips": "A short heist: one question, the trouble that follows and how it ends. Mistakes raise the alarm. A spare edge can clean up after you.",
+      "oracles": ["fate", "complications"],
+      "setup": [],
+      "play": [
+        {"key": "plan", "kind": "oracle", "title": "Does it go to plan?", "tip": "A no raises the alarm by one, an exceptional no by two.", "oracle": "fate", "likelihood": "even", "branches": {"no": {"effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, "exceptionalNo": {"effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 2}]}}},
+        {"key": "trouble", "kind": "table", "title": "What goes wrong?", "tip": "Some entries move the alarm for you.", "table": "complications"}
+      ],
+      "closing": [
+        {"key": "edge-left", "kind": "condition", "title": "Do you have an edge?", "tracker": "edge", "bands": [{"upTo": 0, "next": "ending"}, {}]},
+        {"key": "spend-edge", "kind": "choice", "title": "Spend an edge to clean up?", "tip": "Spending it costs one edge and lowers the alarm by one.", "options": [{"key": "yes", "label": "Yes", "next": "ending", "effects": [{"kind": "tracker", "tracker": "edge", "op": "add", "value": -1}, {"kind": "tracker", "tracker": "alarm", "op": "add", "value": -1}]}, {"key": "no", "label": "No"}], "skip": "no"},
+        {"key": "ending", "kind": "prompt", "title": "How does the job end?", "mandatory": true, "effects": [{"kind": "nextScene", "sceneType": "gig-payday"}]}
+      ]
+    },
+    {
+      "key": "gig-payday",
+      "name": "Gig payday",
+      "purpose": "Get paid and count what the gig did to your name.",
+      "tips": "A clean job earns more rep. The pay grows with your rep, so a good name pays for itself. Any loose end can come back later.",
+      "oracles": [],
+      "setup": [
+        {"key": "clean", "kind": "condition", "title": "How clean was it?", "tip": "Decided by the alarm: 3 or less earns 2 rep, more earns 1.", "tracker": "alarm", "bands": [{"upTo": 3, "label": "Clean", "effects": [{"kind": "tracker", "tracker": "rep", "op": "add", "value": 2}]}, {"label": "Messy", "effects": [{"kind": "tracker", "tracker": "rep", "op": "add", "value": 1}]}]}
+      ],
+      "play": [
+        {"key": "collect", "kind": "choice", "title": "Collect the pay", "tip": "Choose your Character: the pay is 200 eb plus 50 eb for each point of rep.", "options": [{"key": "collect", "label": "Collect the pay", "effects": [{"kind": "sheet", "field": "eddies", "op": "add", "value": {"formula": "200 + 50 * {tracker:rep}"}}]}, {"key": "leave", "label": "Leave it"}], "skip": "leave"}
+      ],
+      "closing": [
+        {"key": "loose-ends", "kind": "prompt", "title": "Any loose ends?", "tip": "A witness, a debt, a client who knows too much. Each answer becomes a Thread.", "effects": [{"kind": "createThread", "name": "{answer}"}]}
+      ]
+    },
+    {
+      "key": "downtime",
+      "name": "Downtime",
+      "purpose": "Rest, recover and let the month pass.",
+      "tips": "Say how the crew spends its days. Each Downtime is one more week on the Month clock: at 4/4 the rent is due. The Night Market stalls and finds tables are there if you want ideas.",
+      "oracles": ["night-market-stalls", "night-market-finds"],
+      "setup": [],
+      "play": [
+        {"key": "spend", "kind": "prompt", "title": "How do you spend the downtime?", "inspiration": ["night-market-stalls", "night-market-finds"]}
+      ],
+      "closing": [
+        {"key": "days", "kind": "prompt", "title": "A week slips by. What changed?", "tip": "Answering moves the Month clock by one.", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "month", "op": "add", "value": 1}]},
+        {"key": "market", "kind": "choice", "title": "Hit the Night Market?", "tip": "Yes visits the Night Market before the rent comes due.", "options": [{"key": "yes", "label": "Yes", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "night-market"}]}, {"key": "no", "label": "No"}], "skip": "no"},
+        {"key": "rent-due", "kind": "condition", "title": "Is the rent due?", "tracker": "month", "bands": [{"upTo": 3}, {"effects": [{"kind": "nextScene", "sceneType": "months-end"}]}]}
+      ]
+    },
+    {
+      "key": "recruit",
+      "name": "Recruit",
+      "purpose": "Find someone to join the crew.",
+      "tips": "A crew of two or more is how you get ready to go big. Say who they are, what they want and what they do best.",
+      "oracles": ["npc-name"],
+      "setup": [
+        {"key": "who", "kind": "prompt", "title": "Who joins?", "tip": "Just a street name: it becomes the NPC's name.", "mandatory": true, "inspiration": ["npc-name"]},
+        {"key": "specialty", "kind": "choice", "title": "What do they do best?", "tip": "Their specialty becomes a tag on the NPC.", "mandatory": true, "options": [{"key": "netrunner", "label": "Netrunner", "effects": [{"kind": "createNpc", "name": "{step:who}", "tags": ["crew", "netrunner"]}]}, {"key": "solo", "label": "Solo", "effects": [{"kind": "createNpc", "name": "{step:who}", "tags": ["crew", "solo"]}]}, {"key": "nomad", "label": "Nomad", "effects": [{"kind": "createNpc", "name": "{step:who}", "tags": ["crew", "nomad"]}]}, {"key": "other", "label": "Something else", "effects": [{"kind": "createNpc", "name": "{step:who}", "tags": ["crew"]}]}]}
+      ],
+      "play": [],
+      "closing": []
+    },
+    {
+      "key": "hit-squad",
+      "name": "Hit squad",
+      "purpose": "Survive the people sent to shut you up.",
+      "tips": "Too much heat brings professionals. Keep it fast and mean. When it is over, the heat drops, but the people who sent them remember.",
+      "oracles": ["security-response"],
+      "setup": [
+        {"key": "found", "kind": "prompt", "title": "Who sent them, and how do they find you?", "mandatory": true}
+      ],
+      "play": [
+        {"key": "squad", "kind": "table", "title": "Who comes for you?", "table": "security-response"}
+      ],
+      "closing": [
+        {"key": "clear", "kind": "prompt", "title": "How do you get clear?", "tip": "Answering lowers the heat to 4.", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "heat", "op": "set", "value": 4}]}
+      ]
+    },
+    {
+      "key": "gear-up",
+      "name": "Gear up",
+      "purpose": "Get what the big job needs.",
+      "tips": "Decide what is missing from the plan, and who has it. The Night Market sells gear, food and chrome for eddies.",
+      "oracles": [],
+      "setup": [],
+      "play": [
+        {"key": "need", "kind": "prompt", "title": "What do you need, and who has it?"}
+      ],
+      "closing": [
+        {"key": "market", "kind": "choice", "title": "Hit the Night Market?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "nextScene", "sceneType": "night-market"}]}, {"key": "no", "label": "No"}], "skip": "no"}
+      ]
+    },
+    {
+      "key": "night-market",
+      "name": "Night Market",
+      "purpose": "Buy and sell gear, food and chrome.",
+      "tips": "A few stalls are open tonight. Choose your Character, sell what you do not need and buy what you do. Prices come from the catalog; chrome goes in the Cyberware inventory.",
+      "oracles": ["night-market-stalls", "night-market-finds"],
+      "setup": [
+        {"key": "crowd", "kind": "prompt", "title": "What does the market look like tonight?", "inspiration": ["night-market-stalls", "night-market-finds"]}
+      ],
+      "play": [
+        {"key": "stalls", "kind": "shop", "title": "What do you buy or sell?", "prompt": "A few stalls are open tonight.", "offer": {"categories": ["Gear", "Food", "Chrome"]}, "stock": {"dice": "1d4+2"}, "sellRate": 50}
+      ],
+      "closing": [
+        {"key": "rent-due", "kind": "condition", "title": "Is the rent due?", "tracker": "month", "bands": [{"upTo": 3}, {"effects": [{"kind": "nextScene", "sceneType": "months-end"}]}]}
+      ]
+    },
+    {
+      "key": "months-end",
+      "name": "Month's end",
+      "purpose": "Pay the rent, eat what you can afford and think about moving up.",
+      "tips": "Rent depends on where you live. If you cannot pay, skip it: your lifestyle drops and a fixer holds the debt. Either way the Month clock starts again.",
+      "oracles": [],
+      "setup": [],
+      "play": [
+        {"key": "home", "kind": "condition", "title": "Where do you live?", "tracker": "housing", "bands": [{"upTo": 0, "next": "rent-hotel"}, {"upTo": 1, "next": "rent-container"}, {"upTo": 2, "next": "rent-studio"}, {"next": "rent-conapt"}]},
+        {"key": "rent-hotel", "kind": "choice", "title": "Pay the rent (500 eb)?", "tip": "Choose your Character. Skipping costs a step of lifestyle and a debt.", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "next": "eat", "effects": [{"kind": "sheet", "field": "eddies", "op": "subtract", "value": 500}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "next": "debt", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}]},
+        {"key": "rent-container", "kind": "choice", "title": "Pay the rent (1,000 eb)?", "tip": "Choose your Character. Skipping costs a step of lifestyle and a debt.", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "next": "eat", "effects": [{"kind": "sheet", "field": "eddies", "op": "subtract", "value": 1000}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "next": "debt", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}]},
+        {"key": "rent-studio", "kind": "choice", "title": "Pay the rent (1,500 eb)?", "tip": "Choose your Character. Skipping costs a step of lifestyle and a debt.", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "next": "eat", "effects": [{"kind": "sheet", "field": "eddies", "op": "subtract", "value": {"formula": "1500"}}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "next": "debt", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}]},
+        {"key": "rent-conapt", "kind": "choice", "title": "Pay the rent (2,500 eb)?", "tip": "Choose your Character. Skipping costs a step of lifestyle and a debt.", "mandatory": true, "options": [{"key": "pay", "label": "Pay", "next": "eat", "effects": [{"kind": "sheet", "field": "eddies", "op": "subtract", "value": {"formula": "2500"}}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}, {"key": "skip", "label": "Skip it", "effects": [{"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": -1}, {"kind": "tracker", "tracker": "month", "op": "set", "value": 0}]}]},
+        {"key": "debt", "kind": "pick", "title": "Which fixer do you borrow from?", "of": "npc", "tags": ["fixer"], "mode": "random", "branches": {"found": {"effects": [{"kind": "createThread", "name": "Debt to {picked}"}]}}},
+        {"key": "eat", "kind": "choice", "title": "Eat better (300 eb)?", "tip": "Choose your Character. Yes raises your lifestyle by one.", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "sheet", "field": "eddies", "op": "subtract", "value": 300}, {"kind": "tracker", "tracker": "lifestyle", "op": "add", "value": 1}]}, {"key": "no", "label": "No"}], "skip": "no"},
+        {"key": "move-up", "kind": "choice", "title": "Move up?", "tip": "Yes upgrades your housing for next month.", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "housing", "op": "add", "value": 1}]}, {"key": "no", "label": "No"}], "skip": "no"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "fallout",
+      "name": "Fallout",
+      "purpose": "Count what the big job gave you and what it cost.",
+      "tips": "With the score in hand your rep soars. Without it the heat does. Either way someone knows it was you.",
+      "oracles": [],
+      "setup": [
+        {"key": "delivered", "kind": "condition", "title": "Did you get the score?", "tracker": "objective", "bands": [{"upTo": 0, "label": "Empty-handed", "effects": [{"kind": "tracker", "tracker": "heat", "op": "add", "value": 3}]}, {"label": "Score in hand", "effects": [{"kind": "tracker", "tracker": "rep", "op": "add", "value": 3}]}]}
+      ],
+      "play": [
+        {"key": "paid", "kind": "condition", "title": "Is there anything to collect?", "tracker": "objective", "bands": [{"upTo": 0, "next": "end"}, {}]},
+        {"key": "collect", "kind": "choice", "title": "Collect the score", "tip": "Choose your Character: the score pays 1,000 eb plus 100 eb for each point of rep.", "options": [{"key": "collect", "label": "Collect the score", "effects": [{"kind": "sheet", "field": "eddies", "op": "add", "value": {"formula": "1000 + 100 * {tracker:rep}"}}]}, {"key": "leave", "label": "Leave it"}], "skip": "leave"}
+      ],
+      "closing": [
+        {"key": "who-knows", "kind": "prompt", "title": "Who knows it was you?", "tip": "Each answer becomes a Thread that can come back.", "effects": [{"kind": "createThread", "name": "{answer}"}]}
+      ]
+    },
+    {
+      "key": "betrayal",
+      "name": "Betrayal",
+      "purpose": "Find out who sold you out.",
+      "tips": "The twist is that someone you trusted was playing a longer game. A fixer is the first suspect, then a client. If you have neither, decide for yourself.",
+      "oracles": ["twists"],
+      "setup": [
+        {"key": "traitor", "kind": "pick", "title": "Did your fixer sell you out?", "of": "npc", "tags": ["fixer"], "mode": "random", "branches": {"found": {"next": "twist"}, "none": {"next": "traitor-client"}}},
+        {"key": "traitor-client", "kind": "pick", "title": "Did a client sell you out?", "of": "npc", "tags": ["client"], "mode": "random", "branches": {"found": {"next": "twist"}}},
+        {"key": "traitor-other", "kind": "prompt", "title": "Who sold you out?", "tip": "Nobody on your lists fits, so decide who it was."},
+        {"key": "twist", "kind": "table", "title": "What is the twist?", "tip": "If someone was picked, {picked} sold you to {fact:nemesis}. Make the roll yours.", "table": "twists", "effects": [{"kind": "fillFact", "slot": "twist"}]}
+      ],
+      "play": [],
+      "closing": []
+    },
+    {
+      "key": "showdown",
+      "name": "Showdown",
+      "purpose": "Face your nemesis.",
+      "tips": "Everything you built is in this scene: crew, gear, rep and the people you wronged. Run the fight with your Cyberpunk RED rules (see the Cyberpunk RED core rulebook, Combat chapter) and use this scene for the story.",
+      "oracles": ["fate"],
+      "setup": [],
+      "play": [
+        {"key": "where", "kind": "prompt", "title": "Where do you face your nemesis?", "tip": "Your nemesis: {fact:nemesis}. If the slot is empty, decide who it is now.", "mandatory": true},
+        {"key": "odds", "kind": "oracle", "title": "Does it go your way?", "tip": "Ask as likely if the crew is strong and unlikely if you are alone.", "oracle": "fate", "likelihood": "even"},
+        {"key": "price", "kind": "prompt", "title": "What does winning, or losing, cost?"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "epilogue",
+      "name": "Epilogue",
+      "purpose": "Say how it ends.",
+      "tips": "Look back on the three acts. When you finish this scene the guided flow is done and you can keep playing freely.",
+      "oracles": [],
+      "setup": [
+        {"key": "worth-it", "kind": "prompt", "title": "Was the big job worth it?", "tip": "The big job: {fact:big-job}."},
+        {"key": "standing", "kind": "prompt", "title": "Where does the crew stand now?", "tip": "{fact:crew-name}: rep {tracker:rep}, heat {tracker:heat}."}
+      ],
+      "play": [],
+      "closing": []
     }
   ],
   "flows": [
@@ -432,6 +757,75 @@
         },
         {"key": "escape", "name": "Escape", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["getaway"]}},
         {"key": "epilogue", "name": "Epilogue", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["payday"]}}
+      ]
+    },
+    {
+      "key": "campaign",
+      "name": "Making a Name",
+      "description": "A campaign in three acts: make a name on the street with gigs, pull the big job, then face the twist.",
+      "introduction": "Solo play means you are the whole table: you describe what happens, roll the dice and make the calls. This guide gives you the questions so you can keep the story moving.\n\nYou play a campaign in three acts. In Act 1 you make a name: take gigs from your fixer, grow your rep, recruit a crew and spend your downtime. Rep opens doors. Heat closes them: at 8 or more someone sends a hit squad. In Act 2 you plan and pull the big job. In Act 3 the twist arrives: someone you trusted sold you out, and you face your nemesis.\n\nBetween gigs you live on eddies. Every four Downtime scenes the month ends: pay the rent or take the debt, eat better if you can and move up if you dare. Spend your eddies at the Night Market on gear, food and chrome.\n\nEach step asks you something or tells you what to roll. Steps marked mandatory must be done; the others are suggested and you can skip them. Rules for fighting, hacking and skills come from your Cyberpunk RED book: this guide only decides what happens next.",
+      "defaultView": "focus",
+      "oracles": ["fate", "npc-name", "gigs", "complications", "net-floors", "black-ice", "security-response", "street-events", "twists", "night-market-stalls", "night-market-finds"],
+      "trackers": ["rep", "heat", "lifestyle", "housing", "month", "alarm", "edge", "objective"],
+      "phases": [
+        {"key": "street-zero", "name": "Street zero", "description": "Make your character, claim your turf and meet your fixer. Done when the fixer scene ends.", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["edgerunner", "turf", "fixer"]}},
+        {
+          "key": "making-a-name",
+          "name": "Making a name",
+          "act": "Act 1: Making a name",
+          "description": "Take gigs, recruit a crew and spend your downtime. Done when your rep is 5 or more, you have two crew and you choose to go big, or when you move on.",
+          "mode": "loop",
+          "selection": {"rule": "player", "sceneTypes": ["gig-offer", "downtime", "recruit", "social"]},
+          "sceneClosing": [
+            {"key": "rep", "kind": "condition", "title": "Is your rep high enough?", "tracker": "rep", "bands": [{"upTo": 4, "next": "end"}, {}]},
+            {"key": "crew-size", "kind": "condition", "title": "Is the crew big enough?", "count": {"of": "npc", "tags": ["crew"]}, "bands": [{"upTo": 1, "next": "end"}, {}]},
+            {"key": "go-big", "kind": "choice", "title": "Go big?", "tip": "Your name is out there and you have a crew. Yes ends Act 1 and starts planning the big job.", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "endPhase"}]}, {"key": "no", "label": "No"}], "skip": "no"}
+          ],
+          "worldTurn": [
+            {"key": "street", "kind": "roll", "title": "Does the street stir?", "tip": "Roll 1d6. On 5 or 6 something happens in the streets.", "dice": "1d6", "bands": [{"upTo": 4, "label": "Quiet", "next": "heat"}, {"label": "The street stirs"}]},
+            {"key": "event", "kind": "table", "title": "What happens on the street?", "table": "street-events", "branches": [{"entry": "rival-crew", "next": "rival"}, {"entry": "gang-war", "next": "gang-war"}, {"entry": "corp-sweep", "next": "heat", "effects": [{"kind": "tracker", "tracker": "heat", "op": "add", "value": 1}]}, {"entry": "special-gig", "next": "heat", "effects": [{"kind": "nextScene", "sceneType": "gig-offer"}]}, {"entry": "grudge", "next": "grudge"}]},
+            {"key": "rival", "kind": "pick", "title": "Which rival crew moves?", "of": "npc", "tags": ["rival"], "mode": "random", "branches": {"none": {"next": "heat"}}},
+            {"key": "rival-after", "kind": "prompt", "title": "What is the rival crew after?", "prompt": "What is {picked} after?", "next": "heat"},
+            {"key": "gang-war", "kind": "prompt", "title": "Whose streets burn?", "next": "heat"},
+            {"key": "grudge", "kind": "prompt", "title": "Who holds a grudge against you?", "tip": "Just a street name: it becomes the NPC and your nemesis.", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["rival"]}, {"kind": "fillFact", "slot": "nemesis"}]},
+            {"key": "heat", "kind": "condition", "title": "Is the heat too high?", "tip": "At 8 or more a hit squad comes.", "tracker": "heat", "bands": [{"upTo": 7}, {"effects": [{"kind": "nextScene", "sceneType": "hit-squad"}]}]}
+          ]
+        },
+        {
+          "key": "planning",
+          "name": "Planning",
+          "act": "Act 2: The big job",
+          "description": "Scout the big job, recruit and gear up. Done when you move on to the job.",
+          "mode": "loop",
+          "selection": {"rule": "player", "sceneTypes": ["social", "exploration", "recruit", "gear-up"]},
+          "phaseOpening": [
+            {"key": "big-job", "kind": "prompt", "title": "Act 2: The big job. What is it?", "tip": "One sentence: the target, and why it is worth everything you built.", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "big-job"}, {"kind": "tracker", "tracker": "alarm", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "edge", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "objective", "op": "set", "value": 0}]}
+          ]
+        },
+        {
+          "key": "the-job",
+          "name": "The job",
+          "act": "Act 2: The big job",
+          "description": "Pull the big job. Done when you grab the score or the alarm is full.",
+          "mode": "loop",
+          "selection": {"rule": "player", "sceneTypes": ["infiltration", "netrun", "grab"]},
+          "sceneOpening": [
+            {"key": "pressure", "kind": "condition", "title": "How alert is security?", "tracker": "alarm", "bands": [{"upTo": 3, "next": "end"}, {"upTo": 5}, {"next": "end"}]},
+            {"key": "notice", "kind": "prompt", "title": "Security is on alert", "prompt": "The alarm is at {tracker:alarm}. What do you notice?", "tip": "Guards are tense and doors are watched. Let it shape the scene."}
+          ],
+          "sceneClosing": [
+            {"key": "edge-left", "kind": "condition", "title": "Do you have an edge?", "tracker": "edge", "bands": [{"upTo": 0, "next": "complication"}, {}]},
+            {"key": "spend-edge", "kind": "choice", "title": "Spend an edge to avoid trouble?", "tip": "Spending it skips the complication and costs one edge.", "options": [{"key": "yes", "label": "Yes", "next": "lockdown", "effects": [{"kind": "tracker", "tracker": "edge", "op": "add", "value": -1}]}, {"key": "no", "label": "No", "next": "complication"}], "skip": "no"},
+            {"key": "complication", "kind": "table", "title": "What goes wrong?", "tip": "Some entries move the alarm for you.", "table": "complications"},
+            {"key": "lockdown", "kind": "condition", "title": "Is the alarm full?", "tracker": "alarm", "bands": [{"upTo": 5}, {"effects": [{"kind": "endPhase"}]}]}
+          ],
+          "worldTurn": [
+            {"key": "response", "kind": "condition", "title": "Does security respond?", "tracker": "alarm", "bands": [{"upTo": 3, "next": "end"}, {}]},
+            {"key": "guards", "kind": "roll", "title": "Do the guards close in?", "tip": "Roll 1d6. On 1 or 2 the alarm rises by one.", "dice": "1d6", "bands": [{"upTo": 2, "label": "The guards close in", "effects": [{"kind": "tracker", "tracker": "alarm", "op": "add", "value": 1}]}, {"label": "Unseen"}]}
+          ]
+        },
+        {"key": "fallout", "name": "Fallout", "act": "Act 2: The big job", "description": "Get away, then count the cost. Done when the fallout scene ends.", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["getaway", "fallout"]}},
+        {"key": "finale", "name": "Finale", "act": "Act 3: The twist and conclusion", "description": "Learn who sold you out, face your nemesis and say how it ends.", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["betrayal", "showdown", "epilogue"]}}
       ]
     }
   ],

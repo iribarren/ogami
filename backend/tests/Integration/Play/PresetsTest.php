@@ -11,8 +11,11 @@ use App\Play\Domain\GameSystem\Flow\CheckStep;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
 use App\Play\Domain\GameSystem\Flow\EndPhaseEffect;
+use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\FlowView;
+use App\Play\Domain\GameSystem\Flow\PhaseMode;
 use App\Play\Domain\GameSystem\Flow\RollStep;
+use App\Play\Domain\GameSystem\Flow\SelectionRule;
 use App\Play\Domain\GameSystem\Flow\SheetEffect;
 use App\Play\Domain\GameSystem\Flow\SheetOperation;
 use App\Play\Domain\GameSystem\Flow\TableStep;
@@ -164,7 +167,7 @@ final class PresetsTest extends KernelTestCase
         self::assertSame(['heist', FlowView::Focus], [$flow?->key, $flow?->defaultView]);
         self::assertSame(['the-job', 'legwork', 'the-heist', 'escape', 'epilogue'], array_map(static fn (\App\Play\Domain\GameSystem\Flow\Phase $phase): string => $phase->key, $flow->phases ?? []));
         // The heist uses three trackers; the release also holds the campaign's (a Campaign keeps tracker values, not the flow).
-        self::assertSame(['alarm', 'edge', 'objective'], $flow->trackers);
+        self::assertSame(['alarm', 'edge', 'objective'], $flow->trackers ?? []);
         self::assertSame(['alarm', 'edge', 'objective', 'rep', 'heat', 'lifestyle', 'housing', 'month'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
 
         // Every table of the flow resolves at both ends; "rumors" is for free play only.
@@ -253,12 +256,56 @@ final class PresetsTest extends KernelTestCase
         }
 
         // The counters the campaign tracks: levels name the lifestyle and the housing.
-        $levels = static fn (string $key): array => array_map(static fn (\App\Play\Domain\GameSystem\TrackerLevel $level): string => $level->label, $snapshot->tracker($key)?->levels ?? []);
+        $levels = static fn (string $key): array => array_map(static fn (\App\Play\Domain\GameSystem\TrackerLevel $level): string => $level->label, $snapshot->tracker($key)->levels ?? []);
         self::assertSame(['Kibble', 'Prepak', 'Good prepak', 'Fresh food'], $levels('lifestyle'));
         self::assertSame(['Cube hotel', 'Cargo container', 'Studio apartment', 'Two-room conapt'], $levels('housing'));
         self::assertSame([1, 0], [$snapshot->tracker('lifestyle')?->initial, $snapshot->tracker('housing')?->initial]);
         self::assertSame([TrackerKind::Clock, 4], [$snapshot->tracker('month')?->kind, $snapshot->tracker('month')?->segments()]);
         self::assertSame('At 8+ someone sends a hit squad', $snapshot->tracker('heat')?->hint);
+    }
+
+    #[Test]
+    public function nightJobHasAMakingANameCampaignFlowBesideTheHeist(): void
+    {
+        $display = $this->assertPublishesOnce('night-job');
+        $snapshot = $this->snapshot('night-job');
+
+        // The heist stays the default; the campaign is chosen on the New campaign form.
+        self::assertSame(['heist', 'campaign'], array_map(static fn (Flow $flow): string => $flow->key, $snapshot->flows()));
+        self::assertSame('heist', $snapshot->defaultFlow()?->key);
+        $campaign = $snapshot->flow('campaign');
+        self::assertNotNull($campaign);
+        self::assertSame(['Making a Name', false, FlowView::Focus], [$campaign->name, $campaign->default, $campaign->defaultView]);
+        self::assertNotEmpty($campaign->introduction);
+        self::assertSame(['rep', 'heat', 'lifestyle', 'housing', 'month', 'alarm', 'edge', 'objective'], $campaign->trackers);
+
+        // Three acts as phases, in the order of flow example 4.
+        $phases = [];
+        foreach ($campaign->phases as $phase) {
+            $phases[$phase->key] = [$phase->act, $phase->mode, $phase->selection->rule, $phase->selection->sceneTypes];
+        }
+
+        self::assertSame([
+            'street-zero' => [null, PhaseMode::Once, SelectionRule::Sequence, ['edgerunner', 'turf', 'fixer']],
+            'making-a-name' => ['Act 1: Making a name', PhaseMode::Loop, SelectionRule::Player, ['gig-offer', 'downtime', 'recruit', 'social']],
+            'planning' => ['Act 2: The big job', PhaseMode::Loop, SelectionRule::Player, ['social', 'exploration', 'recruit', 'gear-up']],
+            'the-job' => ['Act 2: The big job', PhaseMode::Loop, SelectionRule::Player, ['infiltration', 'netrun', 'grab']],
+            'fallout' => ['Act 2: The big job', PhaseMode::Once, SelectionRule::Sequence, ['getaway', 'fallout']],
+            'finale' => ['Act 3: The twist and conclusion', PhaseMode::Once, SelectionRule::Sequence, ['betrayal', 'showdown', 'epilogue']],
+        ], $phases);
+
+        // Every table the campaign rolls resolves, and each is listed among the flow's oracles.
+        foreach (['gigs' => 12, 'street-events' => 5, 'twists' => 8, 'night-market-stalls' => 8, 'night-market-finds' => 8] as $table => $entries) {
+            self::assertContains($table, $campaign->oracles);
+            $this->assertWeightedTableResolves($snapshot, $table, $entries, $snapshot->resolveOracleTable($table, new ScriptedRandomNumberGenerator(1))->steps()[0]->text(), $snapshot->resolveOracleTable($table, new ScriptedRandomNumberGenerator($entries))->steps()[0]->text());
+        }
+
+        // Publishing tells no authoring warning about the campaign (the heist's forced Firefight is the only one).
+        self::assertStringNotContainsString('flows[1]', $display);
+        foreach (['edgerunner', 'turf', 'fixer', 'gig-offer', 'legwork', 'job', 'gig-payday', 'downtime', 'recruit', 'hit-squad', 'gear-up', 'night-market', 'months-end', 'fallout', 'betrayal', 'showdown', 'epilogue'] as $key) {
+            self::assertNotNull($snapshot->sceneType($key), $key);
+            self::assertStringNotContainsString(\sprintf('sceneTypes.%s', $key), $display);
+        }
     }
 
     #[Test]
@@ -565,15 +612,21 @@ final class PresetsTest extends KernelTestCase
         self::assertContains('masquerade', array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
     }
 
-    private function assertPublishesOnce(string $preset): void
+    /**
+     * @return string what the first publication printed, authoring warnings included
+     */
+    private function assertPublishesOnce(string $preset): string
     {
         $file = self::PRESETS.'/'.$preset.'.json';
 
         self::assertSame(Command::SUCCESS, $this->tester->execute(['file' => $file, '--if-changed' => true]), $this->tester->getDisplay());
         self::assertStringContainsString(\sprintf('Published %s v1', $preset), $this->tester->getDisplay());
+        $published = $this->tester->getDisplay();
 
         self::assertSame(Command::SUCCESS, $this->tester->execute(['file' => $file, '--if-changed' => true]), $this->tester->getDisplay());
         self::assertStringContainsString(\sprintf('Unchanged %s (v1)', $preset), $this->tester->getDisplay());
+
+        return $published;
     }
 
     private function snapshot(string $key): GameSystemSnapshot

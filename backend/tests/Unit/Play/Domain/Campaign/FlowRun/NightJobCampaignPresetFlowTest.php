@@ -72,13 +72,14 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $campaign = $this->actOne();
         $campaign->setTrackerValue($this->tracker('alarm'), 3, self::at());
 
-        // The offer resets the alarm; taking it chains into the legwork.
+        // Taking the offer resets the alarm and chains into the legwork.
         $campaign->pickSceneType('gig-offer', $this->release, self::at());
         $campaign->completeFlowStep('client', self::prompt('Mr. Kline'), $this->release, self::at());
         $campaign->completeFlowStep('gig', self::prompt('Lift a prototype'), $this->release, self::at());
-        self::assertSame(0, $campaign->trackerValue($this->tracker('alarm')));
+        self::assertSame(3, $campaign->trackerValue($this->tracker('alarm')));
         $this->endScene($campaign);
         $campaign->completeFlowStep('take-it', StepResult::choice('yes'), $this->release, self::at());
+        self::assertSame(0, $campaign->trackerValue($this->tracker('alarm')));
         $this->quietStreet($campaign);
         self::assertSame('legwork', self::flowRunOf($campaign)->forcedNextSceneType());
 
@@ -110,6 +111,37 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $this->endScene($campaign);
         $campaign->completeFlowStep('loose-ends', self::prompt('The driver talked'), $this->release, self::at());
         self::assertSame(['The driver talked'], array_map(static fn (Thread $thread): string => $thread->name(), $campaign->threads()));
+    }
+
+    #[Test]
+    public function takingAGigWhoseOfferWasSkippedStillStartsItWithACleanAlarm(): void
+    {
+        $campaign = $this->actOne();
+        $campaign->setTrackerValue($this->tracker('alarm'), 4, self::at());
+
+        // Neither the client nor the gig is named; the alarm only resets when the gig is taken.
+        $campaign->pickSceneType('gig-offer', $this->release, self::at());
+        $this->endScene($campaign, skipping: ['client', 'gig']);
+        self::assertSame(4, $campaign->trackerValue($this->tracker('alarm')));
+        $campaign->completeFlowStep('take-it', StepResult::choice('yes'), $this->release, self::at());
+        $this->quietStreet($campaign);
+
+        $campaign->pickSceneType('legwork', $this->release, self::at());
+        self::assertSame([0, 'legwork'], [$campaign->trackerValue($this->tracker('alarm')), $campaign->currentScene()?->sceneType()]);
+    }
+
+    #[Test]
+    public function turningAGigDownLeavesTheAlarmAsItWas(): void
+    {
+        $campaign = $this->actOne();
+        $campaign->setTrackerValue($this->tracker('alarm'), 4, self::at());
+
+        $campaign->pickSceneType('gig-offer', $this->release, self::at());
+        $this->endScene($campaign, skipping: ['client', 'gig']);
+        $campaign->completeFlowStep('take-it', StepResult::choice('no'), $this->release, self::at());
+
+        self::assertSame(4, $campaign->trackerValue($this->tracker('alarm')));
+        self::assertNull(self::flowRunOf($campaign)->forcedNextSceneType());
     }
 
     #[Test]
@@ -268,6 +300,32 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
     }
 
     #[Test]
+    public function aFormulaRentTakesItsEddiesAndRestartsTheMonth(): void
+    {
+        $campaign = $this->atMonthsEnd(housing: 2, eddies: 2000);
+
+        // The studio apartment costs 1,500 eb, charged through a formula.
+        self::assertSame('rent-studio', self::flowRunOf($campaign)->stepKey());
+        $campaign->completeFlowStep('rent-studio', StepResult::choice('pay', 'vi'), $this->release, self::at());
+
+        self::assertSame([500, 0, 'eat'], [$campaign->character(CharacterId::fromString('vi'))?->values()['eddies'], $campaign->trackerValue($this->tracker('month')), self::flowRunOf($campaign)->stepKey()]);
+    }
+
+    #[Test]
+    public function skippingTheConaptRentCostsLifestyleRestartsTheMonthAndOwesAFixer(): void
+    {
+        $campaign = $this->atMonthsEnd(housing: 3);
+        $campaign->setTrackerValue($this->tracker('lifestyle'), 2, self::at());
+
+        self::assertSame('rent-conapt', self::flowRunOf($campaign)->stepKey());
+        $campaign->completeFlowStep('rent-conapt', StepResult::choice('skip'), $this->release, self::at());
+
+        self::assertSame([1, 0, 'debt'], [$campaign->trackerValue($this->tracker('lifestyle')), $campaign->trackerValue($this->tracker('month')), self::flowRunOf($campaign)->stepKey()]);
+        $campaign->completeFlowStep('debt', $this->pickAll($campaign), $this->release, self::at());
+        self::assertSame(['Debt to Mama Lux'], array_map(static fn (Thread $thread): string => $thread->name(), $campaign->threads()));
+    }
+
+    #[Test]
     public function aNightMarketPurchaseFromGearUpLandsInTheInventoryThatAcceptsItsCategory(): void
     {
         $campaign = $this->inPlanning();
@@ -380,9 +438,9 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep('street', self::roll('1d6', 2), $this->release, self::at());
     }
 
-    private function createYourCharacter(Campaign $campaign): void
+    private function createYourCharacter(Campaign $campaign, ?int $eddies = null): void
     {
-        $campaign->addCharacter(CharacterId::fromString('vi'), 'Vi', [], [], ['role' => 'Netrunner'], $this->release);
+        $campaign->addCharacter(CharacterId::fromString('vi'), 'Vi', [], [], ['role' => 'Netrunner'] + (null === $eddies ? [] : ['eddies' => $eddies]), $this->release);
         $campaign->completeFlowStep('you', StepResult::character('vi'), $this->release, self::at());
     }
 
@@ -413,12 +471,12 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
     /**
      * Street zero done with a fixer, Mama Lux (or none), at Act 1's scene pick. Vi has 500 eb.
      */
-    private function actOne(bool $withFixer = true): Campaign
+    private function actOne(bool $withFixer = true, ?int $eddies = null): Campaign
     {
         $campaign = $this->guidedCampaign();
         $campaign->startSession(self::at(), $this->release);
         $campaign->pickSceneType('edgerunner', $this->release, self::at());
-        $this->createYourCharacter($campaign);
+        $this->createYourCharacter($campaign, $eddies);
         $this->endScene($campaign);
         $campaign->pickSceneType('turf', $this->release, self::at());
         $campaign->completeFlowStep('block', self::prompt('Neon Row'), $this->release, self::at());
@@ -448,11 +506,12 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
     }
 
     /**
-     * Housing 0 and the Month clock full: Vi waits at the rent of the cube hotel (500 eb).
+     * Housing level (0, the cube hotel, by default) and the Month clock full: Vi waits at that level's rent step (500 eb at level 0).
      */
-    private function atMonthsEnd(): Campaign
+    private function atMonthsEnd(int $housing = 0, ?int $eddies = null): Campaign
     {
-        $campaign = $this->actOne();
+        $campaign = $this->actOne(eddies: $eddies);
+        $campaign->setTrackerValue($this->tracker('housing'), $housing, self::at());
         $campaign->setTrackerValue($this->tracker('month'), 3, self::at());
         $campaign->pickSceneType('downtime', $this->release, self::at());
         $this->endScene($campaign, skipping: ['spend']);

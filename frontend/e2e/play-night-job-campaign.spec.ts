@@ -88,23 +88,29 @@ test('a solo player starts the campaign flow, plays street zero, then buys somet
     await expect(guide.getByRole('region', { name, exact: true })).toBeHidden()
   }
 
-  // The stock is random too: buy the first item on offer, whatever it is.
+  // The stock and its prices are random too: buy the cheapest item on offer that the 500 eb cover.
   await playMarket.click()
   await guide
     .getByRole('region', { name: 'Current step: What does the market look like tonight?' })
     .getByRole('button', { name: 'Skip' })
     .click()
   const shop = guide.getByRole('region', { name: 'Current step: What do you buy or sell?' })
-  const quantity = shop.getByLabel(/^Buy /).first()
-  const item = ((await quantity.getAttribute('aria-label')) ?? '').replace(/^Buy /, '')
-  const row = shop
-    .getByRole('listitem')
-    .filter({ has: page.getByLabel(/^Buy /) })
-    .first()
-  const price = Number(
-    /·\s*([\d,]+)\s*eb/.exec((await row.textContent()) ?? '')?.[1].replace(',', ''),
+  const rows = shop.getByRole('listitem').filter({ has: page.getByLabel(/^Buy /) })
+  await expect(rows.first()).toBeVisible()
+  const offers = await Promise.all(
+    (await rows.all()).map(async (offer) => ({
+      quantity: offer.getByLabel(/^Buy /),
+      price: Number(
+        /·\s*([\d,]+)\s*eb/.exec((await offer.textContent()) ?? '')?.[1].replace(',', ''),
+      ),
+    })),
   )
-  expect(price).toBeGreaterThan(0)
+  const affordable = offers
+    .filter((offer) => offer.price > 0 && offer.price <= 500)
+    .sort((a, b) => a.price - b.price)
+  expect(affordable, 'the stock offers nothing Vi can afford with 500 eb').not.toHaveLength(0)
+  const { quantity, price } = affordable[0]
+  const item = ((await quantity.getAttribute('aria-label')) ?? '').replace(/^Buy /, '')
   await quantity.fill('1')
   const totals = shop.getByLabel('Totals')
   await expect(totals).toContainText('Eddies now500 eb')

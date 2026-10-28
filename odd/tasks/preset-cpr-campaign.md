@@ -79,7 +79,7 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
 | 1 | `feat/preset-cpr-campaign-1-release` | `feat(presets): preset-cpr-campaign 1/2 night job campaign release` | T1, T2, T3 | ~1,500 (JSON ~900, tests ~450, docs ~150) |
-| 2 | `feat/preset-cpr-campaign-2-play-pass` | `feat(presets): preset-cpr-campaign 2/2 play pass` | T4, T5, T6 | ~600 |
+| 2 | `feat/preset-cpr-campaign-2-play-pass` | `feat(presets): preset-cpr-campaign 2/2 play pass` | T4, T5, T6, T7 | ~600 |
 
 ## Tasks
 
@@ -90,7 +90,8 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 | T3 | 1 | Flow `campaign` with its Scene Types and tables; `PresetsTest` campaign assertions (non-default flow, acts, phases, trackers); `NightJobCampaignPresetFlowTest` unit test playing street zero, a gig chain, a world turn hit squad, the act gate, a Month's end (rent refused when broke, debt thread) and the finale's betrayal fallback | delegated writer (slice 1) | [x] | 32ab4d8d, 843cde2e |
 | T4 | 2 | Slice 1 review fixes; e2e `frontend/e2e/play-night-job-campaign.spec.ts`: start the campaign flow, play street zero, buy at the Night Market | delegated writer (slice 2) | [x] | |
 | T5 | 2 | Chrome play pass of Act 1 and a Month's end; fixes | parent Chrome pass + delegated writer (slice 2) | [x] | |
-| T6 | 2 | Closing: Reviews, roadmap `Done:` line under B12 | | [ ] | |
+| T6 | 2 | Slice 2 review fixes: rival found branch test, e2e buys an affordable item, dropped gig recovers by hand edit | delegated writer (slice 2) | [x] | |
+| T7 | 2 | Closing: Reviews, roadmap `Done:` line under B12 | | [ ] | |
 
 ## Progress
 
@@ -104,6 +105,7 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 - 2026-10-28: T4 e2e `play-night-job-campaign.spec.ts` written against existing behaviour (no RED). Plays street zero, Downtime and a Night Market purchase; the world turn roll and the random stock are handled generically (roll, skip any event steps; buy the first item). 6 runs green, `play-night-job` green.
 - 2026-10-28: T5 play pass findings: (1) world turn and gate broke a gig chain: `gig` tracker and guards; (2) skip fell through into branch-only world-turn steps: explicit `next`s; (3) `job` asked "What goes wrong?" after a Yes; (4) gig prompt tip promised the pay; (5) a shop step offered Skip although the server refuses it (separate `fix(play)` commit, hidden for `kind === 'shop'`; the test lives in `ShopStep.test.tsx`, there is no StepCard test file).
 - 2026-10-28: T5 RED: `NightJobCampaignPresetFlowTest` 7 failures and 5 errors against the old JSON (no `gig` tracker, hit squad replacing the chain, skips falling through, Go big mid-gig); `ShopStep.test.tsx` Skip visible on a non-mandatory shop. GREEN: `--filter 'NightJob|Presets'` 67 tests OK, `vitest src/play/flow` 183 OK, `make presets` prints only the heist's `flows[0]` warning, e2e `play-night-job-campaign` passes.
+- 2026-10-29: T6 slice 2 review fixes. Tests passed at once (behaviour already existed, no RED): rival pick `found` branch (prompt names Razor, then heat check) and a gig dropped by switching the forced Legwork to Social stays closed (no world turn, no Go big) until a hand edit of `gig` to 0 reopens both. E2E now buys the cheapest affordable item (fails with a message if none). GREEN: `--filter NightJobCampaign` 27 OK; `play-night-job-campaign` 3 runs and `play-night-job` green.
 
 ## Reviews
 

@@ -303,7 +303,7 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
     }
 
     #[Test]
-    public function skippingTheRivalPickGoesStraightToTheHeatCheckAndPickingOneAsksWhatItWants(): void
+    public function skippingTheRivalPickGoesStraightToTheHeatCheck(): void
     {
         $campaign = $this->socialWithHeat(8);
         $campaign->completeFlowStep('street', self::roll('1d6', 6), $this->release, self::at());
@@ -311,6 +311,60 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         self::assertSame('rival', self::flowRunOf($campaign)->stepKey());
         $campaign->skipFlowStep('rival', $this->release, self::at());
         self::assertSame('hit-squad', self::flowRunOf($campaign)->forcedNextSceneType());
+    }
+
+    #[Test]
+    public function pickingARivalCrewAsksWhatItWantsThenGoesToTheHeatCheck(): void
+    {
+        // A grudge on the street leaves Razor tagged "rival"; the next world turn can then move him.
+        $campaign = $this->actOne();
+        $campaign->pickSceneType('social', $this->release, self::at());
+        $this->endScene($campaign, skipping: ['talk', 'reaction']);
+        $campaign->completeFlowStep('street', self::roll('1d6', 6), $this->release, self::at());
+        $campaign->completeFlowStep('event', $this->rolled('street-events', 5), $this->release, self::at());
+        $campaign->completeFlowStep('grudge', self::prompt('Razor'), $this->release, self::at());
+        $campaign->setTrackerValue($this->tracker('heat'), 8, self::at());
+        $campaign->pickSceneType('social', $this->release, self::at());
+        $this->endScene($campaign, skipping: ['talk', 'reaction']);
+        $campaign->completeFlowStep('street', self::roll('1d6', 6), $this->release, self::at());
+        $campaign->completeFlowStep('event', $this->rolled('street-events', 1), $this->release, self::at());
+        self::assertSame('rival', self::flowRunOf($campaign)->stepKey());
+
+        $campaign->completeFlowStep('rival', $this->pickAll($campaign), $this->release, self::at());
+
+        self::assertSame(['rival-after', 'What is Razor after?'], [self::flowRunOf($campaign)->stepKey(), $campaign->flowRunView($this->release)?->step?->prompt]);
+        $campaign->completeFlowStep('rival-after', self::prompt('Your turf'), $this->release, self::at());
+        self::assertSame('hit-squad', self::flowRunOf($campaign)->forcedNextSceneType());
+    }
+
+    #[Test]
+    public function aGigDroppedMidChainStaysClosedUntilTheTrackerIsEditedByHand(): void
+    {
+        // The player leaves the chain by switching the forced Legwork scene to another Scene Type.
+        $campaign = $this->actOne();
+        $campaign->setTrackerValue($this->tracker('rep'), 4, self::at());
+        $this->recruit($campaign, 'Ada', 'netrunner');
+        $this->quietStreet($campaign);
+        $this->recruit($campaign, 'Rook', 'nomad');
+        $this->quietStreet($campaign);
+        $campaign->setTrackerValue($this->tracker('rep'), 5, self::at());
+        $this->takeAGig($campaign);
+        $campaign->pickSceneType('legwork', $this->release, self::at());
+        $campaign->switchSceneType($this->release->sceneType('social') ?? self::fail('No social scene type.'), $this->release, self::at());
+        $this->endScene($campaign, skipping: ['talk', 'reaction']);
+
+        // Gig still 1: neither the world turn nor "Go big?" runs, and the chain is gone.
+        self::assertSame(1, $campaign->trackerValue($this->tracker('gig')));
+        self::assertNull(self::flowRunOf($campaign)->forcedNextSceneType());
+        self::assertSame('scenePick', self::flowRunOf($campaign)->stage()->value);
+
+        // Editing the tracker by hand reopens both gates.
+        $campaign->setTrackerValue($this->tracker('gig'), 0, self::at());
+        $campaign->pickSceneType('social', $this->release, self::at());
+        $this->endScene($campaign, skipping: ['talk', 'reaction']);
+        self::assertSame('go-big', self::flowRunOf($campaign)->stepKey());
+        $campaign->completeFlowStep('go-big', StepResult::choice('no'), $this->release, self::at());
+        self::assertSame('street', self::flowRunOf($campaign)->stepKey());
     }
 
     #[Test]

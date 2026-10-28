@@ -7,8 +7,9 @@ import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
 
 import type { DerivedResult } from './derivedValues'
-import { toDraft, type Draft } from './sheetValues'
-import type { SheetFieldView, SheetGroupView, SheetTemplateView } from './types'
+import { InventoryControl } from './InventoryControl'
+import { stacksOf, toDraft, type Draft } from './sheetValues'
+import type { SheetEconomy, SheetFieldView, SheetGroupView, SheetTemplateView } from './types'
 
 const maxItemLength = 200
 
@@ -63,6 +64,7 @@ export function SheetFields({
       draft={drafts[field.key] ?? toDraft(field, undefined)}
       derived={derived[field.key]}
       note={notes[field.key]}
+      economy={template.economy}
       showFormula={showFormula}
       onChange={(draft) => {
         onChange(field.key, draft)
@@ -143,6 +145,11 @@ function GroupBox({
   )
 }
 
+/** The rows of a list or the marked keys of a conditions field; stacks are an inventory's. */
+function isRows(draft: Draft): draft is string[] {
+  return Array.isArray(draft) && draft.every((row) => typeof row === 'string')
+}
+
 /** A number that can only be 0 or 1; a value outside that range (legacy data) stays editable as a number. */
 function isToggle(field: SheetFieldView, draft: Draft): boolean {
   return (
@@ -158,6 +165,7 @@ function FieldControl({
   draft,
   derived,
   note,
+  economy,
   showFormula,
   onChange,
 }: {
@@ -165,6 +173,7 @@ function FieldControl({
   draft: Draft
   derived: DerivedResult | undefined
   note: string | undefined
+  economy: SheetEconomy | undefined
   showFormula: boolean
   onChange: (draft: Draft) => void
 }) {
@@ -221,11 +230,19 @@ function FieldControl({
   }
 
   if (field.type === 'inventory') {
-    // The control lands with play-items-economy slice 4; the stored stacks are sent back as they are.
-    return null
+    return (
+      <InventoryControl
+        field={field}
+        stacks={stacksOf(draft)}
+        gear={economy?.gear ?? []}
+        hint={hint}
+        describedBy={field.hint === null ? undefined : hintId}
+        onChange={onChange}
+      />
+    )
   }
 
-  if (field.type === 'conditions' && Array.isArray(draft)) {
+  if (field.type === 'conditions' && isRows(draft)) {
     // One checkbox per option; the marked keys are the draft, in the order they were ticked.
     return (
       <fieldset className="space-y-1" aria-describedby={field.hint === null ? undefined : hintId}>
@@ -251,7 +268,7 @@ function FieldControl({
     )
   }
 
-  if (Array.isArray(draft)) {
+  if (isRows(draft)) {
     const item = field.itemLabel ?? 'Item'
     return (
       <fieldset className="space-y-1" aria-describedby={field.hint === null ? undefined : hintId}>
@@ -295,7 +312,7 @@ function FieldControl({
     )
   }
 
-  if (typeof draft === 'object') {
+  if (typeof draft === 'object' && !Array.isArray(draft)) {
     // A max the field fixes is shown, not edited.
     const fixed = field.max !== null
     const max = Number(draft.max)
@@ -337,7 +354,12 @@ function FieldControl({
     )
   }
 
+  if (typeof draft !== 'string') {
+    // Stacks belong to an inventory field, handled above.
+    return null
+  }
   const describedBy = field.hint === null ? undefined : hintId
+  const unit = economy?.currency?.field === field.key ? economy.currency.unit : null
   if (isToggle(field, draft)) {
     // A 0..1 number is a flag, such as a condition: same '0'/'1' draft as the number input.
     return (
@@ -361,18 +383,21 @@ function FieldControl({
     <div className="space-y-1">
       <Label htmlFor={id}>{field.label}</Label>
       {field.type === 'number' ? (
-        <Input
-          id={id}
-          type="number"
-          required
-          min={field.min ?? undefined}
-          max={field.max ?? undefined}
-          aria-describedby={describedBy}
-          value={draft}
-          onChange={(event) => {
-            onChange(event.target.value)
-          }}
-        />
+        <div className="flex items-center gap-2">
+          <Input
+            id={id}
+            type="number"
+            required
+            min={field.min ?? undefined}
+            max={field.max ?? undefined}
+            aria-describedby={describedBy}
+            value={draft}
+            onChange={(event) => {
+              onChange(event.target.value)
+            }}
+          />
+          {unit !== null && <span className="text-sm text-muted-foreground">{unit}</span>}
+        </div>
       ) : field.multiline === true ? (
         <Textarea
           id={id}

@@ -1,8 +1,9 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { SheetFields } from './SheetFields'
-import type { SheetFieldView, SheetLayoutView, SheetTemplateView } from './types'
+import type { Draft } from './sheetValues'
+import type { SheetFieldView, SheetLayoutView, SheetStack, SheetTemplateView } from './types'
 
 const field = (key: string, group: string | null, span = 1): SheetFieldView => ({
   key,
@@ -243,12 +244,200 @@ describe('SheetFields with a conditions field', () => {
 })
 
 describe('SheetFields with an inventory field', () => {
-  it('renders no control for it until the inventory control lands, and keeps the other fields', () => {
-    const inventory: SheetFieldView = { ...field('pack', null), label: 'Pack', type: 'inventory' }
+  const catalog = [
+    { key: 'used-pistol', name: 'Used pistol', slots: 1, category: 'Weapons' },
+    { key: 'katana', name: 'Katana', slots: 3, category: 'Weapons' },
+    { key: 'ration', name: 'Ration', slots: 1, category: 'Food' },
+    { key: 'lucky-coin', name: 'Lucky coin', slots: 0, category: null },
+  ]
+  const pack = (extra: Partial<SheetFieldView> = {}): SheetFieldView => ({
+    ...field('pack', null),
+    label: 'Pack',
+    type: 'inventory',
+    capacity: 4,
+    maxStacks: 3,
+    categories: null,
+    ...extra,
+  })
 
-    renderSheet({ fields: [inventory, field('role', null)], layout: null })
+  /** Renders the inventory with `stacks` and returns what the control reports. */
+  function renderPack(stacks: SheetStack[], extra: Partial<SheetFieldView> = {}, gear = catalog) {
+    const onChange = vi.fn<(key: string, draft: Draft) => void>()
+    render(
+      <SheetFields
+        template={{
+          fields: [pack(extra), field('role', null)],
+          layout: null,
+          economy: { gear, currency: null },
+        }}
+        drafts={{ pack: stacks }}
+        derived={{}}
+        onChange={onChange}
+      />,
+    )
+    return onChange
+  }
 
-    expect(screen.queryByText('Pack')).not.toBeInTheDocument()
+  it('lists the stacks with their quantity and slots, and the slots used out of the capacity', () => {
+    renderPack([
+      { gear: 'used-pistol', quantity: 2 },
+      { name: 'Rope', quantity: 1, slots: 1 },
+    ])
+
+    expect(screen.getByLabelText('Quantity of Used pistol')).toHaveValue(2)
+    expect(screen.getByLabelText('Quantity of Rope')).toHaveValue(1)
+    expect(screen.getByText('2 slots')).toBeInTheDocument()
+    expect(screen.getByText('1 slot')).toBeInTheDocument()
+    expect(screen.getByText('Slots used: 3 / 4')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByLabelText('ROLE')).toBeInTheDocument()
+  })
+
+  it('shows only the slots used when the field has no capacity', () => {
+    renderPack([{ gear: 'katana', quantity: 1 }], { capacity: null })
+
+    expect(screen.getByText('Slots used: 3')).toBeInTheDocument()
+  })
+
+  it('adds a catalog stack by picking gear, grouped by category', async () => {
+    const user = userEvent.setup()
+    const onChange = renderPack([])
+
+    const select = screen.getByLabelText('Gear to add to Pack')
+    expect(within(select).getByRole('group', { name: 'Weapons' })).toHaveTextContent(
+      'Katana (3 slots)',
+    )
+    expect(within(select).getByRole('group', { name: 'Food' })).toHaveTextContent('Ration (1 slot)')
+    expect(within(select).getByRole('group', { name: 'Other' })).toHaveTextContent('Lucky coin')
+    expect(screen.getByRole('button', { name: 'Add gear' })).toBeDisabled()
+    await user.selectOptions(select, 'ration')
+    await user.click(screen.getByRole('button', { name: 'Add gear' }))
+
+    expect(onChange).toHaveBeenCalledWith('pack', [{ gear: 'ration', quantity: 1 }])
+  })
+
+  it('adds a unit to the stack of gear already held instead of duplicating it', async () => {
+    const user = userEvent.setup()
+    const onChange = renderPack([{ gear: 'ration', quantity: 1 }])
+
+    await user.selectOptions(screen.getByLabelText('Gear to add to Pack'), 'ration')
+    await user.click(screen.getByRole('button', { name: 'Add gear' }))
+
+    expect(onChange).toHaveBeenCalledWith('pack', [{ gear: 'ration', quantity: 2 }])
+  })
+
+  it('offers only the gear of the categories the field accepts', () => {
+    renderPack([], { categories: ['Food'] })
+
+    const select = screen.getByLabelText('Gear to add to Pack')
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Choose gear…', 'Ration (1 slot)'])
+  })
+
+  it('offers no catalog picker when the field accepts no gear, only a free stack', () => {
+    renderPack([], { categories: ['Armor'] })
+
+    expect(screen.queryByLabelText('Gear to add to Pack')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Free stack name')).toBeInTheDocument()
+  })
+
+  it('adds a free stack with its name and slots', async () => {
+    const user = userEvent.setup()
+    const onChange = renderPack([])
+
+    expect(screen.getByRole('button', { name: 'Add free stack' })).toBeDisabled()
+    await user.type(screen.getByLabelText('Free stack name'), '  Rope ')
+    await user.clear(screen.getByLabelText('Slots each'))
+    await user.type(screen.getByLabelText('Slots each'), '2')
+    await user.click(screen.getByRole('button', { name: 'Add free stack' }))
+
+    expect(onChange).toHaveBeenCalledWith('pack', [{ name: 'Rope', quantity: 1, slots: 2 }])
+    expect(screen.getByLabelText('Free stack name')).toHaveValue('')
+  })
+
+  it('changes a quantity inside 1 to 9999 and removes a stack', async () => {
+    const user = userEvent.setup()
+    const onChange = renderPack([
+      { gear: 'ration', quantity: 1 },
+      { name: 'Rope', quantity: 1, slots: 0 },
+    ])
+
+    fireEvent.change(screen.getByLabelText('Quantity of Ration'), { target: { value: '3' } })
+    expect(onChange).toHaveBeenLastCalledWith('pack', [
+      { gear: 'ration', quantity: 3 },
+      { name: 'Rope', quantity: 1, slots: 0 },
+    ])
+    fireEvent.change(screen.getByLabelText('Quantity of Ration'), { target: { value: '99999' } })
+    expect(onChange).toHaveBeenLastCalledWith('pack', [
+      { gear: 'ration', quantity: 9999 },
+      { name: 'Rope', quantity: 1, slots: 0 },
+    ])
+    fireEvent.change(screen.getByLabelText('Quantity of Ration'), { target: { value: '0' } })
+    expect(onChange).toHaveBeenLastCalledWith('pack', [
+      { gear: 'ration', quantity: 1 },
+      { name: 'Rope', quantity: 1, slots: 0 },
+    ])
+    await user.click(screen.getByRole('button', { name: 'Remove Ration' }))
+    expect(onChange).toHaveBeenLastCalledWith('pack', [{ name: 'Rope', quantity: 1, slots: 0 }])
+  })
+
+  it('warns when the stacks use more slots than the capacity, and still lets the player edit', async () => {
+    const user = userEvent.setup()
+    const onChange = renderPack([{ gear: 'katana', quantity: 2 }])
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Pack holds 4 slots, 6 used.')
+    expect(screen.getByText('Slots used: 6 / 4')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Remove Katana' }))
+    expect(onChange).toHaveBeenCalledWith('pack', [])
+  })
+
+  it('disables adding a new stack at the stack limit, but still adds a unit to a held one', async () => {
+    const user = userEvent.setup()
+    const onChange = renderPack(
+      [
+        { gear: 'ration', quantity: 1 },
+        { gear: 'lucky-coin', quantity: 1 },
+        { name: 'Rope', quantity: 1, slots: 0 },
+      ],
+      { capacity: null },
+    )
+
+    expect(screen.getByText('Pack holds at most 3 stacks.')).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Free stack name'), 'Map')
+    expect(screen.getByRole('button', { name: 'Add free stack' })).toBeDisabled()
+    await user.selectOptions(screen.getByLabelText('Gear to add to Pack'), 'katana')
+    expect(screen.getByRole('button', { name: 'Add gear' })).toBeDisabled()
+    await user.selectOptions(screen.getByLabelText('Gear to add to Pack'), 'ration')
+    await user.click(screen.getByRole('button', { name: 'Add gear' }))
+    expect(onChange).toHaveBeenCalledWith(
+      'pack',
+      expect.arrayContaining([{ gear: 'ration', quantity: 2 }]),
+    )
+  })
+})
+
+describe('SheetFields with a currency', () => {
+  it('shows the unit next to the number field the currency names, and no other', () => {
+    const eddies: SheetFieldView = { ...field('eddies', null), label: 'Eddies', type: 'number' }
+    const luck: SheetFieldView = { ...field('luck', null), label: 'Luck', type: 'number' }
+
+    render(
+      <SheetFields
+        template={{
+          fields: [eddies, luck],
+          layout: null,
+          economy: { gear: [], currency: { field: 'eddies', unit: 'eb' } },
+        }}
+        drafts={{ eddies: '120', luck: '3' }}
+        derived={{}}
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByLabelText('Eddies').parentElement).toHaveTextContent('eb')
+    expect(screen.getByLabelText('Luck').parentElement).not.toHaveTextContent('eb')
   })
 })

@@ -88,7 +88,12 @@ export function CharactersPanel({ campaign }: { campaign: Campaign }) {
                 <p className="text-sm text-muted-foreground">
                   {sheet
                     .map((field) =>
-                      summarize(field, character.values[field.key], character.derived),
+                      summarize(
+                        field,
+                        character.values[field.key],
+                        character.derived,
+                        template.economy,
+                      ),
                     )
                     .filter((part) => part !== null)
                     .join(' · ')}

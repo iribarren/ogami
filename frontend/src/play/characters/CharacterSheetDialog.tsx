@@ -1,4 +1,12 @@
-import { markedLabels, valueOrDefault } from '@/shared/sheet/sheetValues'
+import {
+  markedLabels,
+  slotsUsed,
+  stacksOf,
+  stackText,
+  valueOrDefault,
+  withUnit,
+} from '@/shared/sheet/sheetValues'
+import type { SheetEconomy } from '@/shared/sheet/types'
 import { Button } from '@/shared/ui/button'
 import {
   Dialog,
@@ -12,14 +20,35 @@ import {
 import type { Character, SheetField } from './useCharacters'
 
 /** A field's value; a derived one is the server's, or a dash when it has none. */
-function FieldValue({ field, character }: { field: SheetField; character: Character }) {
+function FieldValue({
+  field,
+  character,
+  economy,
+}: {
+  field: SheetField
+  character: Character
+  economy: SheetEconomy | undefined
+}) {
   if (field.type === 'derived') {
     return String(character.derived[field.key] ?? '—')
   }
   const value = valueOrDefault(field, character.values[field.key])
   if (field.type === 'inventory') {
-    // Its read-only view lands with play-items-economy slice 4.
-    return String(Array.isArray(value) ? value.length : 0)
+    const gear = economy?.gear ?? []
+    const stacks = stacksOf(value)
+    return (
+      <>
+        <ul>
+          {stacks.map((stack, index) => (
+            <li key={`${String(index)}-${stackText(stack, gear)}`}>{stackText(stack, gear)}</li>
+          ))}
+        </ul>
+        <span className="text-xs text-muted-foreground">
+          Slots: {slotsUsed(stacks, gear)}
+          {field.capacity != null && ` / ${String(field.capacity)}`}
+        </span>
+      </>
+    )
   }
   if (field.type === 'conditions' && Array.isArray(value)) {
     const labels = markedLabels(
@@ -42,7 +71,7 @@ function FieldValue({ field, character }: { field: SheetField; character: Charac
   if (typeof value === 'object') {
     return `${String(value.current)} / ${String(value.max)}`
   }
-  return String(value)
+  return withUnit(field, String(value), economy)
 }
 
 /** Consecutive fields with the same group, as the form lays them out. */
@@ -66,9 +95,12 @@ function blocks(sheet: SheetField[]) {
 export function CharacterSheetDialog({
   character,
   sheet,
+  economy,
 }: {
   character: Character
   sheet: SheetField[]
+  /** The release's gear catalog and currency: names of gear stacks and the unit of money. */
+  economy?: SheetEconomy
 }) {
   return (
     <Dialog>
@@ -105,7 +137,7 @@ export function CharacterSheetDialog({
                 <div key={field.key} className="contents">
                   <dt className="text-muted-foreground">{field.label}</dt>
                   <dd className="break-words whitespace-pre-line">
-                    <FieldValue field={field} character={character} />
+                    <FieldValue field={field} character={character} economy={economy} />
                   </dd>
                 </div>
               ))}

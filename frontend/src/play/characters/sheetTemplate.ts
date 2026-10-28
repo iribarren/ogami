@@ -6,6 +6,8 @@ import type { Campaign } from '../campaigns/useCampaigns'
 export function sheetTemplate({
   sheet,
   sheetLayout,
+  gear,
+  currency,
 }: Campaign['pinnedRelease']): SheetTemplateView {
-  return { fields: sheet, layout: sheetLayout }
+  return { fields: sheet, layout: sheetLayout, economy: { gear, currency } }
 }

@@ -77,6 +77,7 @@ function CurrentCast({ campaign }: { campaign: Campaign }) {
       scene={scene}
       editable
       sheet={campaign.pinnedRelease.sheet}
+      economy={campaign.pinnedRelease}
     />
   )
 }

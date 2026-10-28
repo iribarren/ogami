@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { CharacterSheetDialog } from './CharacterSheetDialog'
 import {
   conditionsField,
+  economy,
+  eddiesField,
   initiativeField,
   inventoryField,
   oldCharacter,
@@ -81,7 +83,7 @@ describe('CharacterSheetDialog', () => {
     expect(within(await screen.findByRole('dialog')).getByText('None')).toBeInTheDocument()
   })
 
-  it('shows the number of stacks of an inventory, and 0 for a Character that never had the field', async () => {
+  it('lists the stacks of an inventory as Name ×n with the slots used, and nothing for a Character that never had the field', async () => {
     const user = userEvent.setup()
     const withPack = [...sheet, inventoryField]
     const { rerender } = render(
@@ -97,24 +99,60 @@ describe('CharacterSheetDialog', () => {
           },
         }}
         sheet={withPack}
+        economy={economy}
       />,
     )
 
     await user.click(screen.getByRole('button', { name: 'View sheet of Vi' }))
+    const pack = within(await screen.findByRole('dialog', { name: 'Vi' })).getByRole('group', {
+      name: 'Pack',
+    })
     expect(
-      within(await screen.findByRole('dialog', { name: 'Vi' })).getByRole('group', {
-        name: 'Pack',
-      }),
-    ).toHaveTextContent('Pack2')
+      within(pack)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Used pistol ×2', 'Rope'])
+    expect(pack).toHaveTextContent('Slots: 4 / 10')
     await user.keyboard('{Escape}')
 
-    rerender(<CharacterSheetDialog character={viCharacter} sheet={withPack} />)
+    rerender(<CharacterSheetDialog character={viCharacter} sheet={withPack} economy={economy} />)
     await user.click(screen.getByRole('button', { name: 'View sheet of Vi' }))
-    expect(
-      within(await screen.findByRole('dialog', { name: 'Vi' })).getByRole('group', {
-        name: 'Pack',
-      }),
-    ).toHaveTextContent('Pack0')
+    const empty = within(await screen.findByRole('dialog', { name: 'Vi' })).getByRole('group', {
+      name: 'Pack',
+    })
+    expect(within(empty).queryAllByRole('listitem')).toHaveLength(0)
+    expect(empty).toHaveTextContent('Slots: 0 / 10')
+  })
+
+  it('names gear by its key when the catalog is not known', async () => {
+    const user = userEvent.setup()
+    render(
+      <CharacterSheetDialog
+        character={{ ...viCharacter, values: { pack: [{ gear: 'used-pistol', quantity: 1 }] } }}
+        sheet={[inventoryField]}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'View sheet of Vi' }))
+
+    expect(await screen.findByText('used-pistol')).toBeInTheDocument()
+  })
+
+  it('shows the unit of the currency after the money, and none after another number', async () => {
+    const user = userEvent.setup()
+    render(
+      <CharacterSheetDialog
+        character={{ ...viCharacter, values: { ...viCharacter.values, eddies: 120 } }}
+        sheet={[...sheet, eddiesField]}
+        economy={economy}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'View sheet of Vi' }))
+
+    const dialog = within(await screen.findByRole('dialog', { name: 'Vi' }))
+    expect(dialog.getByText('120 eb')).toBeInTheDocument()
+    expect(dialog.getByText('7')).toBeInTheDocument()
   })
 
   it('closes on Escape', async () => {

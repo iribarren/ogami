@@ -1,3 +1,5 @@
+import type { SheetEconomy } from '@/shared/sheet/types'
+
 import { lostMineCampaign, luckCheck, skillCheck } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { allyTag, leaderTag } from '../lists/fixtures'
@@ -54,6 +56,38 @@ export const inventoryField: SheetField = {
   type: 'inventory',
   capacity: 10,
   maxStacks: 50,
+}
+
+/** A catalog with two categories and a gear without one (ADR 0045). */
+export const gearCatalog: Campaign['pinnedRelease']['gear'] = [
+  {
+    key: 'used-pistol',
+    name: 'Used pistol',
+    cost: 50,
+    slots: 1,
+    category: 'Weapons',
+    description: null,
+  },
+  { key: 'katana', name: 'Katana', cost: 300, slots: 3, category: 'Weapons', description: null },
+  { key: 'ration', name: 'Ration', cost: 5, slots: 1, category: 'Food', description: null },
+  { key: 'lucky-coin', name: 'Lucky coin', cost: 1, slots: 0, category: null, description: null },
+]
+
+/** The catalog with a currency in `eddies`, as a release declares them. */
+export const economy: SheetEconomy = {
+  gear: gearCatalog,
+  currency: { field: 'eddies', unit: 'eb' },
+}
+
+/** The money field `economy` names. */
+export const eddiesField: SheetField = {
+  ...base,
+  key: 'eddies',
+  label: 'Eddies',
+  group: 'Pack',
+  type: 'number',
+  min: 0,
+  default: 0,
 }
 
 /** One field of each type: Identity (text), Stats (two numbers), Vitals (two tracks), then Gear and Notes (each in its own group). */

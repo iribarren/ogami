@@ -50,10 +50,33 @@ export interface SheetLayoutView {
   groups: SheetGroupView[]
 }
 
+/** One entry of the release's gear catalog (ADR 0045): what an inventory stack of it takes. */
+export interface SheetGear {
+  key: string
+  name: string
+  /** Slots one unit takes. */
+  slots: number
+  category: string | null
+}
+
+/** The sheet number field money is kept in, and what follows an amount ("eb"). */
+export interface SheetCurrency {
+  field: string
+  unit: string | null
+}
+
+/** What inventories and money need from the release beyond the fields (ADR 0045). */
+export interface SheetEconomy {
+  gear: SheetGear[]
+  currency: SheetCurrency | null
+}
+
 export interface SheetTemplateView {
   fields: SheetFieldView[]
   /** Null when the release declares no groups. */
   layout: SheetLayoutView | null
+  /** The gear catalog and the currency; Studio's sheet builder has none yet, and its inventories show no catalog. */
+  economy?: SheetEconomy
 }
 
 /** A stack of an inventory (ADR 0045): catalog gear by key, or a free stack with its own name and slots. */

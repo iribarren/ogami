@@ -1,5 +1,7 @@
 import { useState } from 'react'
 
+import { stackText } from '@/shared/sheet/sheetValues'
+import type { SheetGear } from '@/shared/sheet/types'
 import { Button } from '@/shared/ui/button'
 import {
   Dialog,
@@ -83,7 +85,7 @@ function ReleaseUpgradeDialog({
           </p>
         )}
         {preview.data?.upToDate === true && <p>This campaign already plays the latest release.</p>}
-        {plan !== null && <UpgradePlan plan={plan} />}
+        {plan !== null && <UpgradePlan plan={plan} gear={campaign.pinnedRelease.gear} />}
         {upgrade.isError && (
           <p role="alert" className="text-sm text-destructive">
             {upgrade.error.message}
@@ -121,7 +123,7 @@ function ReleaseUpgradeDialog({
 }
 
 /** The sections of a plan, each omitted when it has nothing to list. */
-function UpgradePlan({ plan }: { plan: ReleaseUpgradePlan }) {
+function UpgradePlan({ plan, gear }: { plan: ReleaseUpgradePlan; gear: SheetGear[] }) {
   const characterChanges = plan.characters.filter(({ changes }) => changes.length > 0)
   const droppedTags = [
     ...plan.characters
@@ -141,7 +143,7 @@ function UpgradePlan({ plan }: { plan: ReleaseUpgradePlan }) {
               <span className="font-medium">{character.name}</span>
               <ul className="ml-4 list-disc">
                 {character.changes.map((change) => (
-                  <li key={change.fieldKey}>{fieldChangeText(change)}</li>
+                  <li key={change.fieldKey}>{fieldChangeText(change, gear)}</li>
                 ))}
               </ul>
             </li>
@@ -201,8 +203,11 @@ function PlanSection({ title, children }: { title: string; children: React.React
 
 type FieldValue = UpgradeFieldChange['before']
 
-/** A stored value as a player reads it: a track as "current/max", a list joined, nothing as "none". */
-function valueText(value: FieldValue): string {
+/**
+ * A stored value as a player reads it: a track as "current/max", a list joined, an inventory's
+ * stacks as "Name ×n" (gear named by the catalog the campaign plays, else by its key), nothing as "none".
+ */
+function valueText(value: FieldValue, gear: SheetGear[]): string {
   if (value === null) {
     return 'none'
   }
@@ -210,13 +215,18 @@ function valueText(value: FieldValue): string {
     return `${String(value.current)}/${String(value.max)}`
   }
   if (Array.isArray(value)) {
-    return value.length === 0 ? 'empty' : value.join(', ')
+    return value.length === 0
+      ? 'empty'
+      : value.map((item) => (typeof item === 'string' ? item : stackText(item, gear))).join(', ')
   }
   return value === '' ? 'empty' : String(value)
 }
 
-function fieldChangeText({ fieldName, kind, before, after }: UpgradeFieldChange) {
-  return `${fieldName} (${kind}): ${valueText(before)} → ${valueText(after)}`
+function fieldChangeText(
+  { fieldName, kind, before, after }: UpgradeFieldChange,
+  gear: SheetGear[],
+) {
+  return `${fieldName} (${kind}): ${valueText(before, gear)} → ${valueText(after, gear)}`
 }
 
 function trackerChangeText({ name, kind, before, after }: UpgradeTrackerChange) {

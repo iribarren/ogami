@@ -9,10 +9,14 @@ import type { Campaign } from '../campaigns/useCampaigns'
 import {
   conditionsField,
   creationBudget,
+  eddiesField,
+  economy,
+  gearCatalog,
   creationCampaign,
   creationSheet,
   twoBudgetCampaign,
   initiativeField,
+  inventoryField,
   lostMineWithCharacters,
   nightJobCampaign,
   oldCharacter,
@@ -383,6 +387,87 @@ describe('the Characters panel', () => {
           },
         },
       ])
+    })
+  })
+
+  describe('inventory fields and the currency', () => {
+    const rich = {
+      ...viCharacter,
+      values: { ...viCharacter.values, pack: [{ gear: 'katana', quantity: 1 }], eddies: 120 },
+    }
+    const withPack: Campaign = {
+      ...nightJobCampaign,
+      pinnedRelease: {
+        ...nightJobCampaign.pinnedRelease,
+        sheet: [...sheet, inventoryField, eddiesField],
+        gear: gearCatalog,
+        currency: economy.currency,
+      },
+      characters: [rich],
+    }
+
+    it('summarizes the stacks by name and the money with its unit', async () => {
+      renderCharacters(withPack)
+
+      const [vi] = (await characters()).getAllByRole('listitem') as [HTMLElement]
+      expect(within(vi).getByText(/Pack: Katana/)).toBeInTheDocument()
+      expect(within(vi).getByText(/Eddies: 120 eb/)).toBeInTheDocument()
+    })
+
+    it('adds a catalog stack in the form and sends the stacks with the whole Character', async () => {
+      const user = userEvent.setup()
+      const sent: unknown[] = []
+      renderCharacters(
+        withPack,
+        { [`PUT ${path}/characters/${rich.id}`]: () => Response.json(rich) },
+        sent,
+      )
+
+      const panel = await characters()
+      await user.click(panel.getByRole('button', { name: 'Edit Vi' }))
+      expect(panel.getByText('Slots used: 3 / 10')).toBeInTheDocument()
+      expect(panel.getByLabelText('Eddies').parentElement).toHaveTextContent('eb')
+      await user.selectOptions(panel.getByLabelText('Gear to add to Pack'), 'ration')
+      await user.click(panel.getByRole('button', { name: 'Add gear' }))
+      await user.click(panel.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => {
+        expect(sent).toEqual([
+          {
+            name: 'Vi',
+            tags: ['leader'],
+            freeTags: ['Fixer'],
+            values: {
+              ...rich.values,
+              pack: [
+                { gear: 'katana', quantity: 1 },
+                { gear: 'ration', quantity: 1 },
+              ],
+            },
+          },
+        ])
+      })
+    })
+
+    it('starts a new Character with an empty inventory', async () => {
+      const user = userEvent.setup()
+      const sent: unknown[] = []
+      renderCharacters(
+        { ...withPack, characters: [] },
+        { [`POST ${path}/characters`]: () => Response.json(viCharacter, { status: 201 }) },
+        sent,
+      )
+
+      const panel = await characters()
+      await user.click(panel.getByRole('button', { name: 'Add Character' }))
+      expect(panel.getByText('Nothing held.')).toBeInTheDocument()
+      await user.type(panel.getByLabelText('Name'), 'Zed')
+      await user.click(panel.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => {
+        expect(sent).toHaveLength(1)
+      })
+      expect(sent[0]).toMatchObject({ values: { pack: [], eddies: 0 } })
     })
   })
 

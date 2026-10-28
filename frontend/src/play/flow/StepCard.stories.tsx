@@ -5,7 +5,7 @@ import { onTheme } from '@/shared/theme/themeStories'
 import { StoryProviders } from '@/test/StoryProviders'
 
 import { lostMineCampaign } from '../campaigns/fixtures'
-import { promptStep } from './fixtures'
+import { guidedWithShop, atStep, promptStep, shopStep } from './fixtures'
 import { StepCard } from './StepCard'
 
 const meta = {
@@ -33,6 +33,11 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
+
+/** A shop step in a campaign with a currency, a catalog and a Character who holds gear. */
+export const Shop: Story = {
+  args: { campaign: guidedWithShop(atStep(shopStep)), step: shopStep },
+}
 
 export const Unframed: Story = { args: { frame: false } }
 

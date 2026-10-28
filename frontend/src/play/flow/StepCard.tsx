@@ -14,7 +14,9 @@ import { CheckStepForm } from './CheckStepForm'
 import { InspirationRolls } from './InspirationRolls'
 import { PendingCheckForm } from './PendingCheckForm'
 import { PickForm } from './PickForm'
+import { effectiveCharacterId } from './effectiveCharacterId'
 import { SheetCharacterSelect } from './SheetCharacterSelect'
+import { ShopStepForm } from './ShopStepForm'
 import type { CompleteFlowStepRequest, FlowRunCommand, FlowStep } from './useFlowRun'
 
 const kindLabels: Record<FlowStep['kind'], string> = {
@@ -200,21 +202,17 @@ function StepForm({ campaign, step, pending, onCommand }: StepProps) {
       }
       return <CheckStepForm campaign={campaign} step={step} pending={pending} onRoll={answer} />
     case 'shop':
-      // Its cart lands with play-items-economy slice 6.
-      return <p className="text-sm text-muted-foreground">This shop cannot be played here yet.</p>
+      return step.shop === null ? null : (
+        <ShopStepForm
+          campaign={campaign}
+          shop={step.shop}
+          pending={pending}
+          onComplete={(characterId, buy, sell) => {
+            answer({ characterId, buy, sell })
+          }}
+        />
+      )
   }
-}
-
-/**
- * The Character a step that changes a sheet answers with: the one the player chose, else the
- * campaign's only Character, else none. Derived on every render, so a list that becomes one
- * Character after mount still preselects it.
- */
-function effectiveCharacterId(campaign: Campaign, chosen: string): string {
-  if (chosen !== '') {
-    return chosen
-  }
-  return campaign.characters.length === 1 ? (campaign.characters[0]?.id ?? '') : ''
 }
 
 /** The options as buttons; one that changes a sheet asks for the Character before it answers. */

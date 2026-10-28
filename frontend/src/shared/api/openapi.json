@@ -13761,6 +13761,7 @@
                     "trackers",
                     "facts",
                     "flow",
+                    "gear",
                     "fingerprint"
                 ],
                 "properties": {
@@ -13807,6 +13808,13 @@
                     },
                     "flow": {
                         "$ref": "#/components/schemas/UpgradeFlowChangeResponse"
+                    },
+                    "gear": {
+                        "description": "The gear catalog of the release the campaign moves to, in order (ADR 0045): names the gear a converted stack holds after the upgrade. Empty when that release has none.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GearEntryResponse"
+                        }
                     },
                     "fingerprint": {
                         "description": "Stands for exactly this change (SHA-256 of the plan). The upgrade is refused when the campaign or the releases changed since, so the confirmed change is the previewed one.",
@@ -13905,6 +13913,54 @@
                 },
                 "type": "object"
             },
+            "ShopLineRequest": {
+                "required": [
+                    "gear",
+                    "quantity"
+                ],
+                "properties": {
+                    "gear": {
+                        "description": "The key of the gear on sale to buy.",
+                        "type": "string",
+                        "example": "used-pistol"
+                    },
+                    "quantity": {
+                        "description": "How many units, 1 to 9999.",
+                        "type": "integer",
+                        "example": 2,
+                        "maximum": 9999,
+                        "minimum": 1
+                    }
+                },
+                "type": "object"
+            },
+            "ShopSellLineRequest": {
+                "required": [
+                    "field",
+                    "gear",
+                    "quantity"
+                ],
+                "properties": {
+                    "field": {
+                        "description": "The key of the Character's inventory field the stack is sold from.",
+                        "type": "string",
+                        "example": "pack"
+                    },
+                    "gear": {
+                        "description": "The key of the catalog gear of the stack.",
+                        "type": "string",
+                        "example": "used-pistol"
+                    },
+                    "quantity": {
+                        "description": "How many units, 1 to 9999, at most what the stack holds.",
+                        "type": "integer",
+                        "example": 1,
+                        "maximum": 9999,
+                        "minimum": 1
+                    }
+                },
+                "type": "object"
+            },
             "CompleteFlowStepRequest": {
                 "required": [
                     "stepKey"
@@ -13969,6 +14025,22 @@
                         "description": "Check step with a check set (its checks): the key of the check of the set to roll; required there. Must be omitted or null on a single-check step.",
                         "type": "string",
                         "example": "sneak",
+                        "nullable": true
+                    },
+                    "buy": {
+                        "description": "Shop step: the gear to buy, each gear listed once; omitted, null or empty for none. Must be omitted or null for the other kinds.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ShopLineRequest"
+                        },
+                        "nullable": true
+                    },
+                    "sell": {
+                        "description": "Shop step: the stacks of the Character to sell, applied before the purchases; omitted, null or empty for none. Must be omitted or null for the other kinds.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ShopSellLineRequest"
+                        },
                         "nullable": true
                     }
                 },

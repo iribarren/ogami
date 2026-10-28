@@ -33,6 +33,6 @@ final readonly class PreviewReleaseUpgradeHandler implements QueryHandler
             return new ReleaseUpgradePreview($pinned->releaseVersion(), null);
         }
 
-        return new ReleaseUpgradePreview($pinned->releaseVersion(), $campaign->planReleaseUpgrade($current, $latest));
+        return new ReleaseUpgradePreview($pinned->releaseVersion(), $campaign->planReleaseUpgrade($current, $latest), $latest->gear());
     }
 }

@@ -11,6 +11,8 @@ export type Campaign = components['schemas']['CampaignResponse']
 export type GameSystemSummary = components['schemas']['GameSystemSummaryResponse']
 /** Which rule of structured character creation a 422 broke (ADR 0040); the message is for people. */
 export type CharacterCreationErrorCode = components['schemas']['CharacterCreationErrorCode']
+/** Which sheet rule a FlowRun answer broke: a spend over the currency or a purchase over an inventory (ADR 0045). */
+export type FlowRunErrorCode = components['schemas']['FlowRunErrorCode']
 type CreateCampaignRequest = components['schemas']['CreateCampaignRequest']
 type StartSceneRequest = components['schemas']['StartSceneRequest']
 
@@ -22,10 +24,14 @@ export class CampaignError extends Error {
   override name = 'CampaignError'
 
   readonly status: number
-  /** Set on a refusal to add a Character that broke a creation rule. */
-  readonly code: CharacterCreationErrorCode | undefined
+  /** Set on a refusal that broke a creation rule or a sheet rule of a FlowRun answer. */
+  readonly code: CharacterCreationErrorCode | FlowRunErrorCode | undefined
 
-  constructor(message: string, status: number, code?: CharacterCreationErrorCode) {
+  constructor(
+    message: string,
+    status: number,
+    code?: CharacterCreationErrorCode | FlowRunErrorCode,
+  ) {
     super(message)
     this.status = status
     this.code = code
@@ -35,7 +41,7 @@ export class CampaignError extends Error {
 /** Uses the API's message for the statuses that explain the refusal, a generic one otherwise. */
 export function campaignError(
   response: Response,
-  error: { error: string; code?: CharacterCreationErrorCode | null } | undefined,
+  error: { error: string; code?: CharacterCreationErrorCode | FlowRunErrorCode | null } | undefined,
   explained: readonly number[],
   failure: string,
 ) {

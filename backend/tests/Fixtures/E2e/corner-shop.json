@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {
+    "key": "e2e-corner-shop",
+    "name": "E2E Corner shop",
+    "description": "A minimal release for the shop e2e: create a Character, then visit one shop. Not shipped to players."
+  },
+  "oracles": { "tables": [], "likelihood": [] },
+  "tags": [],
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [
+    {
+      "key": "market",
+      "name": "Market",
+      "purpose": "Spend your eddies.",
+      "oracles": [],
+      "setup": [
+        { "key": "who", "kind": "character", "title": "Who goes shopping?", "mandatory": true }
+      ],
+      "play": [
+        {
+          "key": "stalls",
+          "kind": "shop",
+          "title": "What do you buy?",
+          "offer": { "gear": ["used-pistol", "ration"] },
+          "sellRate": 50
+        }
+      ],
+      "closing": []
+    }
+  ],
+  "flows": [
+    {
+      "key": "errand",
+      "name": "Errand",
+      "description": "Make a Character and visit the shop.",
+      "default": true,
+      "defaultView": "focus",
+      "oracles": [],
+      "trackers": [],
+      "phases": [
+        {
+          "key": "shopping",
+          "name": "Shopping",
+          "mode": "once",
+          "selection": { "rule": "sequence", "sceneTypes": ["market"] }
+        }
+      ]
+    }
+  ],
+  "sheet": {
+    "fields": [
+      { "key": "role", "label": "Role", "type": "text", "maxLength": 40 },
+      { "key": "eddies", "label": "Eddies", "type": "number", "min": 0, "default": 100 },
+      { "key": "pack", "label": "Pack", "type": "inventory", "capacity": 10 }
+    ],
+    "currency": { "field": "eddies", "unit": "eb" }
+  },
+  "checks": [],
+  "gear": [
+    { "key": "used-pistol", "name": "Used pistol", "cost": 50 },
+    { "key": "ration", "name": "Ration", "cost": 5 }
+  ]
+}

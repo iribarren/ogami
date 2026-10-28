@@ -11,6 +11,7 @@ import {
   type Campaign,
 } from '../campaigns/useCampaigns'
 import { journalKey } from '../journal/useJournal'
+import { flowRunRefusal } from './flowRunErrors'
 
 export type FlowRun = NonNullable<Campaign['flowRun']>
 export type FlowStep = NonNullable<FlowRun['step']>
@@ -48,7 +49,10 @@ export function useFlowRunCommand(campaignId: string) {
       if (data !== undefined) {
         return data === 'ended' ? null : data
       }
-      throw campaignError(response, error, explainedRefusals, failures[command.type])
+      throw flowRunRefusal(
+        campaignError(response, error, explainedRefusals, failures[command.type]),
+        queryClient.getQueryData<Campaign>(campaignKey(campaignId)),
+      )
     },
     onSuccess: async (campaign) => {
       if (campaign === null) {

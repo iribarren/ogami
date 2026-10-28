@@ -6,10 +6,19 @@ import {
   sneakCheck,
 } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
-import { nightJobCampaign, nightJobWithChecks, viCharacter } from '../characters/fixtures'
+import {
+  eddiesField,
+  gearCatalog,
+  inventoryField,
+  nightJobCampaign,
+  nightJobWithChecks,
+  viCharacter,
+} from '../characters/fixtures'
 import { gritEntry } from '../journal/fixtures'
 import { allyTag, brannNpc, leaderTag, lostMineWithLists, miraNpc } from '../lists/fixtures'
 import type { FlowRun, FlowStep } from './useFlowRun'
+
+type GearEntry = Campaign['pinnedRelease']['gear'][number]
 
 // Shared by the guided panel's tests and stories; the campaign is `lostMineCampaign` along the Flow "tour".
 
@@ -303,3 +312,60 @@ export const guidedWithChecks = (flowRun: FlowRun) => ({
   ...guidedWithCharacters(flowRun),
   checks: nightJobWithChecks.checks,
 })
+
+const usedPistol: GearEntry = {
+  key: 'used-pistol',
+  name: 'Used pistol',
+  cost: 50,
+  slots: 1,
+  category: 'Weapons',
+  description: 'Cheap and loud.',
+}
+const ration: GearEntry = {
+  key: 'ration',
+  name: 'Ration',
+  cost: 5,
+  slots: 1,
+  category: 'Food',
+  description: null,
+}
+
+/** A `shop` step (ADR 0045) selling a Used pistol and a Ration, buying at half the cost, paying in eddies. */
+export const shopStep = step({
+  key: 'stalls',
+  kind: 'shop',
+  title: 'What do you buy?',
+  mandatory: true,
+  shop: {
+    onSale: [usedPistol, ration],
+    sellRate: 50,
+    currency: { field: 'eddies', unit: 'eb' },
+  },
+})
+
+/** `guidedWithCharacters` whose release has a currency, a gear catalog and a Pack; Vi holds 100 eb and two Used pistols. */
+export const guidedWithShop = (flowRun: FlowRun): Campaign => {
+  const base = guidedWithCharacters(flowRun)
+  return {
+    ...base,
+    pinnedRelease: {
+      ...base.pinnedRelease,
+      sheet: [...base.pinnedRelease.sheet, eddiesField, inventoryField],
+      gear: gearCatalog,
+      currency: { field: 'eddies', unit: 'eb' },
+    },
+    characters: [
+      {
+        ...viCharacter,
+        values: {
+          ...viCharacter.values,
+          eddies: 100,
+          pack: [
+            { gear: 'used-pistol', quantity: 2 },
+            { name: 'Rope', quantity: 1, slots: 0 },
+          ],
+        },
+      },
+    ],
+  }
+}

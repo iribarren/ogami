@@ -12,6 +12,9 @@ import {
   pickedTwo,
   plainAnswer,
   sanityLossEntry,
+  shopBoughtOnlyEntry,
+  shopEntry,
+  shopLeftEntry,
   skillCheckEntry,
   pushedGritEntry,
   sneakCheckEntry,
@@ -309,6 +312,34 @@ describe('JournalEntryView check entries', () => {
       // A field the sheet does not name shows its key.
       'Vi: hp 12 → 11',
     ])
+  })
+
+  it('renders a shop visit: bought and sold lines with unit prices, and the money before and after', () => {
+    render(<JournalEntryView entry={shopEntry} />)
+
+    const entry = within(screen.getByRole('article', { name: 'Shop Vi' }))
+    expect(entry.getByText('Bought')).toBeVisible()
+    expect(entry.getByText('2 × Knife @ 10')).toBeVisible()
+    expect(entry.getByText('Sold')).toBeVisible()
+    expect(entry.getByText('1 × Used pistol @ 25')).toBeVisible()
+    expect(entry.getByText('Vi: 100 → 105')).toBeVisible()
+  })
+
+  it('leaves out the Sold section of a visit that only bought', () => {
+    render(<JournalEntryView entry={shopBoughtOnlyEntry} />)
+
+    const entry = within(screen.getByRole('article', { name: 'Shop Vi' }))
+    expect(entry.getByText('Bought')).toBeVisible()
+    expect(entry.queryByText('Sold')).not.toBeInTheDocument()
+    expect(entry.getByText('Vi: 100 → 80')).toBeVisible()
+  })
+
+  it('says nothing was bought or sold when the visit left with an empty transaction', () => {
+    render(<JournalEntryView entry={shopLeftEntry} />)
+
+    const entry = within(screen.getByRole('article', { name: 'Shop Vi' }))
+    expect(entry.getByText('Left the shop without buying or selling.')).toBeVisible()
+    expect(entry.queryByText('Bought')).not.toBeInTheDocument()
   })
 
   it('renders what the Flow decided as compact muted lines in normal case', () => {

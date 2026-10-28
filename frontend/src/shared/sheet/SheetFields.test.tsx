@@ -384,6 +384,45 @@ describe('SheetFields with an inventory field', () => {
     expect(onChange).toHaveBeenLastCalledWith('pack', [{ name: 'Rope', quantity: 1, slots: 0 }])
   })
 
+  it('lets a quantity be emptied while typing and commits only the typed number', async () => {
+    const user = userEvent.setup()
+    const onChange = renderPack([{ gear: 'ration', quantity: 1 }])
+    const input = screen.getByLabelText('Quantity of Ration')
+
+    await user.clear(input)
+    expect(input).toHaveValue(null)
+    expect(onChange).not.toHaveBeenCalled()
+    await user.type(input, '5')
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenLastCalledWith('pack', [{ gear: 'ration', quantity: 5 }])
+    expect(input).toHaveValue(5)
+  })
+
+  it('shows the stored quantity again when the input is left empty', async () => {
+    const user = userEvent.setup()
+    renderPack([{ gear: 'ration', quantity: 2 }])
+    const input = screen.getByLabelText('Quantity of Ration')
+
+    await user.clear(input)
+    await user.tab()
+
+    expect(input).toHaveValue(2)
+  })
+
+  it('does not add a free stack while its slots are empty', async () => {
+    const user = userEvent.setup()
+    const onChange = renderPack([])
+
+    await user.type(screen.getByLabelText('Free stack name'), 'Rope')
+    await user.clear(screen.getByLabelText('Slots each'))
+
+    expect(screen.getByRole('button', { name: 'Add free stack' })).toBeDisabled()
+    await user.type(screen.getByLabelText('Slots each'), '101')
+    expect(screen.getByRole('button', { name: 'Add free stack' })).toBeDisabled()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('warns when the stacks use more slots than the capacity, and still lets the player edit', async () => {
     const user = userEvent.setup()
     const onChange = renderPack([{ gear: 'katana', quantity: 2 }])

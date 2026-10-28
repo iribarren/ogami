@@ -3168,6 +3168,8 @@ export interface components {
             /** @description The slot facts that become free facts, in creation order. */
             facts: components["schemas"]["UpgradeUnslottedFactResponse"][];
             flow: components["schemas"]["UpgradeFlowChangeResponse"];
+            /** @description The gear catalog of the release the campaign moves to, in order (ADR 0045): names the gear a converted stack holds after the upgrade. Empty when that release has none. */
+            gear: components["schemas"]["GearEntryResponse"][];
             /**
              * @description Stands for exactly this change (SHA-256 of the plan). The upgrade is refused when the campaign or the releases changed since, so the confirmed change is the previewed one.
              * @example 9f2c4e0a7b1d3c5e8f6a0b2d4c6e8f1a3b5d7c9e0f2a4b6c8d0e1f3a5b7c9d1e
@@ -3223,6 +3225,35 @@ export interface components {
              */
             weight?: number | null;
         };
+        ShopLineRequest: {
+            /**
+             * @description The key of the gear on sale to buy.
+             * @example used-pistol
+             */
+            gear: string;
+            /**
+             * @description How many units, 1 to 9999.
+             * @example 2
+             */
+            quantity: number;
+        };
+        ShopSellLineRequest: {
+            /**
+             * @description The key of the Character's inventory field the stack is sold from.
+             * @example pack
+             */
+            field: string;
+            /**
+             * @description The key of the catalog gear of the stack.
+             * @example used-pistol
+             */
+            gear: string;
+            /**
+             * @description How many units, 1 to 9999, at most what the stack holds.
+             * @example 1
+             */
+            quantity: number;
+        };
         CompleteFlowStepRequest: {
             /**
              * @description The step the player means to complete; refused when the FlowRun waits for another.
@@ -3271,6 +3302,10 @@ export interface components {
              * @example sneak
              */
             checkKey?: string | null;
+            /** @description Shop step: the gear to buy, each gear listed once; omitted, null or empty for none. Must be omitted or null for the other kinds. */
+            buy?: components["schemas"]["ShopLineRequest"][] | null;
+            /** @description Shop step: the stacks of the Character to sell, applied before the purchases; omitted, null or empty for none. Must be omitted or null for the other kinds. */
+            sell?: components["schemas"]["ShopSellLineRequest"][] | null;
         };
         /** @enum {string} */
         FlowRunErrorCode: "insufficient_funds" | "inventory_full";

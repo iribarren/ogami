@@ -168,6 +168,7 @@ export E2E_PASSWORD ?= e2e-password-123
 
 .PHONY: e2e-seed
 e2e-seed: presets ## Migrate the dev database, publish the GameSystem presets and create the e2e users (idempotent; resets drifted users)
+	$(PHP_EXEC) php bin/console app:gamesystem:publish tests/Fixtures/E2e/corner-shop.json --if-changed
 	$(PHP_EXEC) php bin/console app:user:create e2e-player@example.test --role=SOLO_PLAYER --password="$(E2E_PASSWORD)" --reset-existing --no-interaction
 	$(PHP_EXEC) php bin/console app:user:create e2e-manager@example.test --role=GAME_MANAGER --password="$(E2E_PASSWORD)" --reset-existing --no-interaction
 	$(PHP_EXEC) php bin/console app:user:create e2e-owner@example.test --role=OWNER --password="$(E2E_PASSWORD)" --reset-existing --no-interaction

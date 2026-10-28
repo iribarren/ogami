@@ -1,7 +1,7 @@
 # Feature: play-items-economy
 
 - **Locator:** `odd/tasks/play-items-economy.md` · Engram topic `odd/play-items-economy/tasks`
-- **Issue:** [#311](https://github.com/iribarren/ogami/issues/311) · **Branch:** `feat/play-items-economy-9-studio-shop` · **Status:** in progress (slice 9 of 9)
+- **Issue:** [#311](https://github.com/iribarren/ogami/issues/311) · **Branch:** `feat/play-items-economy-9-studio-shop` · **Status:** done (9 slices, PRs #312–#320)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B11 (before B12 `preset-cpr-campaign`; settles [ADR 0025](../../docs/adr/0025-items-and-shops-after-the-mvp.md))
@@ -99,9 +99,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T10 | 6 | Play UI: shop step card, choice `insufficient_funds`, journal shop entry; fixtures, tests, e2e | delegated writer (Sonnet) | [x] | ba7ab07, accc7fc, 2a185e6 |
 | T11 | 7 | Studio backend: gear routes, currency routes, guards (`DraftReferences`), views; `make api`; tests | delegated writer (Sonnet) | [x] | c2e8f1f, b0763b8, 6115cb0 |
 | T12 | 8 | Studio UI: Gear tab; sheet builder `inventory` type and currency setting; tests and stories | delegated writer (Sonnet) | [x] | 3c6eec0, 4be7386 |
-| T13 | 9 | Studio flow editor: `shop` step (offer, stock, sell rate), error locations; release view and diff show gear; the journal's shop entry shows the currency unit (slice 6 parent note: `ShopContent` does not carry it); tests, e2e | delegated writer (Sonnet) | [x] | |
-| T14 | 9 | Wrap-up: findings fixed or filed; roadmap B11 done; this doc closed | parent (closing doc commit) | [ ] | |
-| T15 | 9 | Slice 9 review fixes: outline test without fallback, empty currency unit, cap hint on the line with the excess | delegated writer (Sonnet) | [x] | |
+| T13 | 9 | Studio flow editor: `shop` step (offer, stock, sell rate), error locations; release view and diff show gear; the journal's shop entry shows the currency unit (slice 6 parent note: `ShopContent` does not carry it); tests, e2e | delegated writer (Sonnet) | [x] | 22253b7, beef66f, 8754bee, 4f6a110, 86378ac |
+| T14 | 9 | Wrap-up: findings fixed or filed; roadmap B11 done; this doc closed | parent (closing doc commit) | [x] | this closing commit |
+| T15 | 9 | Slice 9 review fixes: outline test without fallback, empty currency unit, cap hint on the line with the excess | delegated writer (Sonnet) | [x] | 3fc0468, ed28a86 |
 
 ## Acceptance criteria
 
@@ -129,6 +129,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 6 | `review-30850805308502ad` | 7ef91a5, 6319dd9, 06ae5b8, ba7ab07, accc7fc, 2a185e6 | approved; R3 warning (`ShopStepForm` disables Confirm whenever the balance ends under the floor, but the server refuses only under the floor and lower than before) and R3 suggestions (a missing currency value read as 0; sell line ids collide for duplicate stacks; the e2e balance assertion matches a loose "90") fixed in slice 7 | [#317](https://github.com/iribarren/ogami/pull/317) |
 | 7 | `review-a0890925703fecbe` (main..c2e8f1f); c2e8f1f..6115cb0 (generated spec, types, fixtures) declined by the user | 9d1b57f, c2e8f1f, b0763b8, 6115cb0 | approved; R3 warning (the e2e's exact `Eddies: 90 eb` balance text was not run locally) resolved by a green CI e2e; R3 suggestions (`ShopStepForm` sends two sell lines with the same field and gear when both duplicate stacks are sold; `GetGameSystemSheetHandler` reading malformed stored gear or currency is untested) fixed in slice 8 | [#318](https://github.com/iribarren/ogami/pull/318) |
 | 8 | `review-1ee319d9930c1e35` (main..3c6eec0); `review-325db1360ff07215` (3c6eec0..4be7386) | 5305305, 3c6eec0, 4be7386 | approved; R3 warnings (`GearTab` treats every 409 as a stale version, so a `library_pack` 409 offers a reload that cannot help; `SheetCurrencyPanel` never shows a 422 refusal of Remove currency) and R3 suggestions (`ShopStepForm` silently drops a quantity typed on a second duplicate stack beyond the cap; a stale validation message in `SheetCurrencyPanel` hides a later remove error; the panel's field and unit are not resynced when the currency changes outside it) fixed in slice 9 | [#319](https://github.com/iribarren/ogami/pull/319) |
+| 9 | `review-d7fc406103261602` (main..86378ac); 3fc0468 (T15) declined by the user | 74357b3, 22253b7, beef66f, 8754bee, 4f6a110, 86378ac, 3fc0468, ed28a86 | approved; R3 suggestions (the `ReleasesTab` outline test fell back to the changes group; an empty currency unit left a trailing space in `JournalEntryView`; `ShopStepForm`'s cap hint showed on every later duplicate stack) fixed in T15 (3fc0468). CI surprise: `play-shop.spec.ts` raced the session start, which auto-picks the Flow's only Scene Type, so the "Play Market" card detached; fixed in ed28a86 | [#320](https://github.com/iribarren/ogami/pull/320) |
 
 ## Progress
 
@@ -163,6 +164,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-28: T13 done, e2e: `studio-shop-editor.spec.ts` copies the seeded `e2e-corner-shop` release, adds a categorised Medkit in the Gear section, adds a second shop step in the Scene Type (the Ration by key, the Medical category, a fixed stock of 2), saves, and sees it after a reload (`make e2e ARGS=studio-shop-editor`: 1 passed; written with the code, no RED).
 - 2026-10-28: slice 9 review fixes (T15): the `ReleasesTab` outline test asserts the outline's Gear group exists instead of falling back to the changes group; `JournalEntryView` treats an empty or blank `currencyUnit` as none (no trailing space); `ShopStepForm` shows the cap hint once per field+gear group, on the line whose quantity pushes the typed total past the first stack. RED: the new empty-unit and two cap-hint tests failed against the old code (the outline test only tightens an assertion, no RED); GREEN: focused vitest passes.
 
+- 2026-10-28: parent fix: `GameSystemPublicationHandlersTest` compares the changes' sections with the outline's (gear has an outline but no count), 86378ac.
+- 2026-10-28: CI fix: `play-shop.spec.ts` no longer clicks "Play Market": starting the session auto-picks the Flow's only Scene Type (`SceneSelection::autoPick`), and the card shown from stale data detached on the refetch; full local e2e then 31 passed, 1 failed (`studio-flow-editor`, a 30s `page.goto` timeout that also fails on `main` locally and passes in CI).
+- 2026-10-28: T14 done: slice 9 reviewed (approved, three suggestions fixed in T15), PR #320; roadmap B11 done; feature closed.
+
 ## Next step
 
-Slice 9 (slice 8 review fixes, T13) in progress on `feat/play-items-economy-9-studio-shop`; then its review, push and PR, and T14 as the closing doc commit on the same PR.
+None. Every review finding is fixed; the only open item, `studio-flow-editor.spec.ts` timing out locally on `page.goto` (passes in CI, fails on `main` too, not caused by this feature), is reported to the user.

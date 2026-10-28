@@ -30,6 +30,7 @@ use App\Play\Domain\GameSystem\Sheet\ConditionOption;
 use App\Play\Domain\GameSystem\Sheet\ConditionsField;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
+use App\Play\Domain\GameSystem\Sheet\InventoryField;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
 use App\Play\Domain\GameSystem\Sheet\TextField;
@@ -37,6 +38,7 @@ use App\Play\Domain\GameSystem\Sheet\TrackField;
 use App\Play\Domain\GameSystem\Tag;
 use App\Play\Domain\GameSystem\Tracker;
 use App\Randomness\Domain\DiceExpression;
+use App\Tests\Unit\Play\Domain\GameSystem\Sheet\InventoryFieldTest;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -81,6 +83,15 @@ final class ReleaseUpgradePlanTest extends TestCase
         yield 'a list that became a conditions field is reset' => [new ListField('f', 'F'), self::conditions('hurt'), ['hurt'], FieldChangeKind::Reset, []];
         yield 'a conditions field that became a list is reset' => [self::conditions('hurt'), new ListField('f', 'F'), ['hurt'], FieldChangeKind::Reset, []];
         yield 'a number that became a conditions field is reset' => [new NumberField('f', 'F'), self::conditions('hurt'), 2, FieldChangeKind::Reset, []];
+        yield 'a kept inventory with valid stacks is kept' => [self::pack(6), self::pack(6), [['gear' => 'pistol', 'quantity' => 2]], null, [['gear' => 'pistol', 'quantity' => 2]]];
+        yield 'an inventory whose stacks no longer fit the lowered capacity is reset' => [self::pack(6), self::pack(1), [['gear' => 'pistol', 'quantity' => 3]], FieldChangeKind::Reset, []];
+        yield 'a list that became an inventory is reset' => [new ListField('f', 'F'), self::pack(6), ['pistol'], FieldChangeKind::Reset, []];
+        yield 'an inventory that became a list is reset' => [self::pack(6), new ListField('f', 'F'), [['gear' => 'pistol', 'quantity' => 1]], FieldChangeKind::Reset, []];
+    }
+
+    private static function pack(?int $capacity): InventoryField
+    {
+        return new InventoryField('f', 'F', capacity: $capacity, catalog: InventoryFieldTest::catalog());
     }
 
     private static function conditions(string ...$options): ConditionsField
@@ -136,6 +147,20 @@ final class ReleaseUpgradePlanTest extends TestCase
         self::assertCount(1, $plan->characters);
         $change = $plan->characters[0]->changes[0];
         self::assertSame(['f', 'F', $kind, $value, $expected], [$change->fieldKey, $change->fieldName, $change->kind, $change->before, $change->after]);
+        self::assertCount(1, $plan->characters[0]->changes);
+    }
+
+    #[Test]
+    public function anInventoryAddedByTheTargetIsAddedEmpty(): void
+    {
+        $pinned = UpgradeFixtures::release(1);
+        $campaign = UpgradeFixtures::campaign($pinned);
+        $campaign->addCharacter(CharacterId::fromString('c-1'), 'Vi', [], [], [], $pinned);
+
+        $plan = $campaign->planReleaseUpgrade($pinned, UpgradeFixtures::release(2, [self::pack(6)]));
+
+        $change = $plan->characters[0]->changes[0];
+        self::assertSame(['f', FieldChangeKind::Added, null, []], [$change->fieldKey, $change->kind, $change->before, $change->after]);
         self::assertCount(1, $plan->characters[0]->changes);
     }
 

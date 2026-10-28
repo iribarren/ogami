@@ -48,6 +48,14 @@ describe('a shop step', () => {
     expect(sell.queryByText(/Rope/)).not.toBeInTheDocument()
   })
 
+  it('offers no Skip even when it is not mandatory: the server refuses it and an empty transaction leaves the shop', async () => {
+    renderShop(undefined, { ...shopStep, mandatory: false })
+
+    const step = await card()
+    expect(step.getByRole('button', { name: 'Leave the shop' })).toBeEnabled()
+    expect(step.queryByRole('button', { name: 'Skip' })).not.toBeInTheDocument()
+  })
+
   it('shows the totals as the cart changes and sends one transaction with the Character', async () => {
     const user = userEvent.setup()
     const sent = renderShop()

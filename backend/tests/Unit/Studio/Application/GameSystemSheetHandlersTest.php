@@ -24,6 +24,8 @@ use App\Studio\Application\SaveSheetLayout;
 use App\Studio\Application\SaveSheetLayoutHandler;
 use App\Studio\Application\SaveSheetPointBudgetEntry;
 use App\Studio\Application\SaveSheetPointBudgetEntryHandler;
+use App\Studio\Application\SheetCurrencyView;
+use App\Studio\Application\SheetGearEntryView;
 use App\Studio\Application\SheetGroupView;
 use App\Studio\Application\SheetPointBudgetView;
 use App\Studio\Application\SheetTrackerView;
@@ -313,6 +315,56 @@ final class GameSystemSheetHandlersTest extends TestCase
         $draft->restore(ReleaseArrays::with($draft->document(), 'sheet', [...$sheet, 'pointBudget' => ['total' => 40, 'fields' => ['pow']]]), $this->clock->now());
 
         self::assertEquals([new SheetPointBudgetView('points', null, 40, ['pow'], null, null)], $this->sheet('ann', 'my-sheet')->pointBudgets);
+    }
+
+    #[Test]
+    public function theReadModelReadsTheGearCatalogAndTheCurrency(): void
+    {
+        $draft = $this->draft('my-sheet');
+        $sheet = (array) $draft->document()['sheet'];
+        $document = ReleaseArrays::with($draft->document(), 'gear', [['key' => 'knife', 'name' => 'Knife', 'cost' => 5, 'category' => 'weapon', 'description' => 'Sharp']]);
+        $draft->restore(ReleaseArrays::with($document, 'sheet', [...$sheet, 'currency' => ['field' => 'pow', 'unit' => 'eb']]), $this->clock->now());
+
+        $view = $this->sheet('ann', 'my-sheet');
+
+        self::assertEquals([new SheetGearEntryView('knife', 'Knife', 5, 1, 'weapon', 'Sharp')], $view->gear);
+        self::assertEquals(new SheetCurrencyView('pow', 'eb'), $view->currency);
+    }
+
+    #[Test]
+    public function aLegacyDraftReadsNoGearAndNoCurrency(): void
+    {
+        $this->draft('my-sheet');
+
+        $view = $this->sheet('ann', 'my-sheet');
+
+        self::assertSame([], $view->gear);
+        self::assertNull($view->currency);
+    }
+
+    #[Test]
+    public function malformedStoredGearAndCurrencyReadAsNothingNotAsAnError(): void
+    {
+        $draft = $this->draft('my-sheet');
+        $sheet = (array) $draft->document()['sheet'];
+        $malformed = [
+            ['not a list' => ['key' => 'knife', 'name' => 'Knife', 'cost' => 5]],
+            'text',
+            [['key' => 'knife', 'name' => 'Knife', 'cost' => 'five'], ['name' => 'No key', 'cost' => 1], 'text', ['key' => 'ok', 'name' => 'Ok', 'cost' => 2, 'slots' => 'many', 'category' => 3]],
+        ];
+        $expected = [[], [], [new SheetGearEntryView('ok', 'Ok', 2, 1, null, null)]];
+
+        foreach ($malformed as $index => $gear) {
+            $document = ReleaseArrays::with($draft->document(), 'gear', $gear);
+            $draft->restore(ReleaseArrays::with($document, 'sheet', [...$sheet, 'currency' => ['unit' => 'eb']]), $this->clock->now());
+
+            $view = $this->sheet('ann', 'my-sheet');
+            self::assertEquals($expected[$index], $view->gear);
+            self::assertNull($view->currency, 'A currency without a field is left out.');
+        }
+
+        $draft->restore(ReleaseArrays::with($draft->document(), 'sheet', [...$sheet, 'currency' => ['field' => 'pow', 'unit' => 5]]), $this->clock->now());
+        self::assertEquals(new SheetCurrencyView('pow', null), $this->sheet('ann', 'my-sheet')->currency);
     }
 
     #[Test]

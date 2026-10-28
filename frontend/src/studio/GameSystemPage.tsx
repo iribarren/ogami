@@ -19,6 +19,7 @@ import { LibraryChangesBadge } from './LibraryChangesBadge'
 import { LibraryTab } from './library/LibraryTab'
 import { MetadataForm } from './MetadataForm'
 import { NarrativeTab } from './narrative/NarrativeTab'
+import { GearTab } from './gear/GearTab'
 import { FlowsTab } from './narrative/flows/FlowsTab'
 import { SceneTypesTab } from './narrative/sceneTypes/SceneTypesTab'
 import { ChecksTab } from './checks/ChecksTab'
@@ -231,6 +232,7 @@ function GameSystemView({
           {tab === 'sheet' && (
             <SheetTab gameSystemKey={gameSystem.key} sampleValues={sampleValues} />
           )}
+          {tab === 'gear' && <GearTab gameSystemKey={gameSystem.key} />}
           {tab === 'checks' && (
             <ChecksTab gameSystemKey={gameSystem.key} sampleValues={sampleValues} />
           )}

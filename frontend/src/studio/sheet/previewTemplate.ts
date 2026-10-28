@@ -1,4 +1,4 @@
-import type { SheetFieldView, SheetTemplateView } from '@/shared/sheet/types'
+import type { SheetEconomy, SheetFieldView, SheetTemplateView } from '@/shared/sheet/types'
 
 import { readLayout, writeLayout, type LayoutDraft } from './layoutDraft'
 import { fieldTypes, type FieldType } from './sheetDraft'
@@ -26,6 +26,22 @@ const optionsOf = (value: unknown): { key: string; label: string }[] =>
       })
     : []
 const count = (value: unknown) => (Number.isInteger(value) ? (value as number) : null)
+
+const economies = new WeakMap<GameSystemSheet['gear'], SheetEconomy>()
+
+/**
+ * The gear catalog and currency of the draft. One object per catalog and currency, so the groups
+ * of the preview that did not change keep drawing nothing new while a layout is typed.
+ */
+function economyOf({ gear, currency }: GameSystemSheet): SheetEconomy {
+  const held = economies.get(gear)
+  if (held?.currency === currency) {
+    return held
+  }
+  const economy = { gear, currency }
+  economies.set(gear, economy)
+  return economy
+}
 
 /**
  * The sheet as the shared renderer reads it, from the stored read model, which holds whatever the
@@ -78,6 +94,15 @@ export function previewTemplate(
       startMax: inner(stored.startMax, 'formula'),
       span: count(stored.span) ?? 1,
       options: type === 'conditions' ? optionsOf(stored.options) : null,
+      ...(type === 'inventory'
+        ? {
+            capacity: count(stored.capacity),
+            maxStacks: count(stored.maxStacks),
+            categories: Array.isArray(stored.categories)
+              ? (stored.categories as unknown[]).filter((c) => typeof c === 'string')
+              : null,
+          }
+        : {}),
     })
   }
 
@@ -98,5 +123,6 @@ export function previewTemplate(
             columns: layout.columns,
             groups: layout.groups.map(({ name, columns, span }) => ({ name, columns, span })),
           },
+    economy: economyOf(sheet),
   }
 }

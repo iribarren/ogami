@@ -1,6 +1,7 @@
 import {
   ArrowDown,
   ArrowUp,
+  Backpack,
   Hash,
   List,
   ListChecks,
@@ -30,6 +31,7 @@ import { StudioError } from '../useGameSystems'
 import { SheetFieldDialog } from './SheetFieldDialog'
 import type { LayoutDraft } from './layoutDraft'
 import { SheetLayoutPanel } from './SheetLayoutPanel'
+import { SheetCurrencyPanel } from './SheetCurrencyPanel'
 import { SheetPointBudgetPanel } from './SheetPointBudgetPanel'
 import { SheetPreview } from './SheetPreview'
 import { useSheetSamples, type SampleValues, type SheetSamples } from './useSheetSamples'
@@ -208,6 +210,7 @@ function SheetFields({
         </div>
       </div>
       <SheetPointBudgetPanel gameSystemKey={gameSystemKey} sheet={data} />
+      <SheetCurrencyPanel gameSystemKey={gameSystemKey} sheet={data} />
       <SheetPreview sheet={data} samples={samples} />
     </section>
   )
@@ -240,7 +243,7 @@ function FieldRow({
   }
 
   const editable = readField(field) !== null
-  const hint = rangeHint(field) ?? optionsHint(field)
+  const hint = rangeHint(field) ?? optionsHint(field) ?? inventoryHint(field)
   const up = moveTarget(sheet.fields, index, 'up', sheet.groups !== null)
   const down = moveTarget(sheet.fields, index, 'down', sheet.groups !== null)
 
@@ -302,6 +305,7 @@ const typeIcons: Record<string, ReactNode> = {
   derived: <Sigma />,
   list: <List />,
   conditions: <ListChecks />,
+  inventory: <Backpack />,
 }
 
 /** "Hurt, Exhausted" for a conditions field: its options in order, those that are not labelled left out. */
@@ -317,6 +321,19 @@ function optionsHint({ type, options }: StoredField): string | null {
       : [],
   )
   return labels.length > 0 ? `Options: ${labels.join(', ')}` : null
+}
+
+/** "12 slots, 4 stacks, Weapons" for an inventory field: what it limits, each only when set. */
+function inventoryHint({ type, capacity, maxStacks, categories }: StoredField): string | null {
+  if (type !== 'inventory') {
+    return null
+  }
+  const parts = [
+    typeof capacity === 'number' ? `${String(capacity)} slots` : null,
+    typeof maxStacks === 'number' ? `${String(maxStacks)} stacks` : null,
+    Array.isArray(categories) && categories.length > 0 ? (categories as string[]).join(', ') : null,
+  ].filter((part) => part !== null)
+  return parts.length > 0 ? parts.join(', ') : 'Accepts every gear entry'
 }
 
 /** "−1 to 3" for a field with bounds; legacy fields without min or max say nothing. */

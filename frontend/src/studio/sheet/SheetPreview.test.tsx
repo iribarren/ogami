@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import { sheet } from '../fixtures'
+import { sheet, sheetWithEconomy } from '../fixtures'
 import { readLayout, type LayoutDraft } from './layoutDraft'
 import { SheetPreview as Preview } from './SheetPreview'
 import type { GameSystemSheet } from './useGameSystemSheet'
@@ -181,5 +181,17 @@ describe('the sheet preview', () => {
       />,
     )
     expect(preview().getByLabelText('Power')).toHaveValue(3)
+  })
+})
+
+describe('the sheet preview of an economy', () => {
+  it('shows an inventory that offers the draft catalog by its categories, and the currency unit', () => {
+    render(<SheetPreview sheet={sheetWithEconomy as GameSystemSheet} layoutDraft={null} />)
+
+    expect(preview().getByText('eb')).toBeVisible()
+    const picker = preview().getByLabelText('Gear to add to Pack')
+    // The pack accepts weapons only: the pistol is offered, the medkit is not.
+    expect(within(picker).getByRole('option', { name: /Used pistol/ })).toBeVisible()
+    expect(within(picker).queryByRole('option', { name: /Medkit/ })).not.toBeInTheDocument()
   })
 })

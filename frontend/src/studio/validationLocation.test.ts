@@ -23,6 +23,7 @@ const names: LocatorNames = {
   trackers: [item('alarm', { name: 'Alarm' })],
   tags: [],
   factSlots: [],
+  gear: [item('medkit', { name: 'Medkit' }), item('rope', {})],
 }
 
 describe('where a validation error is', () => {
@@ -161,5 +162,36 @@ describe('splitting a warning', () => {
       path: 'oracles.tables[0].rows',
       reason: 'empty: really',
     })
+  })
+})
+
+describe('where a gear or currency error is', () => {
+  it('opens the Gear section, named after the entry', () => {
+    const where = locateError('gear[0].cost', names)
+
+    expect(where.group).toBe('Gear · Medkit')
+    expect(where.trail).toEqual(['Cost'])
+    expect(where.target).toEqual({ kind: 'tab', tab: 'gear' })
+  })
+
+  it('names an entry without a name by its key, and the catalog alone as Gear', () => {
+    expect(locateError('gear[1].slots', names).group).toBe('Gear · rope')
+    expect(locateError('gear', names)).toMatchObject({
+      group: 'Gear',
+      target: { kind: 'tab', tab: 'gear' },
+    })
+    expect(locateError('gear[7].name', names).group).toBe('Gear · 8')
+  })
+
+  it('opens the Sheet tab for the currency', () => {
+    const where = locateError('sheet.currency.field', names)
+
+    expect(where.group).toBe('Sheet · Currency')
+    expect(where.trail).toEqual(['Field'])
+    expect(where.target).toEqual({ kind: 'tab', tab: 'sheet' })
+  })
+
+  it('reads a warning about the gear catalog as a release path', () => {
+    expect(splitWarning('gear[0].slots: is 0')).toEqual({ path: 'gear[0].slots', reason: 'is 0' })
   })
 })

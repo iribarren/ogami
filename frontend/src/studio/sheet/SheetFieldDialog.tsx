@@ -100,6 +100,7 @@ const typeLabels: Record<FieldType, string> = {
   list: 'List',
   track: 'Track',
   conditions: 'Conditions',
+  inventory: 'Inventory',
   derived: 'Derived',
 }
 
@@ -181,6 +182,13 @@ function FieldForm({
     })
   }, [draft.type, draft.formula, own, others, samples, base.trackers])
   const references = useMemo(() => readableReferences(others, base), [others, base])
+  // The catalog's categories, and any the field names that the catalog no longer has.
+  const categories = [
+    ...new Set([
+      ...base.gear.flatMap(({ category }) => (category === null ? [] : [category])),
+      ...draft.categories,
+    ]),
+  ]
   // A start max formula is evaluated before the Character has any track or Tracker value.
   const startReferences = useMemo(
     () =>
@@ -333,6 +341,7 @@ function FieldForm({
         diagnostics={diagnostics}
         references={references}
         startReferences={startReferences}
+        categories={categories}
       />
       {message !== '' && (
         <p role="alert" className="text-sm text-destructive">
@@ -367,6 +376,7 @@ function TypeFields({
   diagnostics,
   references,
   startReferences,
+  categories,
 }: {
   draft: FieldDraft
   change: (changes: Partial<FieldDraft>) => void
@@ -377,9 +387,11 @@ function TypeFields({
   references: ReferenceOption[]
   /** What a start max formula may read: number and derived fields. */
   startReferences: ReferenceOption[]
+  /** An inventory's choices: the gear categories of the catalog. */
+  categories: string[]
 }) {
   const multilineId = useId()
-  const text = (label: string, name: Exclude<keyof FieldDraft, 'options'>) => (
+  const text = (label: string, name: Exclude<keyof FieldDraft, 'options' | 'categories'>) => (
     <TextField
       label={label}
       value={String(draft[name])}
@@ -468,6 +480,43 @@ function TypeFields({
           error={errors.options}
           errors={optionErrors}
         />
+      )
+    case 'inventory':
+      return (
+        <>
+          {text('Capacity (slots)', 'capacity')}
+          {text('Max stacks', 'maxStacks')}
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium">Categories</legend>
+            {categories.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                The gear catalog has no category yet: the inventory accepts every entry.
+              </p>
+            ) : (
+              <p className="hint">
+                Tick the categories it accepts; none ticked accepts every entry.
+              </p>
+            )}
+            {categories.map((category) => (
+              <div key={category} className="flex items-center gap-2">
+                <input
+                  id={`${multilineId}-${category}`}
+                  type="checkbox"
+                  checked={draft.categories.includes(category)}
+                  onChange={(event) => {
+                    change({
+                      categories: event.target.checked
+                        ? [...draft.categories, category]
+                        : draft.categories.filter((other) => other !== category),
+                    })
+                  }}
+                />
+                <Label htmlFor={`${multilineId}-${category}`}>{category}</Label>
+              </div>
+            ))}
+            {errors.categories && <p className="text-sm text-destructive">{errors.categories}</p>}
+          </fieldset>
+        </>
       )
     case 'derived':
       return (

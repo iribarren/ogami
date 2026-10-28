@@ -11,7 +11,15 @@ export type SheetGroup = Pick<
 /** A field as stored in the draft: the publisher validates it, the editor keeps nothing else. */
 export type StoredField = Record<string, unknown>
 
-export const fieldTypes = ['number', 'text', 'list', 'track', 'conditions', 'derived'] as const
+export const fieldTypes = [
+  'number',
+  'text',
+  'list',
+  'track',
+  'conditions',
+  'inventory',
+  'derived',
+] as const
 export type FieldType = (typeof fieldTypes)[number]
 
 /** How a track's max is set (ADR 0040): a fixed number, by each Character, or by a formula when the Character is created. */
@@ -69,6 +77,10 @@ export interface FieldDraft {
   maxMode: MaxMode
   /** A conditions field's options, in order. */
   options: OptionDraft[]
+  /** An inventory's slots, its most stacks and the gear categories it accepts (none: every entry). */
+  capacity: string
+  maxStacks: string
+  categories: string[]
 }
 
 /** A message per input, keyed like the draft; `option` holds those of each option's inputs, by position. */
@@ -96,6 +108,9 @@ export function blankField(groups: SheetGroup[] | null): FieldDraft {
     startMax: '',
     maxMode: 'fixed',
     options: [],
+    capacity: '',
+    maxStacks: '',
+    categories: [],
   }
 }
 
@@ -113,6 +128,9 @@ export const typeProperties = [
   'startMax',
   'maxMode',
   'options',
+  'capacity',
+  'maxStacks',
+  'categories',
 ] as const
 
 /** The stored properties each type writes besides the common ones. */
@@ -121,6 +139,7 @@ const propertiesOf: Record<
   readonly Exclude<(typeof typeProperties)[number], 'maxMode'>[]
 > = {
   conditions: ['options'],
+  inventory: ['capacity', 'maxStacks', 'categories'],
   number: ['min', 'max', 'default', 'roll'],
   text: ['multiline', 'maxLength'],
   list: ['itemLabel', 'maxItems'],
@@ -135,6 +154,8 @@ const integerProperties = new Set<string>([
   'maxLength',
   'maxItems',
   'span',
+  'capacity',
+  'maxStacks',
 ])
 
 /** The stored field as form state, or null when a property has a shape the form cannot hold. */
@@ -169,7 +190,9 @@ export function readField(stored: StoredField): FieldDraft | null {
       readable = false
     }
   }
-  const integer = (name: 'span' | 'min' | 'max' | 'default' | 'maxLength' | 'maxItems') => {
+  const integer = (
+    name: 'span' | 'min' | 'max' | 'default' | 'maxLength' | 'maxItems' | 'capacity' | 'maxStacks',
+  ) => {
     const value = stored[name]
     if (Number.isInteger(value)) {
       draft[name] = String(value)
@@ -189,6 +212,16 @@ export function readField(stored: StoredField): FieldDraft | null {
         readable = false
       } else {
         draft.options = options
+      }
+    } else if (name === 'categories') {
+      const { categories } = stored
+      if (
+        Array.isArray(categories) &&
+        (categories as unknown[]).every((c) => typeof c === 'string')
+      ) {
+        draft.categories = categories as string[]
+      } else if (categories !== undefined && categories !== null) {
+        readable = false
       }
     } else if (name === 'multiline') {
       if (typeof stored.multiline === 'boolean') {
@@ -329,6 +362,12 @@ export function writeField(
       const options = writeOptions(draft.options, errors)
       if (options !== null) {
         field.options = options
+      }
+      continue
+    }
+    if (name === 'categories') {
+      if (draft.categories.length > 0) {
+        field.categories = draft.categories
       }
       continue
     }

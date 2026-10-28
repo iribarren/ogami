@@ -94,4 +94,26 @@ describe('ShopStepForm balance rules', () => {
       [{ field: 'pack', gear: 'used-pistol', quantity: 1 }],
     )
   })
+
+  it('sends one sell line for two stacks of the same gear, capped at the first stack', async () => {
+    const user = userEvent.setup()
+    const onComplete = renderForm({
+      eddies: 100,
+      pack: [
+        { gear: 'used-pistol', quantity: 2 },
+        { gear: 'used-pistol', quantity: 1 },
+      ],
+    })
+
+    const [first, second] = screen.getAllByLabelText('Sell Used pistol from Pack')
+    await user.type(first ?? fail('no sell line'), '2')
+    await user.type(second ?? fail('no sell line'), '1')
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    expect(onComplete).toHaveBeenCalledWith(
+      expect.any(String),
+      [],
+      [{ field: 'pack', gear: 'used-pistol', quantity: 2 }],
+    )
+  })
 })

@@ -790,6 +790,41 @@ export const sheetWithLegacyBudget = {
   pointBudgets: [{ key: 'points', label: null, total: 30, fields: ['pow'], min: null, max: null }],
 }
 
+/**
+ * The sheet with an economy: a gear catalog (two categories), `eddies` as the currency in `eb`,
+ * and a `pack` inventory that accepts weapons only.
+ */
+export const sheetWithEconomy = {
+  ...sheet,
+  version: 13,
+  fields: [
+    ...sheet.fields,
+    { key: 'eddies', label: 'Eddies', group: 'Stats', type: 'number', min: 0, default: 100 },
+    {
+      key: 'pack',
+      label: 'Pack',
+      group: 'Health',
+      type: 'inventory',
+      capacity: 10,
+      maxStacks: 4,
+      categories: ['Weapons'],
+    },
+  ],
+  gear: [
+    {
+      key: 'used-pistol',
+      name: 'Used pistol',
+      cost: 50,
+      slots: 1,
+      category: 'Weapons',
+      description: 'Cheap and loud.',
+    },
+    { key: 'medkit', name: 'Medkit', cost: 20, slots: 2, category: 'Medical', description: null },
+    { key: 'rope', name: 'Rope', cost: 5, slots: 1, category: null, description: null },
+  ],
+  currency: { field: 'eddies', unit: 'eb' },
+}
+
 /** A sheet without declared groups: Play lists consecutive fields of one group together. */
 export const sheetUngrouped = {
   version: 4,

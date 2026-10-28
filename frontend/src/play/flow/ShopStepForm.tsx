@@ -113,10 +113,23 @@ export function ShopStepForm({
     (sum, { entry, quantity }) => sum + entry.cost * (quantity ?? 0),
     0,
   )
-  const earn = sellQuantities.reduce(
-    (sum, { line, quantity }) => sum + line.price * (quantity ?? 0),
-    0,
+  // The server takes one sell line per field and gear, drawn from the first stack of that gear, so
+  // lines of duplicate stacks are merged: quantities summed, capped at that first stack.
+  const sold = sellQuantities.reduce<{ line: (typeof sellable)[number]; quantity: number }[]>(
+    (merged, { line, quantity }) => {
+      const same = merged.find(
+        (other) =>
+          other.line.field.key === line.field.key && other.line.entry.key === line.entry.key,
+      )
+      if (same === undefined) {
+        return [...merged, { line, quantity: quantity ?? 0 }]
+      }
+      same.quantity = Math.min(same.line.held, same.quantity + (quantity ?? 0))
+      return merged
+    },
+    [],
   )
+  const earn = sold.reduce((sum, { line, quantity }) => sum + line.price * quantity, 0)
   const balance = current - spend + earn
   // The server refuses only a balance under the floor that is also lower than before: a Character
   // already under it may still gain money.
@@ -132,10 +145,8 @@ export function ShopStepForm({
       buyQuantities.flatMap(({ entry, quantity }) =>
         quantity === null || quantity === 0 ? [] : [{ gear: entry.key, quantity }],
       ),
-      sellQuantities.flatMap(({ line, quantity }) =>
-        quantity === null || quantity === 0
-          ? []
-          : [{ field: line.field.key, gear: line.entry.key, quantity }],
+      sold.flatMap(({ line, quantity }) =>
+        quantity === 0 ? [] : [{ field: line.field.key, gear: line.entry.key, quantity }],
       ),
     )
   }

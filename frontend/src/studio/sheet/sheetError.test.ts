@@ -1,4 +1,10 @@
-import { sheetFieldAnswer, sheetLayoutAnswer, sheetPointBudgetAnswer } from './sheetError'
+import {
+  currencyAnswer,
+  gearAnswer,
+  sheetFieldAnswer,
+  sheetLayoutAnswer,
+  sheetPointBudgetAnswer,
+} from './sheetError'
 
 describe('reading a refusal for the field in the dialog', () => {
   it.each([
@@ -150,5 +156,47 @@ describe('reading a refusal of an option of a conditions field', () => {
     expect(sheetFieldAnswer('sheet.fields[1].options[0].key: bad', 2).form).toBe(
       'sheet.fields[1].options[0].key: bad',
     )
+  })
+})
+
+describe('the answer to a refused gear entry', () => {
+  it('puts the message of an input of this entry next to it', () => {
+    expect(gearAnswer('gear[2].cost: must be at most 1000000', 2)).toEqual({
+      inputs: { cost: 'must be at most 1000000' },
+      form: null,
+    })
+    expect(gearAnswer('gear[0].category: must not be blank', 0).inputs).toEqual({
+      category: 'must not be blank',
+    })
+  })
+
+  it('keeps another entry, the catalog and anything else whole as a form message', () => {
+    for (const text of [
+      'gear[1].cost: must be at least 0',
+      'gear: the catalog has too many entries',
+      'gear[2].key: is taken',
+      'Another request saved the draft.',
+    ]) {
+      expect(gearAnswer(text, 2)).toEqual({ inputs: {}, form: text })
+    }
+  })
+})
+
+describe('the answer to a refused currency', () => {
+  it('puts the field and the unit next to their inputs', () => {
+    expect(currencyAnswer('sheet.currency.field: must be a number field')).toEqual({
+      inputs: { field: 'must be a number field' },
+      form: null,
+    })
+    expect(currencyAnswer('sheet.currency.unit: is at most 10 characters').inputs).toEqual({
+      unit: 'is at most 10 characters',
+    })
+  })
+
+  it('keeps anything else whole as a form message', () => {
+    expect(currencyAnswer('sheet.currency: is not an object')).toEqual({
+      inputs: {},
+      form: 'sheet.currency: is not an object',
+    })
   })
 })

@@ -373,3 +373,57 @@ describe('a conditions field', () => {
     ).toBeNull()
   })
 })
+
+describe('an inventory field', () => {
+  const stored = {
+    key: 'pack',
+    label: 'Pack',
+    type: 'inventory',
+    capacity: 10,
+    maxStacks: 4,
+    categories: ['Weapons', 'Medical'],
+  }
+
+  it('round trips the whole field: capacity, max stacks and categories', () => {
+    const draft = readField(stored)
+
+    expect(draft).toMatchObject({
+      type: 'inventory',
+      capacity: '10',
+      maxStacks: '4',
+      categories: ['Weapons', 'Medical'],
+    })
+    expect(writeField(draft ?? blankField(null), null)).toEqual({ field: stored })
+  })
+
+  it('writes a bare inventory with no limits and no categories', () => {
+    expect(writeField(filled({ key: 'pack', label: 'Pack', type: 'inventory' }), null)).toEqual({
+      field: { key: 'pack', label: 'Pack', type: 'inventory' },
+    })
+    expect(readField({ key: 'pack', label: 'Pack', type: 'inventory' })).toMatchObject({
+      capacity: '',
+      maxStacks: '',
+      categories: [],
+    })
+  })
+
+  it('refuses capacity and max stacks that are not whole numbers', () => {
+    expect(
+      writeField(filled({ type: 'inventory', capacity: '1.5', maxStacks: 'many' }), null),
+    ).toEqual({
+      errors: { capacity: 'Must be a whole number.', maxStacks: 'Must be a whole number.' },
+    })
+  })
+
+  it('cannot be read when the categories are not a list of text', () => {
+    expect(readField({ ...stored, categories: 'Weapons' })).toBeNull()
+    expect(readField({ ...stored, categories: ['Weapons', 3] })).toBeNull()
+    expect(readField({ ...stored, capacity: 'ten' })).toBeNull()
+  })
+
+  it('leaves the inventory properties out of another type', () => {
+    expect(
+      writeField(filled({ type: 'text', capacity: '10', categories: ['Weapons'] }), null),
+    ).toEqual({ field: { key: 'luck', label: 'Luck', type: 'text' } })
+  })
+})

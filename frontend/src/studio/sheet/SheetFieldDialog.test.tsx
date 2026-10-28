@@ -5,7 +5,14 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { draft, sheet, sheetUngrouped, sheetWithConditions, validDraft } from '../fixtures'
+import {
+  draft,
+  sheet,
+  sheetUngrouped,
+  sheetWithConditions,
+  sheetWithEconomy,
+  validDraft,
+} from '../fixtures'
 import { replaceText, typeText } from '@/test/typeText'
 
 const base = '/api/studio/game-systems/my-draft'
@@ -753,5 +760,172 @@ describe('a conditions field', () => {
       /^The option "hurt" of the sheet field "physical" is used at checks\[0\]\.push\.effects\[0\]\.$/,
     )
     expect(inDialog().getByLabelText('Option 1 key')).toHaveValue('tired')
+  })
+})
+
+describe('an inventory field', () => {
+  const withEconomy = { [`GET ${base}/sheet`]: json(sheetWithEconomy) }
+
+  it('sends its limits and the ticked categories of the catalog', async () => {
+    const { sent, handler } = recorder(Response.json({ ...sheetWithEconomy, version: 14 }))
+    const { user } = await openSheet({ ...withEconomy, [`POST ${base}/sheet/fields`]: handler })
+
+    await addField(user)
+    await typeText(user, inDialog().getByLabelText('Key'), 'belt')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Belt')
+    await chooseOption(user, 'Type', 'Inventory')
+    await typeText(user, inDialog().getByLabelText('Capacity (slots)'), '6')
+    await typeText(user, inDialog().getByLabelText('Max stacks'), '3')
+    // The categories of the catalog, once each; an entry without one adds none.
+    expect(inDialog().getAllByRole('checkbox')).toHaveLength(2)
+    await user.click(inDialog().getByLabelText('Medical'))
+    await user.click(inDialog().getByRole('button', { name: 'Create field' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([
+        {
+          expectedVersion: 13,
+          field: {
+            key: 'belt',
+            label: 'Belt',
+            group: 'Stats',
+            type: 'inventory',
+            capacity: 6,
+            maxStacks: 3,
+            categories: ['Medical'],
+          },
+        },
+      ])
+    })
+  })
+
+  it('accepts every entry when no category is ticked, and says so without a catalog', async () => {
+    const { sent, handler } = recorder(Response.json({ ...sheet, version: 8 }))
+    const { user } = await openSheet({ [`POST ${base}/sheet/fields`]: handler })
+
+    await addField(user)
+    await typeText(user, inDialog().getByLabelText('Key'), 'belt')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Belt')
+    await chooseOption(user, 'Type', 'Inventory')
+    expect(inDialog().getByText(/catalog has no category yet/)).toBeVisible()
+    await user.click(inDialog().getByRole('button', { name: 'Create field' }))
+
+    await waitFor(() => {
+      expect(sent[0]?.field).toEqual({
+        key: 'belt',
+        label: 'Belt',
+        group: 'Stats',
+        type: 'inventory',
+      })
+    })
+  })
+
+  it('edits the whole field: limits and categories come back as saved', async () => {
+    const { sent, handler } = recorder(Response.json({ ...sheetWithEconomy, version: 14 }))
+    const { user } = await openSheet({ ...withEconomy, [`PUT ${base}/sheet/fields/pack`]: handler })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit pack' }))
+    expect(inDialog().getByLabelText('Capacity (slots)')).toHaveValue('10')
+    expect(inDialog().getByLabelText('Max stacks')).toHaveValue('4')
+    expect(inDialog().getByLabelText('Weapons')).toBeChecked()
+    expect(inDialog().getByLabelText('Medical')).not.toBeChecked()
+    await user.click(inDialog().getByRole('button', { name: 'Save field' }))
+
+    await waitFor(() => {
+      expect(sent[0]?.field).toEqual({
+        key: 'pack',
+        label: 'Pack',
+        group: 'Health',
+        type: 'inventory',
+        capacity: 10,
+        maxStacks: 4,
+        categories: ['Weapons'],
+      })
+    })
+  })
+
+  it('keeps a category the catalog no longer has, so it can be unticked', async () => {
+    const stale = {
+      ...sheetWithEconomy,
+      gear: sheetWithEconomy.gear.filter(({ category }) => category !== 'Weapons'),
+    }
+    const { user } = await openSheet({ [`GET ${base}/sheet`]: json(stale) })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit pack' }))
+
+    expect(inDialog().getByLabelText('Weapons')).toBeChecked()
+  })
+
+  it.each([
+    ['capacity', 'Capacity (slots)', 'must be at most 999'],
+    ['maxStacks', 'Max stacks', 'must be at most 100'],
+    ['categories', null, 'must be at most 20 categories'],
+  ])('puts the publisher message of %s next to its input', async (property, label, message) => {
+    const { user } = await openSheet({
+      ...withEconomy,
+      [`PUT ${base}/sheet/fields/pack`]: json(
+        { error: `sheet.fields[5].${property}: ${message}` },
+        422,
+      ),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit pack' }))
+    await user.click(inDialog().getByRole('button', { name: 'Save field' }))
+
+    expect(await inDialog().findByText(message)).toBeVisible()
+    if (label !== null) {
+      expect(inDialog().getByLabelText(label)).toBeInvalid()
+    }
+    expect(inDialog().queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('refuses a capacity that is not a whole number before it asks the server', async () => {
+    const { sent, handler } = recorder(Response.json(sheetWithEconomy))
+    const { user } = await openSheet({ ...withEconomy, [`PUT ${base}/sheet/fields/pack`]: handler })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit pack' }))
+    await user.clear(inDialog().getByLabelText('Capacity (slots)'))
+    await typeText(user, inDialog().getByLabelText('Capacity (slots)'), '2.5')
+    await user.click(inDialog().getByRole('button', { name: 'Save field' }))
+
+    expect(await inDialog().findByText('Must be a whole number.')).toBeVisible()
+    expect(sent).toEqual([])
+  })
+
+  it('lists its limits in the field row', async () => {
+    await openSheet(withEconomy)
+
+    expect(
+      (await screen.findByRole('button', { name: 'Edit pack' })).closest('li'),
+    ).toHaveTextContent('10 slots, 4 stacks, Weapons')
+  })
+})
+
+describe('the field that is the currency', () => {
+  const withEconomy = { [`GET ${base}/sheet`]: json(sheetWithEconomy) }
+  const inUse = 'The field "eddies" is the currency (sheet.currency.field).'
+
+  it('shows why a rename is refused, path and all', async () => {
+    const { user } = await openSheet({
+      ...withEconomy,
+      [`PUT ${base}/sheet/fields/eddies`]: json({ error: inUse }, 422),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit eddies' }))
+    await user.click(inDialog().getByRole('button', { name: 'Save field' }))
+
+    expect(await inDialog().findByRole('alert')).toHaveTextContent(inUse)
+  })
+
+  it('shows why a deletion is refused and keeps the dialog open', async () => {
+    const { user } = await openSheet({
+      ...withEconomy,
+      [`DELETE ${base}/sheet/fields/eddies`]: json({ error: inUse }, 422),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Delete eddies' }))
+    await user.click(inDialog().getByRole('button', { name: 'Delete the field' }))
+
+    expect(await inDialog().findByRole('alert')).toHaveTextContent(inUse)
   })
 })

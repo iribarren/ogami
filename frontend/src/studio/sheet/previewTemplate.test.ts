@@ -1,4 +1,4 @@
-import { sheet } from '../fixtures'
+import { sheet, sheetWithEconomy } from '../fixtures'
 import { readLayout, type LayoutDraft } from './layoutDraft'
 import { previewTemplate } from './previewTemplate'
 import type { GameSystemSheet } from './useGameSystemSheet'
@@ -147,5 +147,46 @@ describe('the preview template', () => {
       ],
       ['mental', 'conditions', []],
     ])
+  })
+})
+
+describe('the preview template of an economy', () => {
+  const economy = sheetWithEconomy as GameSystemSheet
+
+  it('reads the inventory limits and categories, and the gear and currency', () => {
+    const template = previewTemplate(economy, null)
+
+    expect(template.fields.find((field) => field.key === 'pack')).toMatchObject({
+      type: 'inventory',
+      capacity: 10,
+      maxStacks: 4,
+      categories: ['Weapons'],
+    })
+    expect(template.economy?.gear.map((entry) => entry.key)).toEqual([
+      'used-pistol',
+      'medkit',
+      'rope',
+    ])
+    expect(template.economy?.currency).toEqual({ field: 'eddies', unit: 'eb' })
+  })
+
+  it('reads limits of another shape as not set and keeps one economy object per catalog', () => {
+    const odd = {
+      ...economy,
+      fields: [
+        { key: 'pack', label: 'Pack', type: 'inventory', capacity: 'ten', categories: 'Weapons' },
+      ],
+    } as GameSystemSheet
+
+    expect(previewTemplate(odd, null).fields[0]).toMatchObject({
+      capacity: null,
+      maxStacks: null,
+      categories: null,
+    })
+    expect(previewTemplate(economy, null).economy).toBe(previewTemplate(economy, null).economy)
+  })
+
+  it('reads a legacy draft with no gear and no currency as an empty economy', () => {
+    expect(previewTemplate(stored, null).economy).toEqual({ gear: [], currency: null })
   })
 })

@@ -67,7 +67,7 @@ final class CampaignCharactersConditionsApiTest extends WebTestCase
         /** @var array<string, array<string, mixed>> $fields */
         $fields = array_column((array) ($pinned['sheet'] ?? null), null, 'key');
         self::assertSame(
-            ['key' => 'wounds', 'label' => 'Wounds', 'hint' => 'Each costs a die.', 'group' => 'Health', 'type' => 'conditions', 'min' => null, 'max' => null, 'default' => null, 'multiline' => null, 'maxLength' => null, 'itemLabel' => null, 'maxItems' => null, 'formula' => null, 'roll' => null, 'startMax' => null, 'span' => 1, 'options' => [['key' => 'hurt', 'label' => 'Hurt'], ['key' => 'shaken', 'label' => 'Shaken'], ['key' => 'tired', 'label' => 'Tired']]],
+            ['key' => 'wounds', 'label' => 'Wounds', 'hint' => 'Each costs a die.', 'group' => 'Health', 'type' => 'conditions', 'min' => null, 'max' => null, 'default' => null, 'multiline' => null, 'maxLength' => null, 'itemLabel' => null, 'maxItems' => null, 'formula' => null, 'roll' => null, 'startMax' => null, 'span' => 1, 'options' => [['key' => 'hurt', 'label' => 'Hurt'], ['key' => 'shaken', 'label' => 'Shaken'], ['key' => 'tired', 'label' => 'Tired']], 'capacity' => null, 'maxStacks' => null, 'categories' => null],
             $fields['wounds'] ?? null,
         );
         self::assertArrayHasKey('options', $fields['reflexes']);

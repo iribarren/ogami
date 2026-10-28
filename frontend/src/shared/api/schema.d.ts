@@ -1786,7 +1786,7 @@ export interface components {
              */
             freeTags?: string[] | null;
             /**
-             * @description The values of the pinned release's sheet fields: field key to value. A number field takes an integer, a text field a string, a list field an array of strings, a conditions field an array of the keys of its marked options (declared options only, each once; stored in the declared order of the options) and a track field {current, max} (max is fixed by the field when it sets one, else required). A field not given takes its default (a number its default or 0, a text "", a list [] or conditions [], a track full). An unknown key, a value of the wrong type or out of its bounds is refused.
+             * @description The values of the pinned release's sheet fields: field key to value. A number field takes an integer, a text field a string, a list field an array of strings, a conditions field an array of the keys of its marked options (declared options only, each once; stored in the declared order of the options), an inventory field an array of stacks (a catalog stack {gear, quantity} naming gear the field accepts, at most once per field, or a free stack {name, quantity, slots}; quantity 1 to 9999, slots 0 to 100, used slots within the capacity, at most maxStacks stacks; ADR 0045) and a track field {current, max} (max is fixed by the field when it sets one, else required). A field not given takes its default (a number its default or 0, a text "", a list [], conditions [] or inventory [], a track full). An unknown key, a value of the wrong type or out of its bounds is refused.
              * @example {
              *       "role": "Solo",
              *       "reflexes": 7,
@@ -1800,7 +1800,14 @@ export interface components {
              *     }
              */
             values?: {
-                [key: string]: number | string | string[] | {
+                [key: string]: number | string | string[] | ({
+                    gear: string;
+                    quantity: number;
+                } | {
+                    name: string;
+                    quantity: number;
+                    slots: number;
+                })[] | {
                     current: number;
                     max: number;
                 };
@@ -1831,7 +1838,7 @@ export interface components {
              */
             freeTags: string[];
             /**
-             * @description One value per field of the pinned release's sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list), an array of the marked option keys in declared order (conditions) or {current, max} (track). Empty when the release has no sheet.
+             * @description One value per field of the pinned release's sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list), an array of the marked option keys in declared order (conditions), an array of stacks (inventory, ADR 0045) or {current, max} (track). Empty when the release has no sheet.
              * @example {
              *       "role": "Solo",
              *       "reflexes": 7,
@@ -1845,7 +1852,14 @@ export interface components {
              *     }
              */
             values: {
-                [key: string]: number | string | string[] | {
+                [key: string]: number | string | string[] | ({
+                    gear: string;
+                    quantity: number;
+                } | {
+                    name: string;
+                    quantity: number;
+                    slots: number;
+                })[] | {
                     current: number;
                     max: number;
                 };
@@ -1956,11 +1970,11 @@ export interface components {
              */
             group: string | null;
             /**
-             * @description A number is an integer, a text a string, a list an array of strings, a conditions field an array of the keys of its marked options and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.
+             * @description A number is an integer, a text a string, a list an array of strings, a conditions field an array of the keys of its marked options, an inventory field an array of stacks (ADR 0045) and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.
              * @example number
              * @enum {string}
              */
-            type: "number" | "text" | "list" | "track" | "conditions" | "derived";
+            type: "number" | "text" | "list" | "track" | "conditions" | "inventory" | "derived";
             /**
              * @description Number: the lowest value (-1000000 when the field sets none). Null for other types.
              * @example 1
@@ -2012,6 +2026,24 @@ export interface components {
             span: number;
             /** @description Conditions: the options a Character can be marked with, in declared order; the value is the list of marked option keys, in this order, each once, and a formula reads their count. Null for other types. */
             options: components["schemas"]["ConditionOptionResponse"][] | null;
+            /**
+             * @description Inventory: the most slots its stacks use together (a stack takes quantity times the slots of one unit); null when it has no slot limit. Null for other types.
+             * @example 20
+             */
+            capacity: number | null;
+            /**
+             * @description Inventory: the most stacks it holds. Null for other types.
+             * @example 50
+             */
+            maxStacks: number | null;
+            /**
+             * @description Inventory: the gear categories it accepts, matched exactly against the catalog; null when it accepts every entry, with or without a category. Null for other types.
+             * @example [
+             *       "Gear",
+             *       "Food"
+             *     ]
+             */
+            categories: string[] | null;
         };
         SheetGroupResponse: {
             /**
@@ -2074,6 +2106,43 @@ export interface components {
              */
             max: number | null;
         };
+        GearEntryResponse: {
+            /**
+             * @description The key a catalog stack of a Character names the gear by.
+             * @example used-pistol
+             */
+            key: string;
+            /** @example Used pistol */
+            name: string;
+            /**
+             * @description The price of one unit in the currency of the sheet.
+             * @example 50
+             */
+            cost: number;
+            /**
+             * @description The inventory slots one unit takes (1 unless the release says otherwise).
+             * @example 1
+             */
+            slots: number;
+            /**
+             * @description The label inventory fields match exactly; null when the entry has none.
+             * @example Gear
+             */
+            category: string | null;
+            description: string | null;
+        };
+        CurrencyResponse: {
+            /**
+             * @description The key of the number field money is kept in.
+             * @example eddies
+             */
+            field: string;
+            /**
+             * @description What follows an amount, such as "eb"; null when the release gives none.
+             * @example eb
+             */
+            unit: string | null;
+        };
         PinnedReleaseResponse: {
             /** @example ironsworn */
             gameSystemKey: string;
@@ -2095,6 +2164,10 @@ export interface components {
             sheetLayout: components["schemas"]["SheetLayoutResponse"] | null;
             /** @description Every point budget of the sheet in order (ADR 0043), a legacy single budget as the key "points"; empty when the sheet has none. */
             pointBudgets: components["schemas"]["PointBudgetEntryResponse"][];
+            /** @description The release's gear catalog in order (ADR 0045); inventory fields accept entries from it. Empty when the release has none. */
+            gear: components["schemas"]["GearEntryResponse"][];
+            /** @description The sheet field Characters keep money in; null when the release declares no currency. */
+            currency: components["schemas"]["CurrencyResponse"] | null;
         };
         ItemRefResponse: {
             /**
@@ -3172,6 +3245,14 @@ export interface components {
              * @example sneak
              */
             checkKey?: string | null;
+        };
+        /** @enum {string} */
+        FlowRunErrorCode: "insufficient_funds";
+        FlowRunErrorResponse: {
+            /** @description A human-readable message. */
+            error: string;
+            /** @description Which rule of the sheet the step broke; the client branches on this, never on the message. Absent for any other refusal. */
+            code?: components["schemas"]["FlowRunErrorCode"] | null;
         };
         SkipFlowStepRequest: {
             /**
@@ -8695,13 +8776,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character, or its check set is given no "checkKey" or one outside the set, or a single-check step is given one. Or a formula of a band bound, a tracker or sheet Effect value or a step's difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed. */
+            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character, or its check set is given no "checkKey" or one outside the set, or a single-check step is given one. Or a formula of a band bound, a tracker or sheet Effect value or a step's difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed. Or a choice option, a prompt or a character step spends more of the release's currency than the Character has (code "insufficient_funds"); nothing changed. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["FlowRunErrorResponse"];
                 };
             };
         };

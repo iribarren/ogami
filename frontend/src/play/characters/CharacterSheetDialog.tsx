@@ -17,16 +17,25 @@ function FieldValue({ field, character }: { field: SheetField; character: Charac
     return String(character.derived[field.key] ?? '—')
   }
   const value = valueOrDefault(field, character.values[field.key])
+  if (field.type === 'inventory') {
+    // Its read-only view lands with play-items-economy slice 4.
+    return String(Array.isArray(value) ? value.length : 0)
+  }
   if (field.type === 'conditions' && Array.isArray(value)) {
-    const labels = markedLabels(field, value)
+    const labels = markedLabels(
+      field,
+      value.filter((item) => typeof item === 'string'),
+    )
     return labels.length === 0 ? 'None' : labels.join(', ')
   }
   if (Array.isArray(value)) {
     return (
       <ul>
-        {value.map((item, index) => (
-          <li key={`${String(index)}-${item}`}>{item}</li>
-        ))}
+        {value
+          .filter((item) => typeof item === 'string')
+          .map((item, index) => (
+            <li key={`${String(index)}-${item}`}>{item}</li>
+          ))}
       </ul>
     )
   }

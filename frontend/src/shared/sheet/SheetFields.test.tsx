@@ -241,3 +241,14 @@ describe('SheetFields with a conditions field', () => {
     expect(screen.queryAllByRole('checkbox')).toEqual([])
   })
 })
+
+describe('SheetFields with an inventory field', () => {
+  it('renders no control for it until the inventory control lands, and keeps the other fields', () => {
+    const inventory: SheetFieldView = { ...field('pack', null), label: 'Pack', type: 'inventory' }
+
+    renderSheet({ fields: [inventory, field('role', null)], layout: null })
+
+    expect(screen.queryByText('Pack')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('ROLE')).toBeInTheDocument()
+  })
+})

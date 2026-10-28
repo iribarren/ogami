@@ -86,3 +86,28 @@ describe('a conditions field', () => {
     expect(summarize(wounds, ['gone'])).toBe('Wounds: none')
   })
 })
+
+describe('an inventory field (ADR 0045)', () => {
+  const pack: SheetFieldView = { ...gear, key: 'pack', label: 'Pack', type: 'inventory' }
+  const stacks = [
+    { gear: 'used-pistol', quantity: 2 },
+    { name: 'Rope', quantity: 1, slots: 2 },
+  ]
+
+  it('starts empty and sends the stored stacks back as they are', () => {
+    expect(valueOrDefault(pack, undefined)).toEqual([])
+    expect(fromDraft(pack, toDraft(pack, undefined))).toEqual([])
+    expect(fromDraft(pack, toDraft(pack, stacks))).toEqual(stacks)
+  })
+
+  it('drops a draft that is not stacks instead of sending it', () => {
+    expect(fromDraft(pack, '[{"gear":4}]')).toEqual([])
+    expect(fromDraft(pack, 'not json')).toEqual([])
+    expect(fromDraft(pack, ['Rope'])).toEqual([])
+  })
+
+  it('summarizes the number of stacks', () => {
+    expect(summarize(pack, stacks)).toBe('Pack: 2')
+    expect(summarize(pack, undefined)).toBe('Pack: 0')
+  })
+})

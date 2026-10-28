@@ -77,12 +77,15 @@ final readonly class CampaignEffects
      * value to 0..its max, a number to its min and max, else the contract's limit). Mark and clear
      * change a conditions field instead (ADR 0041): the change tells the count marked before and after.
      *
-     * @param ?string $pick the option a mark without an option marks (a push cost, where the player
-     *                      picks one); null marks nothing, as when every option is marked already
+     * @param ?string $pick             the option a mark without an option marks (a push cost, where the player
+     *                                  picks one); null marks nothing, as when every option is marked already
+     * @param bool    $refuseBelowFloor whether an effect that would take the release's currency under its
+     *                                  floor is refused instead of clamped (a voluntary spend, ADR 0045)
      *
      * @throws FlowFormulaFailed when the value's formula divides by zero, overflows or reads a value the sheet lacks
+     * @throws InsufficientFunds when a refused spend would take the currency under its floor; nothing was changed by this effect
      */
-    public function applySheetEffect(SheetEffect $effect, string $characterId, ?string $pick = null): SheetChange
+    public function applySheetEffect(SheetEffect $effect, string $characterId, ?string $pick = null, bool $refuseBelowFloor = false): SheetChange
     {
         $id = CharacterId::fromString($characterId);
         $character = $this->campaign->character($id) ?? throw new \LogicException(\sprintf('The campaign has no Character "%s".', $characterId));
@@ -121,6 +124,16 @@ final readonly class CampaignEffects
             SheetOperation::Set => $value,
             SheetOperation::Mark, SheetOperation::Clear => throw new \LogicException(\sprintf('Field "%s" is changed with a number, not marked or cleared.', $field->key)),
         };
+        $sheet = $this->release->sheet();
+        $floor = $sheet->currencyFloor();
+        if ($refuseBelowFloor && $field->key === $sheet->currency()?->field && null !== $floor) {
+            // A sum past the integers is a float; the contract's limit brings it back to one.
+            $attempted = max(-NumberField::LIMIT, min(NumberField::LIMIT, $changed));
+            if ($attempted < $floor) {
+                throw new InsufficientFunds($field->key, $before, $attempted, $floor);
+            }
+        }
+
         // A sum past the integers is a float; clamping brings it back within the bounds.
         [$min, $max] = $field instanceof TrackField
             ? [0, $track['max'] ?? 0]

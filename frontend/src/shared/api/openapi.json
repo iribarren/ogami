@@ -3777,11 +3777,11 @@
                         }
                     },
                     "422": {
-                        "description": "A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or \"pickedIds\" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character, or its check set is given no \"checkKey\" or one outside the set, or a single-check step is given one. Or a formula of a band bound, a tracker or sheet Effect value or a step's difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed.",
+                        "description": "A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or \"pickedIds\" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character, or its check set is given no \"checkKey\" or one outside the set, or a single-check step is given one. Or a formula of a band bound, a tracker or sheet Effect value or a step's difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed. Or a choice option, a prompt or a character step spends more of the release's currency than the Character has (code \"insufficient_funds\"); nothing changed.",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ErrorResponse"
+                                    "$ref": "#/components/schemas/FlowRunErrorResponse"
                                 }
                             }
                         }
@@ -10788,7 +10788,7 @@
                         "nullable": true
                     },
                     "values": {
-                        "description": "The values of the pinned release's sheet fields: field key to value. A number field takes an integer, a text field a string, a list field an array of strings, a conditions field an array of the keys of its marked options (declared options only, each once; stored in the declared order of the options) and a track field {current, max} (max is fixed by the field when it sets one, else required). A field not given takes its default (a number its default or 0, a text \"\", a list [] or conditions [], a track full). An unknown key, a value of the wrong type or out of its bounds is refused.",
+                        "description": "The values of the pinned release's sheet fields: field key to value. A number field takes an integer, a text field a string, a list field an array of strings, a conditions field an array of the keys of its marked options (declared options only, each once; stored in the declared order of the options), an inventory field an array of stacks (a catalog stack {gear, quantity} naming gear the field accepts, at most once per field, or a free stack {name, quantity, slots}; quantity 1 to 9999, slots 0 to 100, used slots within the capacity, at most maxStacks stacks; ADR 0045) and a track field {current, max} (max is fixed by the field when it sets one, else required). A field not given takes its default (a number its default or 0, a text \"\", a list [], conditions [] or inventory [], a track full). An unknown key, a value of the wrong type or out of its bounds is refused.",
                         "type": "object",
                         "example": {
                             "role": "Solo",
@@ -10814,6 +10814,47 @@
                                     "type": "array",
                                     "items": {
                                         "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "oneOf": [
+                                            {
+                                                "required": [
+                                                    "gear",
+                                                    "quantity"
+                                                ],
+                                                "properties": {
+                                                    "gear": {
+                                                        "type": "string"
+                                                    },
+                                                    "quantity": {
+                                                        "type": "integer"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            },
+                                            {
+                                                "required": [
+                                                    "name",
+                                                    "quantity",
+                                                    "slots"
+                                                ],
+                                                "properties": {
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "quantity": {
+                                                        "type": "integer"
+                                                    },
+                                                    "slots": {
+                                                        "type": "integer"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        ]
                                     }
                                 },
                                 {
@@ -10886,7 +10927,7 @@
                         ]
                     },
                     "values": {
-                        "description": "One value per field of the pinned release's sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list), an array of the marked option keys in declared order (conditions) or {current, max} (track). Empty when the release has no sheet.",
+                        "description": "One value per field of the pinned release's sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list), an array of the marked option keys in declared order (conditions), an array of stacks (inventory, ADR 0045) or {current, max} (track). Empty when the release has no sheet.",
                         "type": "object",
                         "example": {
                             "role": "Solo",
@@ -10911,6 +10952,47 @@
                                     "type": "array",
                                     "items": {
                                         "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "oneOf": [
+                                            {
+                                                "required": [
+                                                    "gear",
+                                                    "quantity"
+                                                ],
+                                                "properties": {
+                                                    "gear": {
+                                                        "type": "string"
+                                                    },
+                                                    "quantity": {
+                                                        "type": "integer"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            },
+                                            {
+                                                "required": [
+                                                    "name",
+                                                    "quantity",
+                                                    "slots"
+                                                ],
+                                                "properties": {
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "quantity": {
+                                                        "type": "integer"
+                                                    },
+                                                    "slots": {
+                                                        "type": "integer"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        ]
                                     }
                                 },
                                 {
@@ -11120,7 +11202,10 @@
                     "roll",
                     "startMax",
                     "span",
-                    "options"
+                    "options",
+                    "capacity",
+                    "maxStacks",
+                    "categories"
                 ],
                 "properties": {
                     "key": {
@@ -11144,7 +11229,7 @@
                         "nullable": true
                     },
                     "type": {
-                        "description": "A number is an integer, a text a string, a list an array of strings, a conditions field an array of the keys of its marked options and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.",
+                        "description": "A number is an integer, a text a string, a list an array of strings, a conditions field an array of the keys of its marked options, an inventory field an array of stacks (ADR 0045) and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.",
                         "type": "string",
                         "example": "number",
                         "enum": [
@@ -11153,6 +11238,7 @@
                             "list",
                             "track",
                             "conditions",
+                            "inventory",
                             "derived"
                         ]
                     },
@@ -11226,6 +11312,30 @@
                         "items": {
                             "$ref": "#/components/schemas/ConditionOptionResponse"
                         },
+                        "nullable": true
+                    },
+                    "capacity": {
+                        "description": "Inventory: the most slots its stacks use together (a stack takes quantity times the slots of one unit); null when it has no slot limit. Null for other types.",
+                        "type": "integer",
+                        "example": 20,
+                        "nullable": true
+                    },
+                    "maxStacks": {
+                        "description": "Inventory: the most stacks it holds. Null for other types.",
+                        "type": "integer",
+                        "example": 50,
+                        "nullable": true
+                    },
+                    "categories": {
+                        "description": "Inventory: the gear categories it accepts, matched exactly against the catalog; null when it accepts every entry, with or without a category. Null for other types.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "Gear",
+                            "Food"
+                        ],
                         "nullable": true
                     }
                 },
@@ -11335,6 +11445,68 @@
                 },
                 "type": "object"
             },
+            "GearEntryResponse": {
+                "required": [
+                    "key",
+                    "name",
+                    "cost",
+                    "slots",
+                    "category",
+                    "description"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "The key a catalog stack of a Character names the gear by.",
+                        "type": "string",
+                        "example": "used-pistol"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Used pistol"
+                    },
+                    "cost": {
+                        "description": "The price of one unit in the currency of the sheet.",
+                        "type": "integer",
+                        "example": 50
+                    },
+                    "slots": {
+                        "description": "The inventory slots one unit takes (1 unless the release says otherwise).",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "category": {
+                        "description": "The label inventory fields match exactly; null when the entry has none.",
+                        "type": "string",
+                        "example": "Gear",
+                        "nullable": true
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "CurrencyResponse": {
+                "required": [
+                    "field",
+                    "unit"
+                ],
+                "properties": {
+                    "field": {
+                        "description": "The key of the number field money is kept in.",
+                        "type": "string",
+                        "example": "eddies"
+                    },
+                    "unit": {
+                        "description": "What follows an amount, such as \"eb\"; null when the release gives none.",
+                        "type": "string",
+                        "example": "eb",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "PinnedReleaseResponse": {
                 "required": [
                     "gameSystemKey",
@@ -11344,7 +11516,9 @@
                     "credits",
                     "sheet",
                     "sheetLayout",
-                    "pointBudgets"
+                    "pointBudgets",
+                    "gear",
+                    "currency"
                 ],
                 "properties": {
                     "gameSystemKey": {
@@ -11403,6 +11577,22 @@
                         "items": {
                             "$ref": "#/components/schemas/PointBudgetEntryResponse"
                         }
+                    },
+                    "gear": {
+                        "description": "The release's gear catalog in order (ADR 0045); inventory fields accept entries from it. Empty when the release has none.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GearEntryResponse"
+                        }
+                    },
+                    "currency": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CurrencyResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The sheet field Characters keep money in; null when the release declares no currency."
                     }
                 },
                 "type": "object"
@@ -13660,6 +13850,33 @@
                         "type": "string",
                         "example": "sneak",
                         "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "FlowRunErrorCode": {
+                "type": "string",
+                "enum": [
+                    "insufficient_funds"
+                ]
+            },
+            "FlowRunErrorResponse": {
+                "required": [
+                    "error"
+                ],
+                "properties": {
+                    "error": {
+                        "description": "A human-readable message.",
+                        "type": "string"
+                    },
+                    "code": {
+                        "description": "Which rule of the sheet the step broke; the client branches on this, never on the message. Absent for any other refusal.",
+                        "nullable": true,
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/FlowRunErrorCode"
+                            }
+                        ]
                     }
                 },
                 "type": "object"

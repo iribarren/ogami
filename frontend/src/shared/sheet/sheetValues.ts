@@ -1,9 +1,9 @@
-import type { SheetFieldView, SheetValue } from './types'
+import type { SheetFieldView, SheetStack, SheetValue } from './types'
 
 /**
  * What a field holds while it is edited: text as typed, so a number can be empty for a moment
  * (the browser then refuses the form), the rows of a list, the marked option keys of a conditions
- * field, a track's current and max.
+ * field, an inventory's stacks (kept as stored until its control lands), a track's current and max.
  */
 export type Draft = string | string[] | { current: string; max: string }
 
@@ -24,6 +24,7 @@ export function valueOrDefault(field: SheetFieldView, stored: SheetValue | undef
       return typeof stored === 'string' ? stored : ''
     case 'list':
     case 'conditions':
+    case 'inventory':
       return Array.isArray(stored) ? stored : []
     case 'track':
       return typeof stored === 'object' && !Array.isArray(stored)
@@ -40,14 +41,44 @@ export function toDraft(field: SheetFieldView, stored: SheetValue | undefined): 
   if (typeof value === 'number') {
     return String(value)
   }
+  if (field.type === 'inventory') {
+    return JSON.stringify(value)
+  }
   if (typeof value === 'object' && !Array.isArray(value)) {
     return { current: String(value.current), max: String(value.max) }
   }
-  return value
+  return typeof value === 'string' ? value : value.filter(isText)
+}
+
+function isText(item: unknown): item is string {
+  return typeof item === 'string'
+}
+
+function isStack(item: unknown): item is SheetStack {
+  if (typeof item !== 'object' || item === null || !('quantity' in item)) {
+    return false
+  }
+  return 'gear' in item || ('name' in item && 'slots' in item)
+}
+
+/**
+ * The stacks of an inventory travel through its draft as JSON until the control of play-items-economy
+ * slice 4 edits them: an edit sends the stored stacks as they are.
+ */
+function parseStacks(draft: string): SheetStack[] {
+  try {
+    const parsed: unknown = JSON.parse(draft)
+    return Array.isArray(parsed) ? parsed.filter(isStack) : []
+  } catch {
+    return []
+  }
 }
 
 /** The value to send for a draft; blank list rows are dropped. */
 export function fromDraft(field: SheetFieldView, draft: Draft): SheetValue {
+  if (field.type === 'inventory') {
+    return typeof draft === 'string' ? parseStacks(draft) : []
+  }
   if (typeof draft === 'string') {
     return field.type === 'number' ? Number(draft) : draft
   }
@@ -103,12 +134,15 @@ export function summarize(
   if (typeof value === 'string') {
     return value === '' ? null : `${field.label}: ${cut(value)}`
   }
+  if (field.type === 'inventory' && Array.isArray(value)) {
+    return `${field.label}: ${String(value.length)}`
+  }
   if (field.type === 'conditions' && Array.isArray(value)) {
-    const labels = markedLabels(field, value)
+    const labels = markedLabels(field, value.filter(isText))
     return `${field.label}: ${labels.length === 0 ? 'none' : summarizeItems(labels)}`
   }
   if (Array.isArray(value)) {
-    const items = value.filter((item) => item.trim() !== '')
+    const items = value.filter(isText).filter((item) => item.trim() !== '')
     return `${field.label}: ${items.length === 0 ? '0' : summarizeItems(items)}`
   }
   if (typeof value === 'object') {

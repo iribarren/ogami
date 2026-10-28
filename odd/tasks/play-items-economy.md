@@ -1,7 +1,7 @@
 # Feature: play-items-economy
 
 - **Locator:** `odd/tasks/play-items-economy.md` · Engram topic `odd/play-items-economy/tasks`
-- **Issue:** [#311](https://github.com/iribarren/ogami/issues/311) · **Branch:** `feat/play-items-economy-2-play-inventory` · **Status:** in progress (slice 2 of 8)
+- **Issue:** [#311](https://github.com/iribarren/ogami/issues/311) · **Branch:** `feat/play-items-economy-3-play-api` · **Status:** in progress (slice 3 of 8)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B11 (before B12 `preset-cpr-campaign`; settles [ADR 0025](../../docs/adr/0025-items-and-shops-after-the-mvp.md))
@@ -89,10 +89,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T1 | 1 | Docs: this feature doc; roadmap B11 in progress | parent (inline, docs) | [x] | fa4c738 |
 | T2 | 1 | ADR 0045 (gear catalog, `inventory`, `sheet.currency`, `shop`, affordability, upgrade conversions), ADR index, ADR 0025 and 0035 amended-by notes, glossary (Gear, Inventory, Stack, Currency, Shop); schema `v2.schema.json` and contract doc; example 4's Economy section | delegated writer (Opus, design; preparation trigger: code reading for the design) | [x] | fa4c738 |
 | T3 | 1 | Publisher: `gear` catalog, `sheet.currency`, `inventory` field, `shop` step, references (offers, categories, a destination inventory, currency required), canonical form; unit tests; economy in `cpr-campaign-in-acts.json`; Play's translator refuses the new shapes with a clear error | delegated writer (Opus, same writer) | [x] | 393c5d5 |
-| T4 | 2 | Play: translator reads `gear`, `sheet.currency`, `inventory`; `InventoryField`, stacks, capacity, `maxStacks`, categories in `CharacterValues`; legacy Characters read; tests | delegated writer (Sonnet) | [x] | |
-| T5 | 3 | Play API: pinned release gear catalog and currency, sheet field view, Character values with stacks; `make api`; tests | delegated writer (Sonnet) | [ ] | |
+| T4 | 2 | Play: translator reads `gear`, `sheet.currency`, `inventory`; `InventoryField`, stacks, capacity, `maxStacks`, categories in `CharacterValues`; legacy Characters read; tests | delegated writer (Sonnet) | [x] | a79a9f5 |
+| T5 | 3 | Play API: pinned release gear catalog and currency, sheet field view, Character values with stacks; `make api`; tests | delegated writer (Sonnet) | [x] | ad5baca, 987b35f |
 | T6 | 4 | Play flow: translator `shop`; stock roll when reached (stored on the FlowRun); transaction (sell then buy, routing, stacking), errors, journal content, `{step:key}`; request and step response; tests | delegated writer (Sonnet or Opus) | [ ] | |
-| T7 | 3 | Affordability: `insufficient_funds` on choice option, prompt and `character` step sheet effects on the currency; check outcomes clamp; tests | delegated writer (same writer) | [ ] | |
+| T7 | 3 | Affordability: `insufficient_funds` on choice option, prompt and `character` step sheet effects on the currency; check outcomes clamp; tests | delegated writer (Sonnet) | [x] | |
 | T8 | 5 | Upgrade planner: `list` ↔ `inventory` and `inventory` → `inventory` conversions, fitting, `converted`; response; tests | delegated writer (Sonnet) | [ ] | |
 | T9 | 5 | Play UI: inventory control (catalog picker by category, free stack, quantity, remove, slots used), read-only sheet view, currency unit; upgrade dialog `converted`; fixtures and tests | delegated writer (Sonnet) | [ ] | |
 | T10 | 6 | Play UI: shop step card, choice `insufficient_funds`, journal shop entry; fixtures, tests, e2e | delegated writer (Sonnet) | [ ] | |
@@ -113,13 +113,14 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 ## Checks
 
 - Per slice: test first where a runnable test exists; `make verify` once at the end; CI runs every suite.
-- Slices 5 and 7: e2e (Play shop, Studio shop editor).
+- Slices 6 and 8: e2e (Play shop, Studio shop editor).
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-4430bdf6d7dc77a6` | fa4c738, 393c5d5 | approved; R3 warning (refusal tests: formulas, `startMax`, check modifiers and point budgets reject an `inventory` field) and R3 suggestion (positive `{step:key}` test on a shop step) fixed in slice 2 | [#312](https://github.com/iribarren/ogami/pull/312) |
+| 2 | `review-cd11d3e4e7848b15` | 0ac035c, a79a9f5 | approved; R3 warning (`ReleaseUpgradePlanner::fitValue` has no proof for `inventory` fields: absent value, kept inventory, another type becoming an inventory) fixed in slice 3 | [#313](https://github.com/iribarren/ogami/pull/313) |
 
 ## Progress
 
@@ -128,7 +129,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-27: T3 done: publisher `Gear`, inventory, currency and shop rules (RED: `gear: unknown property`, then GREEN, 59 tests in `ReleaseContentGearTest`, schema agreement in `ReleaseSchemaGearTest`); example 4 fixture carries the economy; Play's translator refuses each shape (ADR 0045) and its tests read the example without it.
 - 2026-10-28: slice 1 review fixes: publisher tests that an `inventory` field is refused in a derived formula, a `startMax`, a check modifier and a point budget, and that `{step:key}` may name a `shop` step (the publisher already refused and accepted these, so no RED; the tests pin the behavior, 64 tests green in `ReleaseContentGearTest`).
 - 2026-10-28: T4 done: translator reads the gear catalog, `sheet.currency` and `inventory` fields (shops still refused); `GearEntry`, `Currency`, `InventoryField`, stacks and capacity in `CharacterValues`. RED: new tests failed on missing classes (stashed `src`), GREEN: Play unit and integration suites (3,490 tests). The translator now also checks a track `startMax` reads number and derived fields only (a gap the publisher already closed); `changeCharacterValue` has no sheet, so it checks the stack shape only (sheet effects cannot target an inventory).
+- 2026-10-28: T5 done: pinned release carries `gear` and `currency`, an `inventory` sheet field view, Character values and requests document stacks; domain errors stay 422 and the concurrent save 409, both tested with inventory values; the SPA keeps stored stacks and renders no inventory control. RED: the new API test failed on all 16 cases with the response changes stashed, and 7 existing exact-shape assertions failed after them until updated.
+- 2026-10-28: slice 2 review fix: planner tests for `inventory` fields (added by the target, kept, no longer valid after a capacity cut, `list` to `inventory` and back); the planner already behaved as the decision table says, so no RED and no planner change; the tests pin it (58 tests green in `ReleaseUpgradePlanTest`).
+- 2026-10-28: T7 done: `FlowRun::finish` marks choice, prompt and character steps voluntary and `CampaignEffects::applySheetEffect` throws `InsufficientFunds` (opt-in `refuseBelowFloor`; check outcomes and push costs keep clamping); `answer` maps it to `{error, code: "insufficient_funds"}` 422 (`FlowRunErrorResponse`, OpenAPI regenerated). `Campaign::completeFlowStep` works on a clone, so a refusal leaves the campaign and journal untouched. RED: with `src` stashed 10 of 17 unit cases failed ("The step was completed."), and the API test answered 500 before the controller mapping; the clamp cases (check outcome, no currency, push cost) pass on first run, they pin existing behavior. A currency field without `min` still goes negative through a check outcome (floor 0 is enforced only on voluntary spends).
 
 ## Next step
 
-Slice 2: review and PR. Slice 3: rebase `wip/play-items-economy-2-t5` (T5) onto `main`, then T7. Slice 4 drops the stripped example-4 copy `GameSystemReleaseTranslatorGearTest::playable()` once Play reads shops too.
+Slice 3: slice 2 review fix (planner `inventory` proof), T7 affordability, then review and PR. Slice 4 drops the stripped example-4 copy `GameSystemReleaseTranslatorGearTest::playable()` once Play reads shops too.

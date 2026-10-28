@@ -3223,6 +3223,35 @@ export interface components {
              */
             weight?: number | null;
         };
+        ShopLineRequest: {
+            /**
+             * @description The key of the gear on sale to buy.
+             * @example used-pistol
+             */
+            gear: string;
+            /**
+             * @description How many units, 1 to 9999.
+             * @example 2
+             */
+            quantity: number;
+        };
+        ShopSellLineRequest: {
+            /**
+             * @description The key of the Character's inventory field the stack is sold from.
+             * @example pack
+             */
+            field: string;
+            /**
+             * @description The key of the catalog gear of the stack.
+             * @example used-pistol
+             */
+            gear: string;
+            /**
+             * @description How many units, 1 to 9999, at most what the stack holds.
+             * @example 1
+             */
+            quantity: number;
+        };
         CompleteFlowStepRequest: {
             /**
              * @description The step the player means to complete; refused when the FlowRun waits for another.
@@ -3271,6 +3300,10 @@ export interface components {
              * @example sneak
              */
             checkKey?: string | null;
+            /** @description Shop step: the gear to buy, each gear listed once; omitted, null or empty for none. Must be omitted or null for the other kinds. */
+            buy?: components["schemas"]["ShopLineRequest"][] | null;
+            /** @description Shop step: the stacks of the Character to sell, applied before the purchases; omitted, null or empty for none. Must be omitted or null for the other kinds. */
+            sell?: components["schemas"]["ShopSellLineRequest"][] | null;
         };
         /** @enum {string} */
         FlowRunErrorCode: "insufficient_funds" | "inventory_full";

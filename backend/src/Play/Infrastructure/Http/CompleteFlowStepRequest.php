@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Infrastructure\Http;
 
+use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 
 /**
@@ -21,7 +22,9 @@ use OpenApi\Attributes as OA;
 final readonly class CompleteFlowStepRequest
 {
     /**
-     * @param list<string>|null $pickedIds
+     * @param list<string>|null          $pickedIds
+     * @param list<ShopLineRequest>|null     $buy
+     * @param list<ShopSellLineRequest>|null $sell
      */
     public function __construct(
         #[OA\Property(description: 'The step the player means to complete; refused when the FlowRun waits for another.', example: 'intro')]
@@ -49,6 +52,10 @@ final readonly class CompleteFlowStepRequest
         public ?int $situational,
         #[OA\Property(description: 'Check step with a check set (its checks): the key of the check of the set to roll; required there. Must be omitted or null on a single-check step.', example: 'sneak', nullable: true)]
         public ?string $checkKey,
+        #[OA\Property(description: 'Shop step: the gear to buy, each gear listed once; omitted, null or empty for none. Must be omitted or null for the other kinds.', type: 'array', items: new OA\Items(ref: new Model(type: ShopLineRequest::class)), nullable: true)]
+        public ?array $buy,
+        #[OA\Property(description: 'Shop step: the stacks of the Character to sell, applied before the purchases; omitted, null or empty for none. Must be omitted or null for the other kinds.', type: 'array', items: new OA\Items(ref: new Model(type: ShopSellLineRequest::class)), nullable: true)]
+        public ?array $sell,
     ) {
     }
 }

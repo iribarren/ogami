@@ -620,6 +620,79 @@ final class GameSystem
     }
 
     /**
+     * Puts the gear entry with this key (ADR 0045): replaces it in place, else appends it. What the
+     * entry leaves out is unset. The catalog is stored as `gear`.
+     *
+     * @param array<array-key, mixed> $entry "name", "cost", "slots", "category" and "description" as in a release document, without a "key": that is $gearKey
+     *
+     * @throws InvalidReleaseContent when the draft is schema version 1, or the catalog would break the release contract (the path starts with "gear[i]"); nothing changes
+     */
+    public function saveGearEntry(string $gearKey, array $entry, \DateTimeImmutable $now): void
+    {
+        $this->refuseOnPack('save a gear entry');
+        $list = $this->gearList();
+        $position = $this->indexOfKey($list, $gearKey) ?? \count($list);
+        if (\array_key_exists('key', $entry)) {
+            throw InvalidReleaseContent::at(\sprintf('gear[%d].key', $position), 'the key is the entry\'s, not part of its content');
+        }
+
+        $list[$position] = ['key' => $gearKey, ...$entry];
+        $this->replaceGear(array_values($list), $now);
+    }
+
+    /**
+     * Deletes the gear entry with this key; the last one removes the property.
+     *
+     * @throws GearNotFound          when the catalog has no entry with this key
+     * @throws GearInUse             when a shop step offers the entry by key
+     * @throws InvalidReleaseContent when the draft is schema version 1, or the draft would break the release contract without it (an inventory accepts a category only it had); nothing changes
+     */
+    public function removeGearEntry(string $gearKey, \DateTimeImmutable $now): void
+    {
+        $this->refuseOnPack('remove a gear entry');
+        $list = $this->gearList();
+        $position = $this->indexOfKey($list, $gearKey) ?? throw GearNotFound::withKey($gearKey);
+        $paths = DraftReferences::gearPathsTo($this->document, $gearKey);
+        if ([] !== $paths) {
+            throw GearInUse::at(\sprintf('The gear "%s"', $gearKey), $paths);
+        }
+
+        unset($list[$position]);
+        $this->replaceGear(array_values($list), $now);
+    }
+
+    /**
+     * Puts the sheet's currency (ADR 0045): the number field Characters spend and an optional unit.
+     *
+     * @param array<array-key, mixed> $currency "field" and "unit" as in a release document
+     *
+     * @throws InvalidReleaseContent when the draft is schema version 1, or the currency would break the release contract (the path starts with "sheet.currency"); nothing changes
+     */
+    public function saveSheetCurrency(array $currency, \DateTimeImmutable $now): void
+    {
+        $this->refuseOnPack('save the sheet currency');
+        $this->sheetFields();
+        $this->replaceSheet([...$this->sheet(), 'currency' => $currency], $now);
+    }
+
+    /**
+     * @throws SheetCurrencyNotFound when the sheet declares no currency
+     * @throws InvalidReleaseContent when the draft is schema version 1, or a shop step needs the currency; nothing changes
+     */
+    public function removeSheetCurrency(\DateTimeImmutable $now): void
+    {
+        $this->refuseOnPack('remove the sheet currency');
+        $this->sheetFields();
+        $sheet = $this->sheet();
+        if (!\array_key_exists('currency', $sheet)) {
+            throw SheetCurrencyNotFound::none();
+        }
+
+        unset($sheet['currency']);
+        $this->replaceSheet($sheet, $now);
+    }
+
+    /**
      * Replaces the draft with a release document as published; only the key stays this GameSystem's.
      *
      * @param array<mixed> $releaseDocument e.g. ReleaseContent::toArray() of a release of this GameSystem
@@ -874,6 +947,34 @@ final class GameSystem
         }
 
         return \is_array($legacy) ? [['key' => self::LEGACY_BUDGET_KEY, ...$legacy]] : [];
+    }
+
+    /**
+     * @return list<mixed> the stored catalog
+     *
+     * @throws InvalidReleaseContent when the draft is schema version 1 or the stored "gear" is not a list
+     */
+    private function gearList(): array
+    {
+        if (1 === $this->schemaVersion()) {
+            throw InvalidReleaseContent::at('schemaVersion', 'the gear catalog needs schema version 2, this draft is version 1');
+        }
+
+        return ReleaseFields::list($this->document['gear'] ?? [], 'gear');
+    }
+
+    /**
+     * @param list<mixed> $gear the whole catalog; none removes the property
+     *
+     * @throws InvalidReleaseContent when the draft would break the release contract
+     */
+    private function replaceGear(array $gear, \DateTimeImmutable $now): void
+    {
+        $document = $this->document;
+        unset($document['gear']);
+        $document = [] === $gear ? $document : [...$document, 'gear' => $gear];
+        ReleaseContent::checkItemRules($document);
+        $this->commit($document, $now);
     }
 
     /**

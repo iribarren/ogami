@@ -1,7 +1,7 @@
 # Feature: play-items-economy
 
 - **Locator:** `odd/tasks/play-items-economy.md` · Engram topic `odd/play-items-economy/tasks`
-- **Issue:** [#311](https://github.com/iribarren/ogami/issues/311) · **Branch:** `feat/play-items-economy-7-studio-gear` · **Status:** in progress (slice 7 of 8)
+- **Issue:** [#311](https://github.com/iribarren/ogami/issues/311) · **Branch:** `feat/play-items-economy-7-studio-gear` · **Status:** in progress (slice 7 of 9)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B11 (before B12 `preset-cpr-campaign`; settles [ADR 0025](../../docs/adr/0025-items-and-shops-after-the-mvp.md))
@@ -69,7 +69,7 @@ Defaults the ADR writer starts from; it may change them with a reason recorded i
 
 ## Slice plan
 
-Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice. Each slice's first commit carries the previous slice's review fixes. Re-planned to 8 slices on 2026-10-28: T4 plus T5 came to ~1,985 lines, so T5 moved to slice 3 with T7 and the shop (T6) became slice 4.
+Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice. Each slice's first commit carries the previous slice's review fixes. Re-planned to 8 slices on 2026-10-28: T4 plus T5 came to ~1,985 lines, so T5 moved to slice 3 with T7 and the shop (T6) became slice 4. Re-planned to 9 slices on 2026-10-28: T11 came to ~2,700 lines, ~1,060 of them generated, so T12 moved to slice 8 (user size exception for slice 7).
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
@@ -79,8 +79,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 4 | `feat/play-items-economy-4-play-shop` | `feat(play): play-items-economy 4/8 shop step` | T6 | ~2,770 actual (forecast ~1,400; user size exception): translator `shop`; stock roll on reaching the step; transaction, journal content, `{step:key}` ~900; request, step response ~150; generated ~350 |
 | 5 | `feat/play-items-economy-5-play-sheet-ui` | `feat(play): play-items-economy 5/8 inventories in the sheet and the upgrade` | T8–T9 | ~1,500: planner conversions and `converted` ~450; inventory control, read-only view, currency unit ~700; upgrade dialog ~100; generated ~150 |
 | 6 | `feat/play-items-economy-6-play-shop-ui` | `feat(play): play-items-economy 6/8 shop step in Play` | T10 | ~1,200: shop step card (Character, stock, cart, sell, totals), `insufficient_funds` messages on choices, journal entry view, fixtures, e2e |
-| 7 | `feat/play-items-economy-7-studio-gear` | `feat(studio): play-items-economy 7/8 gear catalog, inventory and currency in Studio` | T11–T12 | ~1,700: gear routes, guards, views ~650; Gear tab ~500; sheet builder inventory and currency ~300; generated ~250 |
-| 8 | `feat/play-items-economy-8-studio-shop` | `feat(studio): play-items-economy 8/8 shop step editor` | T13–T14 | ~1,100: shop step editor, error locations ~600; release view and diff gear ~250; e2e ~150; closing |
+| 7 | `feat/play-items-economy-7-studio-gear` | `feat(studio): play-items-economy 7/9 gear catalog and currency in the Studio API` | T11 | ~2,820 actual (user size exception): slice 6 fixes ~115; routes, guards, sheet view ~780; tests ~860; generated ~1,060 |
+| 8 | `feat/play-items-economy-8-studio-gear-ui` | `feat(studio): play-items-economy 8/9 gear, inventory and currency in Studio` | T12 | ~1,000: Gear tab, inventory field type, currency panel, tests and stories |
+| 9 | `feat/play-items-economy-9-studio-shop` | `feat(studio): play-items-economy 9/9 shop step editor` | T13–T14 | ~1,100: shop step editor, error locations ~600; release view and diff gear ~250; e2e ~150; closing |
 
 ## Tasks
 
@@ -96,10 +97,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T8 | 5 | Upgrade planner: `list` ↔ `inventory` and `inventory` → `inventory` conversions, fitting, `converted`; response; tests | delegated writer (Sonnet) | [x] | 9c5228c |
 | T9 | 5 | Play UI: inventory control (catalog picker by category, free stack, quantity, remove, slots used), read-only sheet view, currency unit; upgrade dialog `converted`; fixtures and tests | delegated writer (Sonnet) | [x] | 124ac66 |
 | T10 | 6 | Play UI: shop step card, choice `insufficient_funds`, journal shop entry; fixtures, tests, e2e | delegated writer (Sonnet) | [x] | ba7ab07, accc7fc, 2a185e6 |
-| T11 | 7 | Studio backend: gear routes, currency routes, guards (`DraftReferences`), views; `make api`; tests | delegated writer (Sonnet) | [ ] | |
-| T12 | 7 | Studio UI: Gear tab; sheet builder `inventory` type and currency setting; tests and stories | delegated writer (Sonnet) | [ ] | |
-| T13 | 8 | Studio flow editor: `shop` step (offer, stock, sell rate), error locations; release view and diff show gear; the journal's shop entry shows the currency unit (slice 6 parent note: `ShopContent` does not carry it); tests, e2e | delegated writer (Sonnet) | [ ] | |
-| T14 | 8 | Wrap-up: findings fixed or filed; roadmap B11 done; this doc closed | parent (closing doc commit) | [ ] | |
+| T11 | 7 | Studio backend: gear routes, currency routes, guards (`DraftReferences`), views; `make api`; tests | delegated writer (Sonnet) | [x] | |
+| T12 | 8 | Studio UI: Gear tab; sheet builder `inventory` type and currency setting; tests and stories | delegated writer (Sonnet) | [ ] | |
+| T13 | 9 | Studio flow editor: `shop` step (offer, stock, sell rate), error locations; release view and diff show gear; the journal's shop entry shows the currency unit (slice 6 parent note: `ShopContent` does not carry it); tests, e2e | delegated writer (Sonnet) | [ ] | |
+| T14 | 9 | Wrap-up: findings fixed or filed; roadmap B11 done; this doc closed | parent (closing doc commit) | [ ] | |
 
 ## Acceptance criteria
 
@@ -145,7 +146,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-28: T9 done: `InventoryControl` in `SheetFields` (stacks with quantity 1..9,999, slots per stack, slots used out of the capacity with an inline warning over it, gear picker grouped by category and filtered to the field's `categories`, a held gear gains a unit, free stack by name and slots, `maxStacks` disables adding); inventory drafts are real stacks (no JSON round trip); the read-only sheet lists `Name ×n` with slots used/capacity, `summarize` names the stacks, the currency field shows its unit in the form, the sheet and the summary; the gear catalog and currency reach the UI as `SheetTemplateView.economy` (optional, so Studio is unchanged) and a prop of `CharacterSheetDialog`/`SceneCast`; the upgrade dialog renders `converted` and stacks. Tests were written with the code, no separate RED observed for the UI (the old "renders no control" test was replaced); Vitest play, shared and studio/sheet green.
 - 2026-10-28: slice 5 review fixes: `InventoryControl` keeps a local draft of a quantity (empty while editing, a number is clamped to 1..9,999 and committed, blur restores the stored one) and refuses a free stack with an empty "Slots each" (RED: 2 new cases failed, then 56 green in `src/shared/sheet`). The upgrade plan response gained `gear`, the target release's catalog (`ReleaseUpgradePreview::$targetGear`, user-authorized API change), and the dialog names before values from the pinned catalog and after values from it (RED: the API test saw no `gear`, the dialog test showed `pistol`; then 26 green in `CampaignReleaseUpgradeApiTest`). The OpenAPI request for the answer endpoint now declares `buy` and `sell` (`ShopLineRequest`, `ShopSellLineRequest`; documentation only, the controller already read them).
 - 2026-10-28: T10 done: `ShopStepForm` (Character select, buy cart, sell cart of the Character's catalog stacks at `floor(cost × sellRate / 100)`, spend, earn, balance, a floor warning that disables Confirm, "Leave the shop" on an empty cart); `flowRunRefusal` turns `insufficient_funds` and `inventory_full` into plain messages for every FlowRun answer (choice, prompt, character, shop); `CampaignError.code` includes `FlowRunErrorCode`; the journal lists a shop visit's bought and sold lines and the money before and after (no currency unit: the journal content does not carry it); e2e `play-shop.spec.ts` against an e2e-only release `backend/tests/Fixtures/E2e/corner-shop.json` published by `e2e-seed` (example 4 reaches its shop only after several acts). Tests were written with the code, no separate RED for the UI (the "no control" test was replaced); Vitest play and shared green, e2e 1 passed.
+- 2026-10-28: slice 6 review fixes: `ShopStepForm` disables Confirm only when the balance ends under the floor and lower than before, reads a missing money value as the field default else 0 moved inside min..max (as the server does), and gives sell lines of duplicate stacks distinct ids; `play-shop.spec.ts` asserts the exact balance text. RED: 4 of 5 new cases in `ShopStepForm.test.tsx` failed, then green; Vitest `src/play/flow` green; the e2e was not run locally.
+- 2026-10-28: T11 done: `PUT/DELETE /gear/{gear}` and `PUT/DELETE /sheet/currency` (`GameSystem::saveGearEntry`, `removeGearEntry`, `saveSheetCurrency`, `removeSheetCurrency`, judged by the publisher's rules; library pack 409, schema version 1 and publisher errors 422, concurrent save 409, absent gear or currency 404); the sheet response gained `gear` (typed entries, `slots` defaulting to 1) and `currency` (legacy drafts read `[]` and null); guards: `GearInUse` for a shop step that offers the entry by key (`DraftReferences::gearPathsTo`), and `sheet.currency.field` joins `sheetFieldPathsTo` so the currency field cannot be deleted or renamed; retyping it is already refused by the publisher at `sheet.currency.field` (pinned by tests). No RED observed: the tests were written after the code. 15 unit cases in `GameSystemGearTest`, 40 API cases in `GameSystemGearApiTest`; `tests/Unit/Studio` and `tests/Integration/Studio` (3,136 tests) and `make qa` green. The regenerated spec and types are their own commit.
+- 2026-10-28: size exception (user, 2026-10-28): slice 7 ships T11 without its UI; T12 moves to slice 8.
 
 ## Next step
 
-Slice 7: a writer fixes the slice 6 findings, then builds T11 (Studio gear and currency routes, guards, sheet view) and T12 (Gear tab, inventory field type, currency panel); then the native review, push and PR.
+Slice 7 written and verified; next the native review (per commit: fixes + T11 backend, then the generated spec), push and PR. Then slice 8 (T12).

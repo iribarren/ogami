@@ -234,6 +234,11 @@ final class DraftReferences
             }
         }
 
+        $currency = \is_array($sheet['currency'] ?? null) ? $sheet['currency'] : [];
+        if ($key === ($currency['field'] ?? null)) {
+            $paths['sheet.currency.field'] = true;
+        }
+
         $budget = \is_array($sheet['pointBudget'] ?? null) ? $sheet['pointBudget'] : [];
         foreach (\is_array($budget['fields'] ?? null) ? $budget['fields'] : [] as $index => $budgetField) {
             if ($key === $budgetField) {
@@ -278,6 +283,33 @@ final class DraftReferences
         }
 
         return array_keys($paths);
+    }
+
+    /**
+     * The shop steps that offer this gear entry by key, in Scene Types and Flows: the paths of its
+     * `offer.gear` items. A shop that offers a category names no entry and is not listed.
+     *
+     * @param array<string, mixed> $document
+     *
+     * @return list<string>
+     */
+    public static function gearPathsTo(array $document, string $key): array
+    {
+        $paths = [];
+        foreach (self::steps($document) as $path => $step) {
+            if ('shop' !== ($step['kind'] ?? null)) {
+                continue;
+            }
+
+            $offer = \is_array($step['offer'] ?? null) ? $step['offer'] : [];
+            foreach (\is_array($offer['gear'] ?? null) ? $offer['gear'] : [] as $index => $offered) {
+                if ($key === $offered) {
+                    $paths[] = \sprintf('%s.offer.gear[%d]', $path, $index);
+                }
+            }
+        }
+
+        return $paths;
     }
 
     /**

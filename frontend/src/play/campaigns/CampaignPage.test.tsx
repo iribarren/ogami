@@ -5,7 +5,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { atStep, guided, promptStep } from '../flow/fixtures'
-import { lostMineJournal, recordedEntry } from '../journal/fixtures'
+import { lostMineJournal, recordedEntry, shopEntry } from '../journal/fixtures'
 import {
   fanPreset,
   freeJournal,
@@ -176,6 +176,27 @@ describe('the Play screen', () => {
         .getAllByRole('article')
         .map((entry) => entry.getAttribute('aria-label')),
     ).toEqual(['Oracle Weather', 'Oracle Fate question', 'Oracle Yes/no question'])
+  })
+
+  it('shows a shop entry with the unit of the release currency', async () => {
+    const economy: Campaign = {
+      ...lostMineCampaign,
+      pinnedRelease: {
+        ...lostMineCampaign.pinnedRelease,
+        currency: { field: 'eddies', unit: 'eb' },
+      },
+    }
+    renderPlayScreen(economy, [shopEntry])
+
+    const scene = await findJournalScene(2, 'Scene 1 — Into the dark')
+    expect(within(scene).getByText('Vi: 100 → 105 eb')).toBeVisible()
+  })
+
+  it('shows a shop entry with bare amounts when the release has no currency unit', async () => {
+    renderPlayScreen(lostMineCampaign, [shopEntry])
+
+    const scene = await findJournalScene(2, 'Scene 1 — Into the dark')
+    expect(within(scene).getByText('Vi: 100 → 105')).toBeVisible()
   })
 
   it('says when the journal or a scene is still empty', async () => {

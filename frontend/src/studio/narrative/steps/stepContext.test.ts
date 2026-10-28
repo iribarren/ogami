@@ -1,4 +1,4 @@
-import { narrative } from '../../fixtures'
+import { narrative, sheet, sheetWithEconomy } from '../../fixtures'
 import { specialsOf, stepContext } from './stepContext'
 
 describe('the step pickers', () => {
@@ -125,5 +125,18 @@ describe('the special results a check can produce', () => {
     expect(skill?.specials).toEqual(['critical'])
     expect(luck).not.toHaveProperty('specials')
     expect(stepContext({ ...narrative, catalog }).checks[0]).not.toHaveProperty('specials')
+  })
+
+  it('offer the gear catalog and the currency of the sheet, and nothing before it loads', () => {
+    expect(stepContext(narrative).economy).toBeUndefined()
+    expect(stepContext(narrative, undefined, sheet).economy).toEqual({ gear: [], currency: false })
+    expect(stepContext(narrative, undefined, sheetWithEconomy).economy).toEqual({
+      gear: [
+        { key: 'used-pistol', name: 'Used pistol', category: 'Weapons' },
+        { key: 'medkit', name: 'Medkit', category: 'Medical' },
+        { key: 'rope', name: 'Rope', category: null },
+      ],
+      currency: true,
+    })
   })
 })

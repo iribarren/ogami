@@ -8,6 +8,7 @@ export const sectionLabels: Record<string, string> = {
   sceneTypes: 'Scene Types',
   flows: 'Flows',
   sheetFields: 'Sheet fields',
+  gear: 'Gear',
   checks: 'Checks',
   // Schema version 1.
   oracles: 'Oracles',

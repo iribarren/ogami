@@ -162,6 +162,31 @@ describe('mapping a server error about branches and options', () => {
   })
 })
 
+describe('mapping a shop step error', () => {
+  it.each([
+    ['offer', 'offer'],
+    ['offer.gear[1]', 'offer.gear'],
+    ['offer.categories[0]', 'offer.categories'],
+    ['stock', 'stock'],
+    ['stock.dice', 'stock.dice'],
+    ['sellRate', 'sellRate'],
+  ])('puts %s on the %s input', (path, field) => {
+    expect(mapStepError(base, `sceneTypes[2].play[1].${path}: unknown`)).toEqual({
+      index: 1,
+      band: null,
+      effect: null,
+      field,
+      message: 'unknown',
+    })
+  })
+
+  it('reads the whole numbers the stock and the sell rate refuse', () => {
+    expect(clientStepErrors({ '2.stock': 'Use a whole number.' })).toEqual([
+      { index: 2, band: null, effect: null, field: 'stock', message: 'Use a whole number.' },
+    ])
+  })
+})
+
 describe('mapping the whole numbers a step list refuses to a step', () => {
   it('reads the keys stepsToItems gives, on a step, a band and an effect of either', () => {
     expect(

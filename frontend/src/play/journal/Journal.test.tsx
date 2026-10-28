@@ -12,6 +12,7 @@ import {
   noteAttaching,
   sceneShiftRoll,
   sanityLossEntry,
+  shopEntry,
   skillCheckEntry,
   stormyWeather,
 } from './fixtures'
@@ -21,6 +22,7 @@ function renderJournal(
   current: { session: number; scene: number } | null,
   entries = [fateDouble],
   sceneTypes = lostMineCampaign.sceneTypes,
+  currencyUnit?: string | null,
 ) {
   return renderWithApi(
     <Journal
@@ -34,11 +36,18 @@ function renderJournal(
       oracleTables={lostMineCampaign.oracleTables}
       current={current}
       entries={entries}
+      currencyUnit={currencyUnit}
     />,
   )
 }
 
 describe('Journal', () => {
+  it('passes the currency unit to a shop entry', () => {
+    renderJournal({ session: 2, scene: 1 }, [shopEntry], undefined, 'eb')
+
+    expect(screen.getByText('Vi: 100 → 105 eb')).toBeVisible()
+  })
+
   it('writes a scene heading in normal case, clamped, with its full text as a tooltip', () => {
     renderJournal({ session: 2, scene: 1 })
 

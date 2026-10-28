@@ -116,4 +116,66 @@ describe('ShopStepForm balance rules', () => {
       [{ field: 'pack', gear: 'used-pistol', quantity: 2 }],
     )
   })
+
+  it('says why a quantity typed on a later duplicate stack is not sold', async () => {
+    const user = userEvent.setup()
+    renderForm({
+      eddies: 100,
+      pack: [
+        { gear: 'used-pistol', quantity: 2 },
+        { gear: 'used-pistol', quantity: 3 },
+      ],
+    })
+
+    const [first, second] = screen.getAllByLabelText('Sell Used pistol from Pack')
+    await user.type(first ?? fail('no sell line'), '1')
+    await user.type(second ?? fail('no sell line'), '1')
+    expect(screen.queryByText(/can be sold/)).not.toBeInTheDocument()
+    await user.clear(first ?? fail('no sell line'))
+    await user.type(first ?? fail('no sell line'), '2')
+
+    expect(screen.getByText(/Only 2 Used pistol can be sold/)).toBeVisible()
+  })
+
+  it('shows the cap hint once, on the line that pushes the total over the first stack', async () => {
+    const user = userEvent.setup()
+    renderForm({
+      eddies: 100,
+      pack: [
+        { gear: 'used-pistol', quantity: 2 },
+        { gear: 'used-pistol', quantity: 3 },
+        { gear: 'used-pistol', quantity: 3 },
+      ],
+    })
+
+    const [first, second, third] = screen.getAllByLabelText('Sell Used pistol from Pack')
+    await user.type(first ?? fail('no sell line'), '2')
+    await user.type(second ?? fail('no sell line'), '1')
+    await user.type(third ?? fail('no sell line'), '1')
+
+    const hints = screen.getAllByText(/Only 2 Used pistol can be sold/)
+    expect(hints).toHaveLength(1)
+    expect(second?.closest('li')).toContainElement(hints[0] ?? null)
+  })
+
+  it('puts the cap hint on a middle line and none on an untouched last one', async () => {
+    const user = userEvent.setup()
+    renderForm({
+      eddies: 100,
+      pack: [
+        { gear: 'used-pistol', quantity: 2 },
+        { gear: 'used-pistol', quantity: 3 },
+        { gear: 'used-pistol', quantity: 3 },
+      ],
+    })
+
+    const [first, second, third] = screen.getAllByLabelText('Sell Used pistol from Pack')
+    await user.type(first ?? fail('no sell line'), '1')
+    await user.type(second ?? fail('no sell line'), '2')
+
+    const hints = screen.getAllByText(/Only 2 Used pistol can be sold/)
+    expect(hints).toHaveLength(1)
+    expect(second?.closest('li')).toContainElement(hints[0] ?? null)
+    expect(third?.closest('li')).not.toContainElement(hints[0] ?? null)
+  })
 })

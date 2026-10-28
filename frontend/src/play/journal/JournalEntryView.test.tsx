@@ -325,6 +325,26 @@ describe('JournalEntryView check entries', () => {
     expect(entry.getByText('Vi: 100 → 105')).toBeVisible()
   })
 
+  it('shows the currency unit after the money when the release has one', () => {
+    render(<JournalEntryView entry={shopEntry} currencyUnit="eb" />)
+
+    const entry = within(screen.getByRole('article', { name: 'Shop Vi' }))
+    expect(entry.getByText('Vi: 100 → 105 eb')).toBeVisible()
+  })
+
+  it('shows no unit for a release whose currency has none', () => {
+    render(<JournalEntryView entry={shopEntry} currencyUnit={null} />)
+
+    expect(screen.getByText('Vi: 100 → 105')).toBeVisible()
+  })
+
+  it('shows no unit, nor a trailing space, for an empty currency unit', () => {
+    render(<JournalEntryView entry={shopEntry} currencyUnit="  " />)
+
+    const line = screen.getByText('Vi: 100 → 105')
+    expect(line.textContent).toBe('Vi: 100 → 105')
+  })
+
   it('leaves out the Sold section of a visit that only bought', () => {
     render(<JournalEntryView entry={shopBoughtOnlyEntry} />)
 

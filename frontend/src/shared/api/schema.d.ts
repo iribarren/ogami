@@ -5449,7 +5449,7 @@ export interface components {
             sectionCounts: {
                 [key: string]: number;
             };
-            /** @description The items of each section in content order, by the same section names as sectionCounts; each list is as long as its count. */
+            /** @description The items of each section in content order, by the same section names as sectionCounts plus gear, the catalog (ADR 0045), which has no count; every other list is as long as its count. */
             outline: {
                 [key: string]: components["schemas"]["ReleaseOutlineItemResponse"][];
             };

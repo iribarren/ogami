@@ -6,12 +6,14 @@ namespace App\Studio\Application;
 
 /**
  * What the sections of a release hold, item by item: the key and display name of each item in content
- * order, under the section names of SectionCounts (so each list is as long as its count). Read
+ * order, under the section names of SectionCounts (so each list is as long as its count), and the
+ * gear catalog. Read
  * defensively like SectionCounts: an item without a key shows an empty one, and one without a display
  * name has null.
  *
  * Schema version 2 names a sheet field, a fact slot, a tag and a check by `label`, the other items by
- * `name`. Schema version 1: oracles (tables, then likelihood oracles) by `name`, flowSteps by `title`.
+ * `name`. The gear catalog (ADR 0045) is the one section SectionCounts has no count for; a release
+ * without one has it empty. Schema version 1: oracles (tables, then likelihood oracles) by `name`, flowSteps by `title`.
  */
 final class ReleaseOutline
 {
@@ -53,6 +55,7 @@ final class ReleaseOutline
             'sceneTypes' => self::items($document, 'name', 'sceneTypes'),
             'flows' => self::items($document, 'name', 'flows'),
             'sheetFields' => self::items($document, 'label', 'sheet', 'fields'),
+            'gear' => self::items($document, 'name', 'gear'),
             'checks' => self::items($document, 'label', 'checks'),
         ];
     }

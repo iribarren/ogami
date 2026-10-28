@@ -36,8 +36,13 @@ export const stepKinds = [
   'choice',
   'pick',
   'check',
+  'shop',
 ] as const
 export type StepKind = (typeof stepKinds)[number]
+
+/** How a shop's `stock` is written: absent, a whole number or a dice expression (ADR 0045). */
+export const stockForms = ['none', 'fixed', 'dice'] as const
+export type StockForm = (typeof stockForms)[number]
 
 export const countTargets = ['npc', 'thread', 'character'] as const
 export type CountTarget = (typeof countTargets)[number]
@@ -184,6 +189,20 @@ export type StepDraft =
       /** As stored: in the order of the check's bands once one is edited, strays (no such band, repeated) kept. */
       outcomes: CheckOutcomeDraft[]
     })
+  | (StepBase & {
+      kind: 'shop'
+      /** The offered catalog keys. */
+      gear: string[]
+      /** The offered categories. */
+      categories: string[]
+      /** What the stored `offer` carries beyond `gear` and `categories`. */
+      offerExtra: StoredItem
+      stockForm: StockForm
+      /** The whole number or dice expression, as text; unused while the form is `none`. */
+      stock: string
+      /** The percent of the cost a sale pays; '' means the shop does not buy. */
+      sellRate: string
+    })
   | { kind: 'stored'; stored: unknown }
 
 export type EditedStep = Exclude<StepDraft, { kind: 'stored' }>
@@ -194,6 +213,7 @@ const commonFields = ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'nex
 const bandFields = ['upTo', 'label', 'next', 'effects']
 const countFields = ['of', 'tags']
 const pickCountFields = ['min', 'max']
+const offerFields = ['gear', 'categories']
 const outcomeFields = ['next', 'effects']
 
 /** The forms a band limit and a check difficulty take. */
@@ -400,6 +420,47 @@ function readCheck(stored: StoredItem, base: StepBase): StepDraft | null {
       }
 }
 
+/** The shop's stock as a form and text; null when it is neither a whole number nor `{dice: string}`. */
+function readStock(stored: StoredItem): { stockForm: StockForm; stock: string } | null {
+  const { stock } = stored
+  if (stock === undefined) {
+    return { stockForm: 'none', stock: '' }
+  }
+  if (typeof stock === 'number') {
+    return Number.isInteger(stock) ? { stockForm: 'fixed', stock: String(stock) } : null
+  }
+  return isObject(stock) && Object.keys(stock).length === 1 && typeof stock.dice === 'string'
+    ? { stockForm: 'dice', stock: stock.dice }
+    : null
+}
+
+function readShop(stored: StoredItem, base: StepBase): StepDraft | null {
+  const offer = stored.offer === undefined ? {} : stored.offer
+  const stock = readStock(stored)
+  const sellRate = stored.sellRate
+  if (
+    !isObject(offer) ||
+    stock === null ||
+    (sellRate !== undefined && !Number.isInteger(sellRate))
+  ) {
+    return null
+  }
+  const rate = typeof sellRate === 'number' ? String(sellRate) : ''
+  const gear = stringsOf(offer, 'gear')
+  const categories = stringsOf(offer, 'categories')
+  return gear === null || categories === null
+    ? null
+    : {
+        ...base,
+        kind: 'shop',
+        gear,
+        categories,
+        offerExtra: unknownFields(offer, offerFields),
+        ...stock,
+        sellRate: rate,
+      }
+}
+
 function readCondition(stored: StoredItem, base: StepBase): StepDraft | null {
   const { tracker, count } = stored
   const bands = readBands(stored)
@@ -455,6 +516,7 @@ export function stepToDraft(stored: unknown): StepDraft {
     choice: [...commonFields, 'options', 'skip'],
     pick: [...commonFields, 'of', 'tags', 'mode', 'count', 'branches'],
     check: [...commonFields, 'check', 'checks', 'difficulty', 'outcomes'],
+    shop: [...commonFields, 'offer', 'stock', 'sellRate'],
   }[kind]
   const base: StepBase = {
     key: key ?? '',
@@ -508,6 +570,8 @@ export function stepToDraft(stored: unknown): StepDraft {
       return readPick(stored, base) ?? unreadable
     case 'check':
       return readCheck(stored, base) ?? unreadable
+    case 'shop':
+      return readShop(stored, base) ?? unreadable
   }
 }
 
@@ -618,6 +682,17 @@ export function newStep(kind: StepKind, steps: StepDraft[]): EditedStep {
         checks: null,
         difficulty: { form: 'integer', text: '' },
         outcomes: [],
+      }
+    case 'shop':
+      return {
+        ...base,
+        kind,
+        gear: [],
+        categories: [],
+        offerExtra: {},
+        stockForm: 'none',
+        stock: '',
+        sellRate: '',
       }
   }
 }
@@ -956,6 +1031,33 @@ function stepToStored(step: EditedStep, index: number, errors: FieldErrors): Sto
         item.skip = step.skip
       }
       break
+    case 'shop': {
+      const offer = {
+        ...step.offerExtra,
+        ...(step.gear.length === 0 ? {} : { gear: step.gear }),
+        ...(step.categories.length === 0 ? {} : { categories: step.categories }),
+      }
+      if (Object.keys(offer).length > 0) {
+        item.offer = offer
+      }
+      if (step.stockForm === 'fixed') {
+        const stock = parseInteger(step.stock.trim())
+        if (stock === null) {
+          errors[`${String(index)}.stock`] = WHOLE
+        }
+        item.stock = stock ?? 0
+      } else if (step.stockForm === 'dice') {
+        item.stock = { dice: step.stock.trim() }
+      }
+      if (step.sellRate.trim() !== '') {
+        const sellRate = parseInteger(step.sellRate.trim())
+        if (sellRate === null) {
+          errors[`${String(index)}.sellRate`] = WHOLE
+        }
+        item.sellRate = sellRate ?? 0
+      }
+      break
+    }
     case 'character':
       break
   }

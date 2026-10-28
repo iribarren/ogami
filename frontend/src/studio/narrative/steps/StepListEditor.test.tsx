@@ -7,8 +7,10 @@ import {
   stepListBackward,
   stepListBranching,
   stepListPickCheck,
+  stepListShop,
   stepListWithOtherKinds,
   stepPickers,
+  stepPickersEconomy,
 } from '../../fixtures'
 import { StepListEditor } from './StepListEditor'
 import { DISJOINT_DIFFICULTY, stepKinds, stepsToDrafts, stepsToItems } from './stepDraft'
@@ -1763,6 +1765,122 @@ describe('the step list editor', () => {
 
       expect(saved(0)).toMatchObject({ key: 'pick-1', kind: 'pick', of: 'npc', mode: 'random' })
       expect(saved(1)).toMatchObject({ key: 'check-1', kind: 'check', check: '' })
+    })
+  })
+
+  describe('with a shop step', () => {
+    const errors = (...paths: string[]) =>
+      paths.map((text) => mapStepError('sceneTypes[2].play', text))
+
+    it('gives the fixture back as stored', () => {
+      render(<Harness stored={stepListShop} context={stepPickersEconomy} />)
+
+      expect(latest.written).toEqual({ steps: stepListShop })
+    })
+
+    it('picks gear and categories from the catalog and writes the keys', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepListShop} context={stepPickersEconomy} />)
+
+      expect(card(1).getByRole('checkbox', { name: 'Rope' })).toBeChecked()
+      expect(card(1).getByRole('checkbox', { name: 'Weapons' })).toBeChecked()
+      expect(card(1).getByRole('checkbox', { name: 'Medical' })).not.toBeChecked()
+      await user.click(card(1).getByRole('checkbox', { name: 'Medkit' }))
+      await user.click(card(1).getByRole('checkbox', { name: 'Weapons' }))
+      await user.click(card(1).getByRole('checkbox', { name: 'Rope' }))
+
+      expect(saved(0)).toMatchObject({ offer: { gear: ['medkit'] } })
+      expect(saved(0)).not.toHaveProperty('offer.categories')
+    })
+
+    it('switches the stock between none, a number and dice, and omits an empty sell rate', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepListShop} context={stepPickersEconomy} />)
+
+      await chooseOption(user, 'Stock', 'A fixed number of entries', card(1))
+      await replaceText(user, card(1).getByLabelText('Stock count'), '2')
+      expect(saved(0)).toMatchObject({ stock: 2 })
+      await chooseOption(user, 'Stock', 'Everything on offer', card(1))
+      await user.clear(card(1).getByLabelText('Sell rate (%)'))
+
+      expect(saved(0)).not.toHaveProperty('stock')
+      expect(saved(0)).not.toHaveProperty('sellRate')
+    })
+
+    it('shows a stock or sell rate that is not whole next to it and sends nothing', async () => {
+      const user = userEvent.setup()
+      render(<Saver stored={stepListShop} />)
+
+      await replaceText(user, card(1).getByLabelText('Sell rate (%)'), 'half')
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      expect(card(1).getByText('Use a whole number.')).toBeInTheDocument()
+      expect(sent.steps).toBeNull()
+    })
+
+    it('has no requirement control and no sheet effect', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepListShop} context={stepPickersEconomy} />)
+
+      expect(card(1).queryByRole('radio', { name: 'Mandatory' })).not.toBeInTheDocument()
+      const kinds = (await listOptions(user, card(1).getByLabelText('New effect kind'))).map(
+        (option) => option.value,
+      )
+      expect(kinds).not.toContain('sheet')
+    })
+
+    it('adds an empty shop, and offers it everywhere but a Scene Type setup', async () => {
+      const user = userEvent.setup()
+      const { unmount } = render(<Harness stored={[]} context={stepPickersEconomy} />)
+
+      await addStep(user, 'shop')
+
+      expect(saved(0)).toMatchObject({ key: 'shop-1', kind: 'shop' })
+      expect(saved(0)).not.toHaveProperty('offer')
+      unmount()
+      render(<Harness stored={[]} setup />)
+      await user.click(screen.getByRole('button', { name: 'Add step' }))
+      expect(await screen.findByRole('menuitem', { name: 'prompt' })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'shop' })).not.toBeInTheDocument()
+    })
+
+    it('says a shop needs a currency, and that the catalog is empty', () => {
+      const bare = { ...stepPickersEconomy, economy: { gear: [], currency: false } }
+      render(<Harness stored={stepListShop} context={bare} />)
+
+      expect(card(1).getByText(/needs a currency/)).toBeInTheDocument()
+      expect(card(1).getByText(/catalog is empty/)).toBeInTheDocument()
+    })
+
+    it('keeps a gear key the catalog lost listed, and says nothing before the sheet loads', () => {
+      render(<Harness stored={stepListShop} />)
+
+      expect(card(1).getByRole('checkbox', { name: 'rope' })).toBeChecked()
+      expect(card(1).queryByText(/needs a currency/)).not.toBeInTheDocument()
+    })
+
+    it('puts each publisher message on its input', () => {
+      render(
+        <Harness
+          stored={stepListShop}
+          context={stepPickersEconomy}
+          errors={errors(
+            'sceneTypes[2].play[0].offer.gear[0]: unknown gear "rope"',
+            'sceneTypes[2].play[0].offer.categories[0]: unknown category "Weapons"',
+            'sceneTypes[2].play[0].stock.dice: not valid dice notation',
+            'sceneTypes[2].play[0].sellRate: must be at most 100',
+            'sceneTypes[2].play[0]: a shop step needs sheet.currency',
+          )}
+        />,
+      )
+
+      expect(card(1).getByText('unknown gear "rope"')).toBeInTheDocument()
+      expect(card(1).getByText('unknown category "Weapons"')).toBeInTheDocument()
+      expect(card(1).getByLabelText('Stock dice')).toBeInvalid()
+      expect(card(1).getByLabelText('Sell rate (%)')).toBeInvalid()
+      expect(card(1).getByText('not valid dice notation')).toBeInTheDocument()
+      expect(card(1).getByText('must be at most 100')).toBeInTheDocument()
+      expect(card(1).getByText('a shop step needs sheet.currency')).toBeInTheDocument()
     })
   })
 })

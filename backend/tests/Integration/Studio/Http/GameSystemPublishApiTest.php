@@ -210,7 +210,8 @@ final class GameSystemPublishApiTest extends WebTestCase
         self::assertIsString($created['publishedAt']);
         self::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T/', $created['publishedAt']);
         self::assertSame(array_fill_keys(['oracleTables', 'likelihoodOracles', 'trackers', 'factSlots', 'tags', 'sceneTypes', 'flows', 'sheetFields', 'checks'], 0), $created['sectionCounts']);
-        self::assertSame(array_fill_keys(array_keys($created['sectionCounts']), []), $created['outline']);
+        // The gear catalog has an outline section but no count.
+        self::assertSame(array_fill_keys(['oracleTables', 'likelihoodOracles', 'trackers', 'factSlots', 'tags', 'sceneTypes', 'flows', 'sheetFields', 'gear', 'checks'], []), $created['outline']);
         self::assertArrayHasKey('librarySources', $created);
 
         $this->client->request('GET', self::BASE.'/mine/releases/1');
@@ -374,8 +375,10 @@ final class GameSystemPublishApiTest extends WebTestCase
         self::assertIsArray($outline);
 
         self::assertSame($row['librarySources'], $detail['librarySources']);
-        self::assertSame(array_keys($counts), array_keys($outline));
-        self::assertSame($counts, array_map(static fn (mixed $items): int => \is_array($items) ? \count($items) : -1, $outline));
+        $counted = array_diff_key($outline, ['gear' => true]);
+        self::assertSame(array_keys($counts), array_keys($counted));
+        self::assertSame($counts, array_map(static fn (mixed $items): int => \is_array($items) ? \count($items) : -1, $counted));
+        self::assertSame([], $outline['gear']);
         self::assertIsArray($outline['oracleTables']);
         self::assertSame(['key' => 'heist-scenes', 'name' => 'Heist scenes'], $outline['oracleTables'][0]);
         self::assertSame([['key' => 'heist', 'name' => 'Heist']], $outline['flows']);

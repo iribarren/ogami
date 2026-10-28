@@ -70,6 +70,12 @@ export function mapStepError(base: string, text: string): StepError {
     // A pick's count is two fields of its own; a condition's count stays one.
     parts.splice(0, 2, { name: `count.${answer}` })
   }
+  if (lead === 'offer' && (answer === 'gear' || answer === 'categories')) {
+    // A shop's offer lists are two inputs of their own, whichever entry the path names.
+    parts.splice(0, 2, { name: `offer.${answer}` })
+  } else if (lead === 'stock' && answer === 'dice') {
+    parts.splice(0, 2, { name: 'stock.dice' })
+  }
   const [head, indexed, field] = parts
   if (head && 'name' in head && head.name === 'effects' && indexed && 'at' in indexed) {
     error.effect = indexed.at

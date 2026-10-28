@@ -235,7 +235,7 @@ final class GameSystemPublicationHandlersTest extends TestCase
         self::assertNotNull($second->changes);
         self::assertSame([1, 2], [$second->changes['previousVersion'], $second->changes['previousSchemaVersion']]);
         self::assertNotNull($second->changes['sections']);
-        self::assertSame(array_keys($second->sectionCounts), array_keys($second->changes['sections']));
+        self::assertSame(array_keys($second->outline), array_keys($second->changes['sections']));
         self::assertSame(['name'], $second->changes['sections']['flows']['changed'][0]['fields']);
         self::assertSame([], $second->changes['sections']['trackers']['changed']);
         self::assertSame([2, 2, null], [$third->changes['previousVersion'] ?? null, $third->changes['previousSchemaVersion'] ?? null, $third->changes['sections'] ?? null]);

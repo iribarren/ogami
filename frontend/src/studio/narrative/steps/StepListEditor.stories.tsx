@@ -8,11 +8,13 @@ import {
   stepListBranching,
   stepListCheckSet,
   stepListPickCheck,
+  stepListShop,
   stepListSheetEffects,
   stepListSpecials,
   stepListTableBySceneType,
   stepListWithOtherKinds,
   stepPickers,
+  stepPickersEconomy,
   stepPickersHunger,
 } from '../../fixtures'
 import { StepListEditor } from './StepListEditor'
@@ -133,5 +135,23 @@ export const SpecialResults: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Add outcome for Critical' }))
     await expect(canvas.getByRole('group', { name: 'Outcome Critical' })).toBeVisible()
     await expect(canvas.getByRole('group', { name: 'Outcome Bestial failure' })).toBeVisible()
+  },
+}
+
+/** A shop step picking gear and a category from the draft's catalog, with a dice stock and a sell rate. */
+export const ShopStep: Story = {
+  args: { stored: stepListShop, context: stepPickersEconomy },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('checkbox', { name: 'Rope' })).toBeChecked()
+    await expect(canvas.getByLabelText('Stock dice')).toHaveValue('1d4+1')
+  },
+}
+
+/** A shop in a draft with no currency or gear yet: it says what to set up first. */
+export const ShopWithoutEconomy: Story = {
+  args: {
+    stored: stepListShop,
+    context: { ...stepPickersEconomy, economy: { gear: [], currency: false } },
   },
 }

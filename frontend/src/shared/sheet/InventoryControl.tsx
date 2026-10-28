@@ -40,6 +40,47 @@ function byCategory(entries: SheetGear[]): { category: string | null; entries: S
 }
 
 /**
+ * A stack's quantity, 1..9,999. The text is a local draft while the player edits, so it can be
+ * emptied and retyped; only a number is committed (clamped into the range), an empty input
+ * commits nothing and shows the stored quantity again when it loses focus.
+ */
+function QuantityInput({
+  label,
+  quantity,
+  onCommit,
+}: {
+  label: string
+  quantity: number
+  onCommit: (quantity: number) => void
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+
+  return (
+    <Input
+      type="number"
+      className="w-20"
+      aria-label={label}
+      min={1}
+      max={maxQuantity}
+      value={draft ?? quantity}
+      onChange={(event) => {
+        const typed = Math.trunc(Number(event.target.value))
+        if (event.target.value.trim() !== '' && Number.isFinite(typed)) {
+          const clamped = Math.min(maxQuantity, Math.max(1, typed))
+          setDraft(String(clamped))
+          onCommit(clamped)
+        } else {
+          setDraft(event.target.value)
+        }
+      }}
+      onBlur={() => {
+        setDraft(null)
+      }}
+    />
+  )
+}
+
+/**
  * An inventory field's stacks (ADR 0045): each with its quantity, the slots it takes and a remove
  * button; the slots used against the capacity; and where to add one, a catalog stack by picking
  * gear (gear already held gains a unit) or a free stack by name and slots. The server stays the
@@ -71,8 +112,13 @@ export function InventoryControl({
   const held = (key: string) => stacks.some((stack) => 'gear' in stack && stack.gear === key)
   const full = stacks.length >= (field.maxStacks ?? defaultMaxStacks)
   const slots = Number(freeSlots)
+  // An empty "Slots each" reads as 0 in Number(); it must stay invalid, never a silent 0.
   const freeReady =
-    freeName.trim() !== '' && Number.isInteger(slots) && slots >= 0 && slots <= maxSlots
+    freeName.trim() !== '' &&
+    freeSlots.trim() !== '' &&
+    Number.isInteger(slots) &&
+    slots >= 0 &&
+    slots <= maxSlots
 
   function addGear() {
     if (picked === '') return
@@ -122,18 +168,10 @@ export function InventoryControl({
                 <span className="text-xs text-muted-foreground"> · {entry.category}</span>
               )}
             </span>
-            <Input
-              type="number"
-              className="w-20"
-              aria-label={`Quantity of ${name}`}
-              min={1}
-              max={maxQuantity}
-              value={stack.quantity}
-              onChange={(event) => {
-                const quantity = Math.min(
-                  maxQuantity,
-                  Math.max(1, Math.trunc(Number(event.target.value)) || 1),
-                )
+            <QuantityInput
+              label={`Quantity of ${name}`}
+              quantity={stack.quantity}
+              onCommit={(quantity) => {
                 onChange(stacks.map((held, at) => (at === index ? { ...held, quantity } : held)))
               }}
             />

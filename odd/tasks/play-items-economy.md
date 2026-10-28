@@ -1,7 +1,7 @@
 # Feature: play-items-economy
 
 - **Locator:** `odd/tasks/play-items-economy.md` · Engram topic `odd/play-items-economy/tasks`
-- **Issue:** [#311](https://github.com/iribarren/ogami/issues/311) · **Branch:** `feat/play-items-economy-5-play-sheet-ui` · **Status:** in progress (slice 5 of 8)
+- **Issue:** [#311](https://github.com/iribarren/ogami/issues/311) · **Branch:** `feat/play-items-economy-6-play-shop-ui` · **Status:** in progress (slice 6 of 8)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B11 (before B12 `preset-cpr-campaign`; settles [ADR 0025](../../docs/adr/0025-items-and-shops-after-the-mvp.md))
@@ -93,8 +93,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T5 | 3 | Play API: pinned release gear catalog and currency, sheet field view, Character values with stacks; `make api`; tests | delegated writer (Sonnet) | [x] | ad5baca, 987b35f |
 | T6 | 4 | Play flow: translator `shop`; stock roll when reached (stored on the FlowRun); transaction (sell then buy, routing, stacking), errors, journal content, `{step:key}`; request and step response; tests | delegated writer (Opus) | [x] | 332bfad, e07420a, 191f1ce |
 | T7 | 3 | Affordability: `insufficient_funds` on choice option, prompt and `character` step sheet effects on the currency; check outcomes clamp; tests | delegated writer (Sonnet) | [x] | 24e17b2 |
-| T8 | 5 | Upgrade planner: `list` ↔ `inventory` and `inventory` → `inventory` conversions, fitting, `converted`; response; tests | delegated writer (Sonnet) | [x] | |
-| T9 | 5 | Play UI: inventory control (catalog picker by category, free stack, quantity, remove, slots used), read-only sheet view, currency unit; upgrade dialog `converted`; fixtures and tests | delegated writer (Sonnet) | [x] | |
+| T8 | 5 | Upgrade planner: `list` ↔ `inventory` and `inventory` → `inventory` conversions, fitting, `converted`; response; tests | delegated writer (Sonnet) | [x] | 9c5228c |
+| T9 | 5 | Play UI: inventory control (catalog picker by category, free stack, quantity, remove, slots used), read-only sheet view, currency unit; upgrade dialog `converted`; fixtures and tests | delegated writer (Sonnet) | [x] | 124ac66 |
 | T10 | 6 | Play UI: shop step card, choice `insufficient_funds`, journal shop entry; fixtures, tests, e2e | delegated writer (Sonnet) | [ ] | |
 | T11 | 7 | Studio backend: gear routes, currency routes, guards (`DraftReferences`), views; `make api`; tests | delegated writer (Sonnet) | [ ] | |
 | T12 | 7 | Studio UI: Gear tab; sheet builder `inventory` type and currency setting; tests and stories | delegated writer (Sonnet) | [ ] | |
@@ -123,6 +123,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 2 | `review-cd11d3e4e7848b15` | 0ac035c, a79a9f5 | approved; R3 warning (`ReleaseUpgradePlanner::fitValue` has no proof for `inventory` fields: absent value, kept inventory, another type becoming an inventory) fixed in slice 3 | [#313](https://github.com/iribarren/ogami/pull/313) |
 | 3 | `review-8f85a9ecb2d2d33f` | ad5baca, 987b35f, f70563f, 24e17b2 | approved; R3 warning (`CampaignEffects::applySheetEffect` refuses a voluntary increase that leaves a Character already below the floor, e.g. -5 + 2 → -3; refuse only when the result is below the floor and below the value before) and R3 suggestion (render test for the inventory branch of `CharacterSheetDialog`) fixed in slice 4 | [#314](https://github.com/iribarren/ogami/pull/314) |
 | 4 | `review-5dca561407885fcc` (3db7f15..332bfad, abandoned with user authorization: its critical finding, a shop with no API, was closed by e07420a in the same PR); `review-6dc4cd0273a44b5e` (332bfad..191f1ce) | 3db7f15, 332bfad, e07420a, 191f1ce | approved; R3 suggestion (`ShopContentResponse` `characterId` declares `format: uuid`, but journal content holds any Character id) fixed in slice 5 | [#315](https://github.com/iribarren/ogami/pull/315) |
+| 5 | `review-008c5f5c6bdd3b35` | 2b3a072, 9c5228c, 124ac66 | approved; R3 warning (`ReleaseUpgradeDialog` names the after values of a `list` → inventory conversion from the pinned release's catalog, so the preview shows raw keys) and R3 suggestions (`InventoryControl` snaps an emptied quantity input to 1; a free stack with an empty "Slots each" is accepted as 0 slots) fixed in slice 6 | [#316](https://github.com/iribarren/ogami/pull/316) |
 
 ## Progress
 
@@ -144,4 +145,4 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 ## Next step
 
-Slice 5 (T8–T9) is written and verified; next the native review of its work-unit commits, then push and PR.
+Slice 6 (T10): slice 5 review fixes, then the shop step card, `insufficient_funds` / `inventory_full` messages and the journal shop entry; then review, push and PR.

@@ -98,6 +98,7 @@ Items here come after every feature defined above. Build them in this order: fix
 | B14 | `play-places` | Play | — | Settle the vision question "How are places modeled?" and add a `select` sheet field type: the two West Marches gaps no other item closes |
 | B15 | `preset-west-marches` | Preset | B8, B11, B14 | A West Marches preset on D&D 5e under SRD 5.2 (CC BY 4.0) ([example 5](domain/flow-examples.md#5-west-marches)): conditions from B8, shops from B11, places and a class `select` field from B14; HP and spell slots as sheet effects ([ADR 0027](adr/0027-sheet-effects.md)) |
 | B16 | `preset-ironsworn` | Preset | B7 | Optional. Ironsworn under CC BY 4.0: challenge dice (an action score against two d10), momentum below zero and vow progress tracks |
+| B17 | `e2e-studio-flow-editor-timeout` ([#321](https://github.com/iribarren/ogami/issues/321)) | Tooling | — | `studio-flow-editor.spec.ts` times out on a `page.goto` load in the local full e2e suite (passes in CI and alone): mark it slow and wait on the page's state instead of `load`. Found while closing `play-items-economy` |
 
 ## Starter prompts
 

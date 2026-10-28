@@ -170,4 +170,4 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 ## Next step
 
-None. Every review finding is fixed; the only open item, `studio-flow-editor.spec.ts` timing out locally on `page.goto` (passes in CI, fails on `main` too, not caused by this feature), is reported to the user.
+None. Every review finding is fixed; `studio-flow-editor.spec.ts` timing out locally on `page.goto` (passes in CI, fails on `main` too, not caused by this feature) is [#321](https://github.com/iribarren/ogami/issues/321), roadmap B17.

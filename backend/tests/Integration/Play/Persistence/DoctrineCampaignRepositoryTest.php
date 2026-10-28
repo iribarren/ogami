@@ -23,6 +23,7 @@ use App\Play\Domain\Campaign\FlowRun\PendingCheck;
 use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\PickedItems;
 use App\Play\Domain\Campaign\FlowRun\ScenePart;
+use App\Play\Domain\Campaign\FlowRun\ShopStock;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
@@ -146,7 +147,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
             'part' => 'open', 'stepKey' => null, 'sequencePosition' => 0, 'scenesPlayed' => 1, 'answers' => [], 'forcedNextSceneType' => null,
             'phaseEnding' => null, 'switchCount' => 0, 'hook' => null, 'phaseOpened' => true, 'sessionOpeningDue' => false, 'picked' => null,
             'autoPickDue' => false, 'history' => [['event' => 'paused', 'at' => '2026-10-10T09:02:00.000000+00:00', 'details' => []]],
-            'pendingCheck' => null,
+            'pendingCheck' => null, 'shopStock' => null,
         ], $this->storedFlowRun('01890a5d-ac96-774b-bcce-b302099a8057'));
         self::assertNull($connection->fetchOne("SELECT flow_run FROM play_campaign WHERE id = '01890a5d-ac96-774b-bcce-b302099a8058'"));
     }
@@ -225,6 +226,12 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'a pending check with a blank check key' => [['pendingCheck' => ['checkKey' => ' '] + $pending] + $active, 'Stored campaign FlowRun: "pendingCheck" is invalid: A pending check needs a checkKey.'];
         yield 'a pending check of another step' => [['pendingCheck' => $pending] + ['stepKey' => 'plan'] + $active, 'Stored campaign FlowRun: "pendingCheck" must be the current step\'s, while guidance is active.'];
         yield 'a pending check while guidance is paused' => [['pendingCheck' => $pending] + ['status' => 'paused'] + $active, 'Stored campaign FlowRun: "pendingCheck" must be the current step\'s, while guidance is active.'];
+        $stock = ['stepKey' => 'case', 'gear' => ['knife', 'rope']];
+        yield 'a shop stock that is no object' => [['shopStock' => ['knife']] + $active, 'Stored campaign FlowRun: "shopStock" must be an object or null.'];
+        yield 'a shop stock whose gear is no list' => [['shopStock' => ['gear' => 'knife'] + $stock] + $active, 'Stored campaign FlowRun: "shopStock" must be a list.'];
+        yield 'a shop stock with a gear that is no string' => [['shopStock' => ['gear' => [1]] + $stock] + $active, 'Stored campaign FlowRun: "shopStock" must be a list of gear keys.'];
+        yield 'a shop stock with a repeated gear' => [['shopStock' => ['gear' => ['knife', 'knife']] + $stock] + $active, 'Stored campaign FlowRun: "shopStock" is invalid: The stock of shop step "case" lists distinct catalog keys.'];
+        yield 'a shop stock of another step' => [['shopStock' => $stock] + ['stepKey' => 'plan'] + $active, 'Stored campaign FlowRun: "shopStock" must be the current step\'s.'];
         yield 'history not a list' => [['history' => 'none'], 'Stored campaign FlowRun: "history" must be a list.'];
         yield 'unknown event' => [$entry('teleported', []), 'Stored campaign FlowRun: "event" must be one of "skip", "trackerEdit", "sceneTypeSwitch", "sceneTypeSwitchIgnored", "paused", "resumed", "sceneAbandoned", "phaseEnded", "completed".'];
         yield 'malformed time' => [['history' => [['event' => 'paused', 'at' => 'yesterday', 'details' => []]]], 'Stored campaign FlowRun: "at" must be a time like 2026-10-06T10:00:00.000000+00:00.'];
@@ -329,6 +336,43 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
 
         self::assertNull($loaded?->flowRun()?->pendingCheck());
         self::assertEquals($this->guidedCampaign($id->toString())->flowRun(), $loaded?->flowRun());
+    }
+
+    /**
+     * A FlowRun stored before shops (play-items-economy slice 4, ADR 0045) has no shopStock: it reads as none.
+     */
+    #[Test]
+    public function aFlowRunStoredBeforeShopsReadsNoStock(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->guidedCampaign($id->toString()));
+        $legacy = array_diff_key($this->storedFlowRun($id->toString()), array_flip(['shopStock']));
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET flow_run = ? WHERE id = ?', [json_encode($legacy, \JSON_THROW_ON_ERROR), $id->toString()]);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertNull($loaded?->flowRun()?->shopStock());
+        self::assertEquals($this->guidedCampaign($id->toString())->flowRun(), $loaded?->flowRun());
+    }
+
+    #[Test]
+    public function aShopStockRoundTripsWithTheWholeFlowRun(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $base = $this->guidedCampaign($id->toString());
+        $run = $base->flowRun() ?? throw new \LogicException('No FlowRun.');
+        $stock = new ShopStock('market', ['knife', 'eye']);
+        $flowRun = FlowRun::reconstitute($run->status(), $run->phaseIndex(), FlowRunStage::Scene, 1, 1, 'legwork', ScenePart::Play, 'market', $run->sequencePosition(), $run->scenesPlayed(), $run->answers(), null, null, $run->switchCount(), $run->history(), null, $run->phaseOpened(), $run->sessionOpeningDue(), shopStock: $stock);
+        $campaign = Campaign::reconstitute($id, $base->ownerId(), $base->name(), $base->pinnedRelease(), $base->createdAt(), $base->sessions(), [], $base->flowKey(), $flowRun);
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertEquals($stock, $loaded?->flowRun()?->shopStock());
+        self::assertEquals(['stepKey' => 'market', 'gear' => ['knife', 'eye']], $this->storedFlowRun($id->toString())['shopStock']);
     }
 
     #[Test]

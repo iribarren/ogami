@@ -21,9 +21,12 @@ use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Domain\Campaign\FlowRun\PickDraw;
 use App\Play\Domain\Campaign\FlowRun\PickedItem;
 use App\Play\Domain\Campaign\FlowRun\SheetChange;
+use App\Play\Domain\Campaign\FlowRun\ShopLine;
+use App\Play\Domain\Campaign\FlowRun\ShopTrade;
 use App\Play\Domain\Campaign\FlowRun\StepKind;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\InsufficientFunds;
+use App\Play\Domain\Campaign\InventoryFull;
 use App\Play\Domain\Campaign\UnknownCampaignTracker;
 use App\Play\Domain\GameSystem\Check\CheckDifficultyNotDeclared;
 use App\Play\Domain\GameSystem\Check\CheckDifficultyOutOfRange;
@@ -39,6 +42,7 @@ use App\Play\Domain\GameSystem\Flow\PickMode;
 use App\Play\Domain\GameSystem\Flow\PickStep;
 use App\Play\Domain\GameSystem\Flow\PromptStep;
 use App\Play\Domain\GameSystem\Flow\RollStep;
+use App\Play\Domain\GameSystem\Flow\ShopStep;
 use App\Play\Domain\GameSystem\Flow\Step;
 use App\Play\Domain\GameSystem\Flow\TableStep;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -61,6 +65,7 @@ use App\Play\Domain\Journal\OracleTableContent;
 use App\Play\Domain\Journal\PickContent;
 use App\Play\Domain\Journal\RollContent;
 use App\Play\Domain\Journal\SheetChangeContent;
+use App\Play\Domain\Journal\ShopContent;
 use App\Randomness\Domain\DiceExpression;
 use App\Randomness\Domain\InvalidDiceExpression;
 use App\Randomness\Domain\Oracle\InvalidLikelihoodOracle;
@@ -94,7 +99,8 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
      * @throws FlowRunPositionMismatch         when the FlowRun waits for another step, or for none
      * @throws InvalidStepResult               when a field does not belong to the step's kind, a required one is missing, the text is blank, the option unknown, a picked id is no candidate, the Character is unknown or (check step) not in the scene, or a difficulty is sent for a step that fixes one
      * @throws FlowFormulaFailed               when a check step's difficulty formula, or an Effect's formula, cannot be evaluated
-     * @throws InsufficientFunds               when a choice option's, a prompt's or a character step's Effect would take the currency under its floor
+     * @throws InsufficientFunds               when a choice option's, a prompt's or a character step's Effect, or a shop transaction, would take the currency under its floor
+     * @throws InventoryFull                   when a shop purchase takes an inventory field over its slots or stacks
      * @throws CheckDifficultyNotDeclared      when a difficulty is sent for a check that declares none
      * @throws CheckDifficultyOutOfRange       when the difficulty is outside the min..max of the check
      * @throws SituationalModifierOutOfRange   when the Situational modifier is outside -100..100
@@ -172,6 +178,7 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
             $step instanceof PickStep => $this->pick($command, $step, $campaign),
             $step instanceof CharacterStep => $this->character($command, $step, $campaign),
             $step instanceof CheckStep => $this->check($command, $step, $campaign, $release, $at),
+            $step instanceof ShopStep => $this->shop($command, $step, $view, $campaign, $release),
             default => throw InvalidStepResult::conditionStep($step->key),
         };
     }
@@ -325,13 +332,32 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
     }
 
     /**
+     * A Character's transaction at a shop (ADR 0045). The journal records it as the FlowRun will
+     * make it: worked out on the Character's values now, so a refused transaction refuses here,
+     * before anything changes, and the FlowRun works it out again when it completes the step.
+     *
+     * @return array{StepResult, JournalEntryContent}
+     */
+    private function shop(CompleteFlowStep $command, ShopStep $step, FlowStepView $view, Campaign $campaign, GameSystemSnapshot $release): array
+    {
+        $this->refuseFieldsOtherThan($command, $step, 'characterId', 'buy', 'sell');
+        $id = $command->characterId ?? throw InvalidStepResult::missingField($step->key, StepKind::Shop, 'characterId');
+        $character = $campaign->character(CharacterId::fromString($id)) ?? throw InvalidStepResult::unknownSheetCharacter($step->key, StepKind::Shop, $id);
+        $buy = array_map(static fn (array $line): ShopLine => ShopLine::buy($line['gear'], $line['quantity']), $command->buy ?? []);
+        $sell = array_map(static fn (array $line): ShopLine => ShopLine::sell($line['field'], $line['gear'], $line['quantity']), $command->sell ?? []);
+        $trade = ShopTrade::of($step, $view->shop->onSale ?? [], $release->sheet(), $character->values(), $buy, $sell);
+
+        return [StepResult::shop($id, $buy, $sell), ShopContent::of($id, $character->name(), $trade->bought, $trade->sold, $trade->before, $trade->after)];
+    }
+
+    /**
      * Fails closed on a field the step's kind does not take, rather than ignoring it.
      *
      * @throws InvalidStepResult
      */
     private function refuseFieldsOtherThan(CompleteFlowStep $command, Step $step, string ...$allowed): void
     {
-        $given = ['text' => $command->text, 'optionKey' => $command->optionKey, 'likelihood' => $command->likelihood, 'chaosFactor' => $command->chaosFactor, 'pickedIds' => $command->pickedIds, 'characterId' => $command->characterId, 'difficulty' => $command->difficulty, 'situational' => $command->situational, 'checkKey' => $command->checkKey];
+        $given = ['text' => $command->text, 'optionKey' => $command->optionKey, 'likelihood' => $command->likelihood, 'chaosFactor' => $command->chaosFactor, 'pickedIds' => $command->pickedIds, 'characterId' => $command->characterId, 'difficulty' => $command->difficulty, 'situational' => $command->situational, 'checkKey' => $command->checkKey, 'buy' => $command->buy, 'sell' => $command->sell];
         foreach ($given as $field => $value) {
             if (null !== $value && !\in_array($field, $allowed, true)) {
                 throw InvalidStepResult::unexpectedField($step->key, StepKind::of($step), $field);

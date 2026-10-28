@@ -49,6 +49,7 @@ use App\Play\Domain\GameSystem\Flow\SceneSelection;
 use App\Play\Domain\GameSystem\Flow\SceneTitleEffect;
 use App\Play\Domain\GameSystem\Flow\SheetEffect;
 use App\Play\Domain\GameSystem\Flow\SheetOperation;
+use App\Play\Domain\GameSystem\Flow\ShopStep;
 use App\Play\Domain\GameSystem\Flow\StepList;
 use App\Play\Domain\GameSystem\Flow\SwitchSceneTypeEffect;
 use App\Play\Domain\GameSystem\Flow\TableBranch;
@@ -123,6 +124,8 @@ final readonly class GameSystemReleaseTranslator
 
     // The conditions field limits of the contract (ADR 0041).
     private const int MAX_CONDITION_OPTIONS = 20;
+    // The shop offer limit of the contract (ADR 0045).
+    private const int MAX_OFFER_GEAR = 100;
 
     private const int MAX_CONDITION_LABEL_LENGTH = 60;
     private const int MAX_TRACK_FIELD_MAX = 999;
@@ -241,9 +244,9 @@ final readonly class GameSystemReleaseTranslator
             [],
             $trackers,
             $this->factSlots($view, $this->list($view, $content['factSlots'] ?? null, 'factSlots')),
-            $this->sceneTypes($view, $this->list($view, $content['sceneTypes'] ?? null, 'sceneTypes')),
+            $this->sceneTypes($view, $this->list($view, $content['sceneTypes'] ?? null, 'sceneTypes'), $gear, $sheet),
             $entries,
-            $this->flows($view, $this->list($view, $content['flows'] ?? null, 'flows')),
+            $this->flows($view, $this->list($view, $content['flows'] ?? null, 'flows'), $gear, $sheet),
             $tags,
             $this->theme($view, $content['theme'] ?? null),
             $this->credits($view, $gameSystem['credits'] ?? null),
@@ -540,11 +543,12 @@ final readonly class GameSystemReleaseTranslator
     }
 
     /**
-     * @param list<mixed> $flows
+     * @param list<mixed>     $flows
+     * @param list<GearEntry> $gear  the catalog a shop step of a hook offers from
      *
      * @return list<Flow>
      */
-    private function flows(PublishedReleaseView $view, array $flows): array
+    private function flows(PublishedReleaseView $view, array $flows, array $gear, SheetTemplate $sheet): array
     {
         $snapshots = [];
         foreach ($flows as $index => $flow) {
@@ -553,7 +557,7 @@ final readonly class GameSystemReleaseTranslator
             $phases = [];
             foreach ($this->list($view, $flow['phases'] ?? null, $path.'.phases') as $phaseIndex => $phase) {
                 $phasePath = \sprintf('%s.phases[%d]', $path, $phaseIndex);
-                $phase = $this->phase($view, $phase, $phasePath);
+                $phase = $this->phase($view, $phase, $phasePath, $gear, $sheet);
                 if (isset($phases[$phase->key])) {
                     throw $this->invalid($view, $phasePath.'.key', \sprintf('duplicate key "%s".', $phase->key));
                 }
@@ -578,12 +582,15 @@ final readonly class GameSystemReleaseTranslator
         return $snapshots;
     }
 
-    private function phase(PublishedReleaseView $view, mixed $phase, string $path): Phase
+    /**
+     * @param list<GearEntry> $gear
+     */
+    private function phase(PublishedReleaseView $view, mixed $phase, string $path, array $gear, SheetTemplate $sheet): Phase
     {
         $phase = $this->object($view, $phase, $path);
         $hooks = [];
         foreach (self::PHASE_HOOKS as $hook) {
-            $hooks[$hook] = $this->steps($view, $phase[$hook] ?? [], $path.'.'.$hook);
+            $hooks[$hook] = $this->steps($view, $phase[$hook] ?? [], $path.'.'.$hook, $gear, $sheet);
         }
 
         return new Phase(
@@ -690,11 +697,12 @@ final readonly class GameSystemReleaseTranslator
     }
 
     /**
-     * @param list<mixed> $sceneTypes
+     * @param list<mixed>     $sceneTypes
+     * @param list<GearEntry> $gear       the catalog a shop step offers from
      *
      * @return list<SceneType>
      */
-    private function sceneTypes(PublishedReleaseView $view, array $sceneTypes): array
+    private function sceneTypes(PublishedReleaseView $view, array $sceneTypes, array $gear, SheetTemplate $sheet): array
     {
         $snapshots = [];
         foreach ($sceneTypes as $index => $sceneType) {
@@ -706,16 +714,19 @@ final readonly class GameSystemReleaseTranslator
                 $this->string($view, $sceneType['purpose'] ?? null, $path.'.purpose'),
                 $this->optionalString($view, $sceneType['tips'] ?? null, $path.'.tips'),
                 $this->keys($view, $sceneType['oracles'] ?? [], $path.'.oracles'),
-                $this->steps($view, $sceneType['setup'] ?? [], $path.'.setup'),
-                $this->steps($view, $sceneType['play'] ?? [], $path.'.play'),
-                $this->steps($view, $sceneType['closing'] ?? [], $path.'.closing'),
+                $this->steps($view, $sceneType['setup'] ?? [], $path.'.setup', $gear, $sheet),
+                $this->steps($view, $sceneType['play'] ?? [], $path.'.play', $gear, $sheet),
+                $this->steps($view, $sceneType['closing'] ?? [], $path.'.closing', $gear, $sheet),
             );
         }
 
         return $snapshots;
     }
 
-    private function steps(PublishedReleaseView $view, mixed $steps, string $path): StepList
+    /**
+     * @param list<GearEntry> $gear the catalog a shop step offers from
+     */
+    private function steps(PublishedReleaseView $view, mixed $steps, string $path, array $gear, SheetTemplate $sheet): StepList
     {
         $snapshots = [];
         $keys = [];
@@ -729,8 +740,9 @@ final readonly class GameSystemReleaseTranslator
 
             $keys[$key] = true;
             $kind = $this->string($view, $step['kind'] ?? null, $stepPath.'.kind');
-            if ('shop' === $kind) {
-                throw $this->invalid($view, $stepPath.'.kind', 'shop steps are not played yet (ADR 0045).');
+            // A shop is left with an empty transaction (ADR 0045), so nothing is ever skipped there.
+            if ('shop' === $kind && null !== ($step['mandatory'] ?? null)) {
+                throw $this->invalid($view, $stepPath.'.mandatory', 'a shop step is never skipped, an empty transaction leaves it.');
             }
 
             $common = [
@@ -768,6 +780,7 @@ final readonly class GameSystemReleaseTranslator
                 'pick' => $this->pickStep($view, $common, $step, $stepPath),
                 'character' => new CharacterStep(...$common),
                 'check' => $this->checkStep($view, $common, $step, $stepPath),
+                'shop' => $this->shopStep($view, $common, $step, $stepPath, $gear, $sheet),
                 default => throw $this->invalid($view, $stepPath.'.kind', \sprintf('unknown step kind "%s".', $kind)),
             };
         }
@@ -788,6 +801,91 @@ final readonly class GameSystemReleaseTranslator
         }
 
         return new ConditionStep(...$common, tracker: $tracker, bands: $this->bands($view, $step['bands'] ?? null, $path.'.bands'), count: $count);
+    }
+
+    /**
+     * A shop step (ADR 0045): its offer resolved to the union of the catalog keys and categories it
+     * lists, in catalog order, with a stock and a sell rate. Studio checks every rule on publish; the
+     * stored content is not trusted, so the shapes, the references, the currency the shop trades in
+     * and an inventory field for each offered entry are checked again.
+     *
+     * @param array{key: string, title: string, prompt: ?string, tip: ?string, mandatory: bool, next: ?string, effects: list<Effect>} $common
+     * @param array<mixed>                                                                                                            $step
+     * @param list<GearEntry>                                                                                                         $gear
+     */
+    private function shopStep(PublishedReleaseView $view, array $common, array $step, string $path, array $gear, SheetTemplate $sheet): ShopStep
+    {
+        $this->assertProperties($view, $step, $path, ['key', 'kind', 'title', 'prompt', 'tip', 'mandatory', 'next', 'effects', 'offer', 'stock', 'sellRate']);
+        if (!$sheet->currency() instanceof Currency) {
+            throw $this->invalid($view, $path, 'a shop step needs a sheet currency.');
+        }
+
+        $offerPath = $path.'.offer';
+        $offer = $this->object($view, $step['offer'] ?? null, $offerPath);
+        $this->assertProperties($view, $offer, $offerPath, ['gear', 'categories']);
+        $keys = $this->keys($view, $offer['gear'] ?? [], $offerPath.'.gear');
+        $categories = $this->keys($view, $offer['categories'] ?? [], $offerPath.'.categories');
+        if ([] === $keys && [] === $categories) {
+            throw $this->invalid($view, $offerPath, 'must offer at least one gear entry or category.');
+        }
+
+        if (\count($keys) > self::MAX_OFFER_GEAR || \count(array_unique($keys)) !== \count($keys)) {
+            throw $this->invalid($view, $offerPath.'.gear', \sprintf('must list at most %d distinct gear keys.', self::MAX_OFFER_GEAR));
+        }
+
+        if (\count($categories) > InventoryField::MAX_CATEGORIES || \count(array_unique($categories)) !== \count($categories)) {
+            throw $this->invalid($view, $offerPath.'.categories', \sprintf('must list at most %d distinct categories.', InventoryField::MAX_CATEGORIES));
+        }
+
+        foreach ($keys as $index => $key) {
+            if (!array_any($gear, static fn (GearEntry $entry): bool => $entry->key === $key)) {
+                throw $this->invalid($view, \sprintf('%s.gear[%d]', $offerPath, $index), \sprintf('unknown gear "%s".', $key));
+            }
+        }
+
+        foreach ($categories as $index => $category) {
+            if (!array_any($gear, static fn (GearEntry $entry): bool => $entry->category === $category)) {
+                throw $this->invalid($view, \sprintf('%s.categories[%d]', $offerPath, $index), \sprintf('no gear has category "%s".', $category));
+            }
+        }
+
+        $offered = array_values(array_filter($gear, static fn (GearEntry $entry): bool => \in_array($entry->key, $keys, true) || (null !== $entry->category && \in_array($entry->category, $categories, true))));
+        foreach ($offered as $entry) {
+            if (!array_any($sheet->fields(), static fn (Field $field): bool => $field instanceof InventoryField && $field->entry($entry->key) instanceof GearEntry)) {
+                throw $this->invalid($view, $offerPath, \sprintf('gear "%s" lands in no inventory field.', $entry->key));
+            }
+        }
+
+        return new ShopStep(
+            ...$common,
+            offer: $offered,
+            stock: $this->stock($view, $step['stock'] ?? null, $path.'.stock', \count($offered)),
+            sellRate: $this->optionalInt($view, $step['sellRate'] ?? null, $path.'.sellRate', 1, ShopStep::MAX_SELL_RATE),
+        );
+    }
+
+    /**
+     * How many entries of a shop's offer are on sale: a count of 1 to 50, no more than the offer
+     * holds, or {dice} rolled when the step is reached; null for the whole offer.
+     */
+    private function stock(PublishedReleaseView $view, mixed $value, string $path, int $offered): int|DiceExpression|null
+    {
+        if (null === $value || \is_int($value)) {
+            $stock = $this->optionalInt($view, $value, $path, 1, ShopStep::MAX_STOCK);
+            if (null !== $stock && $stock > $offered) {
+                throw $this->invalid($view, $path, \sprintf('%d entries on sale, the offer holds %d.', $stock, $offered));
+            }
+
+            return $stock;
+        }
+
+        if (!\is_array($value) || array_is_list($value)) {
+            throw $this->invalid($view, $path, 'must be an integer or {dice}.');
+        }
+
+        $this->assertProperties($view, $value, $path, ['dice']);
+
+        return $this->dice($view, $value['dice'] ?? null, $path.'.dice');
     }
 
     /**
@@ -1050,7 +1148,7 @@ final readonly class GameSystemReleaseTranslator
             throw $this->invalid($view, 'gear', \sprintf('at most %d gear entries.', self::MAX_GEAR));
         }
 
-        $entries = $names = [];
+        $entries = $names = $keys = [];
         foreach ($list as $index => $raw) {
             $path = \sprintf('gear[%d]', $index);
             $entry = $this->object($view, $raw, $path);
@@ -1062,10 +1160,17 @@ final readonly class GameSystemReleaseTranslator
             }
 
             $names[$folded] = true;
+            // Checked here too, not only by the snapshot: a shop step resolves its offer by key before.
+            $key = $this->key($view, $entry['key'] ?? null, $path.'.key');
+            if (isset($keys[$key])) {
+                throw $this->invalid($view, $path.'.key', \sprintf('duplicate key "%s".', $key));
+            }
+
+            $keys[$key] = true;
             $category = $this->optionalString($view, $entry['category'] ?? null, $path.'.category');
             $description = $this->optionalString($view, $entry['description'] ?? null, $path.'.description');
             $entries[] = new GearEntry(
-                $this->key($view, $entry['key'] ?? null, $path.'.key'),
+                $key,
                 trim($name),
                 $this->requiredInt($view, $entry['cost'] ?? null, $path.'.cost', 0, self::MAX_GEAR_COST),
                 $this->optionalInt($view, $entry['slots'] ?? null, $path.'.slots', 0, GearEntry::MAX_SLOTS) ?? GearEntry::DEFAULT_SLOTS,

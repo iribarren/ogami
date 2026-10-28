@@ -12,6 +12,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\PendingCheck;
 use App\Play\Domain\Campaign\FlowRun\PickedItems;
 use App\Play\Domain\Campaign\FlowRun\ScenePart;
+use App\Play\Domain\Campaign\FlowRun\ShopStock;
 use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\GameSystem\Check\SpecialResult;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
@@ -68,6 +69,7 @@ final class CampaignFlowRunType extends JsonType
         }
 
         $pending = $value->pendingCheck();
+        $stock = $value->shopStock();
 
         return parent::convertToDatabaseValue([
             'status' => $value->status()->value,
@@ -106,6 +108,7 @@ final class CampaignFlowRunType extends JsonType
                 'checkKey' => $pending->checkKey,
                 'special' => $pending->special?->value,
             ] : null,
+            'shopStock' => $stock instanceof ShopStock ? ['stepKey' => $stock->stepKey, 'gear' => $stock->gear] : null,
         ], $platform);
     }
 
@@ -135,6 +138,11 @@ final class CampaignFlowRunType extends JsonType
             throw $this->malformed('pendingCheck', "the current step's, while guidance is active");
         }
 
+        $stock = $this->shopStock($data);
+        if ($stock instanceof ShopStock && $stock->stepKey !== $stepKey) {
+            throw $this->malformed('shopStock', "the current step's");
+        }
+
         return FlowRun::reconstitute(
             $status,
             $this->int($data, 'phaseIndex'),
@@ -157,6 +165,7 @@ final class CampaignFlowRunType extends JsonType
             $picked,
             $this->bool($data, 'autoPickDue', false),
             $pending,
+            $stock,
         );
     }
 
@@ -178,6 +187,32 @@ final class CampaignFlowRunType extends JsonType
             return new PendingCheck($this->string($pending, 'stepKey'), $this->string($pending, 'entryId'), $this->string($pending, 'characterId'), $this->optionalInt($pending, 'difficulty'), $this->string($pending, 'bandKey'), $this->optionalString($pending, 'checkKey'), $this->enum(SpecialResult::class, $pending, 'special'));
         } catch (\InvalidArgumentException $e) {
             throw ValueNotConvertible::new('pendingCheck', self::NAME, \sprintf('Stored campaign FlowRun: "pendingCheck" is invalid: %s', $e->getMessage()));
+        }
+    }
+
+    /**
+     * @return ?ShopStock null for a row stored before shop steps (ADR 0045), or without a stock
+     */
+    private function shopStock(mixed $data): ?ShopStock
+    {
+        $stock = $this->field($data, 'shopStock');
+        if (null === $stock) {
+            return null;
+        }
+
+        if (!\is_array($stock) || array_is_list($stock)) {
+            throw $this->malformed('shopStock', 'an object or null');
+        }
+
+        $gear = array_map(
+            fn (mixed $key): string => \is_string($key) ? $key : throw $this->malformed('shopStock', 'a list of gear keys'),
+            $this->list($this->field($stock, 'gear'), 'shopStock'),
+        );
+
+        try {
+            return new ShopStock($this->string($stock, 'stepKey'), $gear);
+        } catch (\InvalidArgumentException $e) {
+            throw ValueNotConvertible::new('shopStock', self::NAME, \sprintf('Stored campaign FlowRun: "shopStock" is invalid: %s', $e->getMessage()));
         }
     }
 

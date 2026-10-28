@@ -32,6 +32,7 @@ use App\Play\Domain\Campaign\FlowRun\NoPendingCheck;
 use App\Play\Domain\Campaign\FlowRun\SceneTypeNotOffered;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\InsufficientFunds;
+use App\Play\Domain\Campaign\InventoryFull;
 use App\Play\Domain\Campaign\Lists\NpcAlreadyExists;
 use App\Play\Domain\Campaign\Lists\ThreadAlreadyExists;
 use App\Play\Domain\Campaign\NoCurrentSession;
@@ -74,7 +75,7 @@ final readonly class FlowRunController
 {
     use ReadsJsonBodies;
 
-    private const string MALFORMED_ANSWER = 'Send a JSON object with a string "stepKey", and optionally a string "text", a string "optionKey", a string "likelihood", an integer "chaosFactor", a list of strings "pickedIds", a string "characterId", an integer "difficulty", an integer "situational" and a string "checkKey", such as {"stepKey": "intro", "text": "Ada, a fixer"}.';
+    private const string MALFORMED_ANSWER = 'Send a JSON object with a string "stepKey", and optionally a string "text", a string "optionKey", a string "likelihood", an integer "chaosFactor", a list of strings "pickedIds", a string "characterId", an integer "difficulty", an integer "situational", a string "checkKey", a list "buy" of {gear, quantity} and a list "sell" of {field, gear, quantity}, such as {"stepKey": "intro", "text": "Ada, a fixer"}.';
     private const string MALFORMED_SKIP = 'Send a JSON object with a string "stepKey", such as {"stepKey": "dice"}.';
     private const string MALFORMED_PICK = 'Send a JSON object with a string "sceneType", such as {"sceneType": "tour"}.';
     private const string MALFORMED_END_SCENE = 'Send a JSON object with an integer "sceneNumber", such as {"sceneNumber": 1}.';
@@ -98,13 +99,13 @@ final readonly class FlowRunController
     #[OA\Post(operationId: 'completeFlowStep', summary: 'Complete the current step of the FlowRun of one of my campaigns and record its result in the journal')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: CompleteFlowStepRequest::class)))]
     #[OA\Response(response: 200, description: 'The campaign, with its FlowRun moved on.', content: new OA\JsonContent(ref: new Model(type: CampaignResponse::class)))]
-    #[OA\Response(response: 400, description: 'The JSON body is malformed: no string "stepKey", or a non-string "text", "optionKey" or "likelihood", a non-string "checkKey", a non-integer "chaosFactor", "difficulty" or "situational", or "pickedIds" that is not a list of strings.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 400, description: 'The JSON body is malformed: no string "stepKey", or a non-string "text", "optionKey" or "likelihood", a non-string "checkKey", a non-integer "chaosFactor", "difficulty" or "situational", "pickedIds" that is not a list of strings, or "buy" or "sell" that is not a list of lines of the shape the request documents.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 401, description: self::NO_SESSION, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: self::NOT_A_SOLO_PLAYER, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'No campaign of the player has this id, or its pinned release has no oracle (or not the Tracker its chaos is bound to) with the key of the step.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign plays freely, guidance is paused or the Flow is complete, a check step\'s roll waits for Keep or Push, the FlowRun waits for another step, the next scene does not fit the session (200 scenes), an NPC, Thread or slot fact the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile (or took the generated entry id).', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: self::NOT_JSON, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'A field does not belong to the step\'s kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step\'s minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character, or its check set is given no "checkKey" or one outside the set, or a single-check step is given one. Or a formula of a band bound, a tracker or sheet Effect value or a step\'s difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed. Or a choice option, a prompt or a character step spends more of the release\'s currency than the Character has (code "insufficient_funds"); nothing changed.', content: new OA\JsonContent(ref: new Model(type: FlowRunErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A field does not belong to the step\'s kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step\'s minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character, or its check set is given no "checkKey" or one outside the set, or a single-check step is given one. Or a formula of a band bound, a tracker or sheet Effect value or a step\'s difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed. Or a choice option, a prompt, a character step or a shop transaction spends more of the release\'s currency than the Character has (code "insufficient_funds"), or a shop purchase takes an inventory field over its slots or stacks (code "inventory_full"); nothing changed. For a shop step: no Character or one not in the campaign, gear not on sale, a sale the shop does not buy or more than the stack holds, a quantity outside 1..9999 or a line listed twice.', content: new OA\JsonContent(ref: new Model(type: FlowRunErrorResponse::class)))]
     public function answer(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $body = $this->jsonBody($request, 'Send the answer as JSON.', self::MALFORMED_ANSWER);
@@ -122,11 +123,43 @@ final readonly class FlowRunController
         $difficulty = $body['difficulty'] ?? null;
         $situational = $body['situational'] ?? null;
         $checkKey = $body['checkKey'] ?? null;
-        if (!\is_string($stepKey) || (null !== $text && !\is_string($text)) || (null !== $optionKey && !\is_string($optionKey)) || (null !== $likelihood && !\is_string($likelihood)) || (null !== $chaosFactor && !\is_int($chaosFactor)) || (null !== $pickedIds && !$this->isListOfStrings($pickedIds)) || (null !== $characterId && !\is_string($characterId)) || (null !== $difficulty && !\is_int($difficulty)) || (null !== $situational && !\is_int($situational)) || (null !== $checkKey && !\is_string($checkKey))) {
+        $buy = $this->shopLines($body['buy'] ?? null, false);
+        $sell = $this->shopLines($body['sell'] ?? null, true);
+        if (false === $buy || false === $sell || !\is_string($stepKey) || (null !== $text && !\is_string($text)) || (null !== $optionKey && !\is_string($optionKey)) || (null !== $likelihood && !\is_string($likelihood)) || (null !== $chaosFactor && !\is_int($chaosFactor)) || (null !== $pickedIds && !$this->isListOfStrings($pickedIds)) || (null !== $characterId && !\is_string($characterId)) || (null !== $difficulty && !\is_int($difficulty)) || (null !== $situational && !\is_int($situational)) || (null !== $checkKey && !\is_string($checkKey))) {
             return $this->error(self::MALFORMED_ANSWER, Response::HTTP_BAD_REQUEST);
         }
 
-        return $this->run(new CompleteFlowStep($campaignId, $user->id(), $this->entryIds->generate()->toString(), $stepKey, $text, $optionKey, $likelihood, $chaosFactor, $pickedIds, $characterId, $difficulty, $situational, $checkKey), $campaignId, $user);
+        return $this->run(new CompleteFlowStep($campaignId, $user->id(), $this->entryIds->generate()->toString(), $stepKey, $text, $optionKey, $likelihood, $chaosFactor, $pickedIds, $characterId, $difficulty, $situational, $checkKey, $buy, $sell), $campaignId, $user);
+    }
+
+    /**
+     * The lines of a shop transaction as the command takes them: absent or null is none, false is a
+     * malformed list (not a list of objects with a string "gear", an integer "quantity" and, for a
+     * sale, a string "field", and nothing else).
+     *
+     * @return ($sale is true ? list<array{field: string, gear: string, quantity: int}>|false|null : list<array{gear: string, quantity: int}>|false|null)
+     */
+    private function shopLines(mixed $lines, bool $sale): array|false|null
+    {
+        if (null === $lines) {
+            return null;
+        }
+
+        if (!\is_array($lines) || !array_is_list($lines)) {
+            return false;
+        }
+
+        $checked = [];
+        foreach ($lines as $line) {
+            $allowed = $sale ? ['field', 'gear', 'quantity'] : ['gear', 'quantity'];
+            if (!\is_array($line) || [] !== array_diff(array_keys($line), $allowed) || !\is_string($line['gear'] ?? null) || !\is_int($line['quantity'] ?? null) || ($sale && !\is_string($line['field'] ?? null))) {
+                return false;
+            }
+
+            $checked[] = $sale ? ['field' => (string) $line['field'], 'gear' => $line['gear'], 'quantity' => $line['quantity']] : ['gear' => $line['gear'], 'quantity' => $line['quantity']];
+        }
+
+        return $checked;
     }
 
     #[Route('/api/campaigns/{campaignId}/flow-run/skip', name: 'api_campaigns_flow_run_skip', methods: ['POST'])]
@@ -137,7 +170,7 @@ final readonly class FlowRunController
     #[OA\Response(response: 401, description: self::NO_SESSION, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: self::NOT_A_SOLO_PLAYER, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: self::CAMPAIGN_NOT_FOUND, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'The campaign plays freely, guidance is paused or the Flow is complete, a check step\'s roll waits for Keep or Push, the FlowRun waits for another step, the step is mandatory, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'The campaign plays freely, guidance is paused or the Flow is complete, a check step\'s roll waits for Keep or Push, the FlowRun waits for another step, the step is mandatory or a shop (left with an empty transaction instead), the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: self::NOT_JSON, content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'A formula of a band bound or tracker Effect value divides by zero or overflows; nothing changed.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function skip(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -340,6 +373,8 @@ final readonly class FlowRunController
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
         } catch (InsufficientFunds $exception) {
             return new JsonResponse(FlowRunErrorResponse::with(FlowRunErrorCode::InsufficientFunds, $exception->getMessage())->toArray(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (InventoryFull $exception) {
+            return new JsonResponse(FlowRunErrorResponse::with(FlowRunErrorCode::InventoryFull, $exception->getMessage())->toArray(), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (InvalidStepResult|FlowFormulaFailed|ChaosFactorBoundToTracker|InvalidLikelihoodOracle|InvalidJournalEntryContent|InvalidDiceExpression|CheckDifficultyNotDeclared|CheckDifficultyOutOfRange|SituationalModifierOutOfRange|CheckEvaluationFailed|InvalidCheckPicks $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }

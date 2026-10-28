@@ -6,8 +6,8 @@ namespace App\Play\Domain\Campaign\FlowRun;
 
 /**
  * The result given does not complete the current step: another kind, an unknown option, another
- * table or other dice, a blank answer, fields that do not belong to the step's kind, or items a pick
- * step cannot take.
+ * table or other dice, a blank answer, fields that do not belong to the step's kind, items a pick
+ * step cannot take, or a shop transaction line the shop cannot trade.
  */
 final class InvalidStepResult extends \DomainException
 {
@@ -29,6 +29,36 @@ final class InvalidStepResult extends \DomainException
     public static function otherDice(string $step, string $dice): self
     {
         return new self(\sprintf('Step "%s" rolls %s.', $step, $dice));
+    }
+
+    public static function notOnSale(string $step, string $gear): self
+    {
+        return new self(\sprintf('Shop step "%s" has no "%s" on sale.', $step, $gear));
+    }
+
+    public static function shopQuantity(string $step, string $gear, int $quantity, int $max): self
+    {
+        return new self(\sprintf('Shop step "%s" trades 1 to %d units of "%s", got %d.', $step, $max, $gear, $quantity));
+    }
+
+    public static function shopLineTwice(string $step, string $gear): self
+    {
+        return new self(\sprintf('Shop step "%s" lists "%s" twice.', $step, $gear));
+    }
+
+    public static function shopDoesNotBuy(string $step): self
+    {
+        return new self(\sprintf('Shop step "%s" does not buy.', $step));
+    }
+
+    public static function notAnInventory(string $step, string $field): self
+    {
+        return new self(\sprintf('Shop step "%s" cannot buy from field "%s": it is no inventory field.', $step, $field));
+    }
+
+    public static function overSell(string $step, int $quantity, string $gear, string $field, int $held): self
+    {
+        return new self(\sprintf('Shop step "%s" cannot buy %d "%s" from field "%s", which holds %d.', $step, $quantity, $gear, $field, $held));
     }
 
     public static function blankAnswer(string $step): self

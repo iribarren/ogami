@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Play\Infrastructure\GameSystem;
 
+use App\Play\Domain\GameSystem\Flow\ShopStep;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\GearEntry;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\Sheet\Currency;
 use App\Play\Domain\GameSystem\Sheet\InventoryField;
 use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
+use App\Randomness\Domain\DiceExpression;
 use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Studio\ReleaseArrays;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -18,25 +20,21 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Play's anti-corruption layer reads the gear catalog, the sheet currency and the inventory fields
- * of ADR 0045 and still refuses shop steps (play-items-economy slice 3). Run against
- * examples/cpr-campaign-in-acts without its Night Market.
+ * Play's anti-corruption layer reads the gear catalog, the sheet currency, the inventory fields and
+ * the shop steps of ADR 0045. Run against examples/cpr-campaign-in-acts, whose Night Market is a shop.
  */
 #[CoversClass(GameSystemReleaseTranslator::class)]
 final class GameSystemReleaseTranslatorGearTest extends TestCase
 {
     /**
-     * examples/cpr-campaign-in-acts without its shop: the gear catalog, the currency "eddies" and
-     * the inventories "gear" and "cyberware" stay.
+     * examples/cpr-campaign-in-acts: the gear catalog, the currency "eddies", the inventories "gear"
+     * and "cyberware", and the shop "stalls" of the Night Market (sceneTypes[20].play[0]).
      *
      * @return array<string, mixed>
      */
     public static function playable(): array
     {
-        /** @var array<string, mixed> $content */
-        $content = ReleaseArrays::with(ReleaseViews::fixtureContent('examples/cpr-campaign-in-acts'), 'sceneTypes.20.play', []);
-
-        return $content;
+        return ReleaseViews::fixtureContent('examples/cpr-campaign-in-acts');
     }
 
     /**
@@ -106,6 +104,7 @@ final class GameSystemReleaseTranslatorGearTest extends TestCase
     public function aReleaseWithoutGearCurrencyOrInventoriesIsPlayable(): void
     {
         $content = ReleaseArrays::with(ReleaseArrays::without(self::playable(), 'gear'), 'sheet', ['fields' => [['key' => 'eddies', 'label' => 'Eddies', 'type' => 'number', 'min' => 0, 'default' => 500]]]);
+        $content = ReleaseArrays::with($content, 'sceneTypes.20.play', []);
 
         $snapshot = $this->translate($content);
 
@@ -164,11 +163,97 @@ final class GameSystemReleaseTranslatorGearTest extends TestCase
     }
 
     #[Test]
-    public function itStillRefusesAShopStep(): void
+    public function itReadsTheShopOfTheNightMarketWithItsOfferInCatalogOrder(): void
+    {
+        $snapshot = $this->translate(self::playable());
+        $stalls = $snapshot->sceneType($this->nightMarket())?->play->step('stalls');
+
+        self::assertInstanceOf(ShopStep::class, $stalls);
+        self::assertSame(array_map(static fn (GearEntry $entry): string => $entry->key, $snapshot->gear()), $this->offered($stalls));
+        self::assertInstanceOf(DiceExpression::class, $stalls->stock);
+        self::assertSame('1d4+2', $stalls->stock->notation());
+        self::assertSame(50, $stalls->sellRate);
+        self::assertFalse($stalls->mandatory);
+    }
+
+    #[Test]
+    public function anOfferOfKeysAndCategoriesIsTheirUnionInCatalogOrder(): void
+    {
+        $content = ReleaseArrays::with(self::playable(), 'sceneTypes.20.play.0', ['key' => 'stalls', 'kind' => 'shop', 'title' => 'Shop', 'offer' => ['gear' => ['neural-link', 'kibble'], 'categories' => ['Food']], 'stock' => 2]);
+        $stalls = $this->translate($content)->sceneType($this->nightMarket())?->play->step('stalls');
+
+        self::assertInstanceOf(ShopStep::class, $stalls);
+        self::assertSame(['kibble', 'real-coffee', 'neural-link'], $this->offered($stalls));
+        self::assertSame(2, $stalls->stock);
+        self::assertNull($stalls->sellRate);
+    }
+
+    /**
+     * @return iterable<string, array{string, mixed, string}> the path under the shop "stalls", its value and the refusal
+     */
+    public static function malformedShops(): iterable
+    {
+        $at = 'sceneTypes[20].play[0]';
+        yield 'an unknown property' => ['price', 10, $at.'.price: unknown property.'];
+        yield 'an offer that is not an object' => ['offer', 'kibble', $at.'.offer: must be an object.'];
+        yield 'an offer with an unknown property' => ['offer.items', ['kibble'], $at.'.offer.items: unknown property.'];
+        yield 'an empty offer' => ['offer', ['gear' => [], 'categories' => null], $at.'.offer: must offer at least one gear entry or category.'];
+        yield 'an unknown gear key' => ['offer', ['gear' => ['katana']], $at.'.offer.gear[0]: unknown gear "katana".'];
+        yield 'a repeated gear key' => ['offer', ['gear' => ['kibble', 'kibble']], $at.'.offer.gear: must list at most 100 distinct gear keys.'];
+        yield 'a category no gear has' => ['offer.categories.0', 'Guns', $at.'.offer.categories[0]: no gear has category "Guns".'];
+        yield 'a repeated category' => ['offer.categories.1', 'Gear', $at.'.offer.categories: must list at most 20 distinct categories.'];
+        yield 'a stock of zero' => ['stock', 0, $at.'.stock: must be between 1 and 50.'];
+        yield 'a stock above the offer' => ['stock', 9, $at.'.stock: 9 entries on sale, the offer holds 8.'];
+        yield 'a stock that is a string' => ['stock', '3', $at.'.stock: must be an integer or {dice}.'];
+        yield 'a stock with bad dice' => ['stock.dice', 'd', $at.'.stock.dice: invalid dice notation'];
+        yield 'a stock with an unknown property' => ['stock.max', 3, $at.'.stock.max: unknown property.'];
+        yield 'a sell rate of zero' => ['sellRate', 0, $at.'.sellRate: must be between 1 and 100.'];
+        yield 'a sell rate of 101' => ['sellRate', 101, $at.'.sellRate: must be between 1 and 100.'];
+        yield 'a mandatory flag' => ['mandatory', false, $at.'.mandatory: a shop step is never skipped, an empty transaction leaves it.'];
+        yield 'a sheet effect' => ['effects', [['kind' => 'sheet', 'field' => 'eddies', 'op' => 'add', 'value' => 1]], $at.'.effects[0]: a sheet effect is allowed only'];
+    }
+
+    #[Test]
+    #[DataProvider('malformedShops')]
+    public function itRefusesAMalformedShopWithItsPath(string $path, mixed $value, string $message): void
     {
         $this->expectException(InvalidGameSystemRelease::class);
-        $this->expectExceptionMessageIsOrContains('sceneTypes[20].play[0].kind: shop steps are not played yet (ADR 0045).');
+        $this->expectExceptionMessageIsOrContains($message);
 
-        $this->translate(ReleaseArrays::with(self::playable(), 'sceneTypes.20.play', [['key' => 'stalls', 'kind' => 'shop', 'title' => 'Shop', 'offer' => ['gear' => ['kibble']]]]));
+        $this->translate(ReleaseArrays::with(self::playable(), 'sceneTypes.20.play.0.'.$path, $value));
+    }
+
+    #[Test]
+    public function aShopNeedsTheSheetCurrency(): void
+    {
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains('sceneTypes[20].play[0]: a shop step needs a sheet currency.');
+
+        $this->translate(ReleaseArrays::without(self::playable(), 'sheet.currency'));
+    }
+
+    #[Test]
+    public function everyOfferedEntryLandsInAnInventoryField(): void
+    {
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains('sceneTypes[20].play[0].offer: gear "cyberoptic" lands in no inventory field.');
+
+        $this->translate(ReleaseArrays::with(self::playable(), 'sheet.fields.2.categories', ['Food']));
+    }
+
+    private function nightMarket(): string
+    {
+        /** @var array{sceneTypes: list<array{key: string}>} $content */
+        $content = self::playable();
+
+        return $content['sceneTypes'][20]['key'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function offered(ShopStep $step): array
+    {
+        return array_map(static fn (GearEntry $entry): string => $entry->key, $step->offer);
     }
 }

@@ -14,7 +14,7 @@ use App\Play\Domain\GameSystem\Flow\Step;
  * what it picks from (PickView). "fills" are the Fact slots any of its Effects may fill, in the
  * release's slot order. A check step whose roll waits for Keep or Push (ADR 0041) shows it as
  * "pending". A table step shows the table it rolls now, which depends on the current Scene Type
- * (ADR 0042).
+ * (ADR 0042). A shop step shows what it trades (ADR 0045).
  */
 final readonly class FlowStepView
 {
@@ -32,6 +32,7 @@ final readonly class FlowStepView
         public ?CheckView $check = null,
         public ?PendingCheck $pending = null,
         public ?string $table = null,
+        public ?ShopView $shop = null,
     ) {
     }
 }

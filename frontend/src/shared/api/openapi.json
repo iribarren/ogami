@@ -3717,7 +3717,7 @@
                         }
                     },
                     "400": {
-                        "description": "The JSON body is malformed: no string \"stepKey\", or a non-string \"text\", \"optionKey\" or \"likelihood\", a non-string \"checkKey\", a non-integer \"chaosFactor\", \"difficulty\" or \"situational\", or \"pickedIds\" that is not a list of strings.",
+                        "description": "The JSON body is malformed: no string \"stepKey\", or a non-string \"text\", \"optionKey\" or \"likelihood\", a non-string \"checkKey\", a non-integer \"chaosFactor\", \"difficulty\" or \"situational\", \"pickedIds\" that is not a list of strings, or \"buy\" or \"sell\" that is not a list of lines of the shape the request documents.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3777,7 +3777,7 @@
                         }
                     },
                     "422": {
-                        "description": "A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or \"pickedIds\" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character, or its check set is given no \"checkKey\" or one outside the set, or a single-check step is given one. Or a formula of a band bound, a tracker or sheet Effect value or a step's difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed. Or a choice option, a prompt or a character step spends more of the release's currency than the Character has (code \"insufficient_funds\"); nothing changed.",
+                        "description": "A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or \"pickedIds\" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character, or its check set is given no \"checkKey\" or one outside the set, or a single-check step is given one. Or a formula of a band bound, a tracker or sheet Effect value or a step's difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed. Or a choice option, a prompt, a character step or a shop transaction spends more of the release's currency than the Character has (code \"insufficient_funds\"), or a shop purchase takes an inventory field over its slots or stacks (code \"inventory_full\"); nothing changed. For a shop step: no Character or one not in the campaign, gear not on sale, a sale the shop does not buy or more than the stack holds, a quantity outside 1..9999 or a line listed twice.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3868,7 +3868,7 @@
                         }
                     },
                     "409": {
-                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun waits for another step, the step is mandatory, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.",
+                        "description": "The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun waits for another step, the step is mandatory or a shop (left with an empty transaction instead), the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12155,6 +12155,32 @@
                 },
                 "type": "object"
             },
+            "FlowShopStepResponse": {
+                "required": [
+                    "onSale",
+                    "sellRate",
+                    "currency"
+                ],
+                "properties": {
+                    "onSale": {
+                        "description": "The catalog entries on sale, in catalog order: the stock drawn when the step was reached, or the whole offer of a shop without a stock; empty when the stock drew none. A purchase names one by its key.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GearEntryResponse"
+                        }
+                    },
+                    "sellRate": {
+                        "description": "The percent of the cost the shop pays for one unit sold, rounded down; null when the shop does not buy.",
+                        "type": "integer",
+                        "example": 50,
+                        "nullable": true
+                    },
+                    "currency": {
+                        "$ref": "#/components/schemas/CurrencyResponse"
+                    }
+                },
+                "type": "object"
+            },
             "FlowStepResponse": {
                 "required": [
                     "key",
@@ -12177,7 +12203,8 @@
                     "characters",
                     "inspiration",
                     "changesSheet",
-                    "pending"
+                    "pending",
+                    "shop"
                 ],
                 "properties": {
                     "key": {
@@ -12196,7 +12223,8 @@
                             "choice",
                             "pick",
                             "character",
-                            "check"
+                            "check",
+                            "shop"
                         ]
                     },
                     "title": {
@@ -12317,6 +12345,15 @@
                         ],
                         "nullable": true,
                         "description": "The roll the check step waits on until the player keeps or pushes it (ADR 0041); null while none does, and for the other kinds. While a roll pends, every other FlowRun command is refused."
+                    },
+                    "shop": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/FlowShopStepResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "What the shop step trades (ADR 0045): the gear on sale, its sell rate and the currency; null for the other kinds. The answer names the Character with \"characterId\" and lists \"buy\" and \"sell\"."
                     }
                 },
                 "type": "object"
@@ -13857,7 +13894,8 @@
             "FlowRunErrorCode": {
                 "type": "string",
                 "enum": [
-                    "insufficient_funds"
+                    "insufficient_funds",
+                    "inventory_full"
                 ]
             },
             "FlowRunErrorResponse": {
@@ -14871,6 +14909,97 @@
                 },
                 "type": "object"
             },
+            "ShopLineResponse": {
+                "required": [
+                    "field",
+                    "gear",
+                    "name",
+                    "quantity",
+                    "price"
+                ],
+                "properties": {
+                    "field": {
+                        "description": "The inventory field a sold stack left; null for a purchase.",
+                        "type": "string",
+                        "example": "gear",
+                        "nullable": true
+                    },
+                    "gear": {
+                        "description": "The catalog key.",
+                        "type": "string",
+                        "example": "kibble"
+                    },
+                    "name": {
+                        "description": "The name of the gear when the step completed.",
+                        "type": "string",
+                        "example": "Kibble by the kilo"
+                    },
+                    "quantity": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "price": {
+                        "description": "The price of one unit: its cost for a purchase, the shop's sale price for a sale.",
+                        "type": "integer",
+                        "example": 10
+                    }
+                },
+                "type": "object"
+            },
+            "ShopContentResponse": {
+                "required": [
+                    "kind",
+                    "characterId",
+                    "characterName",
+                    "bought",
+                    "sold",
+                    "before",
+                    "after"
+                ],
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "shop"
+                        ]
+                    },
+                    "characterId": {
+                        "description": "The Character who traded.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "characterName": {
+                        "description": "The name of the Character when the step completed.",
+                        "type": "string",
+                        "example": "Vi"
+                    },
+                    "bought": {
+                        "description": "The gear bought, in the order the player listed it; empty when nothing was bought. Its field is null.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ShopLineResponse"
+                        }
+                    },
+                    "sold": {
+                        "description": "The gear sold, in the order the player listed it, with the inventory field it left; empty when nothing was sold.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ShopLineResponse"
+                        }
+                    },
+                    "before": {
+                        "description": "The currency of the Character before the transaction.",
+                        "type": "integer",
+                        "example": 50
+                    },
+                    "after": {
+                        "description": "The currency of the Character after it.",
+                        "type": "integer",
+                        "example": 43
+                    }
+                },
+                "type": "object"
+            },
             "FlowNoteBandResponse": {
                 "required": [
                     "kind",
@@ -15106,6 +15235,7 @@
                             "pick",
                             "check",
                             "sheet-change",
+                            "shop",
                             "flowOutcome"
                         ]
                     },
@@ -15121,6 +15251,7 @@
                                 "pick": "#/components/schemas/PickContentResponse",
                                 "check": "#/components/schemas/CheckContentResponse",
                                 "sheet-change": "#/components/schemas/SheetChangeContentResponse",
+                                "shop": "#/components/schemas/ShopContentResponse",
                                 "flowOutcome": "#/components/schemas/FlowOutcomeContentResponse"
                             }
                         },
@@ -15148,6 +15279,9 @@
                             },
                             {
                                 "$ref": "#/components/schemas/SheetChangeContentResponse"
+                            },
+                            {
+                                "$ref": "#/components/schemas/ShopContentResponse"
                             },
                             {
                                 "$ref": "#/components/schemas/FlowOutcomeContentResponse"

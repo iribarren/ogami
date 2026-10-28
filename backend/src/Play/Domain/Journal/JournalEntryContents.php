@@ -31,6 +31,7 @@ final class JournalEntryContents
             PickContent::KIND => PickContent::fromArray($data),
             CheckContent::KIND => CheckContent::fromArray($data),
             SheetChangeContent::KIND => SheetChangeContent::fromArray($data),
+            ShopContent::KIND => ShopContent::fromArray($data),
             FlowOutcomeContent::KIND => FlowOutcomeContent::fromArray($data),
             default => throw InvalidJournalEntryContent::unknownKind($kind),
         };

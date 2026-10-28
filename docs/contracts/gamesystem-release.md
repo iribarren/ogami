@@ -439,7 +439,7 @@ Domain errors carry the path, such as `gear[3].cost`, `sheet.currency.field`, `s
 {"key": "stalls", "kind": "shop", "title": "What do you buy or sell?", "offer": {"categories": ["Gear"]}, "stock": {"dice": "1d4+2"}, "sellRate": 50}
 ```
 
-The fixture `examples/cpr-campaign-in-acts.json` has the whole economy. Play's translator refuses `gear`, `sheet.currency` and `inventory` fields until `play-items-economy` slice 2 and `shop` steps until slice 3, with the path and a message naming ADR 0045.
+The fixture `examples/cpr-campaign-in-acts.json` has the whole economy. Play reads `gear`, `sheet.currency` and `inventory` fields since `play-items-economy` slice 2 and `shop` steps since slice 4; its translator checks every shop again (offer, stock, sell rate, the currency, an inventory for each offered entry) and refuses a malformed one with its path.
 
 ### Formulas (ADR 0023)
 

@@ -15,16 +15,18 @@ use App\Shared\Application\Bus\Command;
 final readonly class CompleteFlowStep implements Command
 {
     /**
-     * @param string            $stepKey     the step the player means to complete, refused when the FlowRun is elsewhere
-     * @param string|null       $text        prompt step: the answer
-     * @param string|null       $optionKey   choice step: the option chosen
-     * @param string|null       $likelihood  oracle step: the likelihood level key, only when the step does not fix one
-     * @param int|null          $chaosFactor oracle step: null for the oracle's neutral factor (or when it has no chaos)
-     * @param list<string>|null $pickedIds   pick step in mode choose: the ids of the candidates chosen, none when nothing matched
-     * @param string|null       $characterId character step: the id of the Character of the campaign the player brings; check step: the Character who rolls
-     * @param int|null          $difficulty  check step: the Check difficulty, only when the step does not fix one; null for the check's default
-     * @param int|null          $situational check step: the Situational modifier, from -100 to 100; null for none
-     * @param string|null       $checkKey    check step with a check set: the check of the set to roll (required there, refused on a single-check step)
+     * @param string                                                       $stepKey     the step the player means to complete, refused when the FlowRun is elsewhere
+     * @param string|null                                                  $text        prompt step: the answer
+     * @param string|null                                                  $optionKey   choice step: the option chosen
+     * @param string|null                                                  $likelihood  oracle step: the likelihood level key, only when the step does not fix one
+     * @param int|null                                                     $chaosFactor oracle step: null for the oracle's neutral factor (or when it has no chaos)
+     * @param list<string>|null                                            $pickedIds   pick step in mode choose: the ids of the candidates chosen, none when nothing matched
+     * @param string|null                                                  $characterId character step: the id of the Character of the campaign the player brings; check step: the Character who rolls
+     * @param int|null                                                     $difficulty  check step: the Check difficulty, only when the step does not fix one; null for the check's default
+     * @param int|null                                                     $situational check step: the Situational modifier, from -100 to 100; null for none
+     * @param string|null                                                  $checkKey    check step with a check set: the check of the set to roll (required there, refused on a single-check step)
+     * @param list<array{gear: string, quantity: int}>|null                $buy         shop step: the gear bought, in the order listed
+     * @param list<array{field: string, gear: string, quantity: int}>|null $sell        shop step: the stacks sold, by inventory field, in the order listed
      */
     public function __construct(
         public string $campaignId,
@@ -40,6 +42,8 @@ final readonly class CompleteFlowStep implements Command
         public ?int $difficulty = null,
         public ?int $situational = null,
         public ?string $checkKey = null,
+        public ?array $buy = null,
+        public ?array $sell = null,
     ) {
     }
 }

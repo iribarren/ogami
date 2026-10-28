@@ -12,4 +12,5 @@ namespace App\Play\Infrastructure\Http;
 enum FlowRunErrorCode: string
 {
     case InsufficientFunds = 'insufficient_funds';
+    case InventoryFull = 'inventory_full';
 }

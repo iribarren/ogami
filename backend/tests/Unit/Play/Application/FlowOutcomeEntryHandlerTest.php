@@ -131,7 +131,7 @@ final class FlowOutcomeEntryHandlerTest extends TestCase
         $campaign->setTrackerValue($this->release->tracker('heat') ?? throw new \LogicException('No heat.'), 4);
         $this->campaigns->save($campaign);
 
-        new PickSceneTypeHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases, $this->clock, $this->outcomes())(new PickSceneType('campaign-1', 'user-1', 'watch'));
+        new PickSceneTypeHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $this->clock, $this->outcomes())(new PickSceneType('campaign-1', 'user-1', 'watch'));
 
         $entry = $this->journal()[0] ?? self::fail('No entry.');
         self::assertSame([1, 1, null], [$entry->sessionNumber(), $entry->sceneNumber(), $entry->flowStep()]);
@@ -146,7 +146,7 @@ final class FlowOutcomeEntryHandlerTest extends TestCase
     {
         $this->store('notes', 'heist');
 
-        new SwitchSceneTypeHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases, $this->clock, $this->outcomes())(new SwitchSceneType('campaign-1', 'user-1', 'watch'));
+        new SwitchSceneTypeHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $this->clock, $this->outcomes())(new SwitchSceneType('campaign-1', 'user-1', 'watch'));
 
         // The player's own switch is no note; the condition step it lands on takes "Calm".
         self::assertSame([['kind' => 'flowOutcome', 'notes' => [['kind' => 'band', 'label' => 'Calm']]]], array_map(static fn (JournalEntry $entry): array => $entry->content()->toArray(), $this->journal()));
@@ -158,7 +158,7 @@ final class FlowOutcomeEntryHandlerTest extends TestCase
         // Flow "closing" ends its session through a closing whose condition step takes a labelled band.
         $this->store('closing');
 
-        new EndSessionHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases, $this->clock, $this->outcomes())(new EndSession('campaign-1', 'user-1'));
+        new EndSessionHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $this->clock, $this->outcomes())(new EndSession('campaign-1', 'user-1'));
 
         $campaign = $this->stored();
         self::assertSame([null, []], [$campaign->currentSession(), $this->journal()]);

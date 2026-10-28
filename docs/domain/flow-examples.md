@@ -328,9 +328,9 @@ A long campaign: the crew starts small, survives on gigs and rises in three acts
 |---|---|---|---|---|
 | — | `street-zero` | once | sequence | Character → Turf → Fixer |
 | Act 1: Making a name | `making-a-name` | loop | player | Gig offer, Downtime, Recruit, Social |
-| Act 2: The big job | `planning` | loop | player | Legwork, Recruit, Gear up |
+| Act 2: The big job | `planning` | loop | player | Social, Exploration, Recruit, Gear up |
 | Act 2: The big job | `the-job` | loop | player | The heist types of example 2 |
-| Act 2: The big job | `fallout` | once | sequence | Fallout |
+| Act 2: The big job | `fallout` | once | sequence | Getaway → Fallout |
 | Act 3: The twist and conclusion | `finale` | once | sequence | Betrayal → Showdown → Epilogue |
 
 Focus mode progress reads e.g. `Act 1: Making a name › making-a-name › Legwork › closing · step 1/1`.
@@ -343,6 +343,7 @@ Gig offer   setup:   alarm set 0
 Legwork     closing: choice "More legwork, or go?"  more → nextScene Legwork; go → nextScene Job
 Job         a compressed heist (oracle, alarm, edge)  → nextScene Payday
 Payday      condition alarm: upTo 3 → rep +2; rest → rep +1
+            choice "Collect the pay"  yes → eddies +(200 + 50 * rep)   (a sheet effect: the player picks the Character)
             prompt "Any loose ends?" → createThread
 Recruit     prompt "Who joins, and what do they do?" → createNpc [crew, plus a specialty tag]
 
@@ -379,8 +380,12 @@ Money is the Character's `eddies`, the sheet currency; gear sits in the `gear` a
 
 ```
 Downtime closing
+  choice "Hit the Night Market?"  yes → nextScene Night Market; no → —
   → month +1
   condition month: upTo 3 → —; rest → nextScene Month's end
+
+Gear up closing
+  → nextScene Night Market
 
 Night Market
   shop "What do you buy or sell?"
@@ -390,11 +395,11 @@ Night Market
 Month's end
   condition housing: one band per level → choice "Pay the rent?"
     pay  → eddies −rent (a sheet effect, refused when the Character cannot afford it), month set 0
-    skip → lifestyle −1, pick NPC [fixer] → createThread "Debt to {picked}"
+    skip → lifestyle −1, month set 0, pick NPC [fixer] → createThread "Debt to {picked}"
   choice "Move up?"  yes → housing +1
 ```
 
-A rent the Character cannot pay is refused (`insufficient_funds`), so the player takes the debt instead. Month's end runs its steps in `play`: a Scene Type's `setup` has no Character to pay.
+`month` is reset on both options, otherwise Month's end would come back after every Downtime. A rent the Character cannot pay is refused (`insufficient_funds`), so the player takes the debt instead. Month's end runs its steps in `play`: a Scene Type's `setup` has no Character to pay.
 
 ### What it shows
 

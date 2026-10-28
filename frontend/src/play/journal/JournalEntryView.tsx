@@ -97,6 +97,7 @@ export function JournalEntryView({
   entry,
   tags = [],
   sheet = [],
+  currencyUnit = null,
   children,
 }: {
   entry: JournalEntry
@@ -104,6 +105,11 @@ export function JournalEntryView({
   tags?: TagLabels
   /** The release's sheet fields, so a sheet change shows labels instead of keys. */
   sheet?: FieldLabels
+  /**
+   * The unit of the release's currency ("eb"), which a shop entry shows after the money. The entry
+   * does not carry it (it records amounts); the pinned release does. None: the bare amounts.
+   */
+  currencyUnit?: string | null
   /** Shown inside the card under the content: the results a note attaches. */
   children?: ReactNode
 }) {
@@ -114,7 +120,12 @@ export function JournalEntryView({
     >
       <IconTile size="md">{entryIcon(entry.content)}</IconTile>
       <div className="min-w-0 flex-1 space-y-2">
-        <EntryContent content={entry.content} tags={tags} sheet={sheet} />
+        <EntryContent
+          content={entry.content}
+          tags={tags}
+          sheet={sheet}
+          currencyUnit={currencyUnit}
+        />
         {children}
         <p className="text-xs text-muted-foreground">
           <time dateTime={entry.recordedAt}>{recordedTime.format(new Date(entry.recordedAt))}</time>
@@ -128,10 +139,12 @@ function EntryContent({
   content,
   tags,
   sheet,
+  currencyUnit,
 }: {
   content: JournalEntry['content']
   tags: TagLabels
   sheet: FieldLabels
+  currencyUnit: string | null
 }) {
   switch (content.kind) {
     case 'note':
@@ -151,14 +164,20 @@ function EntryContent({
     case 'sheet-change':
       return <SheetChangeView content={content} sheet={sheet} />
     case 'shop':
-      return <ShopView content={content} />
+      return <ShopView content={content} currencyUnit={currencyUnit} />
     case 'flowOutcome':
       return <FlowOutcomeView content={content} />
   }
 }
 
 /** A shop visit: the gear bought and sold with unit prices, and the Character's money before and after. */
-function ShopView({ content }: { content: ShopContent }) {
+function ShopView({
+  content,
+  currencyUnit,
+}: {
+  content: ShopContent
+  currencyUnit: string | null
+}) {
   const lines = (title: string, items: ShopContent['bought']) =>
     items.length > 0 && (
       <div>
@@ -181,7 +200,8 @@ function ShopView({ content }: { content: ShopContent }) {
       {lines('Bought', content.bought)}
       {lines('Sold', content.sold)}
       <p className="text-sm tabular-nums">
-        {content.characterName}: {`${String(content.before)} → ${String(content.after)}`}
+        {content.characterName}:{' '}
+        {`${String(content.before)} → ${String(content.after)}${currencyUnit === null ? '' : ` ${currencyUnit}`}`}
       </p>
     </div>
   )

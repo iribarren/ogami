@@ -32,6 +32,7 @@ export function Journal({
   oracleTables,
   current,
   entries,
+  currencyUnit,
 }: {
   campaignId: string
   sessions: Campaign['sessions']
@@ -49,6 +50,8 @@ export function Journal({
   /** The scene play is in, which is the only one a rolled Scene Type can be switched in. */
   current: { session: number; scene: number } | null
   entries: JournalEntry[]
+  /** The unit of the release's currency, which a shop entry shows after the money; none when it has no unit. */
+  currencyUnit?: string | null
 }) {
   const recorded = useMutationState({
     filters: { mutationKey: recordEntryKey(campaignId), status: 'success' },
@@ -114,7 +117,12 @@ export function Journal({
                               Flow step · {entry.flowStep.title}
                             </p>
                           )}
-                        <JournalEntryView entry={entry} tags={tags} sheet={sheet}>
+                        <JournalEntryView
+                          entry={entry}
+                          tags={tags}
+                          sheet={sheet}
+                          currencyUnit={currencyUnit}
+                        >
                           <NoteAttachments
                             campaignId={campaignId}
                             note={entry}

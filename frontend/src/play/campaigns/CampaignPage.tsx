@@ -317,6 +317,7 @@ function CampaignJournal({ campaign }: { campaign: Campaign }) {
               : { session: campaign.currentSessionNumber, scene: campaign.currentSceneNumber }
           }
           entries={journal.data}
+          currencyUnit={campaign.pinnedRelease.currency?.unit ?? null}
         />
       )
   }

@@ -151,6 +151,48 @@ final class FlowRunAffordabilityTest extends FlowRunTestCase
         self::assertSame(0, $this->value($campaign, 'gold'));
     }
 
+    /**
+     * @return iterable<string, array{int, SheetOperation, int, int}> the gold before, the effect and the gold after
+     */
+    public static function spendsFromUnderTheFloor(): iterable
+    {
+        yield 'an add that leaves the gold still under the floor' => [-5, SheetOperation::Add, 2, -3];
+        yield 'a set above the gold but still under the floor' => [-5, SheetOperation::Set, -3, -3];
+        yield 'a set that keeps the gold where it is' => [-5, SheetOperation::Set, -5, -5];
+        yield 'a subtract down to exactly the floor' => [3, SheetOperation::Subtract, 3, 0];
+    }
+
+    /**
+     * A Character already under the floor (a check outcome took it there) may still gain money: only a
+     * spend that leaves the currency under the floor and lower than it was is refused.
+     */
+    #[Test]
+    #[DataProvider('spendsFromUnderTheFloor')]
+    public function aVoluntaryEffectThatDoesNotLowerTheCurrencyUnderTheFloorIsApplied(int $gold, SheetOperation $op, int $value, int $after): void
+    {
+        $release = $this->content();
+        $effects = new CampaignEffects($this->atTheBuy($release, $gold), $release);
+
+        self::assertEquals(new SheetChange('gold', $gold, $after), $effects->applySheetEffect(new SheetEffect('gold', $op, $value), 'ida', refuseBelowFloor: true));
+    }
+
+    #[Test]
+    public function aVoluntaryDecreaseFromUnderTheFloorIsRefused(): void
+    {
+        $release = $this->content();
+        $campaign = $this->atTheBuy($release, -5);
+        $effects = new CampaignEffects($campaign, $release);
+
+        try {
+            $effects->applySheetEffect(new SheetEffect('gold', SheetOperation::Subtract, 1), 'ida', refuseBelowFloor: true);
+            self::fail('The spend was not refused.');
+        } catch (InsufficientFunds $e) {
+            self::assertSame(['gold', -5, -6, 0], [$e->field, $e->before, $e->attempted, $e->floor]);
+        }
+
+        self::assertSame(-5, $this->value($campaign, 'gold'));
+    }
+
     #[Test]
     public function theExceptionTellsWhatTheSpendWouldHaveDone(): void
     {
@@ -230,21 +272,21 @@ final class FlowRunAffordabilityTest extends FlowRunTestCase
     }
 
     /**
-     * Ida (Power 60, 10 gold) in the Setup scene, at the character step.
+     * Ida (Power 60, 10 gold unless told otherwise) in the Setup scene, at the character step.
      */
-    private function campaign(GameSystemSnapshot $release): Campaign
+    private function campaign(GameSystemSnapshot $release, int $gold = 10): Campaign
     {
         $campaign = self::guided($release, 'play');
         $campaign->startSession(self::at(), $release);
-        $campaign->addCharacter(CharacterId::fromString('ida'), 'Ida', [], [], ['pow' => 60, 'gold' => 10], $release);
+        $campaign->addCharacter(CharacterId::fromString('ida'), 'Ida', [], [], ['pow' => 60, 'gold' => $gold], $release);
         $campaign->editCurrentSceneCast([], [CharacterId::fromString('ida')]);
 
         return $campaign;
     }
 
-    private function atTheBuy(GameSystemSnapshot $release): Campaign
+    private function atTheBuy(GameSystemSnapshot $release, int $gold = 10): Campaign
     {
-        $campaign = $this->campaign($release);
+        $campaign = $this->campaign($release, $gold);
         $campaign->completeFlowStep('you', StepResult::character('ida'), $release, self::at());
         self::assertSame(['play', 'buy'], self::position($campaign));
 

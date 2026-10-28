@@ -80,7 +80,8 @@ final readonly class CampaignEffects
      * @param ?string $pick             the option a mark without an option marks (a push cost, where the player
      *                                  picks one); null marks nothing, as when every option is marked already
      * @param bool    $refuseBelowFloor whether an effect that would take the release's currency under its
-     *                                  floor is refused instead of clamped (a voluntary spend, ADR 0045)
+     *                                  floor, and lower than it was, is refused instead of clamped (a voluntary
+     *                                  spend, ADR 0045)
      *
      * @throws FlowFormulaFailed when the value's formula divides by zero, overflows or reads a value the sheet lacks
      * @throws InsufficientFunds when a refused spend would take the currency under its floor; nothing was changed by this effect
@@ -129,7 +130,8 @@ final readonly class CampaignEffects
         if ($refuseBelowFloor && $field->key === $sheet->currency()?->field && null !== $floor) {
             // A sum past the integers is a float; the contract's limit brings it back to one.
             $attempted = max(-NumberField::LIMIT, min(NumberField::LIMIT, $changed));
-            if ($attempted < $floor) {
+            // A Character already under the floor (a check outcome took it there) may still gain money.
+            if ($attempted < $floor && $attempted < $before) {
                 throw new InsufficientFunds($field->key, $before, $attempted, $floor);
             }
         }

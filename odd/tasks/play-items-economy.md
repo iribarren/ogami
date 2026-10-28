@@ -1,7 +1,7 @@
 # Feature: play-items-economy
 
 - **Locator:** `odd/tasks/play-items-economy.md` · Engram topic `odd/play-items-economy/tasks`
-- **Issue:** [#311](https://github.com/iribarren/ogami/issues/311) · **Branch:** `feat/play-items-economy-3-play-api` · **Status:** in progress (slice 3 of 8)
+- **Issue:** [#311](https://github.com/iribarren/ogami/issues/311) · **Branch:** `feat/play-items-economy-4-play-shop` · **Status:** in progress (slice 4 of 8)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B11 (before B12 `preset-cpr-campaign`; settles [ADR 0025](../../docs/adr/0025-items-and-shops-after-the-mvp.md))
@@ -92,7 +92,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T4 | 2 | Play: translator reads `gear`, `sheet.currency`, `inventory`; `InventoryField`, stacks, capacity, `maxStacks`, categories in `CharacterValues`; legacy Characters read; tests | delegated writer (Sonnet) | [x] | a79a9f5 |
 | T5 | 3 | Play API: pinned release gear catalog and currency, sheet field view, Character values with stacks; `make api`; tests | delegated writer (Sonnet) | [x] | ad5baca, 987b35f |
 | T6 | 4 | Play flow: translator `shop`; stock roll when reached (stored on the FlowRun); transaction (sell then buy, routing, stacking), errors, journal content, `{step:key}`; request and step response; tests | delegated writer (Sonnet or Opus) | [ ] | |
-| T7 | 3 | Affordability: `insufficient_funds` on choice option, prompt and `character` step sheet effects on the currency; check outcomes clamp; tests | delegated writer (Sonnet) | [x] | |
+| T7 | 3 | Affordability: `insufficient_funds` on choice option, prompt and `character` step sheet effects on the currency; check outcomes clamp; tests | delegated writer (Sonnet) | [x] | 24e17b2 |
 | T8 | 5 | Upgrade planner: `list` ↔ `inventory` and `inventory` → `inventory` conversions, fitting, `converted`; response; tests | delegated writer (Sonnet) | [ ] | |
 | T9 | 5 | Play UI: inventory control (catalog picker by category, free stack, quantity, remove, slots used), read-only sheet view, currency unit; upgrade dialog `converted`; fixtures and tests | delegated writer (Sonnet) | [ ] | |
 | T10 | 6 | Play UI: shop step card, choice `insufficient_funds`, journal shop entry; fixtures, tests, e2e | delegated writer (Sonnet) | [ ] | |
@@ -121,6 +121,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|
 | 1 | `review-4430bdf6d7dc77a6` | fa4c738, 393c5d5 | approved; R3 warning (refusal tests: formulas, `startMax`, check modifiers and point budgets reject an `inventory` field) and R3 suggestion (positive `{step:key}` test on a shop step) fixed in slice 2 | [#312](https://github.com/iribarren/ogami/pull/312) |
 | 2 | `review-cd11d3e4e7848b15` | 0ac035c, a79a9f5 | approved; R3 warning (`ReleaseUpgradePlanner::fitValue` has no proof for `inventory` fields: absent value, kept inventory, another type becoming an inventory) fixed in slice 3 | [#313](https://github.com/iribarren/ogami/pull/313) |
+| 3 | `review-8f85a9ecb2d2d33f` | ad5baca, 987b35f, f70563f, 24e17b2 | approved; R3 warning (`CampaignEffects::applySheetEffect` refuses a voluntary increase that leaves a Character already below the floor, e.g. -5 + 2 → -3; refuse only when the result is below the floor and below the value before) and R3 suggestion (render test for the inventory branch of `CharacterSheetDialog`) fixed in slice 4 | [#314](https://github.com/iribarren/ogami/pull/314) |
 
 ## Progress
 
@@ -132,7 +133,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-28: T5 done: pinned release carries `gear` and `currency`, an `inventory` sheet field view, Character values and requests document stacks; domain errors stay 422 and the concurrent save 409, both tested with inventory values; the SPA keeps stored stacks and renders no inventory control. RED: the new API test failed on all 16 cases with the response changes stashed, and 7 existing exact-shape assertions failed after them until updated.
 - 2026-10-28: slice 2 review fix: planner tests for `inventory` fields (added by the target, kept, no longer valid after a capacity cut, `list` to `inventory` and back); the planner already behaved as the decision table says, so no RED and no planner change; the tests pin it (58 tests green in `ReleaseUpgradePlanTest`).
 - 2026-10-28: T7 done: `FlowRun::finish` marks choice, prompt and character steps voluntary and `CampaignEffects::applySheetEffect` throws `InsufficientFunds` (opt-in `refuseBelowFloor`; check outcomes and push costs keep clamping); `answer` maps it to `{error, code: "insufficient_funds"}` 422 (`FlowRunErrorResponse`, OpenAPI regenerated). `Campaign::completeFlowStep` works on a clone, so a refusal leaves the campaign and journal untouched. RED: with `src` stashed 10 of 17 unit cases failed ("The step was completed."), and the API test answered 500 before the controller mapping; the clamp cases (check outcome, no currency, push cost) pass on first run, they pin existing behavior. A currency field without `min` still goes negative through a check outcome (floor 0 is enforced only on voluntary spends).
+- 2026-10-28: slice 3 review fixes: the affordability guard refuses a voluntary effect only when it leaves the currency under the floor and lower than it was, so a Character already under the floor may still gain money (RED: 3 of 4 new cases threw `InsufficientFunds`, then GREEN, 22 tests in `FlowRunAffordabilityTest`); a `CharacterSheetDialog` render test for an inventory's stack count (no RED, it pins existing behavior).
 
 ## Next step
 
-Slice 3: slice 2 review fix (planner `inventory` proof), T7 affordability, then review and PR. Slice 4 drops the stripped example-4 copy `GameSystemReleaseTranslatorGearTest::playable()` once Play reads shops too.
+Slice 4: slice 3 review fixes (affordability guard on a Character already below the floor; `CharacterSheetDialog` inventory render test), T6 shop step in the Play backend, then review and PR. T6 drops the stripped example-4 copy `GameSystemReleaseTranslatorGearTest::playable()` now that Play reads shops.

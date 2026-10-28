@@ -45,6 +45,17 @@ export const conditionsField: SheetField = {
   ],
 }
 
+/** An inventory field (ADR 0045) in its own group, with room for ten slots. */
+export const inventoryField: SheetField = {
+  ...base,
+  key: 'pack',
+  label: 'Pack',
+  group: 'Pack',
+  type: 'inventory',
+  capacity: 10,
+  maxStacks: 50,
+}
+
 /** One field of each type: Identity (text), Stats (two numbers), Vitals (two tracks), then Gear and Notes (each in its own group). */
 export const sheet: SheetField[] = [
   { ...base, key: 'role', label: 'Role', group: 'Identity', type: 'text', maxLength: 40 },

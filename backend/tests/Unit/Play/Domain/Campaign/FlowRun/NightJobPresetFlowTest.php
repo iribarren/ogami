@@ -98,6 +98,13 @@ final class NightJobPresetFlowTest extends FlowRunTestCase
             'target' => 'A data shard in a penthouse vault',
             'payout' => '1,000 eb',
             'plan' => 'In through the roof',
+            // The campaign's slots exist in the release; the heist never fills them.
+            'turf' => '',
+            'crew-name' => '',
+            'big-job' => '',
+            'twist' => '',
+            'fixer' => '',
+            'nemesis' => '',
         ], $campaign->factValues($this->release));
         self::assertSame(['Ada, a netrunner', 'A fixer who needs a deniable crew'], array_map(static fn (Npc $npc): string => $npc->name(), $campaign->npcs()));
         self::assertSame([['crew'], ['client']], array_map(static fn (Npc $npc): array => $npc->tags(), $campaign->npcs()));

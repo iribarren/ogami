@@ -79,7 +79,7 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; example 4 in `docs/domain/flow-examples.md` amended (Month's end resets `month` on both options; `fallout` is Getaway → Fallout; `planning` reuses Social and Exploration; gig payday pays eddies) | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Release v2 base in `night-job.json`: description, tags, fact slots, trackers, sheet economy (eddies, currency, `gear` and `cyberware` inventories), gear catalog; heist untouched; `PresetsTest` (v2, inventories, currency, catalog) and `NightJobPresetFlowTest` updated | | [ ] | |
+| T2 | 1 | Release v2 base in `night-job.json`: description, tags, fact slots, trackers, sheet economy (eddies, currency, `gear` and `cyberware` inventories), gear catalog; heist untouched; `PresetsTest` (v2, inventories, currency, catalog) and `NightJobPresetFlowTest` updated | delegated writer (slice 1) | [x] | |
 | T3 | 1 | Flow `campaign` with its Scene Types and tables; `PresetsTest` campaign assertions (non-default flow, acts, phases, trackers); `NightJobCampaignPresetFlowTest` unit test playing street zero, a gig chain, a world turn hit squad, the act gate, a Month's end (rent refused when broke, debt thread) and the finale's betrayal fallback | | [ ] | |
 | T4 | 2 | Slice 1 review fixes; e2e `frontend/e2e/play-night-job-campaign.spec.ts`: start the campaign flow, play street zero, buy at the Night Market | | [ ] | |
 | T5 | 2 | Chrome play pass of Act 1 and a Month's end; fixes | | [ ] | |
@@ -89,6 +89,8 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 
 - 2026-10-28: Exploration (contract support, multi-flow, publishing, tests): every element of example 4 exists in schema version 2; no blocker. Decided a second flow in `night-job`.
 - 2026-10-28: T1 done: feature doc added; example 4 amended (planning, fallout, gig payday, Night Market entry points, month reset on both Month's end options).
+
+- 2026-10-28: T2 done. RED: 3 PresetsTest failures (trackers, sheet fields, economy test); GREEN after the JSON: `phpunit --filter 'NightJob|nightJob'` 33 tests OK, `PresetsTest` 11 OK. `PresetsTest` publishes into an empty test database, so `releaseVersion()` stays 1 there (v2 only exists in a database that already holds v1). Heist flow and phases untouched; only the hard-coded fact list of `NightJobPresetFlowTest` changed.
 
 ## Reviews
 

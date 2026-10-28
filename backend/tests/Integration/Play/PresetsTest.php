@@ -22,10 +22,12 @@ use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Sheet\ConditionsField;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
+use App\Play\Domain\GameSystem\Sheet\InventoryField;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
 use App\Play\Domain\GameSystem\Sheet\TextField;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
+use App\Play\Domain\GameSystem\TrackerKind;
 use App\Randomness\Domain\Oracle\InvalidLikelihoodOracle;
 use App\Randomness\Domain\Oracle\LikelihoodAnswer;
 use App\Randomness\Domain\Oracle\LikelihoodLevel;
@@ -161,7 +163,9 @@ final class PresetsTest extends KernelTestCase
         $flow = $snapshot->defaultFlow();
         self::assertSame(['heist', FlowView::Focus], [$flow?->key, $flow?->defaultView]);
         self::assertSame(['the-job', 'legwork', 'the-heist', 'escape', 'epilogue'], array_map(static fn (\App\Play\Domain\GameSystem\Flow\Phase $phase): string => $phase->key, $flow->phases ?? []));
-        self::assertSame(['alarm', 'edge', 'objective'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
+        // The heist uses three trackers; the release also holds the campaign's (a Campaign keeps tracker values, not the flow).
+        self::assertSame(['alarm', 'edge', 'objective'], $flow->trackers);
+        self::assertSame(['alarm', 'edge', 'objective', 'rep', 'heat', 'lifestyle', 'housing', 'month'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
 
         // Every table of the flow resolves at both ends; "rumors" is for free play only.
         foreach (['job-clients' => 12, 'job-targets' => 12, 'complications' => 12, 'net-floors' => 12, 'black-ice' => 10, 'security-response' => 12, 'npc-name' => 16, 'rumors' => 12] as $table => $entries) {
@@ -182,10 +186,10 @@ final class PresetsTest extends KernelTestCase
 
         $sheet = $snapshot->sheet();
         self::assertSame(
-            ['role', 'nerve', 'hands', 'wits', 'grit', 'charm', 'cool', 'hp', 'wounded', 'humanity', 'gear', 'cyberware'],
+            ['role', 'nerve', 'hands', 'wits', 'grit', 'charm', 'cool', 'hp', 'wounded', 'humanity', 'eddies', 'gear', 'cyberware'],
             array_map(static fn (Field $field): string => $field->key, $sheet->fields()),
         );
-        foreach (['role' => TextField::class, 'nerve' => NumberField::class, 'hp' => TrackField::class, 'humanity' => TrackField::class, 'gear' => ListField::class, 'cyberware' => ListField::class] as $key => $type) {
+        foreach (['role' => TextField::class, 'nerve' => NumberField::class, 'hp' => TrackField::class, 'humanity' => TrackField::class, 'eddies' => NumberField::class, 'gear' => InventoryField::class, 'cyberware' => InventoryField::class] as $key => $type) {
             self::assertInstanceOf($type, $sheet->field($key), $key);
         }
 
@@ -205,6 +209,56 @@ final class PresetsTest extends KernelTestCase
             $formulas[$key] = $derived->formula->toString();
         }
         self::assertSame(['cool' => 'max(0, {nerve} - {tracker:alarm} / 2)', 'wounded' => '{hp.max} / 2'], $formulas);
+    }
+
+    #[Test]
+    public function nightJobHasASurvivalEconomyOfEddiesInventoriesAndAGearCatalog(): void
+    {
+        $this->assertPublishesOnce('night-job');
+        $snapshot = $this->snapshot('night-job');
+        $sheet = $snapshot->sheet();
+
+        // Eddies are the currency; gear and cyberware are inventories that split the catalog by category (ADR 0045).
+        $eddies = $sheet->field('eddies');
+        self::assertInstanceOf(NumberField::class, $eddies);
+        self::assertSame([0, 500], [$eddies->min, $eddies->default]);
+        self::assertSame(['eddies', 'eb'], [$sheet->currency()?->field, $sheet->currency()?->unit]);
+        $gear = $sheet->field('gear');
+        $cyberware = $sheet->field('cyberware');
+        self::assertInstanceOf(InventoryField::class, $gear);
+        self::assertInstanceOf(InventoryField::class, $cyberware);
+        self::assertSame([20, ['Gear', 'Food']], [$gear->capacity, $gear->categories]);
+        self::assertSame([null, 10, ['Chrome']], [$cyberware->capacity, $cyberware->maxStacks, $cyberware->categories]);
+
+        // Costs follow the book's price categories; every catalog entry fits one inventory.
+        $catalog = [];
+        foreach ($snapshot->gear() as $entry) {
+            $catalog[$entry->key] = [$entry->category, $entry->cost, $entry->slots];
+        }
+
+        self::assertSame([
+            'used-pistol' => ['Gear', 50, 1],
+            'armor-jacket' => ['Gear', 100, 2],
+            'burner-agent' => ['Gear', 50, 1],
+            'climbing-gear' => ['Gear', 100, 2],
+            'medkit' => ['Gear', 100, 1],
+            'kibble' => ['Food', 10, 1],
+            'real-coffee' => ['Food', 20, 1],
+            'cyberoptic' => ['Chrome', 100, 0],
+            'neural-link' => ['Chrome', 500, 0],
+            'interface-plugs' => ['Chrome', 100, 0],
+        ], $catalog);
+        foreach ($catalog as $key => [$category]) {
+            self::assertContains($category, [...($gear->categories ?? []), ...($cyberware->categories ?? [])], $key);
+        }
+
+        // The counters the campaign tracks: levels name the lifestyle and the housing.
+        $levels = static fn (string $key): array => array_map(static fn (\App\Play\Domain\GameSystem\TrackerLevel $level): string => $level->label, $snapshot->tracker($key)?->levels ?? []);
+        self::assertSame(['Kibble', 'Prepak', 'Good prepak', 'Fresh food'], $levels('lifestyle'));
+        self::assertSame(['Cube hotel', 'Cargo container', 'Studio apartment', 'Two-room conapt'], $levels('housing'));
+        self::assertSame([1, 0], [$snapshot->tracker('lifestyle')?->initial, $snapshot->tracker('housing')?->initial]);
+        self::assertSame([TrackerKind::Clock, 4], [$snapshot->tracker('month')?->kind, $snapshot->tracker('month')?->segments()]);
+        self::assertSame('At 8+ someone sends a hit squad', $snapshot->tracker('heat')?->hint);
     }
 
     #[Test]

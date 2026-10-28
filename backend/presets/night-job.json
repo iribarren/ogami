@@ -3,7 +3,7 @@
   "gameSystem": {
     "key": "night-job",
     "name": "Night Job",
-    "description": "A heist one-shot for use with Cyberpunk RED, for players new to solo play. Original content: a guided flow, an alarm clock and tables for one evening of work.",
+    "description": "A game for use with Cyberpunk RED, for players new to solo play, with two guided flows: a heist one-shot for one evening of work, and a campaign in three acts where a small crew makes a name. Original content: flows, clocks, rep and heat, a survival economy and tables.",
     "credits": {
       "notice": "Night Job is unofficial content provided under the Homebrew Content Policy of R. Talsorian Games and is not approved or endorsed by RTG. This content references materials that are the property of R. Talsorian Games and its licensees.",
       "license": "R. Talsorian Games Homebrew Content Policy",
@@ -196,18 +196,34 @@
   "tags": [
     {"key": "crew", "label": "Crew", "hint": "Part of your crew"},
     {"key": "client", "label": "Client", "hint": "The one paying for the job"},
-    {"key": "nomad", "label": "Nomad", "hint": "Good behind the wheel"}
+    {"key": "nomad", "label": "Nomad", "hint": "Good behind the wheel"},
+    {"key": "fixer", "label": "Fixer", "hint": "Brings you work and takes a cut"},
+    {"key": "netrunner", "label": "Netrunner", "hint": "Owns the net side of a job"},
+    {"key": "solo", "label": "Solo", "hint": "Handles the shooting"},
+    {"key": "rival", "label": "Rival", "hint": "Wants what you have"},
+    {"key": "corp", "label": "Corp", "hint": "Pays security to find you"}
   ],
   "trackers": [
     {"key": "alarm", "name": "Alarm", "hint": "At 6/6 security locks down and you run", "kind": "clock", "segments": 6},
     {"key": "edge", "name": "Edge", "hint": "A spare advantage you can spend to dodge trouble", "kind": "counter", "min": 0, "max": 3, "initial": 0},
-    {"key": "objective", "name": "Objective", "kind": "counter", "min": 0, "max": 1, "initial": 0, "levels": [{"upTo": 0, "label": "Not yet"}, {"label": "In hand"}]}
+    {"key": "objective", "name": "Objective", "kind": "counter", "min": 0, "max": 1, "initial": 0, "levels": [{"upTo": 0, "label": "Not yet"}, {"label": "In hand"}]},
+    {"key": "rep", "name": "Rep", "hint": "What the street says about your crew", "kind": "counter", "min": 0, "max": 10, "initial": 0},
+    {"key": "heat", "name": "Heat", "hint": "At 8+ someone sends a hit squad", "kind": "counter", "min": 0, "max": 10, "initial": 0},
+    {"key": "lifestyle", "name": "Lifestyle", "hint": "What you eat, month after month", "kind": "counter", "min": 0, "max": 3, "initial": 1, "levels": [{"upTo": 0, "label": "Kibble"}, {"upTo": 1, "label": "Prepak"}, {"upTo": 2, "label": "Good prepak"}, {"label": "Fresh food"}]},
+    {"key": "housing", "name": "Housing", "hint": "Where you sleep, and what it costs", "kind": "counter", "min": 0, "max": 3, "initial": 0, "levels": [{"upTo": 0, "label": "Cube hotel"}, {"upTo": 1, "label": "Cargo container"}, {"upTo": 2, "label": "Studio apartment"}, {"label": "Two-room conapt"}]},
+    {"key": "month", "name": "Month", "hint": "At 4/4 the rent is due", "kind": "clock", "segments": 4}
   ],
   "factSlots": [
     {"key": "client", "label": "Client", "type": "npc"},
     {"key": "target", "label": "Target", "type": "text"},
     {"key": "payout", "label": "Payout", "type": "text"},
-    {"key": "plan", "label": "Plan", "type": "text"}
+    {"key": "plan", "label": "Plan", "type": "text"},
+    {"key": "turf", "label": "Turf", "type": "text"},
+    {"key": "crew-name", "label": "Crew name", "type": "text"},
+    {"key": "big-job", "label": "The big job", "type": "text"},
+    {"key": "twist", "label": "The twist", "type": "text"},
+    {"key": "fixer", "label": "Fixer", "type": "npc"},
+    {"key": "nemesis", "label": "Nemesis", "type": "npc"}
   ],
   "sceneTypes": [
     {
@@ -438,9 +454,11 @@
       {"key": "hp", "label": "HP", "hint": "Hit points: at zero you are down.", "group": "Condition", "type": "track", "max": 40},
       {"key": "wounded", "label": "Wounded at", "hint": "Half your HP: at or below it you are badly hurt.", "group": "Condition", "type": "derived", "formula": "{hp.max} / 2"},
       {"key": "humanity", "label": "Humanity", "hint": "What is left of you under the chrome.", "group": "Condition", "type": "track", "max": 50},
-      {"key": "gear", "label": "Gear", "group": "Kit", "type": "list", "itemLabel": "Item", "maxItems": 20},
-      {"key": "cyberware", "label": "Cyberware", "group": "Kit", "type": "list", "itemLabel": "Implant", "maxItems": 10}
-    ]
+      {"key": "eddies", "label": "Eddies", "hint": "Your money. Gigs pay it, rent and shops take it.", "group": "Kit", "type": "number", "min": 0, "default": 500},
+      {"key": "gear", "label": "Gear", "group": "Kit", "type": "inventory", "capacity": 20, "categories": ["Gear", "Food"]},
+      {"key": "cyberware", "label": "Cyberware", "group": "Kit", "type": "inventory", "maxStacks": 10, "categories": ["Chrome"]}
+    ],
+    "currency": {"field": "eddies", "unit": "eb"}
   },
   "checks": [
     {"key": "nerve", "label": "Nerve check", "hint": "Stay steady when the job goes wrong.", "dice": "1d10", "modifier": "{nerve}", "difficulty": {"label": "Difficulty", "default": 13, "min": 9, "max": 29}, "bands": [{"key": "botch", "label": "Botched", "upTo": {"formula": "{check:difficulty} - 6"}}, {"key": "fail", "label": "Failed", "upTo": {"formula": "{check:difficulty} - 1"}}, {"key": "success", "label": "Success"}]},
@@ -449,5 +467,17 @@
     {"key": "grit", "label": "Grit check", "hint": "Take the hit and stay on your feet.", "dice": "1d10", "modifier": "{grit}", "difficulty": {"label": "Difficulty", "default": 13, "min": 9, "max": 29}, "bands": [{"key": "botch", "label": "Botched", "upTo": {"formula": "{check:difficulty} - 6"}}, {"key": "fail", "label": "Failed", "upTo": {"formula": "{check:difficulty} - 1"}}, {"key": "success", "label": "Success"}]},
     {"key": "charm", "label": "Charm check", "hint": "Talk your way past someone.", "dice": "1d10", "modifier": "{charm}", "difficulty": {"label": "Difficulty", "default": 13, "min": 9, "max": 29}, "bands": [{"key": "botch", "label": "Botched", "upTo": {"formula": "{check:difficulty} - 6"}}, {"key": "fail", "label": "Failed", "upTo": {"formula": "{check:difficulty} - 1"}}, {"key": "success", "label": "Success"}]},
     {"key": "cool", "label": "Cool check", "hint": "Keep your head while security closes in.", "dice": "1d10", "modifier": "{cool}", "difficulty": {"label": "Difficulty", "default": 13, "min": 9, "max": 29}, "bands": [{"key": "botch", "label": "Botched", "upTo": {"formula": "{check:difficulty} - 6"}}, {"key": "fail", "label": "Failed", "upTo": {"formula": "{check:difficulty} - 1"}}, {"key": "success", "label": "Success"}]}
+  ],
+  "gear": [
+    {"key": "used-pistol", "name": "Used pistol", "cost": 50, "category": "Gear", "description": "Reliable enough, and nobody asks where it came from."},
+    {"key": "armor-jacket", "name": "Armor jacket", "cost": 100, "slots": 2, "category": "Gear", "description": "Light armor that passes for street wear."},
+    {"key": "burner-agent", "name": "Burner agent", "cost": 50, "category": "Gear", "description": "A cheap agent you throw away after one job."},
+    {"key": "climbing-gear", "name": "Climbing gear", "cost": 100, "slots": 2, "category": "Gear", "description": "Rope, clamps and gloves for the way in nobody watches."},
+    {"key": "medkit", "name": "Medkit", "cost": 100, "category": "Gear", "description": "Patches you up enough to keep walking."},
+    {"key": "kibble", "name": "Kibble by the kilo", "cost": 10, "category": "Food"},
+    {"key": "real-coffee", "name": "Real coffee", "cost": 20, "category": "Food", "description": "A luxury that tastes like the old days."},
+    {"key": "cyberoptic", "name": "Cheap cyberoptic", "cost": 100, "slots": 0, "category": "Chrome", "description": "A mass-market eye with a few tricks."},
+    {"key": "neural-link", "name": "Neural link", "cost": 500, "slots": 0, "category": "Chrome", "description": "The port every netrunner starts from."},
+    {"key": "interface-plugs", "name": "Interface plugs", "cost": 100, "slots": 0, "category": "Chrome", "description": "Sockets for cables and gadgets."}
   ]
 }

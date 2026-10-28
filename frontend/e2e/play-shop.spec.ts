@@ -37,7 +37,7 @@ test('a solo player buys gear at a shop, sees the money go down, the gear in the
 
   // The sheet shows the lower balance and the gear in the Pack.
   const characters = page.getByRole('region', { name: 'Characters' })
-  await expect(characters).toContainText('90')
+  await expect(characters).toContainText('Eddies: 90 eb')
   await expect(characters).toContainText('Ration ×2')
 
   // The journal tells the visit.

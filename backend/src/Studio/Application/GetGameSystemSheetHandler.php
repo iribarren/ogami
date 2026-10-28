@@ -36,6 +36,8 @@ final readonly class GetGameSystemSheetHandler implements QueryHandler
             1 === $gameSystem->schemaVersion() ? [] : $this->trackers($document),
             $latest instanceof \App\Studio\Domain\Release\GameSystemRelease ? $this->keys($this->fields($this->sheet($latest->content()->toArray()))) : [],
             $budgets,
+            1 === $gameSystem->schemaVersion() ? [] : $this->gear($document['gear'] ?? null),
+            1 === $gameSystem->schemaVersion() ? null : $this->currency($sheet['currency'] ?? null),
         );
     }
 
@@ -76,6 +78,35 @@ final readonly class GetGameSystemSheetHandler implements QueryHandler
         }
 
         return $views;
+    }
+
+    /**
+     * @return list<SheetGearEntryView> the entries in order; one without a string key and name or an integer cost is left out
+     */
+    private function gear(mixed $gear): array
+    {
+        $views = [];
+        foreach ($this->objects($gear) as $entry) {
+            if (\is_string($entry['key'] ?? null) && \is_string($entry['name'] ?? null) && \is_int($entry['cost'] ?? null)) {
+                $views[] = new SheetGearEntryView(
+                    $entry['key'],
+                    $entry['name'],
+                    $entry['cost'],
+                    $this->int($entry['slots'] ?? null, 1),
+                    \is_string($entry['category'] ?? null) ? $entry['category'] : null,
+                    \is_string($entry['description'] ?? null) ? $entry['description'] : null,
+                );
+            }
+        }
+
+        return $views;
+    }
+
+    private function currency(mixed $currency): ?SheetCurrencyView
+    {
+        return \is_array($currency) && \is_string($currency['field'] ?? null)
+            ? new SheetCurrencyView($currency['field'], \is_string($currency['unit'] ?? null) ? $currency['unit'] : null)
+            : null;
     }
 
     /**

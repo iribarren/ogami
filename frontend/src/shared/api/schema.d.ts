@@ -1565,6 +1565,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/game-systems/{key}/gear/{gear}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put one gear entry of one of my GameSystem drafts by its key: replaces it in place, else appends it; what the body leaves out is unset */
+        put: operations["saveGearEntry"];
+        post?: never;
+        /** Delete one gear entry of one of my GameSystem drafts by its key; the last one removes the catalog */
+        delete: operations["removeGearEntry"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/sheet/currency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put the currency of the sheet of one of my GameSystem drafts: the number field Characters spend and its unit */
+        put: operations["saveSheetCurrency"];
+        post?: never;
+        /** Remove the currency of the sheet of one of my GameSystem drafts */
+        delete: operations["removeSheetCurrency"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/studio/game-systems/{key}/library-imports": {
         parameters: {
             query?: never;
@@ -5510,6 +5546,50 @@ export interface components {
              */
             max: number | null;
         };
+        SheetGearEntryResponse: {
+            /**
+             * @description The entry's key, which addresses it in the gear routes and which shop steps and Characters name it by.
+             * @example used-pistol
+             */
+            key: string;
+            /**
+             * @description What the entry is called.
+             * @example Used pistol
+             */
+            name: string;
+            /**
+             * @description What it costs in the sheet's currency.
+             * @example 50
+             */
+            cost: number;
+            /**
+             * @description The inventory slots one unit takes; 1 when the entry stores none.
+             * @example 1
+             */
+            slots: number;
+            /**
+             * @description The category inventories and shops select by; null for none.
+             * @example Weapons
+             */
+            category: string | null;
+            /**
+             * @description A line of flavor; null for none.
+             * @example Cheap and loud.
+             */
+            description: string | null;
+        };
+        SheetCurrencyResponse: {
+            /**
+             * @description The key of the number field that holds the money.
+             * @example eddies
+             */
+            field: string;
+            /**
+             * @description The unit amounts are shown with; null for none.
+             * @example eb
+             */
+            unit: string | null;
+        };
         GameSystemSheetResponse: {
             /**
              * @description The draft's version: send it as "expectedVersion" with the next sheet write.
@@ -5544,6 +5624,10 @@ export interface components {
             publishedFieldKeys: string[];
             /** @description The point budgets of the sheet in order (ADR 0043), a legacy single budget as the key "points"; empty without any. */
             pointBudgets: components["schemas"]["SheetPointBudgetEntryResponse"][];
+            /** @description The release's gear catalog, which inventory fields accept (ADR 0045), in order; empty without any. */
+            gear: components["schemas"]["SheetGearEntryResponse"][];
+            /** @description The sheet's currency, the number field Characters spend; null without one. */
+            currency: components["schemas"]["SheetCurrencyResponse"] | null;
         };
         SaveSheetFieldRequest: {
             /**
@@ -5661,6 +5745,55 @@ export interface components {
             /** @description A human-readable message. */
             error: string;
             code: components["schemas"]["SheetConflictCode"];
+        };
+        SaveGearEntryRequest: {
+            /**
+             * @description The draft version the client read; another save since then is refused (409).
+             * @example 3
+             */
+            expectedVersion: number;
+            /**
+             * @description What the entry is called (1 to 60 characters); unique in the catalog, trimmed and ignoring case.
+             * @example Used pistol
+             */
+            name: string;
+            /**
+             * @description What it costs in the sheet's currency (0 to 1,000,000).
+             * @example 50
+             */
+            cost: number;
+            /**
+             * @description The inventory slots one unit takes (0 to 100); 1 when left out.
+             * @example 1
+             */
+            slots?: number | null;
+            /**
+             * @description The category inventories and shops select by (1 to 40 characters); none when left out.
+             * @example Weapons
+             */
+            category?: string | null;
+            /**
+             * @description A line of flavor (up to 500 characters); none when left out.
+             * @example Cheap and loud.
+             */
+            description?: string | null;
+        };
+        SaveSheetCurrencyRequest: {
+            /**
+             * @description The draft version the client read; another save since then is refused (409).
+             * @example 3
+             */
+            expectedVersion: number;
+            /**
+             * @description The key of the number field that holds the money; never a derived field.
+             * @example eddies
+             */
+            field: string;
+            /**
+             * @description The unit amounts are shown with (1 to 10 characters); none when left out.
+             * @example eb
+             */
+            unit?: string | null;
         };
         LibraryImportPackResponse: {
             /** @example fantasy-basics */
@@ -13504,6 +13637,344 @@ export interface operations {
                 };
             };
             /** @description The draft has schema version 1, or the draft would break the release contract's rules elsewhere (the message starts with the path); nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    saveGearEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                gear: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveGearEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's sheet, whose gear lists the catalog with the entry, and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemSheetResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has no integer "expectedVersion". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Nothing changed; the code says why: modified_concurrently (another request saved the draft meanwhile: reload it and try again) or library_pack (a pack has no gear). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SheetConflictResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The catalog would break the release contract (the message starts with its path, "gear[i]" and the property: an invalid key, a name that is missing, blank or already taken, a cost or slots out of range, a key in the body, a category an inventory field or a shop step accepts that no entry would keep, more than 500 entries), or the draft has schema version 1; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeGearEntry: {
+        parameters: {
+            query: {
+                /** @description The draft version the client read; a query parameter because a DELETE has no body. */
+                expectedVersion: number;
+            };
+            header?: never;
+            path: {
+                key: string;
+                gear: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft's sheet without the entry and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemSheetResponse"];
+                };
+            };
+            /** @description The "expectedVersion" query parameter is missing or not an integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or its catalog has no entry with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Nothing changed; the code says why: modified_concurrently (another request saved the draft meanwhile: reload it and try again) or library_pack (a pack has no gear). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SheetConflictResponse"];
+                };
+            };
+            /** @description A shop step offers the entry by key (the body lists the paths), the draft has schema version 1, or the draft would break the release contract without the entry (the message starts with the path); nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OracleInUseResponse"];
+                };
+            };
+        };
+    };
+    saveSheetCurrency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveSheetCurrencyRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft's sheet with the currency and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemSheetResponse"];
+                };
+            };
+            /** @description The JSON body is malformed or has no integer "expectedVersion". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Nothing changed; the code says why: modified_concurrently (another request saved the draft meanwhile: reload it and try again) or library_pack (a pack has no sheet). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SheetConflictResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The currency would break the release contract (the message starts with "sheet.currency" and the property: a missing, unknown or non-number field, a derived field, a unit that is not 1 to 10 characters, an unknown property), or the draft has schema version 1; nothing changed. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeSheetCurrency: {
+        parameters: {
+            query: {
+                /** @description The draft version the client read; a query parameter because a DELETE has no body. */
+                expectedVersion: number;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft's sheet without the currency and the new version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemSheetResponse"];
+                };
+            };
+            /** @description The "expectedVersion" query parameter is missing or not an integer. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or its sheet declares no currency. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Nothing changed; the code says why: modified_concurrently (another request saved the draft meanwhile: reload it and try again) or library_pack (a pack has no sheet). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SheetConflictResponse"];
+                };
+            };
+            /** @description The draft has schema version 1, or a shop step needs the currency (the message starts with its path); nothing changed. */
             422: {
                 headers: {
                     [name: string]: unknown;

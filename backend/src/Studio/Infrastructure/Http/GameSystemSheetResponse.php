@@ -13,7 +13,7 @@ use OpenApi\Attributes as OA;
  * version a client sends back as the expected version of its next sheet write. Every sheet write
  * answers with this.
  */
-#[OA\Schema(required: ['version', 'schemaVersion', 'columns', 'groups', 'fields', 'trackers', 'publishedFieldKeys', 'pointBudgets'])]
+#[OA\Schema(required: ['version', 'schemaVersion', 'columns', 'groups', 'fields', 'trackers', 'publishedFieldKeys', 'pointBudgets', 'gear', 'currency'])]
 final readonly class GameSystemSheetResponse
 {
     /**
@@ -22,6 +22,7 @@ final readonly class GameSystemSheetResponse
      * @param list<SheetTrackerResponse>          $trackers
      * @param list<string>                        $publishedFieldKeys
      * @param list<SheetPointBudgetEntryResponse> $pointBudgets
+     * @param list<SheetGearEntryResponse>        $gear
      */
     private function __construct(
         #[OA\Property(description: 'The draft\'s version: send it as "expectedVersion" with the next sheet write.', example: 3)]
@@ -40,6 +41,10 @@ final readonly class GameSystemSheetResponse
         public array $publishedFieldKeys,
         #[OA\Property(description: 'The point budgets of the sheet in order (ADR 0043), a legacy single budget as the key "points"; empty without any.', type: 'array', items: new OA\Items(ref: new Model(type: SheetPointBudgetEntryResponse::class)))]
         public array $pointBudgets,
+        #[OA\Property(description: 'The release\'s gear catalog, which inventory fields accept (ADR 0045), in order; empty without any.', type: 'array', items: new OA\Items(ref: new Model(type: SheetGearEntryResponse::class)))]
+        public array $gear,
+        #[OA\Property(ref: new Model(type: SheetCurrencyResponse::class), description: 'The sheet\'s currency, the number field Characters spend; null without one.', nullable: true)]
+        public ?SheetCurrencyResponse $currency,
     ) {
     }
 
@@ -54,6 +59,8 @@ final readonly class GameSystemSheetResponse
             array_map(SheetTrackerResponse::fromView(...), $view->trackers),
             $view->publishedFieldKeys,
             array_map(SheetPointBudgetEntryResponse::fromView(...), $view->pointBudgets),
+            array_map(SheetGearEntryResponse::fromView(...), $view->gear),
+            $view->currency instanceof \App\Studio\Application\SheetCurrencyView ? SheetCurrencyResponse::fromView($view->currency) : null,
         );
     }
 }

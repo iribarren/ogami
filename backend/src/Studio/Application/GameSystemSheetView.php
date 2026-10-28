@@ -18,6 +18,8 @@ final readonly class GameSystemSheetView
      * @param list<SheetTrackerView>        $trackers           the draft's trackers, which derived fields may read as {tracker:key}
      * @param list<string>                  $publishedFieldKeys the field keys of the latest release of this GameSystem; none when it has no release
      * @param list<SheetPointBudgetView>    $pointBudgets       the point budgets in order, a legacy single budget as the key "points"; none without
+     * @param list<SheetGearEntryView>      $gear               the gear catalog in order; none without (an entry that is not an object with a string key and name and an integer cost is left out)
+     * @param SheetCurrencyView|null        $currency           the sheet's currency; null without
      */
     public function __construct(
         public int $version,
@@ -28,6 +30,8 @@ final readonly class GameSystemSheetView
         public array $trackers,
         public array $publishedFieldKeys,
         public array $pointBudgets = [],
+        public array $gear = [],
+        public ?SheetCurrencyView $currency = null,
     ) {
     }
 }

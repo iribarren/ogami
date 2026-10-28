@@ -65,8 +65,13 @@ export function ShopStepForm({
   const money = (amount: number) =>
     shop.currency.unit === null ? String(amount) : `${String(amount)} ${shop.currency.unit}`
 
+  // A Character with no stored value starts where the server reads it: the default, else 0 moved inside min..max.
   const stored = character?.values[shop.currency.field]
-  const current = typeof stored === 'number' ? stored : 0
+  const current =
+    typeof stored === 'number'
+      ? stored
+      : (moneyField?.default ??
+        Math.max(moneyField?.min ?? -Infinity, Math.min(0, moneyField?.max ?? Infinity)))
 
   // The Character's catalog stacks the shop can buy: free stacks have no price and are never sold.
   const sellable =
@@ -75,12 +80,13 @@ export function ShopStepForm({
       : sheet
           .filter(({ type }) => type === 'inventory')
           .flatMap((field) =>
-            stacksOf(character.values[field.key]).flatMap((stack) => {
+            stacksOf(character.values[field.key]).flatMap((stack, index) => {
               const entry = 'gear' in stack ? gear.find(({ key }) => key === stack.gear) : undefined
               return 'gear' in stack && entry !== undefined && shop.sellRate !== null
                 ? [
                     {
-                      id: `${field.key}:${stack.gear}`,
+                      // Two stacks of one gear are two lines: the position tells them apart.
+                      id: `${field.key}:${String(index)}`,
                       field,
                       entry,
                       held: stack.quantity,
@@ -112,7 +118,9 @@ export function ShopStepForm({
     0,
   )
   const balance = current - spend + earn
-  const belowFloor = balance < floor
+  // The server refuses only a balance under the floor that is also lower than before: a Character
+  // already under it may still gain money.
+  const belowFloor = balance < floor && balance < current
   const empty =
     !invalid &&
     buyQuantities.every(({ quantity }) => quantity === 0) &&

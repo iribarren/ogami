@@ -2439,6 +2439,16 @@ export interface components {
              */
             characterId: string;
         };
+        FlowShopStepResponse: {
+            /** @description The catalog entries on sale, in catalog order: the stock drawn when the step was reached, or the whole offer of a shop without a stock; empty when the stock drew none. A purchase names one by its key. */
+            onSale: components["schemas"]["GearEntryResponse"][];
+            /**
+             * @description The percent of the cost the shop pays for one unit sold, rounded down; null when the shop does not buy.
+             * @example 50
+             */
+            sellRate: number | null;
+            currency: components["schemas"]["CurrencyResponse"];
+        };
         FlowStepResponse: {
             /** @example slip-past */
             key: string;
@@ -2447,7 +2457,7 @@ export interface components {
              * @example prompt
              * @enum {string}
              */
-            kind: "prompt" | "oracle" | "table" | "roll" | "choice" | "pick" | "character" | "check";
+            kind: "prompt" | "oracle" | "table" | "roll" | "choice" | "pick" | "character" | "check" | "shop";
             /** @example Who is on the crew? */
             title: string;
             /**
@@ -2510,6 +2520,8 @@ export interface components {
             changesSheet: boolean;
             /** @description The roll the check step waits on until the player keeps or pushes it (ADR 0041); null while none does, and for the other kinds. While a roll pends, every other FlowRun command is refused. */
             pending: components["schemas"]["FlowStepPendingResponse"] | null;
+            /** @description What the shop step trades (ADR 0045): the gear on sale, its sell rate and the currency; null for the other kinds. The answer names the Character with "characterId" and lists "buy" and "sell". */
+            shop: components["schemas"]["FlowShopStepResponse"] | null;
         };
         SceneTypeSummaryResponse: {
             /** @example legwork */
@@ -3247,7 +3259,7 @@ export interface components {
             checkKey?: string | null;
         };
         /** @enum {string} */
-        FlowRunErrorCode: "insufficient_funds";
+        FlowRunErrorCode: "insufficient_funds" | "inventory_full";
         FlowRunErrorResponse: {
             /** @description A human-readable message. */
             error: string;
@@ -3790,6 +3802,61 @@ export interface components {
             /** @description Every change, in the order the effects applied; at least one. */
             changes: components["schemas"]["SheetChangeResponse"][];
         };
+        ShopLineResponse: {
+            /**
+             * @description The inventory field a sold stack left; null for a purchase.
+             * @example gear
+             */
+            field: string | null;
+            /**
+             * @description The catalog key.
+             * @example kibble
+             */
+            gear: string;
+            /**
+             * @description The name of the gear when the step completed.
+             * @example Kibble by the kilo
+             */
+            name: string;
+            /** @example 3 */
+            quantity: number;
+            /**
+             * @description The price of one unit: its cost for a purchase, the shop's sale price for a sale.
+             * @example 10
+             */
+            price: number;
+        };
+        ShopContentResponse: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "shop";
+            /**
+             * Format: uuid
+             * @description The Character who traded.
+             */
+            characterId: string;
+            /**
+             * @description The name of the Character when the step completed.
+             * @example Vi
+             */
+            characterName: string;
+            /** @description The gear bought, in the order the player listed it; empty when nothing was bought. Its field is null. */
+            bought: components["schemas"]["ShopLineResponse"][];
+            /** @description The gear sold, in the order the player listed it, with the inventory field it left; empty when nothing was sold. */
+            sold: components["schemas"]["ShopLineResponse"][];
+            /**
+             * @description The currency of the Character before the transaction.
+             * @example 50
+             */
+            before: number;
+            /**
+             * @description The currency of the Character after it.
+             * @example 43
+             */
+            after: number;
+        };
         FlowNoteBandResponse: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -3903,8 +3970,8 @@ export interface components {
              * @description The same as `content.kind`.
              * @enum {string}
              */
-            kind: "note" | "roll" | "oracle-table" | "likelihood" | "choice" | "pick" | "check" | "sheet-change" | "flowOutcome";
-            content: components["schemas"]["NoteContentResponse"] | components["schemas"]["RollContentResponse"] | components["schemas"]["OracleTableContentResponse"] | components["schemas"]["LikelihoodContentResponse"] | components["schemas"]["ChoiceContentResponse"] | components["schemas"]["PickContentResponse"] | components["schemas"]["CheckContentResponse"] | components["schemas"]["SheetChangeContentResponse"] | components["schemas"]["FlowOutcomeContentResponse"];
+            kind: "note" | "roll" | "oracle-table" | "likelihood" | "choice" | "pick" | "check" | "sheet-change" | "shop" | "flowOutcome";
+            content: components["schemas"]["NoteContentResponse"] | components["schemas"]["RollContentResponse"] | components["schemas"]["OracleTableContentResponse"] | components["schemas"]["LikelihoodContentResponse"] | components["schemas"]["ChoiceContentResponse"] | components["schemas"]["PickContentResponse"] | components["schemas"]["CheckContentResponse"] | components["schemas"]["SheetChangeContentResponse"] | components["schemas"]["ShopContentResponse"] | components["schemas"]["FlowOutcomeContentResponse"];
             /** @description The Flow step that recorded the entry; null for an entry the player wrote or rolled by hand. */
             flowStep: components["schemas"]["JournalFlowStepResponse"] | null;
         };
@@ -8722,7 +8789,7 @@ export interface operations {
                     "application/json": components["schemas"]["CampaignResponse"];
                 };
             };
-            /** @description The JSON body is malformed: no string "stepKey", or a non-string "text", "optionKey" or "likelihood", a non-string "checkKey", a non-integer "chaosFactor", "difficulty" or "situational", or "pickedIds" that is not a list of strings. */
+            /** @description The JSON body is malformed: no string "stepKey", or a non-string "text", "optionKey" or "likelihood", a non-string "checkKey", a non-integer "chaosFactor", "difficulty" or "situational", "pickedIds" that is not a list of strings, or "buy" or "sell" that is not a list of lines of the shape the request documents. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -8776,7 +8843,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character, or its check set is given no "checkKey" or one outside the set, or a single-check step is given one. Or a formula of a band bound, a tracker or sheet Effect value or a step's difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed. Or a choice option, a prompt or a character step spends more of the release's currency than the Character has (code "insufficient_funds"); nothing changed. */
+            /** @description A field does not belong to the step's kind or a required one is missing, the text is blank or too long, the option or likelihood level is unknown, the chaos factor is out of range or not expected (also when the oracle takes it from a campaign Tracker), a picked id is no candidate, repeats, or the count picked is outside the step's minimum and maximum, or "pickedIds" is sent for a step that takes none (or missing in mode choose), or the step is a condition step. For a check step: the Character is unknown or not in the Scene (outside a Scene, the session party), a difficulty is sent for a step that fixes one or a check that declares none or outside its min..max, the situational modifier is outside -100..100, or the modifier or a band of the check cannot be evaluated for the Character, or its check set is given no "checkKey" or one outside the set, or a single-check step is given one. Or a formula of a band bound, a tracker or sheet Effect value or a step's difficulty divides by zero, overflows or reads a sheet value that has none; nothing changed. Or a choice option, a prompt, a character step or a shop transaction spends more of the release's currency than the Character has (code "insufficient_funds"), or a shop purchase takes an inventory field over its slots or stacks (code "inventory_full"); nothing changed. For a shop step: no Character or one not in the campaign, gear not on sale, a sale the shop does not buy or more than the stack holds, a quantity outside 1..9999 or a line listed twice. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8847,7 +8914,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun waits for another step, the step is mandatory, the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile. */
+            /** @description The campaign plays freely, guidance is paused or the Flow is complete, a check step's roll waits for Keep or Push, the FlowRun waits for another step, the step is mandatory or a shop (left with an empty transaction instead), the next scene does not fit the session (200 scenes), or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;

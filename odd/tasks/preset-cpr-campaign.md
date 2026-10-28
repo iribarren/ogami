@@ -85,7 +85,7 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 | T1 | 1 | Docs: this feature doc; example 4 in `docs/domain/flow-examples.md` amended (Month's end resets `month` on both options; `fallout` is Getaway → Fallout; `planning` reuses Social and Exploration; gig payday pays eddies) | delegated writer (slice 1) | [x] | be8f7e37 |
 | T2 | 1 | Release v2 base in `night-job.json`: description, tags, fact slots, trackers, sheet economy (eddies, currency, `gear` and `cyberware` inventories), gear catalog; heist untouched; `PresetsTest` (v2, inventories, currency, catalog) and `NightJobPresetFlowTest` updated | delegated writer (slice 1) | [x] | e29b0a66 |
 | T3 | 1 | Flow `campaign` with its Scene Types and tables; `PresetsTest` campaign assertions (non-default flow, acts, phases, trackers); `NightJobCampaignPresetFlowTest` unit test playing street zero, a gig chain, a world turn hit squad, the act gate, a Month's end (rent refused when broke, debt thread) and the finale's betrayal fallback | delegated writer (slice 1) | [x] | 32ab4d8d, 843cde2e |
-| T4 | 2 | Slice 1 review fixes; e2e `frontend/e2e/play-night-job-campaign.spec.ts`: start the campaign flow, play street zero, buy at the Night Market | | [ ] | |
+| T4 | 2 | Slice 1 review fixes; e2e `frontend/e2e/play-night-job-campaign.spec.ts`: start the campaign flow, play street zero, buy at the Night Market | delegated writer (slice 2) | [x] | |
 | T5 | 2 | Chrome play pass of Act 1 and a Month's end; fixes | | [ ] | |
 | T6 | 2 | Closing: Reviews, roadmap `Done:` line under B12 | | [ ] | |
 
@@ -98,6 +98,7 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 - 2026-10-28: T3 done. RED: `PresetsTest` campaign test failed on the flow list (one flow) before the JSON. GREEN: `PresetsTest` 12 OK; `NightJobCampaignPresetFlowTest` 12 tests OK (street zero, gig chain, messy job, hit squad, grudge, act gate, closed gate, Month's end refused then skipped, rent paid, Night Market from Gear up, Night Market before Month's end, betrayal fallback to a client and the finished Flow). Publishing prints only the heist's existing warning (`flows[0]` Firefight); none for `flows[1]`.
 - 2026-10-28: `play-night-job.spec.ts` needed `getByLabel('Name', { exact: true })`: the new inventory fields add "Free stack name" inputs to the crew step. Passes with the other night-job specs (`play-checks`, `play-derived-values`, `studio-sheet-builder`, `studio-check-editor`) against the seeded release v2. `make verify`: backend-qa, backend-test and api-check pass.
 - 2026-10-28: T4 review fixes. RED: `NightJobCampaignPresetFlowTest` 2 failures (alarm still reset on the `gig` prompt, so the skipped-prompt gig kept alarm 4). GREEN after the JSON: `--filter 'NightJob|Presets'` 58 tests OK. Gig alarm reset moved to the `take-it` Yes option; all four rents use formulas; conapt skip names `next: debt`. New tests: skipped prompt then Yes resets alarm, No leaves it, studio formula rent paid, conapt skip.
+- 2026-10-28: T4 e2e `play-night-job-campaign.spec.ts` written against existing behaviour (no RED). Plays street zero, Downtime and a Night Market purchase; the world turn roll and the random stock are handled generically (roll, skip any event steps; buy the first item). 6 runs green, `play-night-job` green.
 
 ## Reviews
 

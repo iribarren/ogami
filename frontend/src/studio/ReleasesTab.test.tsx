@@ -302,8 +302,11 @@ describe('the releases tab', () => {
     const outline = view
       .getAllByRole('group', { name: 'Gear' })
       .find((group) => !changesGroup.contains(group))
+    if (outline === undefined) {
+      throw new Error('the outline has no Gear group')
+    }
     expect(
-      within(outline ?? changesGroup)
+      within(outline)
         .getAllByRole('listitem')
         .map((item) => item.textContent),
     ).toEqual(['Medkitmedkit', 'rope'])

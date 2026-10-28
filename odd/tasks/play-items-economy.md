@@ -101,6 +101,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T12 | 8 | Studio UI: Gear tab; sheet builder `inventory` type and currency setting; tests and stories | delegated writer (Sonnet) | [x] | 3c6eec0, 4be7386 |
 | T13 | 9 | Studio flow editor: `shop` step (offer, stock, sell rate), error locations; release view and diff show gear; the journal's shop entry shows the currency unit (slice 6 parent note: `ShopContent` does not carry it); tests, e2e | delegated writer (Sonnet) | [x] | |
 | T14 | 9 | Wrap-up: findings fixed or filed; roadmap B11 done; this doc closed | parent (closing doc commit) | [ ] | |
+| T15 | 9 | Slice 9 review fixes: outline test without fallback, empty currency unit, cap hint on the line with the excess | delegated writer (Sonnet) | [x] | |
 
 ## Acceptance criteria
 
@@ -160,6 +161,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-28: T13 part 2 (release view and diff): `ReleaseOutline` gains a `gear` section after `sheetFields` (items keyed by gear key, named by `name`; empty for a release without a catalog), `ReleaseDiff` compares it by key; `gear` has no count (`SectionCounts` unchanged, as the draft rail shows none), so the outline is the counts' sections plus `gear`; `sectionLabels.gear` is `Gear`; `make api` regenerated the spec (description only). RED: 5 unit cases failed first, then GREEN; the frontend outline and changes cases failed on the raw `gear` label, then GREEN. Known: `GameSystemPublicationHandlersTest` line 238 still compares the diff sections with the counts' keys and needs `gear` added (file outside the writer's edit surface; reported to the parent).
 - 2026-10-28: T13 part 3 (journal unit): `Journal` and `JournalEntryView` take an optional `currencyUnit`, `CampaignJournal` passes the pinned release's `currency.unit`, and a shop entry reads `Vi: 100 → 105 eb` (the unit after the final amount only, so the e2e's `Vi: 100 → 90` still matches); no unit, no suffix; the journal content is unchanged. RED: 2 new cases failed on the missing unit, then GREEN (Vitest `src/play/journal` and `CampaignPage`: 161 tests).
 - 2026-10-28: T13 done, e2e: `studio-shop-editor.spec.ts` copies the seeded `e2e-corner-shop` release, adds a categorised Medkit in the Gear section, adds a second shop step in the Scene Type (the Ration by key, the Medical category, a fixed stock of 2), saves, and sees it after a reload (`make e2e ARGS=studio-shop-editor`: 1 passed; written with the code, no RED).
+- 2026-10-28: slice 9 review fixes (T15): the `ReleasesTab` outline test asserts the outline's Gear group exists instead of falling back to the changes group; `JournalEntryView` treats an empty or blank `currencyUnit` as none (no trailing space); `ShopStepForm` shows the cap hint once per field+gear group, on the line whose quantity pushes the typed total past the first stack. RED: the new empty-unit and two cap-hint tests failed against the old code (the outline test only tightens an assertion, no RED); GREEN: focused vitest passes.
 
 ## Next step
 

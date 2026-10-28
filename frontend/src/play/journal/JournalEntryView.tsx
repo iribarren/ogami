@@ -191,6 +191,8 @@ function ShopView({
         </ul>
       </div>
     )
+  // An empty or blank unit reads as none, so no stray space follows the amount.
+  const unit = currencyUnit?.trim() ?? ''
 
   return (
     <div className="space-y-1">
@@ -201,7 +203,7 @@ function ShopView({
       {lines('Sold', content.sold)}
       <p className="text-sm tabular-nums">
         {content.characterName}:{' '}
-        {`${String(content.before)} → ${String(content.after)}${currencyUnit === null ? '' : ` ${currencyUnit}`}`}
+        {`${String(content.before)} → ${String(content.after)}${unit === '' ? '' : ` ${unit}`}`}
       </p>
     </div>
   )

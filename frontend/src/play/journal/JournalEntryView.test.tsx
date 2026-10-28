@@ -338,6 +338,13 @@ describe('JournalEntryView check entries', () => {
     expect(screen.getByText('Vi: 100 → 105')).toBeVisible()
   })
 
+  it('shows no unit, nor a trailing space, for an empty currency unit', () => {
+    render(<JournalEntryView entry={shopEntry} currencyUnit="  " />)
+
+    const line = screen.getByText('Vi: 100 → 105')
+    expect(line.textContent).toBe('Vi: 100 → 105')
+  })
+
   it('leaves out the Sold section of a visit that only bought', () => {
     render(<JournalEntryView entry={shopBoughtOnlyEntry} />)
 

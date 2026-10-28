@@ -128,12 +128,25 @@ export function ShopStepForm({
     same.quantity = Math.min(same.line.held, same.typed)
     return merged
   }, [])
-  // A later duplicate stack cannot sell what the first one lacks: say so instead of dropping it.
+  // A later duplicate stack cannot sell what the first one lacks: say so, once per group, on the
+  // line whose quantity pushes the group's typed total past the first stack. A line nobody typed on
+  // never pushes it, so it never shows the hint.
   const cappedHint = (line: (typeof sellable)[number]) => {
     const group = sold.find(
       (other) => other.line.field.key === line.field.key && other.line.entry.key === line.entry.key,
     )
-    return group !== undefined && group.line !== line && group.typed > group.line.held
+    if (group === undefined || group.line === line) {
+      return null
+    }
+    let total = 0
+    const pushing = sellQuantities.find((other) => {
+      if (other.line.field.key !== line.field.key || other.line.entry.key !== line.entry.key) {
+        return false
+      }
+      total += other.quantity ?? 0
+      return total > group.line.held
+    })
+    return pushing?.line === line
       ? `Only ${String(group.line.held)} ${group.line.entry.name} can be sold: the shop takes them from the first stack.`
       : null
   }

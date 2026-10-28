@@ -170,6 +170,7 @@ describe('a refused save', () => {
     await refuse({ error: 'A library pack has no gear.', code: 'library_pack' }, 409)
 
     expect(await inDialog().findByText('A library pack has no gear.')).toBeVisible()
+    expect(inDialog().queryByRole('button', reload)).not.toBeInTheDocument()
   })
 
   it('offers the reload on a concurrent save and keeps what was typed', async () => {
@@ -232,7 +233,10 @@ describe('deleting an entry', () => {
 
   it('offers the reload when another request saved the draft', async () => {
     const user = await openGear({
-      [remove('rope')]: json({ error: 'Another request saved the draft.' }, 409),
+      [remove('rope')]: json(
+        { error: 'Another request saved the draft.', code: 'modified_concurrently' },
+        409,
+      ),
     })
 
     await user.click(await screen.findByRole('button', { name: 'Delete rope' }))
@@ -240,6 +244,18 @@ describe('deleting an entry', () => {
 
     expect(await inDialog().findByText('Another request saved the draft.')).toBeVisible()
     expect(inDialog().getByRole('button', reload)).toBeVisible()
+  })
+
+  it('shows the message of a library pack with no reload', async () => {
+    const user = await openGear({
+      [remove('rope')]: json({ error: 'A library pack has no gear.', code: 'library_pack' }, 409),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Delete rope' }))
+    await user.click(inDialog().getByRole('button', { name: 'Delete the gear' }))
+
+    expect(await inDialog().findByText('A library pack has no gear.')).toBeVisible()
+    expect(inDialog().queryByRole('button', reload)).not.toBeInTheDocument()
   })
 
   it('shows the message of a 404 when the entry is gone', async () => {

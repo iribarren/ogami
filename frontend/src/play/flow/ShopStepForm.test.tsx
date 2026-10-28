@@ -116,4 +116,24 @@ describe('ShopStepForm balance rules', () => {
       [{ field: 'pack', gear: 'used-pistol', quantity: 2 }],
     )
   })
+
+  it('says why a quantity typed on a later duplicate stack is not sold', async () => {
+    const user = userEvent.setup()
+    renderForm({
+      eddies: 100,
+      pack: [
+        { gear: 'used-pistol', quantity: 2 },
+        { gear: 'used-pistol', quantity: 3 },
+      ],
+    })
+
+    const [first, second] = screen.getAllByLabelText('Sell Used pistol from Pack')
+    await user.type(first ?? fail('no sell line'), '1')
+    await user.type(second ?? fail('no sell line'), '1')
+    expect(screen.queryByText(/can be sold/)).not.toBeInTheDocument()
+    await user.clear(first ?? fail('no sell line'))
+    await user.type(first ?? fail('no sell line'), '2')
+
+    expect(screen.getByText(/Only 2 Used pistol can be sold/)).toBeVisible()
+  })
 })

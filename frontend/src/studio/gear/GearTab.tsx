@@ -18,6 +18,7 @@ import { TextField } from '../narrative/TextField'
 import { ReloadLatest } from '../sheet/SheetLayoutPanel'
 import { gearAnswer } from '../sheet/sheetError'
 import {
+  isVersionConflict,
   SheetError,
   useGameSystemSheet,
   useRemoveGearEntry,
@@ -306,7 +307,7 @@ function GearForm({
         <Button type="submit" disabled={save.isPending}>
           Save gear
         </Button>
-        {error instanceof StudioError && error.status === 409 && (
+        {isVersionConflict(error) && (
           <ReloadLatest gameSystemKey={gameSystemKey} onLoaded={save.reset} />
         )}
       </div>
@@ -327,7 +328,7 @@ function DeleteGearDialog({
   const [open, setOpen] = useState(false)
   const remove = useRemoveGearEntry(gameSystemKey)
   const reasonId = useId()
-  const stale = remove.error instanceof StudioError && remove.error.status === 409
+  const stale = isVersionConflict(remove.error)
 
   return (
     <Dialog

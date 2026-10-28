@@ -1,12 +1,16 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import type { FakeHandler } from '@/test/fakeApi'
+import { createQueryClient } from '@/app/queryClient'
+import { ApiClientProvider } from '@/shared/api/ApiClientProvider'
+import { createFakeApiClient, type FakeHandler } from '@/test/fakeApi'
 import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 import { typeText } from '@/test/typeText'
 
 import { draft, sheet, sheetWithEconomy, validDraft } from '../fixtures'
+import { SheetCurrencyPanel } from './SheetCurrencyPanel'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -135,7 +139,12 @@ describe('a sheet with a currency', () => {
 
   it('offers the reload when another request saved the draft', async () => {
     const user = await openSheet(
-      { [`DELETE ${url}`]: json({ error: 'Another request saved the draft.' }, 409) },
+      {
+        [`DELETE ${url}`]: json(
+          { error: 'Another request saved the draft.', code: 'modified_concurrently' },
+          409,
+        ),
+      },
       sheetWithEconomy,
     )
 
@@ -143,6 +152,52 @@ describe('a sheet with a currency', () => {
 
     expect(await panel().findByText('Another request saved the draft.')).toBeVisible()
     expect(panel().getByRole('button', reload)).toBeVisible()
+  })
+
+  it('shows a refusal of the removal', async () => {
+    const user = await openSheet(
+      { [`DELETE ${url}`]: json({ error: 'sheet.currency: a shop still needs it' }, 422) },
+      sheetWithEconomy,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Remove currency' }))
+
+    expect(await panel().findByRole('alert')).toHaveTextContent('a shop still needs it')
+  })
+
+  it('shows the latest removal error over an earlier validation message', async () => {
+    const user = await openSheet(
+      { [`DELETE ${url}`]: json({ error: 'The draft has no currency.' }, 404) },
+      sheetWithEconomy,
+    )
+
+    await user.clear(panel().getByLabelText('Unit'))
+    await typeText(user, panel().getByLabelText('Unit'), 'twelve-chars')
+    await user.click(panel().getByRole('button', { name: 'Save currency' }))
+    expect(await panel().findByRole('alert')).toHaveTextContent('at most 10 characters')
+    await user.click(panel().getByRole('button', { name: 'Remove currency' }))
+
+    expect(await panel().findByRole('alert')).toHaveTextContent('The draft has no currency.')
+    expect(panel().getAllByRole('alert')).toHaveLength(1)
+  })
+
+  it('follows the stored currency when it changes from outside', async () => {
+    const { api } = createFakeApiClient({})
+    const ui = (source: typeof sheetWithEconomy) => (
+      <QueryClientProvider client={createQueryClient()}>
+        <ApiClientProvider client={api}>
+          <SheetCurrencyPanel gameSystemKey="my-draft" sheet={source} />
+        </ApiClientProvider>
+      </QueryClientProvider>
+    )
+    const { rerender } = render(ui(sheetWithEconomy))
+    expect(panel().getByLabelText('Unit')).toHaveValue('eb')
+
+    rerender(ui({ ...sheetWithEconomy, currency: { field: 'eddies', unit: 'cr' } }))
+
+    await waitFor(() => {
+      expect(panel().getByLabelText('Unit')).toHaveValue('cr')
+    })
   })
 })
 
@@ -174,7 +229,10 @@ describe('a refused save', () => {
   })
 
   it('offers the reload on a concurrent save and keeps what was typed', async () => {
-    const user = await refuse({ error: 'Another request saved the draft.' }, 409)
+    const user = await refuse(
+      { error: 'Another request saved the draft.', code: 'modified_concurrently' },
+      409,
+    )
 
     expect(await panel().findByText('Another request saved the draft.')).toBeVisible()
     await user.click(panel().getByRole('button', reload))

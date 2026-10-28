@@ -115,20 +115,28 @@ export function ShopStepForm({
   )
   // The server takes one sell line per field and gear, drawn from the first stack of that gear, so
   // lines of duplicate stacks are merged: quantities summed, capped at that first stack.
-  const sold = sellQuantities.reduce<{ line: (typeof sellable)[number]; quantity: number }[]>(
-    (merged, { line, quantity }) => {
-      const same = merged.find(
-        (other) =>
-          other.line.field.key === line.field.key && other.line.entry.key === line.entry.key,
-      )
-      if (same === undefined) {
-        return [...merged, { line, quantity: quantity ?? 0 }]
-      }
-      same.quantity = Math.min(same.line.held, same.quantity + (quantity ?? 0))
-      return merged
-    },
-    [],
-  )
+  const sold = sellQuantities.reduce<
+    { line: (typeof sellable)[number]; quantity: number; typed: number }[]
+  >((merged, { line, quantity }) => {
+    const same = merged.find(
+      (other) => other.line.field.key === line.field.key && other.line.entry.key === line.entry.key,
+    )
+    if (same === undefined) {
+      return [...merged, { line, quantity: quantity ?? 0, typed: quantity ?? 0 }]
+    }
+    same.typed += quantity ?? 0
+    same.quantity = Math.min(same.line.held, same.typed)
+    return merged
+  }, [])
+  // A later duplicate stack cannot sell what the first one lacks: say so instead of dropping it.
+  const cappedHint = (line: (typeof sellable)[number]) => {
+    const group = sold.find(
+      (other) => other.line.field.key === line.field.key && other.line.entry.key === line.entry.key,
+    )
+    return group !== undefined && group.line !== line && group.typed > group.line.held
+      ? `Only ${String(group.line.held)} ${group.line.entry.name} can be sold: the shop takes them from the first stack.`
+      : null
+  }
   const earn = sold.reduce((sum, { line, quantity }) => sum + line.price * quantity, 0)
   const balance = current - spend + earn
   // The server refuses only a balance under the floor that is also lower than before: a Character
@@ -228,6 +236,9 @@ export function ShopStepForm({
                       setSellDrafts((drafts) => ({ ...drafts, [line.id]: draft }))
                     }}
                   />
+                  {cappedHint(line) !== null && (
+                    <p className="basis-full text-xs text-destructive">{cappedHint(line)}</p>
+                  )}
                 </li>
               ))}
             </ul>

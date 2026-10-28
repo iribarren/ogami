@@ -20,11 +20,18 @@ export class SheetError extends StudioError {
 
   readonly paths: string[]
 
-  constructor(message: string, status: number, paths: string[] = []) {
-    super(message, status)
+  constructor(message: string, status: number, paths: string[] = [], code: string | null = null) {
+    super(message, status, code)
     this.paths = paths
   }
 }
+
+/**
+ * A 409 that reloading the draft fixes: another request saved it first (`modified_concurrently`).
+ * The other 409, `library_pack`, is permanent, so it offers no reload.
+ */
+export const isVersionConflict = (error: unknown): boolean =>
+  error instanceof StudioError && error.status === 409 && error.code === 'modified_concurrently'
 
 /** Every status that carries the API's own reason for a refused sheet request. */
 const explained = [400, 404, 409, 422]
@@ -35,7 +42,7 @@ function sheetError(
   failure: string,
 ) {
   const base = studioError(response, error, explained, failure)
-  return new SheetError(base.message, base.status, error?.paths ?? [])
+  return new SheetError(base.message, base.status, error?.paths ?? [], base.code)
 }
 
 export const sheetKey = (key: string) => [...gameSystemKey(key), 'sheet'] as const

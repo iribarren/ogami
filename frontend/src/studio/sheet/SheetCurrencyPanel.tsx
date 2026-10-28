@@ -5,11 +5,11 @@ import { Button } from '@/shared/ui/button'
 import { IconTile } from '@/shared/ui/icon-tile'
 
 import { TextField } from '../narrative/TextField'
-import { StudioError } from '../useGameSystems'
 import { SelectField } from './SheetFieldDialog'
 import { ReloadLatest } from './SheetLayoutPanel'
 import { currencyAnswer } from './sheetError'
 import {
+  isVersionConflict,
   SheetError,
   useRemoveSheetCurrency,
   useSaveSheetCurrency,
@@ -37,6 +37,16 @@ export const SheetCurrencyPanel = memo(function SheetCurrencyPanel({
   const [field, setField] = useState(currency?.field ?? '')
   const [unit, setUnit] = useState(currency?.unit ?? '')
   const [problem, setProblem] = useState<string | null>(null)
+  // The inputs follow the stored currency whenever it changes (a save, a removal, a refetch after
+  // another request): an unsaved edit is dropped then, as the stored value is the newer truth.
+  const stored = `${currency?.field ?? ''}\n${currency?.unit ?? ''}`
+  const [seen, setSeen] = useState(stored)
+  if (seen !== stored) {
+    setSeen(stored)
+    setField(currency?.field ?? '')
+    setUnit(currency?.unit ?? '')
+    setProblem(null)
+  }
   // The draft the last save sent: a 422 answer says nothing about a draft that has changed since.
   const [sent, setSent] = useState<string | null>(null)
   const numbers = sheet.fields.flatMap((stored) =>
@@ -46,9 +56,13 @@ export const SheetCurrencyPanel = memo(function SheetCurrencyPanel({
   )
   const draft = `${field}\n${unit}`
   const error = save.error ?? remove.error
-  const refused = error instanceof SheetError && error.status === 422
-  const answer = refused && sent === draft ? currencyAnswer(error.message) : null
-  const message = problem ?? (answer ? answer.form : refused ? null : (error?.message ?? null))
+  // Only a refused save is placed on the inputs, and only while the draft is the one it judged;
+  // any other error (a refused removal, a 404, a library pack) shows its message as it is.
+  const refusedSave =
+    save.error instanceof SheetError && save.error.status === 422 ? save.error : null
+  const answer = refusedSave !== null && sent === draft ? currencyAnswer(refusedSave.message) : null
+  const message =
+    problem ?? (answer ? answer.form : refusedSave !== null ? null : (error?.message ?? null))
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -115,6 +129,7 @@ export const SheetCurrencyPanel = memo(function SheetCurrencyPanel({
                 disabled={remove.isPending}
                 onClick={() => {
                   save.reset()
+                  setProblem(null)
                   remove.mutate(
                     { expectedVersion: sheet.version },
                     {
@@ -129,7 +144,7 @@ export const SheetCurrencyPanel = memo(function SheetCurrencyPanel({
                 Remove currency
               </Button>
             )}
-            {error instanceof StudioError && error.status === 409 && (
+            {isVersionConflict(error) && (
               <ReloadLatest
                 gameSystemKey={gameSystemKey}
                 onLoaded={() => {

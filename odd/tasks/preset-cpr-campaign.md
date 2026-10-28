@@ -1,7 +1,7 @@
 # Feature: preset-cpr-campaign
 
 - **Locator:** `odd/tasks/preset-cpr-campaign.md` · Engram topic `odd/preset-cpr-campaign/tasks`
-- **Issue:** [#322](https://github.com/iribarren/ogami/issues/322) · **Branch:** `feat/preset-cpr-campaign-2-play-pass` · **Status:** in progress
+- **Issue:** [#322](https://github.com/iribarren/ogami/issues/322) · **Branch:** `feat/preset-cpr-campaign-2-play-pass` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-items-economy` (PRs #312–#320)
@@ -88,10 +88,10 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 | T1 | 1 | Docs: this feature doc; example 4 in `docs/domain/flow-examples.md` amended (Month's end resets `month` on both options; `fallout` is Getaway → Fallout; `planning` reuses Social and Exploration; gig payday pays eddies) | delegated writer (slice 1) | [x] | be8f7e37 |
 | T2 | 1 | Release v2 base in `night-job.json`: description, tags, fact slots, trackers, sheet economy (eddies, currency, `gear` and `cyberware` inventories), gear catalog; heist untouched; `PresetsTest` (v2, inventories, currency, catalog) and `NightJobPresetFlowTest` updated | delegated writer (slice 1) | [x] | e29b0a66 |
 | T3 | 1 | Flow `campaign` with its Scene Types and tables; `PresetsTest` campaign assertions (non-default flow, acts, phases, trackers); `NightJobCampaignPresetFlowTest` unit test playing street zero, a gig chain, a world turn hit squad, the act gate, a Month's end (rent refused when broke, debt thread) and the finale's betrayal fallback | delegated writer (slice 1) | [x] | 32ab4d8d, 843cde2e |
-| T4 | 2 | Slice 1 review fixes; e2e `frontend/e2e/play-night-job-campaign.spec.ts`: start the campaign flow, play street zero, buy at the Night Market | delegated writer (slice 2) | [x] | |
-| T5 | 2 | Chrome play pass of Act 1 and a Month's end; fixes | parent Chrome pass + delegated writer (slice 2) | [x] | |
-| T6 | 2 | Slice 2 review fixes: rival found branch test, e2e buys an affordable item, dropped gig recovers by hand edit | delegated writer (slice 2) | [x] | |
-| T7 | 2 | Closing: Reviews, roadmap `Done:` line under B12 | | [ ] | |
+| T4 | 2 | Slice 1 review fixes; e2e `frontend/e2e/play-night-job-campaign.spec.ts`: start the campaign flow, play street zero, buy at the Night Market | delegated writer (slice 2) | [x] | 6769db0b, 557b7525 |
+| T5 | 2 | Chrome play pass of Act 1 and a Month's end; fixes | parent Chrome pass + delegated writer (slice 2) | [x] | 97ce9146, 62952991 |
+| T6 | 2 | Slice 2 review fixes: rival found branch test, e2e buys an affordable item, dropped gig recovers by hand edit | delegated writer (slice 2) | [x] | b0554eec |
+| T7 | 2 | Closing: Reviews, roadmap `Done:` line under B12, follow-up #325 and its backlog line B12a | parent (slice 2) | [x] | this doc commit |
 
 ## Progress
 
@@ -107,12 +107,15 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 - 2026-10-28: T5 RED: `NightJobCampaignPresetFlowTest` 7 failures and 5 errors against the old JSON (no `gig` tracker, hit squad replacing the chain, skips falling through, Go big mid-gig); `ShopStep.test.tsx` Skip visible on a non-mandatory shop. GREEN: `--filter 'NightJob|Presets'` 67 tests OK, `vitest src/play/flow` 183 OK, `make presets` prints only the heist's `flows[0]` warning, e2e `play-night-job-campaign` passes.
 - 2026-10-29: T6 slice 2 review fixes. Tests passed at once (behaviour already existed, no RED): rival pick `found` branch (prompt names Razor, then heat check) and a gig dropped by switching the forced Legwork to Social stays closed (no world turn, no Go big) until a hand edit of `gig` to 0 reopens both. E2E now buys the cheapest affordable item (fails with a message if none). GREEN: `--filter NightJobCampaign` 27 OK; `play-night-job-campaign` 3 runs and `play-night-job` green.
 
+- 2026-10-29: T7 closing: PR #324 open (Closes #322); follow-up [#325](https://github.com/iribarren/ogami/issues/325) for the Downtime chain gap, roadmap backlog B12a; roadmap `Done:` line under B12.
+
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | review-298a307cf5acf140 | be8f7e37, e29b0a66, 32ab4d8d, 843cde2e (+1,159/−16) | Approved. Findings fixed in slice 2 (T4): gig alarm reset on the optional `gig` prompt; rents mixed literal and formula, conapt skip without explicit `next: debt`, no formula rent test; Design bullets drifted (Downtime order, betrayal) | [#323](https://github.com/iribarren/ogami/pull/323) |
+| 2 | review-418d9ba3d1262dd0 | 6769db0b, 557b7525, 97ce9146, 62952991 (+421/−53) | Approved. Findings fixed in T6 (b0554eec, review skipped by the user: tests only): rival `found` branch untested; the e2e bought the first random item; no test that a dropped gig recovers. The Chrome pass gap (world turn can replace Downtime's Night Market or Month's end) is follow-up [#325](https://github.com/iribarren/ogami/issues/325), backlog B12a | [#324](https://github.com/iribarren/ogami/pull/324) |
 
 ## Next step
 
-Slice 2 (`feat/preset-cpr-campaign-2-play-pass`): T4 review fixes and e2e (writer), T5 Chrome play pass (parent), then review, PR and the T6 closing commit.
+None. Every finding is fixed or tracked in [#325](https://github.com/iribarren/ogami/issues/325).

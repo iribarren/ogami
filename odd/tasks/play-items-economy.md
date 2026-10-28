@@ -1,7 +1,7 @@
 # Feature: play-items-economy
 
 - **Locator:** `odd/tasks/play-items-economy.md` · Engram topic `odd/play-items-economy/tasks`
-- **Issue:** [#311](https://github.com/iribarren/ogami/issues/311) · **Branch:** `feat/play-items-economy-7-studio-gear` · **Status:** in progress (slice 7 of 9)
+- **Issue:** [#311](https://github.com/iribarren/ogami/issues/311) · **Branch:** `feat/play-items-economy-8-studio-gear-ui` · **Status:** in progress (slice 8 of 9)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B11 (before B12 `preset-cpr-campaign`; settles [ADR 0025](../../docs/adr/0025-items-and-shops-after-the-mvp.md))
@@ -97,7 +97,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T8 | 5 | Upgrade planner: `list` ↔ `inventory` and `inventory` → `inventory` conversions, fitting, `converted`; response; tests | delegated writer (Sonnet) | [x] | 9c5228c |
 | T9 | 5 | Play UI: inventory control (catalog picker by category, free stack, quantity, remove, slots used), read-only sheet view, currency unit; upgrade dialog `converted`; fixtures and tests | delegated writer (Sonnet) | [x] | 124ac66 |
 | T10 | 6 | Play UI: shop step card, choice `insufficient_funds`, journal shop entry; fixtures, tests, e2e | delegated writer (Sonnet) | [x] | ba7ab07, accc7fc, 2a185e6 |
-| T11 | 7 | Studio backend: gear routes, currency routes, guards (`DraftReferences`), views; `make api`; tests | delegated writer (Sonnet) | [x] | |
+| T11 | 7 | Studio backend: gear routes, currency routes, guards (`DraftReferences`), views; `make api`; tests | delegated writer (Sonnet) | [x] | c2e8f1f, b0763b8, 6115cb0 |
 | T12 | 8 | Studio UI: Gear tab; sheet builder `inventory` type and currency setting; tests and stories | delegated writer (Sonnet) | [ ] | |
 | T13 | 9 | Studio flow editor: `shop` step (offer, stock, sell rate), error locations; release view and diff show gear; the journal's shop entry shows the currency unit (slice 6 parent note: `ShopContent` does not carry it); tests, e2e | delegated writer (Sonnet) | [ ] | |
 | T14 | 9 | Wrap-up: findings fixed or filed; roadmap B11 done; this doc closed | parent (closing doc commit) | [ ] | |
@@ -126,6 +126,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 4 | `review-5dca561407885fcc` (3db7f15..332bfad, abandoned with user authorization: its critical finding, a shop with no API, was closed by e07420a in the same PR); `review-6dc4cd0273a44b5e` (332bfad..191f1ce) | 3db7f15, 332bfad, e07420a, 191f1ce | approved; R3 suggestion (`ShopContentResponse` `characterId` declares `format: uuid`, but journal content holds any Character id) fixed in slice 5 | [#315](https://github.com/iribarren/ogami/pull/315) |
 | 5 | `review-008c5f5c6bdd3b35` | 2b3a072, 9c5228c, 124ac66 | approved; R3 warning (`ReleaseUpgradeDialog` names the after values of a `list` → inventory conversion from the pinned release's catalog, so the preview shows raw keys) and R3 suggestions (`InventoryControl` snaps an emptied quantity input to 1; a free stack with an empty "Slots each" is accepted as 0 slots) fixed in slice 6 | [#316](https://github.com/iribarren/ogami/pull/316) |
 | 6 | `review-30850805308502ad` | 7ef91a5, 6319dd9, 06ae5b8, ba7ab07, accc7fc, 2a185e6 | approved; R3 warning (`ShopStepForm` disables Confirm whenever the balance ends under the floor, but the server refuses only under the floor and lower than before) and R3 suggestions (a missing currency value read as 0; sell line ids collide for duplicate stacks; the e2e balance assertion matches a loose "90") fixed in slice 7 | [#317](https://github.com/iribarren/ogami/pull/317) |
+| 7 | `review-a0890925703fecbe` (main..c2e8f1f); c2e8f1f..6115cb0 (generated spec, types, fixtures) declined by the user | 9d1b57f, c2e8f1f, b0763b8, 6115cb0 | approved; R3 warning (the e2e's exact `Eddies: 90 eb` balance text was not run locally) resolved by a green CI e2e; R3 suggestions (`ShopStepForm` sends two sell lines with the same field and gear when both duplicate stacks are sold; `GetGameSystemSheetHandler` reading malformed stored gear or currency is untested) fixed in slice 8 | [#318](https://github.com/iribarren/ogami/pull/318) |
 
 ## Progress
 
@@ -149,7 +150,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-28: slice 6 review fixes: `ShopStepForm` disables Confirm only when the balance ends under the floor and lower than before, reads a missing money value as the field default else 0 moved inside min..max (as the server does), and gives sell lines of duplicate stacks distinct ids; `play-shop.spec.ts` asserts the exact balance text. RED: 4 of 5 new cases in `ShopStepForm.test.tsx` failed, then green; Vitest `src/play/flow` green; the e2e was not run locally.
 - 2026-10-28: T11 done: `PUT/DELETE /gear/{gear}` and `PUT/DELETE /sheet/currency` (`GameSystem::saveGearEntry`, `removeGearEntry`, `saveSheetCurrency`, `removeSheetCurrency`, judged by the publisher's rules; library pack 409, schema version 1 and publisher errors 422, concurrent save 409, absent gear or currency 404); the sheet response gained `gear` (typed entries, `slots` defaulting to 1) and `currency` (legacy drafts read `[]` and null); guards: `GearInUse` for a shop step that offers the entry by key (`DraftReferences::gearPathsTo`), and `sheet.currency.field` joins `sheetFieldPathsTo` so the currency field cannot be deleted or renamed; retyping it is already refused by the publisher at `sheet.currency.field` (pinned by tests). No RED observed: the tests were written after the code. 15 unit cases in `GameSystemGearTest`, 40 API cases in `GameSystemGearApiTest`; `tests/Unit/Studio` and `tests/Integration/Studio` (3,136 tests) and `make qa` green. The regenerated spec and types are their own commit.
 - 2026-10-28: size exception (user, 2026-10-28): slice 7 ships T11 without its UI; T12 moves to slice 8.
+- 2026-10-28: slice 7 review fixes: the server refuses two sell lines for one field and gear (`ShopTrade::assertLines`, `shopLineTwice`) and sells only from the first stack of that gear, so `ShopStepForm` now merges duplicate-stack lines into one per field and gear, capped at the first stack (Vitest RED observed, then GREEN); `GetGameSystemSheetHandler` already reads malformed stored gear and currency as nothing (entries without a string key, name or integer cost left out, a currency without a field null): pinned by 3 unit tests (characterization, no RED).
 
 ## Next step
 
-Slice 7 written and verified; next the native review (per commit: fixes + T11 backend, then the generated spec), push and PR. Then slice 8 (T12).
+Slice 8 (T12, with the slice 7 review fixes) in progress on `feat/play-items-economy-8-studio-gear-ui`; then its review, push and PR. Then slice 9 (T13–T14).

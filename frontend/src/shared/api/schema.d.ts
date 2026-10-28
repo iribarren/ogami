@@ -3046,17 +3046,31 @@ export interface components {
              */
             fieldName: string;
             /**
-             * @description "added" (a new field starts at its initial value), "removed" (the field is gone or now derived), "clamped" (a number or track moved inside its new bounds), "trimmed" (a list cut to its new limit) or "reset" (a type change or a value that still does not fit goes back to the initial value).
+             * @description "added" (a new field starts at its initial value), "removed" (the field is gone or now derived), "clamped" (a number or track moved inside its new bounds), "trimmed" (a list cut to its new limit) "converted" (a list became an inventory or the other way round, or a stack whose gear is no longer accepted became a free stack: the value is kept as far as it fits, ADR 0045) or "reset" (a type change or a value that still does not fit goes back to the initial value).
              * @enum {string}
              */
-            kind: "added" | "removed" | "clamped" | "trimmed" | "reset";
-            /** @description The stored value now: an integer, a string, an array of strings or {current, max}; null for an added field. */
-            before: (number | string | string[] | {
+            kind: "added" | "removed" | "clamped" | "trimmed" | "converted" | "reset";
+            /** @description The stored value now: an integer, a string, an array of strings, an array of inventory stacks or {current, max}; null for an added field. */
+            before: (number | string | string[] | ({
+                gear: string;
+                quantity: number;
+            } | {
+                name: string;
+                quantity: number;
+                slots: number;
+            })[] | {
                 current: number;
                 max: number;
             }) | null;
             /** @description The value after the upgrade, of the same shapes as "before"; null for a removed field. */
-            after: (number | string | string[] | {
+            after: (number | string | string[] | ({
+                gear: string;
+                quantity: number;
+            } | {
+                name: string;
+                quantity: number;
+                slots: number;
+            })[] | {
                 current: number;
                 max: number;
             }) | null;

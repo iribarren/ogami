@@ -88,6 +88,30 @@ final class CampaignReleaseUpgradeApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aListBecomingAnInventoryIsPreviewedAsConvertedAndApplied(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        $id = $this->createCampaign();
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/characters', $id), ['name' => 'Vi', 'values' => ['gear' => ['pistol', 'Rope']]]);
+        self::assertResponseStatusCodeSame(201);
+        $content = ReleaseArrays::with($this->release(), 'gear', [['key' => 'pistol', 'name' => 'Pistol', 'cost' => 50]]);
+        $content = ReleaseArrays::with($content, 'sheet.fields.7', ['key' => 'gear', 'label' => 'Gear', 'group' => 'Belongings', 'type' => 'inventory', 'capacity' => 5]);
+        $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9102', $content);
+
+        $plan = $this->previewedPlan($id);
+
+        $planned = $plan['characters'] ?? null;
+        self::assertIsArray($planned);
+        self::assertSame(
+            [[['fieldKey' => 'gear', 'fieldName' => 'Gear', 'kind' => 'converted', 'before' => ['pistol', 'Rope'], 'after' => [['gear' => 'pistol', 'quantity' => 1], ['name' => 'Rope', 'quantity' => 1, 'slots' => 0]]]]],
+            array_column($planned, 'changes'),
+        );
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/release-upgrade', $id), ['toVersion' => 2, 'fingerprint' => $plan['fingerprint']]);
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame([[['gear' => 'pistol', 'quantity' => 1], ['name' => 'Rope', 'quantity' => 1, 'slots' => 0]]], array_column(array_column((array) ($this->json()['characters'] ?? null), 'values'), 'gear'));
+    }
+
+    #[Test]
     public function theConfirmedUpgradeAppliesThePreviewAndAnswersTheCampaign(): void
     {
         $this->signIn('ada@example.com', ['SOLO_PLAYER']);

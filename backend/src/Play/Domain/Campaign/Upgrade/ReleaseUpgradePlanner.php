@@ -18,9 +18,11 @@ use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\FactSlot;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\GearEntry;
 use App\Play\Domain\GameSystem\Sheet\ConditionsField;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\Field;
+use App\Play\Domain\GameSystem\Sheet\InventoryField;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
@@ -208,10 +210,16 @@ final readonly class ReleaseUpgradePlanner
     {
         $old = $this->pinned->sheet()->field($field->key);
         if ($old instanceof Field && $old::class !== $field::class) {
-            return [CharacterValues::initial($field), FieldChangeKind::Reset];
+            $candidate = $this->converted($old, $field, $value);
+            if (null === $candidate) {
+                return [CharacterValues::initial($field), FieldChangeKind::Reset];
+            }
+
+            $kind = FieldChangeKind::Converted;
+        } else {
+            [$candidate, $kind] = $this->adjusted($field, $value);
         }
 
-        [$candidate, $kind] = $this->adjusted($field, $value);
         try {
             $valid = CharacterValues::resolve($this->target->sheet(), [$field->key => $candidate])[$field->key];
         } catch (InvalidCharacter) {
@@ -265,6 +273,10 @@ final readonly class ReleaseUpgradePlanner
             return [\array_slice($value, 0, $field->limit()), FieldChangeKind::Trimmed];
         }
 
+        if ($field instanceof InventoryField && \is_array($value) && array_is_list($value)) {
+            return $this->adjustedInventory($field, $value);
+        }
+
         if ($field instanceof ConditionsField && \is_array($value) && array_is_list($value)) {
             $kept = $field->ordered(array_values(array_filter($value, \is_string(...))));
 
@@ -272,6 +284,143 @@ final readonly class ReleaseUpgradePlanner
         }
 
         return [$value, null];
+    }
+
+    /**
+     * What a `list` and an `inventory` become when the field keeps its key and changes between them
+     * (ADR 0045), before the target field's own limits judge it; null for any other type change, or a
+     * value of the wrong shape, which reset.
+     *
+     * @return ?list<mixed>
+     */
+    private function converted(Field $old, Field $field, mixed $value): ?array
+    {
+        if (!\is_array($value) || !array_is_list($value)) {
+            return null;
+        }
+
+        if ($old instanceof ListField && $field instanceof InventoryField) {
+            return $this->fitStacks($field, $this->stacksFromList($field, $value));
+        }
+
+        if ($old instanceof InventoryField && $field instanceof ListField) {
+            return \array_slice(array_map($this->stackName(...), array_values(array_filter($value, \is_array(...)))), 0, $field->limit());
+        }
+
+        return null;
+    }
+
+    /**
+     * Each string naming a catalog entry the inventory accepts (trimmed, ignoring case) is a stack of
+     * it, duplicates adding up in the first one's place; any other non-blank string is a free stack.
+     *
+     * @param list<mixed> $items
+     *
+     * @return list<array<string, int|string>>
+     */
+    private function stacksFromList(InventoryField $field, array $items): array
+    {
+        $byName = [];
+        foreach ($field->gear() as $entry) {
+            $byName[mb_strtolower(trim($entry->name))] = $entry->key;
+        }
+
+        $stacks = [];
+        $position = [];
+        foreach ($items as $item) {
+            $name = \is_string($item) ? trim($item) : '';
+            if ('' === $name) {
+                continue;
+            }
+
+            $gear = $byName[mb_strtolower($name)] ?? null;
+            if (null === $gear) {
+                $stacks[] = ['name' => mb_substr($name, 0, CharacterValues::MAX_ITEM_LENGTH), 'quantity' => 1, 'slots' => 0];
+            } elseif (isset($position[$gear])) {
+                $stacks[$position[$gear]]['quantity'] = min(CharacterValues::MAX_QUANTITY, (int) $stacks[$position[$gear]]['quantity'] + 1);
+            } else {
+                $position[$gear] = \count($stacks);
+                $stacks[] = ['gear' => $gear, 'quantity' => 1];
+            }
+        }
+
+        return $stacks;
+    }
+
+    /**
+     * The inventory of the same type: a stack whose gear the target field does not accept becomes a
+     * free stack with the name and slots the source catalog gave it, then the stacks are fitted. A
+     * converted stack makes the change `converted`, even when the fit also dropped some (the plan
+     * shows the before and after values, so nothing is hidden).
+     *
+     * @param list<mixed> $value
+     *
+     * @return array{mixed, ?FieldChangeKind}
+     */
+    private function adjustedInventory(InventoryField $field, array $value): array
+    {
+        $stacks = [];
+        $converted = false;
+        foreach ($value as $stack) {
+            if (!\is_array($stack)) {
+                return [$value, null];
+            }
+
+            if (\is_string($stack['gear'] ?? null) && !$field->entry($stack['gear']) instanceof GearEntry) {
+                $source = $this->pinned->gearEntry($stack['gear']);
+                $stack = ['name' => mb_substr($source->name ?? $stack['gear'], 0, CharacterValues::MAX_ITEM_LENGTH), 'quantity' => $stack['quantity'] ?? 1, 'slots' => $source->slots ?? GearEntry::DEFAULT_SLOTS];
+                $converted = true;
+            }
+
+            $stacks[] = $stack;
+        }
+
+        $fitted = $this->fitStacks($field, $stacks);
+
+        return [$fitted, $converted ? FieldChangeKind::Converted : (\count($fitted) < \count($stacks) ? FieldChangeKind::Trimmed : null)];
+    }
+
+    /**
+     * The stacks that fit: the first `maxStacks`, then the longest start whose slots, quantity times
+     * slots, stay within the capacity; the rest is dropped from the end.
+     *
+     * @param list<array<mixed>> $stacks
+     *
+     * @return list<array<mixed>>
+     */
+    private function fitStacks(InventoryField $field, array $stacks): array
+    {
+        $fitted = [];
+        $used = 0;
+        foreach (\array_slice($stacks, 0, $field->maxStacks) as $stack) {
+            $slots = \is_string($stack['gear'] ?? null) ? $field->entry($stack['gear'])->slots ?? 0 : $this->integer($stack['slots'] ?? null, 0);
+            $used += $this->integer($stack['quantity'] ?? null, 0) * $slots;
+            if (null !== $field->capacity && $used > $field->capacity) {
+                break;
+            }
+
+            $fitted[] = $stack;
+        }
+
+        return $fitted;
+    }
+
+    private function integer(mixed $value, int $default): int
+    {
+        return \is_int($value) ? $value : $default;
+    }
+
+    /**
+     * The list item a stack becomes: its name (the source catalog's for gear), with ` ×n` above one.
+     *
+     * @param array<mixed> $stack
+     */
+    private function stackName(array $stack): string
+    {
+        $name = \is_string($stack['gear'] ?? null) ? ($this->pinned->gearEntry($stack['gear'])->name ?? $stack['gear']) : (\is_string($stack['name'] ?? null) ? $stack['name'] : '');
+        $quantity = $this->integer($stack['quantity'] ?? null, 1);
+
+        return mb_substr($quantity > 1 ? \sprintf('%s ×%d', $name, $quantity) : $name, 0, CharacterValues::MAX_ITEM_LENGTH);
     }
 
     /**

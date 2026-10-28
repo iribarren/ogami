@@ -14,6 +14,7 @@ use App\Play\Domain\GameSystem\Flow\Phase;
 use App\Play\Domain\GameSystem\Flow\PhaseMode;
 use App\Play\Domain\GameSystem\Flow\SceneSelection;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\GearEntry;
 use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
@@ -33,8 +34,9 @@ final class UpgradeFixtures
      * @param list<FactSlot>   $factSlots
      * @param list<Flow>       $flows
      * @param list<SceneType>  $sceneTypes
+     * @param list<GearEntry>  $gear
      */
-    public static function release(int $version, array $fields = [], array $tags = [], array $trackers = [], array $factSlots = [], array $flows = [], string $key = 'heist', array $sceneTypes = []): GameSystemSnapshot
+    public static function release(int $version, array $fields = [], array $tags = [], array $trackers = [], array $factSlots = [], array $flows = [], string $key = 'heist', array $sceneTypes = [], array $gear = []): GameSystemSnapshot
     {
         return new GameSystemSnapshot(
             $key,
@@ -49,6 +51,7 @@ final class UpgradeFixtures
             flows: $flows,
             tags: array_map(static fn (string|Tag $tag): Tag => $tag instanceof Tag ? $tag : new Tag($tag, ucfirst($tag)), $tags),
             sheet: new SheetTemplate($fields),
+            gear: $gear,
         );
     }
 

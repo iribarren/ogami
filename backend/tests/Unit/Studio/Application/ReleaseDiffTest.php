@@ -137,6 +137,29 @@ final class ReleaseDiffTest extends TestCase
     }
 
     #[Test]
+    public function theGearCatalogIsComparedByKeyLikeTheOtherSections(): void
+    {
+        $before = ['gear' => [['key' => 'medkit', 'name' => 'Medkit', 'cost' => 20], ['key' => 'rope', 'name' => 'Rope', 'cost' => 5]]];
+        $after = ['gear' => [['key' => 'medkit', 'name' => 'First aid kit', 'cost' => 25], ['key' => 'pistol', 'name' => 'Pistol', 'cost' => 50]]];
+
+        $gear = $this->sections($after, $before)['gear'];
+
+        self::assertSame([['key' => 'pistol', 'name' => 'Pistol']], $gear['added']);
+        self::assertSame([['key' => 'rope', 'name' => 'Rope']], $gear['removed']);
+        self::assertSame([['key' => 'medkit', 'name' => 'First aid kit', 'previousName' => 'Medkit', 'fields' => ['cost', 'name']]], $gear['changed']);
+    }
+
+    #[Test]
+    public function aReleaseThatGainsOrLosesItsGearCatalogShowsEveryEntryAddedOrRemoved(): void
+    {
+        $with = ['gear' => [['key' => 'medkit', 'name' => 'Medkit', 'cost' => 20]]];
+
+        self::assertSame([['key' => 'medkit', 'name' => 'Medkit']], $this->sections($with, [])['gear']['added']);
+        self::assertSame([['key' => 'medkit', 'name' => 'Medkit']], $this->sections([], $with)['gear']['removed']);
+        self::assertSame(['added' => [], 'removed' => [], 'changed' => [], 'reordered' => false], $this->sections([], [])['gear']);
+    }
+
+    #[Test]
     public function everySectionOfTheOutlineIsPresentAndTheListsAreDisjoint(): void
     {
         $before = ['trackers' => [['key' => 'a'], ['key' => 'b']], 'flows' => [['key' => 'f', 'name' => 'F']]];

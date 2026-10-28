@@ -266,6 +266,65 @@ describe('the releases tab', () => {
     expect(changes.getByText('No changes in any section.')).toBeVisible()
   })
 
+  it('lists the gear catalog as Gear, and says so when a release has none', async () => {
+    const { user } = await openReleases({
+      [`GET ${base}/releases/2`]: json({
+        ...releaseTwo,
+        outline: {
+          oracleTables: [],
+          gear: [
+            { key: 'medkit', name: 'Medkit' },
+            { key: 'rope', name: null },
+          ],
+        },
+        changes: {
+          previousVersion: 1,
+          previousSchemaVersion: 2,
+          sections: {
+            gear: {
+              added: [{ key: 'medkit', name: 'Medkit' }],
+              removed: [],
+              changed: [
+                { key: 'rope', name: 'Rope', previousName: 'Cord', fields: ['cost', 'name'] },
+              ],
+              reordered: false,
+            },
+          },
+        },
+      }),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'View version 2' }))
+
+    const view = within(await screen.findByRole('region', { name: 'Version 2' }))
+    const changesGroup = view.getByRole('group', { name: 'Changes since version 1' })
+    const changes = within(changesGroup)
+    const outline = view
+      .getAllByRole('group', { name: 'Gear' })
+      .find((group) => !changesGroup.contains(group))
+    expect(
+      within(outline ?? changesGroup)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Medkitmedkit', 'rope'])
+    expect(changes.getByRole('group', { name: 'Gear' })).toHaveTextContent('1 added, 1 changed')
+    expect(changes.getByRole('group', { name: 'Gear' })).toHaveTextContent('Changed: cost, name')
+  })
+
+  it('shows an empty Gear section for a release without a catalog', async () => {
+    const { user } = await openReleases({
+      [`GET ${base}/releases/2`]: json({
+        ...releaseTwo,
+        outline: { oracleTables: [], gear: [] },
+      }),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'View version 2' }))
+
+    const view = within(await screen.findByRole('region', { name: 'Version 2' }))
+    expect(within(view.getByRole('group', { name: 'Gear' })).getByText('No items')).toBeVisible()
+  })
+
   it('lists a schema version 1 release with its own section names', async () => {
     const { user } = await openReleases({
       [`GET ${base}/releases/2`]: json({

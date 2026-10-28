@@ -12,6 +12,7 @@ use App\Play\Domain\GameSystem\Flow\OracleStep;
 use App\Play\Domain\GameSystem\Flow\PickStep;
 use App\Play\Domain\GameSystem\Flow\PromptStep;
 use App\Play\Domain\GameSystem\Flow\RollStep;
+use App\Play\Domain\GameSystem\Flow\ShopStep;
 use App\Play\Domain\GameSystem\Flow\Step;
 use App\Play\Domain\GameSystem\Flow\TableStep;
 
@@ -26,6 +27,7 @@ enum StepKind: string
     case Pick = 'pick';
     case Character = 'character';
     case Check = 'check';
+    case Shop = 'shop';
 
     public static function of(Step $step): self
     {
@@ -39,6 +41,7 @@ enum StepKind: string
             $step instanceof PickStep => self::Pick,
             $step instanceof CharacterStep => self::Character,
             $step instanceof CheckStep => self::Check,
+            $step instanceof ShopStep => self::Shop,
             default => throw new \LogicException(\sprintf('Unknown step kind %s.', $step::class)),
         };
     }

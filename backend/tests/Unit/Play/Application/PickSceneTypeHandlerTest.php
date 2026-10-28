@@ -11,6 +11,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunPositionMismatch;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\SceneTypeNotOffered;
 use App\Tests\Support\Play\FlowOutcomesFor;
+use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -65,6 +66,6 @@ final class PickSceneTypeHandlerTest extends FlowRunHandlerTestCase
 
     private function pick(PickSceneType $command): void
     {
-        new PickSceneTypeHandler($this->ownedCampaigns, $this->campaigns, $this->releases, $this->clock, FlowOutcomesFor::of($this->campaigns, $this->entries, $this->releases, $this->clock))($command);
+        new PickSceneTypeHandler($this->ownedCampaigns, $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $this->clock, FlowOutcomesFor::of($this->campaigns, $this->entries, $this->releases, $this->clock))($command);
     }
 }

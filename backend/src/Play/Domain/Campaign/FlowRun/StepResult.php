@@ -15,7 +15,7 @@ use App\Randomness\Domain\Roll;
 /**
  * What the player brings to complete a step, typed by step kind: a prompt's answer, a roll, a
  * table result, a likelihood answer, a choice option, the items a pick step picked, the Character a
- * character step names, the Character a choice option's or a prompt's sheet effects change, or the check a check step performed for a Character. "answer" is the step's answer text kept for
+ * character step names, the Character a choice option's or a prompt's sheet effects change, the check a check step performed for a Character, or the transaction a Character makes at a shop. "answer" is the step's answer text kept for
  * placeholders: the prompt text, the roll total, the entry texts, the answer label, the option key
  * (the FlowRun keeps the option's label) or the picked names joined with ", " (empty when nothing was
  * picked) or the label of the band a check landed in, so "{answer}" reads its outcome.
@@ -24,6 +24,8 @@ final readonly class StepResult
 {
     /**
      * @param list<PickedItem> $picked
+     * @param list<ShopLine>   $buy
+     * @param list<ShopLine>   $sell
      */
     private function __construct(
         public StepKind $kind,
@@ -36,6 +38,8 @@ final readonly class StepResult
         public ?string $characterId = null,
         public ?CheckResult $check = null,
         public ?string $checkKey = null,
+        public array $buy = [],
+        public array $sell = [],
     ) {
     }
 
@@ -99,6 +103,18 @@ final readonly class StepResult
     public static function check(string $characterId, CheckResult $result, ?string $checkKey = null): self
     {
         return new self(StepKind::Check, $result->band->label, characterId: $characterId, check: $result, checkKey: $checkKey);
+    }
+
+    /**
+     * The transaction a Character makes at a shop step (ADR 0045), empty to leave. Its answer is the
+     * names of the gear bought, which the FlowRun reads from the offer when it completes the step.
+     *
+     * @param list<ShopLine> $buy
+     * @param list<ShopLine> $sell
+     */
+    public static function shop(string $characterId, array $buy, array $sell): self
+    {
+        return new self(StepKind::Shop, '', characterId: $characterId, buy: $buy, sell: $sell);
     }
 
     /**

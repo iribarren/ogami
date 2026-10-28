@@ -13,6 +13,7 @@ use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\InsufficientFunds;
 use App\Play\Domain\Campaign\InvalidSceneTitle;
+use App\Play\Domain\Campaign\InventoryFull;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\Thread;
@@ -25,8 +26,10 @@ use App\Play\Domain\GameSystem\Flow\Phase;
 use App\Play\Domain\GameSystem\Flow\PickStep;
 use App\Play\Domain\GameSystem\Flow\SheetEffect;
 use App\Play\Domain\GameSystem\Flow\SheetOperation;
+use App\Play\Domain\GameSystem\Flow\ShopStep;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\GearEntry;
 use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\Tracker;
 use App\Randomness\Domain\RandomNumberGenerator;
@@ -34,7 +37,8 @@ use App\Randomness\Domain\RandomNumberGenerator;
 /**
  * What a FlowRun command works with, handed over by its Campaign: the pinned release, the Flow
  * played, the command's time, the campaign's sessions and scenes, its Tracker values and its
- * Characters' sheets, which Effects change, and the random source sheet Effects roll their dice with.
+ * Characters' sheets, which Effects and shops change, and the random source sheet Effects roll their dice
+ * and shops draw their stock with.
  * It also takes the notes of what the Flow decided on its own (see FlowNote).
  */
 final readonly class FlowRunContext
@@ -280,6 +284,33 @@ final readonly class FlowRunContext
         }
 
         return $this->effects()->applySheetEffect($effect, $characterId, refuseBelowFloor: $voluntary);
+    }
+
+    /**
+     * Draws the stock of a shop step with the command's random source (ADR 0045).
+     */
+    public function drawStock(ShopStep $step): ShopStock
+    {
+        return ShopStock::draw($step, $this->random ?? throw new \LogicException(\sprintf('Shop step "%s" draws its stock without a random source.', $step->key)));
+    }
+
+    /**
+     * Makes a shop transaction for the Character the result names (ADR 0045; see CampaignEffects).
+     *
+     * @param list<GearEntry> $onSale the entries the shop has on sale now
+     *
+     * @throws InvalidStepResult when the Character is unknown or a line cannot be traded
+     * @throws InsufficientFunds when the currency would end under its floor
+     * @throws InventoryFull     when a purchase takes an inventory field over its slots or stacks
+     */
+    public function trade(ShopStep $step, array $onSale, StepResult $result): ShopTrade
+    {
+        $id = $result->characterId ?? '';
+        if (null === $this->characterName($id)) {
+            throw InvalidStepResult::unknownCharacter($step->key, $id);
+        }
+
+        return $this->effects()->applyShopTrade($step, $onSale, $id, $result->buy, $result->sell);
     }
 
     /**

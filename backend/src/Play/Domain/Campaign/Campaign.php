@@ -303,12 +303,13 @@ final class Campaign
      * scene or hook Scene of an earlier session is abandoned. All or nothing, like the FlowRun
      * commands.
      *
-     * @param ?GameSystemSnapshot $release the pinned release; without it a FlowRun is not told
+     * @param ?GameSystemSnapshot    $release the pinned release; without it a FlowRun is not told
+     * @param ?RandomNumberGenerator $random  the source a shop step reached on the way draws its stock with (ADR 0045)
      *
      * @throws SessionAlreadyUnderWay when a session is under way
      * @throws CampaignLimitReached   when the campaign already holds 500 sessions
      */
-    public function startSession(\DateTimeImmutable $startedAt, ?GameSystemSnapshot $release = null): Session
+    public function startSession(\DateTimeImmutable $startedAt, ?GameSystemSnapshot $release = null, ?RandomNumberGenerator $random = null): Session
     {
         $underWay = $this->currentSession();
         if ($underWay instanceof Session) {
@@ -323,7 +324,7 @@ final class Campaign
         $draft = clone $this;
         $draft->sessions[] = $session;
         if ($release instanceof GameSystemSnapshot) {
-            $draft->changedFlowRun()?->sessionStarted($draft->flowContext($release, $startedAt));
+            $draft->changedFlowRun()?->sessionStarted($draft->flowContext($release, $startedAt, $random));
         }
 
         $this->adopt($draft);
@@ -337,8 +338,9 @@ final class Campaign
      * Scene): until that finishes the session stays under way. All or nothing, like the FlowRun
      * commands.
      *
-     * @param ?int                $number  the number of the session the caller means to end, or null for whichever is under way
-     * @param ?GameSystemSnapshot $release the pinned release; without it a FlowRun is not told and the session ends at once
+     * @param ?int                   $number  the number of the session the caller means to end, or null for whichever is under way
+     * @param ?GameSystemSnapshot    $release the pinned release; without it a FlowRun is not told and the session ends at once
+     * @param ?RandomNumberGenerator $random  the source a shop step reached on the way draws its stock with (ADR 0045)
      *
      * @return Session the session, ended unless its session closing runs first
      *
@@ -348,7 +350,7 @@ final class Campaign
      * @throws CampaignLimitReached        when the session closing's hook Scene does not fit the session
      * @throws CheckStepPending            when a check step's roll waits for Keep or Push
      */
-    public function endSession(\DateTimeImmutable $endedAt, ?int $number = null, ?GameSystemSnapshot $release = null): Session
+    public function endSession(\DateTimeImmutable $endedAt, ?int $number = null, ?GameSystemSnapshot $release = null, ?RandomNumberGenerator $random = null): Session
     {
         $session = $this->currentSession() ?? throw NoCurrentSession::toEndSession();
         if (null !== $number && $session->number() !== $number) {
@@ -357,7 +359,7 @@ final class Campaign
 
         if ($release instanceof GameSystemSnapshot && FlowRunStatus::Active === $this->flowRun?->status()) {
             $draft = clone $this;
-            $draft->guided()->endSession($draft->flowContext($release, $endedAt));
+            $draft->guided()->endSession($draft->flowContext($release, $endedAt, $random));
             $this->adopt($draft);
 
             return $this->sessions[$session->number() - 1];
@@ -443,16 +445,17 @@ final class Campaign
      * guidance is active a guided scene goes on at the new type's setup (a sceneTitle Effect
      * there wins over the new default).
      *
-     * @param SceneType           $sceneType a Scene Type of the pinned release
-     * @param ?GameSystemSnapshot $release   the pinned release, which names the old Scene Type, with
-     *                                       the time of the switch; without them a default title
-     *                                       stays and a FlowRun is not told (see startSession())
+     * @param SceneType              $sceneType a Scene Type of the pinned release
+     * @param ?GameSystemSnapshot    $release   the pinned release, which names the old Scene Type, with
+     *                                          the time of the switch; without them a default title
+     *                                          stays and a FlowRun is not told (see startSession())
+     * @param ?RandomNumberGenerator $random    the source a shop step reached on the way draws its stock with (ADR 0045)
      *
      * @throws NoCurrentScene          when the current session has no scene, or no session is under way
      * @throws HookSceneHasNoSceneType when the current scene is a hook Scene
      * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      */
-    public function switchSceneType(SceneType $sceneType, ?GameSystemSnapshot $release = null, ?\DateTimeImmutable $at = null): Scene
+    public function switchSceneType(SceneType $sceneType, ?GameSystemSnapshot $release = null, ?\DateTimeImmutable $at = null, ?RandomNumberGenerator $random = null): Scene
     {
         // A roll waiting for Keep or Push belongs to the scene as it is.
         $this->flowRun?->assertNoPendingCheck();
@@ -467,7 +470,7 @@ final class Campaign
 
         $this->sessions = [...\array_slice($this->sessions, 0, -1), $session->withCurrentScene($switched)];
         if ($release instanceof GameSystemSnapshot && $at instanceof \DateTimeImmutable) {
-            $this->changedFlowRun()?->followSceneTypeSwitch($scene->sceneType(), $sceneType, $this->flowContext($release, $at));
+            $this->changedFlowRun()?->followSceneTypeSwitch($scene->sceneType(), $sceneType, $this->flowContext($release, $at, $random));
         }
 
         return $switched;
@@ -1380,38 +1383,43 @@ final class Campaign
     /**
      * Skips the FlowRun's current suggested step.
      *
+     * @param ?RandomNumberGenerator $random the source a shop step reached on the way draws its stock with (ADR 0045)
+     *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
      * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the current step is another
      * @throws StepCannotBeSkipped     when the step is mandatory
      * @throws CampaignLimitReached    when the next scene does not fit the session
      */
-    public function skipFlowStep(string $stepKey, GameSystemSnapshot $release, \DateTimeImmutable $at): void
+    public function skipFlowStep(string $stepKey, GameSystemSnapshot $release, \DateTimeImmutable $at, ?RandomNumberGenerator $random = null): void
     {
         $draft = clone $this;
-        $draft->guided()->skipStep($stepKey, $draft->flowContext($release, $at));
+        $draft->guided()->skipStep($stepKey, $draft->flowContext($release, $at, $random));
         $this->adopt($draft);
     }
 
     /**
      * Ends open play in the guided scene ("End scene"): its closing starts.
      *
-     * @param int $sceneNumber the guided scene, by its number in the session under way
+     * @param int                    $sceneNumber the guided scene, by its number in the session under way
+     * @param ?RandomNumberGenerator $random      the source a shop step reached on the way draws its stock with (ADR 0045)
      *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
      * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the FlowRun is not in open play in that scene
      * @throws CampaignLimitReached    when the next scene does not fit the session
      */
-    public function endFlowScene(int $sceneNumber, GameSystemSnapshot $release, \DateTimeImmutable $at): void
+    public function endFlowScene(int $sceneNumber, GameSystemSnapshot $release, \DateTimeImmutable $at, ?RandomNumberGenerator $random = null): void
     {
         $draft = clone $this;
-        $draft->guided()->endScene($sceneNumber, $draft->flowContext($release, $at));
+        $draft->guided()->endScene($sceneNumber, $draft->flowContext($release, $at, $random));
         $this->adopt($draft);
     }
 
     /**
      * Picks a Scene Type the FlowRun's scene pick offers; its scene starts.
+     *
+     * @param ?RandomNumberGenerator $random the source a shop step reached on the way draws its stock with (ADR 0045)
      *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
      * @throws CheckStepPending        when a check step's roll waits for Keep or Push
@@ -1420,15 +1428,17 @@ final class Campaign
      * @throws NoCurrentSession        when no session is under way
      * @throws CampaignLimitReached    when the session already holds 200 scenes
      */
-    public function pickSceneType(string $sceneTypeKey, GameSystemSnapshot $release, \DateTimeImmutable $at): void
+    public function pickSceneType(string $sceneTypeKey, GameSystemSnapshot $release, \DateTimeImmutable $at, ?RandomNumberGenerator $random = null): void
     {
         $draft = clone $this;
-        $draft->guided()->pickSceneType($sceneTypeKey, $draft->flowContext($release, $at));
+        $draft->guided()->pickSceneType($sceneTypeKey, $draft->flowContext($release, $at, $random));
         $this->adopt($draft);
     }
 
     /**
      * Picks the Scene Type of the entry rolled on the oracle table the scene pick rolls on.
+     *
+     * @param ?RandomNumberGenerator $random the source a shop step reached on the way draws its stock with (ADR 0045)
      *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
      * @throws CheckStepPending        when a check step's roll waits for Keep or Push
@@ -1437,17 +1447,18 @@ final class Campaign
      * @throws NoCurrentSession        when no session is under way
      * @throws CampaignLimitReached    when the session already holds 200 scenes
      */
-    public function pickSceneTypeByOracle(OracleTableResult $result, GameSystemSnapshot $release, \DateTimeImmutable $at): void
+    public function pickSceneTypeByOracle(OracleTableResult $result, GameSystemSnapshot $release, \DateTimeImmutable $at, ?RandomNumberGenerator $random = null): void
     {
         $draft = clone $this;
-        $draft->guided()->pickSceneTypeByOracle($result, $draft->flowContext($release, $at));
+        $draft->guided()->pickSceneTypeByOracle($result, $draft->flowContext($release, $at, $random));
         $this->adopt($draft);
     }
 
     /**
      * Ends the FlowRun's loop phase ("Move on"): at once at the scene pick, else after the current scene.
      *
-     * @param string $phaseKey the phase to end, by its key
+     * @param string                 $phaseKey the phase to end, by its key
+     * @param ?RandomNumberGenerator $random   the source a shop step reached on the way draws its stock with (ADR 0045)
      *
      * @throws FlowRunNotActive        when the campaign plays freely, guidance is paused or the Flow is complete
      * @throws CheckStepPending        when a check step's roll waits for Keep or Push
@@ -1455,10 +1466,10 @@ final class Campaign
      * @throws MoveOnNotAllowed        when the phase plays once
      * @throws CampaignLimitReached    when the next scene does not fit the session
      */
-    public function moveOn(string $phaseKey, GameSystemSnapshot $release, \DateTimeImmutable $at): void
+    public function moveOn(string $phaseKey, GameSystemSnapshot $release, \DateTimeImmutable $at, ?RandomNumberGenerator $random = null): void
     {
         $draft = clone $this;
-        $draft->guided()->moveOn($phaseKey, $draft->flowContext($release, $at));
+        $draft->guided()->moveOn($phaseKey, $draft->flowContext($release, $at, $random));
         $this->adopt($draft);
     }
 
@@ -1479,14 +1490,16 @@ final class Campaign
      * Resumes guidance where it stopped; a guided scene that is no longer the current one is
      * abandoned and the FlowRun goes on at the scene pick.
      *
+     * @param ?RandomNumberGenerator $random the source a shop step reached on the way draws its stock with (ADR 0045)
+     *
      * @throws FlowRunNotActive     when the campaign plays freely, guidance is not paused or the Flow is complete
      * @throws CheckStepPending     when a check step's roll waits for Keep or Push
      * @throws CampaignLimitReached when the next scene does not fit the session
      */
-    public function resumeGuidance(GameSystemSnapshot $release, \DateTimeImmutable $at): void
+    public function resumeGuidance(GameSystemSnapshot $release, \DateTimeImmutable $at, ?RandomNumberGenerator $random = null): void
     {
         $draft = clone $this;
-        $draft->guided()->resume($draft->flowContext($release, $at));
+        $draft->guided()->resume($draft->flowContext($release, $at, $random));
         $this->adopt($draft);
     }
 

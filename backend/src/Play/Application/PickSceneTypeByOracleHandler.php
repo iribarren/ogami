@@ -49,7 +49,7 @@ final readonly class PickSceneTypeByOracleHandler implements CommandHandler
         $release = PinnedReleases::of($this->releases, $campaign);
         $pick = $campaign->activeFlowRunView($release)->pick ?? throw FlowRunPositionMismatch::at('the scene pick', 'no scene pick');
         $table = $pick->table ?? throw SceneTypeNotOffered::noRoll();
-        $campaign->pickSceneTypeByOracle($release->resolveOracleTable($table, $this->random), $release, $this->clock->now());
+        $campaign->pickSceneTypeByOracle($release->resolveOracleTable($table, $this->random), $release, $this->clock->now(), $this->random);
         $outcome = $this->outcomes->take($campaign);
         $this->campaigns->save($campaign);
         $this->outcomes->record($outcome);

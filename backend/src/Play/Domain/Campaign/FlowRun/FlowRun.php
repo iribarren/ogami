@@ -10,6 +10,7 @@ use App\Play\Domain\Campaign\Facts\Fact;
 use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\InsufficientFunds;
+use App\Play\Domain\Campaign\InventoryFull;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\Campaign\Lists\Thread;
@@ -48,6 +49,7 @@ use App\Play\Domain\GameSystem\Flow\RollStep;
 use App\Play\Domain\GameSystem\Flow\SceneTitleEffect;
 use App\Play\Domain\GameSystem\Flow\SelectionRule;
 use App\Play\Domain\GameSystem\Flow\SheetEffect;
+use App\Play\Domain\GameSystem\Flow\ShopStep;
 use App\Play\Domain\GameSystem\Flow\Step;
 use App\Play\Domain\GameSystem\Flow\StepEffects;
 use App\Play\Domain\GameSystem\Flow\StepList;
@@ -55,6 +57,7 @@ use App\Play\Domain\GameSystem\Flow\SwitchSceneTypeEffect;
 use App\Play\Domain\GameSystem\Flow\TableStep;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\GearEntry;
 use App\Play\Domain\GameSystem\SceneType;
 use App\Play\Domain\GameSystem\Tag;
 use App\Randomness\Domain\DiceExpression;
@@ -158,6 +161,9 @@ final class FlowRun
     /** the current check step's roll waiting for Keep or Push, null when none does */
     private ?PendingCheck $pendingCheck = null;
 
+    /** the entries the current shop step has on sale, drawn when it was reached; null for any other step and a shop without a stock */
+    private ?ShopStock $shopStock = null;
+
     /** @var list<FlowRunHistoryEntry> */
     private array $history = [];
 
@@ -188,8 +194,9 @@ final class FlowRun
      * @param ?PickedItems              $picked            the items "{picked}" stands for, null when nothing was picked in the Scene
      * @param bool                      $autoPickDue       whether the scene pick picks a selection's only Scene Type itself (a session started or a phase opened since the last scene)
      * @param ?PendingCheck             $pendingCheck      the current check step's roll waiting for Keep or Push, else null
+     * @param ?ShopStock                $shopStock         the entries the current shop step has on sale (ADR 0045), else null
      *
-     * @throws \InvalidArgumentException when the pending check is not the current step's, or guidance is not active
+     * @throws \InvalidArgumentException when the pending check is not the current step's, or guidance is not active, or the shop stock is not the current step's
      */
     public static function reconstitute(
         FlowRunStatus $status,
@@ -213,9 +220,14 @@ final class FlowRun
         ?PickedItems $picked = null,
         bool $autoPickDue = false,
         ?PendingCheck $pendingCheck = null,
+        ?ShopStock $shopStock = null,
     ): self {
         if ($pendingCheck instanceof PendingCheck && (FlowRunStatus::Active !== $status || $pendingCheck->stepKey !== $stepKey)) {
             throw new \InvalidArgumentException(\sprintf('A pending check of step "%s" belongs to the current step of an active FlowRun.', $pendingCheck->stepKey));
+        }
+
+        if ($shopStock instanceof ShopStock && $shopStock->stepKey !== $stepKey) {
+            throw new \InvalidArgumentException(\sprintf('The stock of shop step "%s" belongs to the current step.', $shopStock->stepKey));
         }
 
         $flowRun = new self();
@@ -240,6 +252,7 @@ final class FlowRun
         $flowRun->picked = $picked;
         $flowRun->autoPickDue = $autoPickDue;
         $flowRun->pendingCheck = $pendingCheck;
+        $flowRun->shopStock = $shopStock;
 
         return $flowRun;
     }
@@ -277,7 +290,8 @@ final class FlowRun
      * @throws FlowRunPositionMismatch when the current step is not this one
      * @throws InvalidStepResult       when the result does not complete the step
      * @throws FlowFormulaFailed       when an Effect's formula cannot be evaluated
-     * @throws InsufficientFunds       when a choice option's, a prompt's or a character step's Effect would take the currency under its floor
+     * @throws InsufficientFunds       when a choice option's, a prompt's or a character step's Effect, or a shop's transaction, would take the currency under its floor
+     * @throws InventoryFull           when a shop's purchase takes an inventory field over its slots or stacks
      *
      * @phpstan-impure
      */
@@ -346,6 +360,10 @@ final class FlowRun
 
                 return [];
             }
+        } elseif ($step instanceof ShopStep) {
+            // The answer is the names of the gear bought, so {step:key} reads them (ADR 0045).
+            $answer = $context->trade($step, $this->onSale($step), $result)->boughtNames();
+            $this->shopStock = null;
         } elseif ($step instanceof PromptStep) {
             if ('' === $answer) {
                 throw InvalidStepResult::blankAnswer($step->key);
@@ -481,13 +499,17 @@ final class FlowRun
      * @throws FlowRunNotActive        when the Flow is complete
      * @throws CheckStepPending        when a check step's roll waits for Keep or Push
      * @throws FlowRunPositionMismatch when the current step is not this one
-     * @throws StepCannotBeSkipped     when the step is mandatory
+     * @throws StepCannotBeSkipped     when the step is mandatory or a shop
      */
     public function skipStep(string $stepKey, FlowRunContext $context): void
     {
         $step = $this->expectStep($stepKey, $context);
         if ($step->mandatory) {
             throw StepCannotBeSkipped::mandatory($step->key);
+        }
+
+        if ($step instanceof ShopStep) {
+            throw StepCannotBeSkipped::shop($step->key);
         }
 
         $this->history[] = FlowRunHistoryEntry::skip($context->at, $step->key, $this->hook ?? $this->part ?? ScenePart::Open);
@@ -737,7 +759,7 @@ final class FlowRun
             $this->status,
             null === $sessionNumber,
             new FlowRunProgress($phase->act, $phase->key, $phase->name, null === $this->sceneType ? null : $this->sceneTypeIn($release)->name, $this->hook ?? $this->part, false === $number ? null : $number + 1, false === $number ? null : \count($shown), $phase->description, FlowRunStatus::Paused === $this->status ? null : $this->sceneNumber),
-            $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders), $step instanceof PickStep ? $this->pickView($step, $release, $candidatesOf($step)) : null, $this->fills($step, $release), $step instanceof CheckStep ? $this->checkView($step, $trackerValues, $charactersOf) : null, $this->pendingCheck, $step instanceof TableStep ? $step->tableFor($this->sceneType) : null) : null,
+            $step instanceof Step ? new FlowStepView(StepKind::of($step), $step, $placeholders->render($step->title), $this->rendered($step->prompt, $placeholders), $this->rendered($step->tip, $placeholders), $step instanceof PickStep ? $this->pickView($step, $release, $candidatesOf($step)) : null, $this->fills($step, $release), $step instanceof CheckStep ? $this->checkView($step, $trackerValues, $charactersOf) : null, $this->pendingCheck, $step instanceof TableStep ? $step->tableFor($this->sceneType) : null, $step instanceof ShopStep ? $this->onSale($step) : null) : null,
             $pick,
             FlowRunStatus::Active === $this->status && PhaseMode::Loop === $phase->mode && null === $this->phaseEnding,
             $this->nextLabel($step, $release, $flow, $placeholders, null === $sessionNumber || $this->sessionOpeningDue),
@@ -909,6 +931,32 @@ final class FlowRun
     public function pendingCheck(): ?PendingCheck
     {
         return $this->pendingCheck;
+    }
+
+    /**
+     * The entries the current shop step has on sale, drawn when it was reached (ADR 0045); null for
+     * any other step and for a shop without a stock, whose whole offer is on sale.
+     */
+    public function shopStock(): ?ShopStock
+    {
+        return $this->shopStock;
+    }
+
+    /**
+     * What a shop step has on sale, in catalog order: the stock drawn when it was reached, or the
+     * whole offer for a shop without a stock. A shop with a stock but none drawn has nothing on sale.
+     *
+     * @return list<GearEntry>
+     */
+    private function onSale(ShopStep $step): array
+    {
+        if (null === $step->stock) {
+            return $step->offer;
+        }
+
+        $stock = $this->shopStock?->stepKey === $step->key ? $this->shopStock->gear : [];
+
+        return array_values(array_filter($step->offer, static fn (GearEntry $entry): bool => \in_array($entry->key, $stock, true)));
     }
 
     /**
@@ -1135,6 +1183,7 @@ final class FlowRun
     {
         $this->part = $part;
         $this->stepKey = null;
+        $this->shopStock = null;
         if (ScenePart::Open === $part) {
             return;
         }
@@ -1161,6 +1210,7 @@ final class FlowRun
         $this->stage = FlowRunStage::Hook;
         $this->hook = $hook;
         $this->sessionNumber = $this->sceneNumber = $this->sceneType = $this->part = $this->stepKey = null;
+        $this->shopStock = null;
         $first = $hook->steps($this->phase($context->flow))->steps[0] ?? null;
         if (null === $first) {
             $this->afterHook($context);
@@ -1430,6 +1480,8 @@ final class FlowRun
             $this->finish($step, $outcome, [...$step->effects, ...$outcome->effects ?? []], null, $context);
         } else {
             $this->enterHookScene($context);
+            // A shop draws its stock once, when it is reached (ADR 0045); it stays until the step completes.
+            $this->shopStock = $step instanceof ShopStep && null !== $step->stock ? $context->drawStock($step) : null;
         }
     }
 
@@ -1464,6 +1516,7 @@ final class FlowRun
     {
         $this->stage = FlowRunStage::ScenePick;
         $this->sessionNumber = $this->sceneNumber = $this->sceneType = $this->part = $this->stepKey = null;
+        $this->shopStock = null;
         $this->switchCount = 0;
         $this->picked = null;
         if ($this->phaseFinished($context->flow)) {
@@ -1483,6 +1536,7 @@ final class FlowRun
         $this->stage = FlowRunStage::ScenePick;
         $this->hook = null;
         $this->sessionNumber = $this->sceneNumber = $this->stepKey = null;
+        $this->shopStock = null;
         $this->picked = null;
         if (Hook::PhaseClosing === $hook) {
             $this->finishPhase($context);

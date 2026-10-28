@@ -81,7 +81,7 @@ final class FlowOutcomeEveryHandlerTest extends TestCase
         $campaign->pickSceneType('hush', $this->release, new \DateTimeImmutable('2026-10-10T09:06:00+00:00'));
         $this->campaigns->save($campaign);
 
-        new SkipFlowStepHandler($this->owned, $this->campaigns, $this->releases, $this->clock, $this->outcomes)(new SkipFlowStep('campaign-1', 'user-1', 'maybe'));
+        new SkipFlowStepHandler($this->owned, $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $this->clock, $this->outcomes)(new SkipFlowStep('campaign-1', 'user-1', 'maybe'));
 
         $this->assertOutcome([['kind' => 'band', 'label' => 'Quiet']], 1);
     }
@@ -94,7 +94,7 @@ final class FlowOutcomeEveryHandlerTest extends TestCase
         $campaign->pickSceneType('wrapup', $this->release, new \DateTimeImmutable('2026-10-10T09:06:00+00:00'));
         $this->campaigns->save($campaign);
 
-        new EndFlowSceneHandler($this->owned, $this->campaigns, $this->releases, $this->clock, $this->outcomes)(new EndFlowScene('campaign-1', 'user-1', 1));
+        new EndFlowSceneHandler($this->owned, $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $this->clock, $this->outcomes)(new EndFlowScene('campaign-1', 'user-1', 1));
 
         $this->assertOutcome([['kind' => 'band', 'label' => 'Aftermath']], 1);
     }
@@ -104,7 +104,7 @@ final class FlowOutcomeEveryHandlerTest extends TestCase
     {
         $this->store('moving');
 
-        new MoveOnHandler($this->owned, $this->campaigns, $this->releases, $this->clock, $this->outcomes)(new MoveOn('campaign-1', 'user-1', 'roam'));
+        new MoveOnHandler($this->owned, $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $this->clock, $this->outcomes)(new MoveOn('campaign-1', 'user-1', 'roam'));
 
         $this->assertOutcome([['kind' => 'band', 'label' => 'Winding down']], 1);
     }
@@ -114,7 +114,7 @@ final class FlowOutcomeEveryHandlerTest extends TestCase
     {
         $this->store('single', startSession: false);
 
-        new StartSessionHandler($this->owned, $this->campaigns, $this->releases, $this->clock, $this->outcomes)(new StartSession('campaign-1', 'user-1'));
+        new StartSessionHandler($this->owned, $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $this->clock, $this->outcomes)(new StartSession('campaign-1', 'user-1'));
 
         $this->assertOutcome([['kind' => 'band', 'label' => 'Calm']], 1);
     }
@@ -130,7 +130,7 @@ final class FlowOutcomeEveryHandlerTest extends TestCase
         $this->campaigns->save($campaign);
         self::assertSame([], $this->journal());
 
-        new ResumeGuidanceHandler($this->owned, $this->campaigns, $this->releases, $this->clock, $this->outcomes)(new ResumeGuidance('campaign-1', 'user-1'));
+        new ResumeGuidanceHandler($this->owned, $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $this->clock, $this->outcomes)(new ResumeGuidance('campaign-1', 'user-1'));
 
         $this->assertOutcome([['kind' => 'band', 'label' => 'Calm']], 1);
     }

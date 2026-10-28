@@ -14,6 +14,7 @@ use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\UnknownFlow;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
+use App\Randomness\Domain\RandomNumberGenerator;
 use App\Shared\Application\Bus\CommandHandler;
 
 final readonly class EndSessionHandler implements CommandHandler
@@ -22,6 +23,8 @@ final readonly class EndSessionHandler implements CommandHandler
         private OwnedCampaigns $ownedCampaigns,
         private CampaignRepository $campaigns,
         private PublishedGameSystemReleases $releases,
+        // A shop step reached on the way draws its stock with it (ADR 0045).
+        private RandomNumberGenerator $random,
         private Clock $clock,
         private FlowOutcomes $outcomes,
     ) {
@@ -44,7 +47,7 @@ final readonly class EndSessionHandler implements CommandHandler
         // Only an active FlowRun tells the session apart, and it reads the pinned release; free play
         // and a paused or completed FlowRun end the session without reading it.
         $release = FlowRunStatus::Active === $campaign->flowRun()?->status() ? PinnedReleases::of($this->releases, $campaign) : null;
-        $campaign->endSession($this->clock->now(), $command->sessionNumber, $release);
+        $campaign->endSession($this->clock->now(), $command->sessionNumber, $release, $this->random);
         $outcome = $this->outcomes->take($campaign);
         $this->campaigns->save($campaign);
         $this->outcomes->record($outcome);

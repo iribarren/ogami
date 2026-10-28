@@ -11,12 +11,17 @@ use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\CharacterValues;
 use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\FlowRun\FlowFormulaFailed;
+use App\Play\Domain\Campaign\FlowRun\InvalidStepResult;
 use App\Play\Domain\Campaign\FlowRun\SheetChange;
+use App\Play\Domain\Campaign\FlowRun\ShopLine;
+use App\Play\Domain\Campaign\FlowRun\ShopTrade;
 use App\Play\Domain\Campaign\FlowRun\TrackerValues;
 use App\Play\Domain\GameSystem\Flow\SheetEffect;
 use App\Play\Domain\GameSystem\Flow\SheetOperation;
+use App\Play\Domain\GameSystem\Flow\ShopStep;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
+use App\Play\Domain\GameSystem\GearEntry;
 use App\Play\Domain\GameSystem\Sheet\ConditionsField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
@@ -144,6 +149,31 @@ final readonly class CampaignEffects
         $this->campaign->changeCharacterValue($id, $field->key, $field instanceof TrackField ? ['current' => $after, 'max' => $max] : $after);
 
         return new SheetChange($field->key, $before, $after, $dice?->expression()->notation(), $dice?->total());
+    }
+
+    /**
+     * Makes a shop step's transaction for a Character (ADR 0045): works it out on the Character's
+     * values (see ShopTrade) and writes the currency and the inventories it changes, or nothing when
+     * it is refused.
+     *
+     * @param list<GearEntry> $onSale the entries on sale now, in catalog order
+     * @param list<ShopLine>  $buy
+     * @param list<ShopLine>  $sell
+     *
+     * @throws InvalidStepResult when a line cannot be traded
+     * @throws InsufficientFunds when the currency would end under its floor and lower than it was
+     * @throws InventoryFull     when a purchase takes an inventory field over its slots or stacks
+     */
+    public function applyShopTrade(ShopStep $step, array $onSale, string $characterId, array $buy, array $sell): ShopTrade
+    {
+        $id = CharacterId::fromString($characterId);
+        $character = $this->campaign->character($id) ?? throw new \LogicException(\sprintf('The campaign has no Character "%s".', $characterId));
+        $trade = ShopTrade::of($step, $onSale, $this->release->sheet(), $character->values(), $buy, $sell);
+        foreach ($trade->values as $field => $value) {
+            $this->campaign->changeCharacterValue($id, $field, $value);
+        }
+
+        return $trade;
     }
 
     /**

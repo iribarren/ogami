@@ -13,6 +13,7 @@ use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
 use App\Play\Domain\GameSystem\UnknownFlow;
 use App\Play\Domain\GameSystem\UnknownSceneType;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
+use App\Randomness\Domain\RandomNumberGenerator;
 use App\Shared\Application\Bus\CommandHandler;
 
 final readonly class SwitchSceneTypeHandler implements CommandHandler
@@ -21,6 +22,8 @@ final readonly class SwitchSceneTypeHandler implements CommandHandler
         private OwnedCampaigns $ownedCampaigns,
         private CampaignRepository $campaigns,
         private PublishedGameSystemReleases $releases,
+        // A shop step reached on the way draws its stock with it (ADR 0045).
+        private RandomNumberGenerator $random,
         private Clock $clock,
         private FlowOutcomes $outcomes,
     ) {
@@ -43,7 +46,7 @@ final readonly class SwitchSceneTypeHandler implements CommandHandler
 
         $release = PinnedReleases::of($this->releases, $campaign);
         // The release and the time put the switch in the FlowRun's history.
-        $campaign->switchSceneType($release->sceneType($command->sceneType) ?? throw UnknownSceneType::withKey($command->sceneType), $release, $this->clock->now());
+        $campaign->switchSceneType($release->sceneType($command->sceneType) ?? throw UnknownSceneType::withKey($command->sceneType), $release, $this->clock->now(), $this->random);
         $outcome = $this->outcomes->take($campaign);
         $this->campaigns->save($campaign);
         $this->outcomes->record($outcome);

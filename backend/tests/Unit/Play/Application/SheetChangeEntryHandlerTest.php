@@ -81,7 +81,7 @@ final class SheetChangeEntryHandlerTest extends FlowRunTestCase
     {
         $this->store(mandatory: false);
 
-        new SkipFlowStepHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases, $this->clock, FlowOutcomesFor::of($this->campaigns, $this->entries, $this->releases, $this->clock))(new SkipFlowStep('campaign-1', 'user-1', 'you'));
+        new SkipFlowStepHandler(new OwnedCampaigns($this->campaigns), $this->campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $this->clock, FlowOutcomesFor::of($this->campaigns, $this->entries, $this->releases, $this->clock))(new SkipFlowStep('campaign-1', 'user-1', 'you'));
 
         $stored = $this->stored();
         self::assertSame([['play', 'shock'], ['skip:you'], [99, 99], []], [

@@ -209,10 +209,10 @@ final class PlayContext implements Context
         $this->journal = new CampaignJournal($owned, $entries, $this->releases, $clock);
         $outcomes = new FlowOutcomes($this->journal, $this->entryIds);
         $this->createCampaign = new CreateCampaignHandler($campaigns, $this->releases, $clock);
-        $this->startSession = new StartSessionHandler($owned, $campaigns, $this->releases, $clock, $outcomes);
-        $this->endSession = new EndSessionHandler($owned, $campaigns, $this->releases, $clock, $outcomes);
+        $this->startSession = new StartSessionHandler($owned, $campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $clock, $outcomes);
+        $this->endSession = new EndSessionHandler($owned, $campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $clock, $outcomes);
         $this->startScene = new StartSceneHandler($owned, $campaigns, $this->releases, $clock);
-        $this->switchSceneType = new SwitchSceneTypeHandler($owned, $campaigns, $this->releases, $clock, $outcomes);
+        $this->switchSceneType = new SwitchSceneTypeHandler($owned, $campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $clock, $outcomes);
         $this->setTrackerValue = new SetTrackerValueHandler($owned, $campaigns, $this->releases, $clock);
         $this->addNpc = new AddNpcHandler($owned, $campaigns, $this->releases);
         $this->editNpc = new EditNpcHandler($owned, $campaigns, $this->releases);
@@ -278,11 +278,11 @@ final class PlayContext implements Context
         $this->getJournal = new GetJournalHandler($owned, $entries);
         // Prompt steps only: the dice are never rolled.
         $this->completeFlowStep = new CompleteFlowStepHandler($this->journal, $campaigns, new ScriptedRandomNumberGenerator(), $clock, $this->entryIds);
-        $this->skipFlowStep = new SkipFlowStepHandler($owned, $campaigns, $this->releases, $clock, $outcomes);
-        $this->pickSceneType = new PickSceneTypeHandler($owned, $campaigns, $this->releases, $clock, $outcomes);
-        $this->endFlowScene = new EndFlowSceneHandler($owned, $campaigns, $this->releases, $clock, $outcomes);
+        $this->skipFlowStep = new SkipFlowStepHandler($owned, $campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $clock, $outcomes);
+        $this->pickSceneType = new PickSceneTypeHandler($owned, $campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $clock, $outcomes);
+        $this->endFlowScene = new EndFlowSceneHandler($owned, $campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $clock, $outcomes);
         $this->pauseGuidance = new PauseGuidanceHandler($owned, $campaigns, $clock);
-        $this->resumeGuidance = new ResumeGuidanceHandler($owned, $campaigns, $this->releases, $clock, $outcomes);
+        $this->resumeGuidance = new ResumeGuidanceHandler($owned, $campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $clock, $outcomes);
         $this->previewReleaseUpgrade = new PreviewReleaseUpgradeHandler($owned, $this->releases);
         $this->upgradeCampaignRelease = new UpgradeCampaignReleaseHandler($owned, $campaigns, $this->releases, $clock);
     }

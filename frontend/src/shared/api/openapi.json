@@ -9763,6 +9763,442 @@
                 }
             }
         },
+        "/api/studio/game-systems/{key}/gear/{gear}": {
+            "put": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Put one gear entry of one of my GameSystem drafts by its key: replaces it in place, else appends it; what the body leaves out is unset",
+                "operationId": "saveGearEntry",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "gear",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveGearEntryRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The draft's sheet, whose gear lists the catalog with the entry, and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemSheetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or has no integer \"expectedVersion\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Nothing changed; the code says why: modified_concurrently (another request saved the draft meanwhile: reload it and try again) or library_pack (a pack has no gear).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SheetConflictResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The catalog would break the release contract (the message starts with its path, \"gear[i]\" and the property: an invalid key, a name that is missing, blank or already taken, a cost or slots out of range, a key in the body, a category an inventory field or a shop step accepts that no entry would keep, more than 500 entries), or the draft has schema version 1; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Delete one gear entry of one of my GameSystem drafts by its key; the last one removes the catalog",
+                "operationId": "removeGearEntry",
+                "parameters": [
+                    {
+                        "name": "expectedVersion",
+                        "in": "query",
+                        "description": "The draft version the client read; a query parameter because a DELETE has no body.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    },
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "gear",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The draft's sheet without the entry and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemSheetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The \"expectedVersion\" query parameter is missing or not an integer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or its catalog has no entry with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Nothing changed; the code says why: modified_concurrently (another request saved the draft meanwhile: reload it and try again) or library_pack (a pack has no gear).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SheetConflictResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A shop step offers the entry by key (the body lists the paths), the draft has schema version 1, or the draft would break the release contract without the entry (the message starts with the path); nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OracleInUseResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/sheet/currency": {
+            "put": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Put the currency of the sheet of one of my GameSystem drafts: the number field Characters spend and its unit",
+                "operationId": "saveSheetCurrency",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveSheetCurrencyRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The draft's sheet with the currency and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemSheetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed or has no integer \"expectedVersion\".",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Nothing changed; the code says why: modified_concurrently (another request saved the draft meanwhile: reload it and try again) or library_pack (a pack has no sheet).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SheetConflictResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The currency would break the release contract (the message starts with \"sheet.currency\" and the property: a missing, unknown or non-number field, a derived field, a unit that is not 1 to 10 characters, an unknown property), or the draft has schema version 1; nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Remove the currency of the sheet of one of my GameSystem drafts",
+                "operationId": "removeSheetCurrency",
+                "parameters": [
+                    {
+                        "name": "expectedVersion",
+                        "in": "query",
+                        "description": "The draft version the client read; a query parameter because a DELETE has no body.",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    },
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The draft's sheet without the currency and the new version.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemSheetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The \"expectedVersion\" query parameter is missing or not an integer.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or its sheet declares no currency.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Nothing changed; the code says why: modified_concurrently (another request saved the draft meanwhile: reload it and try again) or library_pack (a pack has no sheet).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SheetConflictResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The draft has schema version 1, or a shop step needs the currency (the message starts with its path); nothing changed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/studio/game-systems/{key}/library-imports": {
             "get": {
                 "tags": [
@@ -18375,6 +18811,71 @@
                 },
                 "type": "object"
             },
+            "SheetGearEntryResponse": {
+                "required": [
+                    "key",
+                    "name",
+                    "cost",
+                    "slots",
+                    "category",
+                    "description"
+                ],
+                "properties": {
+                    "key": {
+                        "description": "The entry's key, which addresses it in the gear routes and which shop steps and Characters name it by.",
+                        "type": "string",
+                        "example": "used-pistol"
+                    },
+                    "name": {
+                        "description": "What the entry is called.",
+                        "type": "string",
+                        "example": "Used pistol"
+                    },
+                    "cost": {
+                        "description": "What it costs in the sheet's currency.",
+                        "type": "integer",
+                        "example": 50
+                    },
+                    "slots": {
+                        "description": "The inventory slots one unit takes; 1 when the entry stores none.",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "category": {
+                        "description": "The category inventories and shops select by; null for none.",
+                        "type": "string",
+                        "example": "Weapons",
+                        "nullable": true
+                    },
+                    "description": {
+                        "description": "A line of flavor; null for none.",
+                        "type": "string",
+                        "example": "Cheap and loud.",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "SheetCurrencyResponse": {
+                "required": [
+                    "field",
+                    "unit"
+                ],
+                "properties": {
+                    "field": {
+                        "description": "The key of the number field that holds the money.",
+                        "type": "string",
+                        "example": "eddies"
+                    },
+                    "unit": {
+                        "description": "The unit amounts are shown with; null for none.",
+                        "type": "string",
+                        "example": "eb",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "GameSystemSheetResponse": {
                 "required": [
                     "version",
@@ -18384,7 +18885,9 @@
                     "fields",
                     "trackers",
                     "publishedFieldKeys",
-                    "pointBudgets"
+                    "pointBudgets",
+                    "gear",
+                    "currency"
                 ],
                 "properties": {
                     "version": {
@@ -18449,6 +18952,22 @@
                         "items": {
                             "$ref": "#/components/schemas/SheetPointBudgetEntryResponse"
                         }
+                    },
+                    "gear": {
+                        "description": "The release's gear catalog, which inventory fields accept (ADR 0045), in order; empty without any.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SheetGearEntryResponse"
+                        }
+                    },
+                    "currency": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/SheetCurrencyResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The sheet's currency, the number field Characters spend; null without one."
                     }
                 },
                 "type": "object"
@@ -18639,6 +19158,74 @@
                     },
                     "code": {
                         "$ref": "#/components/schemas/SheetConflictCode"
+                    }
+                },
+                "type": "object"
+            },
+            "SaveGearEntryRequest": {
+                "required": [
+                    "expectedVersion",
+                    "name",
+                    "cost"
+                ],
+                "properties": {
+                    "expectedVersion": {
+                        "description": "The draft version the client read; another save since then is refused (409).",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "name": {
+                        "description": "What the entry is called (1 to 60 characters); unique in the catalog, trimmed and ignoring case.",
+                        "type": "string",
+                        "example": "Used pistol"
+                    },
+                    "cost": {
+                        "description": "What it costs in the sheet's currency (0 to 1,000,000).",
+                        "type": "integer",
+                        "example": 50
+                    },
+                    "slots": {
+                        "description": "The inventory slots one unit takes (0 to 100); 1 when left out.",
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "category": {
+                        "description": "The category inventories and shops select by (1 to 40 characters); none when left out.",
+                        "type": "string",
+                        "example": "Weapons",
+                        "nullable": true
+                    },
+                    "description": {
+                        "description": "A line of flavor (up to 500 characters); none when left out.",
+                        "type": "string",
+                        "example": "Cheap and loud.",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "SaveSheetCurrencyRequest": {
+                "required": [
+                    "expectedVersion",
+                    "field"
+                ],
+                "properties": {
+                    "expectedVersion": {
+                        "description": "The draft version the client read; another save since then is refused (409).",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "field": {
+                        "description": "The key of the number field that holds the money; never a derived field.",
+                        "type": "string",
+                        "example": "eddies"
+                    },
+                    "unit": {
+                        "description": "The unit amounts are shown with (1 to 10 characters); none when left out.",
+                        "type": "string",
+                        "example": "eb",
+                        "nullable": true
                     }
                 },
                 "type": "object"

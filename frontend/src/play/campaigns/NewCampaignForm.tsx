@@ -7,13 +7,12 @@ import { NativeSelect } from '@/shared/ui/native-select'
 
 import { CreditsNotice } from './CreditsNotice'
 import { releaseLabel } from './releaseLabel'
-import { useCreateCampaign, type GameSystemSummary } from './useCampaigns'
-
-/** The API's limit on a campaign name (`Campaign::MAX_NAME_LENGTH`), after trimming. */
-const MAX_NAME_LENGTH = 100
-
-/** The choice for playing without guidance; the other choices are Flow keys. */
-const PLAY_FREELY = ''
+import {
+  MAX_NAME_LENGTH,
+  PLAY_FREELY,
+  useCreateCampaign,
+  type GameSystemSummary,
+} from './useCampaigns'
 
 /** The release's default Flow, else playing freely. */
 function defaultFlowKey(gameSystem: GameSystemSummary | undefined) {

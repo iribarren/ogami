@@ -14,7 +14,14 @@ export type CharacterCreationErrorCode = components['schemas']['CharacterCreatio
 /** Which sheet rule a FlowRun answer broke: a spend over the currency or a purchase over an inventory (ADR 0045). */
 export type FlowRunErrorCode = components['schemas']['FlowRunErrorCode']
 type CreateCampaignRequest = components['schemas']['CreateCampaignRequest']
+export type TransferCampaignRequest = components['schemas']['TransferCampaignRequest']
 type StartSceneRequest = components['schemas']['StartSceneRequest']
+
+/** The API's limit on a campaign name (`Campaign::MAX_NAME_LENGTH`), after trimming. */
+export const MAX_NAME_LENGTH = 100
+
+/** The choice for playing without guidance; the other choices are Flow keys. */
+export const PLAY_FREELY = ''
 
 /**
  * A campaign request the API refused or failed; `message` is the API's reason when it gave
@@ -53,7 +60,7 @@ export function campaignError(
   )
 }
 
-const campaignsKey = ['play', 'campaigns'] as const
+export const campaignsKey = ['play', 'campaigns'] as const
 export const campaignKey = (campaignId: string) => [...campaignsKey, campaignId] as const
 
 /** The statuses whose API message explains why a Play change was refused. */

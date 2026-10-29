@@ -71,7 +71,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T3 | 1 | `POST /api/campaigns/{id}/transfer`: request DTO, controller action, error mapping, `PlayRequestSchemasTest`, API tests (201 + Location, 404 other player's, 409 outdated, 422 cases, malformed body), Behat scenario in `backend/features/play/`, `make api` | delegated writer (slice 1) | [x] | `1823ba5c`, `08bea9b7` |
 | T4 | 2 | Slice 1 review fixes: test a fact whose subject is an NPC promoted to a left-out Character | delegated writer (slice 2) | [x] | |
 | T5 | 2 | "Continue in a new campaign" dialog on `CampaignPage`, hook, vitest | delegated writer (slice 2) | [x] | |
-| T6 | 2 | e2e heist → "Making a Name" with a carried Character | delegated writer (slice 2) | [ ] | |
+| T6 | 2 | e2e heist → "Making a Name" with a carried Character | delegated writer (slice 2) | [x] | |
 | T7 | 2 | Chrome pass; fixes | parent Chrome pass + delegated writer (slice 2) | [ ] | |
 | T8 | 2 | Closing: Reviews, roadmap `Done:` line under B13 | parent (slice 2) | [ ] | |
 
@@ -83,6 +83,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-29 T3: RED `PlayRequestSchemasTest` + `CampaignTransferApiTest` (17 failures: no route, no schema) then GREEN (37 tests); Behat `campaign-transfer.feature` (3 scenarios) failed once on an unmapped step exception (`TransferFromOutdatedRelease` not caught by the context's `attempt()`), fixed, 3/3; PHPStan clean. Errors have no new `code`: the frontend `campaignError` already surfaces the API message for 404/409/422, so `useCampaigns.ts` is unchanged.
 - 2026-10-29 T4: `CampaignTransferTest::aFactWhoseSubjectIsAnNpcPromotedToALeftOutCharacterIsCarriedWithItsSubject` passed at once (17/17, no RED: it pins existing behaviour, no domain bug); the fact keeps its subject, the NPC loses `promotedTo`, the consistency check holds.
 - 2026-10-29 T5: `CampaignTransfer.test.tsx` (12 tests) written after the dialog; RED shown by removing the `CampaignPage` action (12/12 failed), GREEN with it (12/12). `PLAY_FREELY` and `MAX_NAME_LENGTH` moved to `useCampaigns.ts` to share them with `NewCampaignForm`. The dialog reads Flows and Characters from the campaign itself (source is on the latest release), and the outdated check reuses `useGameSystems` as `ReleaseUpgradeAction` does.
+- 2026-10-29 T6: `play-campaign-transfer.spec.ts` failed twice while written (street zero's step picks a Character with a radio and "Choose", and the cast is shown in Focus mode, not the Party group), then passed (1/1, `make e2e ARGS=play-campaign-transfer`).
 
 ## Reviews
 

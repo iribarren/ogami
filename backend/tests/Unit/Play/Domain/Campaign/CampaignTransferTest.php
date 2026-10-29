@@ -141,6 +141,21 @@ final class CampaignTransferTest extends TestCase
     }
 
     #[Test]
+    public function aFactWhoseSubjectIsAnNpcPromotedToALeftOutCharacterIsCarriedWithItsSubject(): void
+    {
+        $source = $this->source([Fact::of(FactId::fromString('fact-2'), 'contact', null, null, FactLink::npc(NpcId::fromString('npc-1')), [])]);
+
+        $new = $source->transfer(CampaignId::fromString('campaign-2'), 'Making a Name', $this->release, null, [CharacterId::fromString('c-1')], new \DateTimeImmutable());
+
+        $fact = $new->fact(FactId::fromString('fact-2'));
+        self::assertInstanceOf(Fact::class, $fact);
+        self::assertEquals(FactLink::npc(NpcId::fromString('npc-1')), $fact->subject());
+        self::assertNull($new->npc(NpcId::fromString('npc-1'))?->promotedTo());
+        self::assertNull($new->character(CharacterId::fromString('c-2')));
+        self::assertCount(2, $new->facts($this->release));
+    }
+
+    #[Test]
     public function aCarriedCharacterKeepsItsPromotionWithItsNpc(): void
     {
         $new = $this->source()->transfer(CampaignId::fromString('campaign-2'), 'Making a Name', $this->release, null, [CharacterId::fromString('c-2')], new \DateTimeImmutable());
@@ -226,8 +241,10 @@ final class CampaignTransferTest extends TestCase
      * Release 2 campaign "The job" on the one-shot with: NPC "npc-1" (promoted to "c-2", a legacy
      * pair), a closed NPC, a Thread, a fact linking them, three Characters ("c-2" from "npc-1"),
      * one session and moved tracker values.
+     *
+     * @param list<Fact> $extraFacts facts added after "fact-1"
      */
-    private function source(): Campaign
+    private function source(array $extraFacts = []): Campaign
     {
         $npcs = [
             Npc::of(NpcId::fromString('npc-1'), 'Mira', 'Wants the ledger', ['ally'], ['Fence'], 3, ItemStatus::Closed, CharacterId::fromString('c-2')),
@@ -237,6 +254,7 @@ final class CampaignTransferTest extends TestCase
         $facts = [
             Fact::of(FactId::fromString('fact-1'), null, 'Crew', 'Met in a bar', null, [FactLink::npc(NpcId::fromString('npc-1')), FactLink::thread(ThreadId::fromString('thread-1'))]),
         ];
+        $facts = [...$facts, ...$extraFacts];
         $characters = [
             Character::of(CharacterId::fromString('c-1'), 'Vi', [], [], []),
             Character::of(CharacterId::fromString('c-2'), 'Mira', ['ally'], ['Fence'], [], NpcId::fromString('npc-1')),

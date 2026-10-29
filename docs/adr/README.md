@@ -49,6 +49,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0043 | [Several point budgets per sheet](0043-several-point-budgets.md) | Accepted |
 | 0044 | [Hunger dice, critical pairs and special results](0044-hunger-dice-criticals-and-special-results.md) | Accepted |
 | 0045 | [Gear, inventories, a currency and shops](0045-gear-inventories-currency-and-shops.md) | Accepted |
+| 0046 | [Campaign transfer](0046-campaign-transfer.md) | Accepted |
 
 ## Template
 

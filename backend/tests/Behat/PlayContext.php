@@ -94,6 +94,8 @@ use App\Play\Application\SwitchSceneTypeHandler;
 use App\Play\Application\ThreadIdGenerator;
 use App\Play\Application\ThreadView;
 use App\Play\Application\TrackerView;
+use App\Play\Application\TransferCampaign;
+use App\Play\Application\TransferCampaignHandler;
 use App\Play\Application\UpgradeCampaignRelease;
 use App\Play\Application\UpgradeCampaignReleaseHandler;
 use App\Play\Domain\Campaign\Characters\InvalidCharacter;
@@ -112,6 +114,7 @@ use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
 use App\Play\Domain\Campaign\SessionAlreadyUnderWay;
+use App\Play\Domain\Campaign\Transfer\TransferFromOutdatedRelease;
 use App\Play\Domain\Campaign\Upgrade\CampaignUpToDate;
 use App\Play\Domain\Campaign\Upgrade\FieldChange;
 use App\Play\Domain\Campaign\Upgrade\ReleaseUpgradeChanged;
@@ -188,8 +191,10 @@ final class PlayContext implements Context
     private readonly ResumeGuidanceHandler $resumeGuidance;
     private readonly PreviewReleaseUpgradeHandler $previewReleaseUpgrade;
     private readonly UpgradeCampaignReleaseHandler $upgradeCampaignRelease;
+    private readonly TransferCampaignHandler $transferCampaign;
 
     private ?string $campaignId = null;
+    private ?string $sourceCampaignId = null;
     private int $npcCount = 0;
     private int $characterCount = 0;
     private int $threadCount = 0;
@@ -285,6 +290,7 @@ final class PlayContext implements Context
         $this->resumeGuidance = new ResumeGuidanceHandler($owned, $campaigns, $this->releases, new ScriptedRandomNumberGenerator(), $clock, $outcomes);
         $this->previewReleaseUpgrade = new PreviewReleaseUpgradeHandler($owned, $this->releases);
         $this->upgradeCampaignRelease = new UpgradeCampaignReleaseHandler($owned, $campaigns, $this->releases, $clock);
+        $this->transferCampaign = new TransferCampaignHandler($owned, $campaigns, $this->releases, $clock);
     }
 
     // Behat matches steps by text whatever the keyword, so one attribute serves Given and When.
@@ -999,6 +1005,52 @@ final class PlayContext implements Context
         Assert::assertSame('Field "reflexes" must be 1 to 10, got 11.', $this->failure->getMessage());
     }
 
+    #[Given('release version :version of the GameSystem :key named :name is published with a character sheet, Trackers and Flows')]
+    public function aReleaseWithASheetTrackersAndFlowsIsPublished(int $version, string $key, string $name): void
+    {
+        // The character sheet release plus Trackers "alarm", "heat" and "chaos", Scene Types and the Flows "the-heist" and "one-shot".
+        $flows = Snapshots::withFlows($key, $name, $version);
+        $this->releases->add(new GameSystemSnapshot($key, $name, $version, null, [], [], Snapshots::withTrackers($key, $name, $version)->trackers(), sceneTypes: $flows->sceneTypes(), flows: $flows->flows(), tags: [new Tag('ally', 'Ally')], sheet: new SheetTemplate([new NumberField('reflexes', 'Reflexes', min: 1, max: 10, default: 4), new TrackField('hp', 'Hit points', max: 40)])));
+    }
+
+    #[When('I continue my campaign in :name playing the Flow :flow with the Characters :characters')]
+    #[When('I try to continue my campaign in :name playing the Flow :flow with the Characters :characters')]
+    public function iContinueMyCampaign(string $name, string $flow, string $characters): void
+    {
+        $source = $this->campaignId();
+        $id = $this->ids->generate()->toString();
+        $characterIds = array_map(fn (string $character): string => $this->character(trim($character))->id, explode(',', $characters));
+        $this->attempt(fn () => ($this->transferCampaign)(new TransferCampaign($source, self::ME, $id, $name, $flow, $characterIds)));
+        if (!$this->failure instanceof \Throwable) {
+            [$this->sourceCampaignId, $this->campaignId] = [$source, $id];
+        }
+    }
+
+    #[Then('my campaign :name still plays the Flow :flow with the Characters :characters and the Tracker :tracker at :value')]
+    public function theSourceCampaignIsUnchanged(string $name, string $flow, string $characters, string $tracker, int $value): void
+    {
+        $source = ($this->getCampaign)(new GetCampaign($this->sourceCampaignId ?? throw new \LogicException('No campaign was continued.'), self::ME));
+        Assert::assertSame([$name, $flow, $characters, $value], [
+            $source->name,
+            $source->flowKey,
+            implode(', ', array_map(static fn (CharacterView $character): string => $character->name, $source->characters)),
+            array_find($source->trackers, static fn (TrackerView $candidate): bool => $candidate->key === $tracker)?->value,
+        ]);
+    }
+
+    #[Then('I am told to upgrade the campaign first')]
+    public function iAmToldToUpgradeTheCampaignFirst(): void
+    {
+        Assert::assertInstanceOf(TransferFromOutdatedRelease::class, $this->failure);
+        $this->failure = null;
+    }
+
+    #[Then('I have only the campaign :name')]
+    public function iHaveOnlyTheCampaign(string $name): void
+    {
+        Assert::assertSame([$name], array_map(static fn (CampaignSummaryView $campaign): string => $campaign->name, ($this->listMyCampaigns)(new ListMyCampaigns(self::ME))));
+    }
+
     #[Then('my NPCs are:')]
     public function myNpcsAre(TableNode $table): void
     {
@@ -1239,7 +1291,7 @@ final class PlayContext implements Context
 
         try {
             $action();
-        } catch (CampaignNotFound|NoCurrentSession|SessionAlreadyUnderWay|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag|UnknownNpc|InvalidSceneCast|InvalidFact|InvalidCharacter|UnknownCharacter|ReleaseUpgradeChanged|CampaignUpToDate|InvalidNoteAttachment $failure) {
+        } catch (CampaignNotFound|NoCurrentSession|SessionAlreadyUnderWay|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag|UnknownNpc|InvalidSceneCast|InvalidFact|InvalidCharacter|UnknownCharacter|ReleaseUpgradeChanged|CampaignUpToDate|TransferFromOutdatedRelease|InvalidNoteAttachment $failure) {
             $this->failure = $failure;
         }
     }

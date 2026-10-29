@@ -687,6 +687,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Continue one of my campaigns in a new one, with another Flow or free play */
+        post: operations["transferCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaignId}/flow-run/answer": {
         parameters: {
             query?: never;
@@ -3260,6 +3277,25 @@ export interface components {
              * @example 2
              */
             weight?: number | null;
+        };
+        TransferCampaignRequest: {
+            /**
+             * @description The new campaign's name. Trimmed; not blank.
+             * @example Making a Name
+             */
+            name: string;
+            /**
+             * @description The ids of the source campaign's Characters to carry over, each at most once; empty to carry none.
+             * @example [
+             *       "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"
+             *     ]
+             */
+            characterIds: string[];
+            /**
+             * @description A Flow of the source's GameSystem release to play along in the new campaign; absent or null to play freely (the release's default Flow is not applied).
+             * @example campaign
+             */
+            flowKey?: string | null;
         };
         ShopLineRequest: {
             /**
@@ -8935,6 +8971,97 @@ export interface operations {
             };
             /** @description Another request changed the campaign meanwhile. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    transferCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferCampaignRequest"];
+            };
+        };
+        responses: {
+            /** @description The new campaign, on the latest release, with the source's NPCs, Threads and Campaign facts and the chosen Characters, all with their ids; Trackers at their initial value, no sessions. The Location header is its URL. The source is unchanged. */
+            201: {
+                headers: {
+                    /** @description The URL of the new campaign. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResponse"];
+                };
+            };
+            /** @description The body is not valid JSON. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The source does not play the latest release of its GameSystem (upgrade it first), or the generated id of the new campaign is already taken. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not an object with a string "name", a list of strings "characterIds" and a string or null "flowKey"; the name is blank or too long; the latest release has no Flow with this key; or a Character id is blank, repeated or not one of the source's Characters. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

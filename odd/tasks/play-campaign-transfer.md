@@ -74,6 +74,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T6 | 2 | e2e heist → "Making a Name" with a carried Character | delegated writer (slice 2) | [x] | |
 | T7 | 2 | Chrome pass; fixes | parent Chrome pass + delegated writer (slice 2) | [ ] | |
 | T8 | 2 | Closing: Reviews, roadmap `Done:` line under B13 | parent (slice 2) | [ ] | |
+| T9 | 2 | Slice 2 review fix: the dialog closes itself after a successful transfer, and the success test asserts it | parent inline (one mechanical file + one test line) | [x] | |
 
 ## Progress
 
@@ -84,6 +85,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-29 T4: `CampaignTransferTest::aFactWhoseSubjectIsAnNpcPromotedToALeftOutCharacterIsCarriedWithItsSubject` passed at once (17/17, no RED: it pins existing behaviour, no domain bug); the fact keeps its subject, the NPC loses `promotedTo`, the consistency check holds.
 - 2026-10-29 T5: `CampaignTransfer.test.tsx` (12 tests) written after the dialog; RED shown by removing the `CampaignPage` action (12/12 failed), GREEN with it (12/12). `PLAY_FREELY` and `MAX_NAME_LENGTH` moved to `useCampaigns.ts` to share them with `NewCampaignForm`. The dialog reads Flows and Characters from the campaign itself (source is on the latest release), and the outdated check reuses `useGameSystems` as `ReleaseUpgradeAction` does.
 - 2026-10-29 T6: `play-campaign-transfer.spec.ts` failed twice while written (street zero's step picks a Character with a radio and "Choose", and the cast is shown in Focus mode, not the Party group), then passed (1/1, `make e2e ARGS=play-campaign-transfer`).
+- 2026-10-29 T9: review `review-152f3916ef40a5f1` suggestion. The new assertion (no dialog after success) passed at once, since the campaign route remounts on a new id, so no RED; `TransferForm` now takes `onTransferred` and closes the dialog in `mutate`'s `onSuccess`, as `ReleaseUpgradeDialog` does. Vitest 12/12, tsc clean.
 
 ## Reviews
 

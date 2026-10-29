@@ -64,7 +64,12 @@ function CampaignTransferDialog({ campaign, outdated }: { campaign: Campaign; ou
             </div>
           </>
         ) : (
-          <TransferForm campaign={campaign} />
+          <TransferForm
+            campaign={campaign}
+            onTransferred={() => {
+              setOpen(false)
+            }}
+          />
         )}
       </DialogContent>
     </Dialog>
@@ -80,7 +85,13 @@ function defaultFlowKey(flows: Campaign['flows']) {
  * Name, Flow and Characters of the new campaign. The name follows "<source name>: <Flow name>"
  * until the player types one. Mounted only while the dialog is open, so it starts over each time.
  */
-function TransferForm({ campaign }: { campaign: Campaign }) {
+function TransferForm({
+  campaign,
+  onTransferred,
+}: {
+  campaign: Campaign
+  onTransferred: () => void
+}) {
   const transfer = useTransferCampaign(campaign.id)
   const [flowKey, setFlowKey] = useState(defaultFlowKey(campaign.flows))
   const [typedName, setTypedName] = useState<string | null>(null)
@@ -110,14 +121,17 @@ function TransferForm({ campaign }: { campaign: Campaign }) {
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
-    transfer.mutate({
-      name,
-      flowKey: chosenFlow?.key ?? null,
-      // In the order of the sheet, whatever order they were unchecked and checked in.
-      characterIds: campaign.characters
-        .filter((character) => characterIds.has(character.id))
-        .map((character) => character.id),
-    })
+    transfer.mutate(
+      {
+        name,
+        flowKey: chosenFlow?.key ?? null,
+        // In the order of the sheet, whatever order they were unchecked and checked in.
+        characterIds: campaign.characters
+          .filter((character) => characterIds.has(character.id))
+          .map((character) => character.id),
+      },
+      { onSuccess: onTransferred },
+    )
   }
 
   return (

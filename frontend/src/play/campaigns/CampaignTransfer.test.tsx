@@ -119,6 +119,7 @@ describe('continuing a campaign in a new one', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Create new campaign' }))
 
     await screen.findByRole('heading', { level: 1, name: 'The lost mine: Making a Name' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(sent).toEqual([
       { name: 'The lost mine: Making a Name', flowKey: 'campaign', characterIds: [viCharacter.id] },
     ])

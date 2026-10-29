@@ -67,7 +67,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; ADR 0046 "Campaign transfer" (+ ADR index); glossary row; ADR 0017 §7 and `docs/vision.md` row point to it | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Domain `Campaign::transfer` and application `TransferCampaign` handler, with unit tests (carried lists and ids, tracker reset, FlowRun start or free play, Character subset and promotion clearing, outdated release, unknown flow, unknown or duplicate Character, source unchanged) | delegated writer (slice 1) | [ ] | |
+| T2 | 1 | Domain `Campaign::transfer` and application `TransferCampaign` handler, with unit tests (carried lists and ids, tracker reset, FlowRun start or free play, Character subset and promotion clearing, outdated release, unknown flow, unknown or duplicate Character, source unchanged) | delegated writer (slice 1) | [x] | |
 | T3 | 1 | `POST /api/campaigns/{id}/transfer`: request DTO, controller action, error mapping, `PlayRequestSchemasTest`, API tests (201 + Location, 404 other player's, 409 outdated, 422 cases, malformed body), Behat scenario in `backend/features/play/`, `make api` | delegated writer (slice 1) | [ ] | |
 | T4 | 2 | Slice 1 review fixes | delegated writer (slice 2) | [ ] | |
 | T5 | 2 | "Continue in a new campaign" dialog on `CampaignPage`, hook, vitest | delegated writer (slice 2) | [ ] | |
@@ -79,6 +79,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - 2026-10-29: Exploration (Campaign aggregate, `CreateCampaign`, release upgrade planner, persistence, UI, tests): a Campaign holds NPCs, Threads, facts, Characters and the FlowRun as JSONB in one row; the journal is a separate aggregate. No migration needed. User decisions: trackers reset, upgrade first, Characters picked one by one, all NPCs and Threads, no origin link.
 - 2026-10-29 T1: ADR 0046, ADR index, glossary "Campaign transfer", ADR 0017 §7 and `docs/vision.md` row updated; docs only, structural readback.
+- 2026-10-29 T2: RED `CampaignTransferTest` (16 tests, `Campaign::transfer()` undefined) then GREEN (16/16); `TransferCampaignHandlerTest` (8) and the repository contract test `aTransferredCampaignIsKeptWhole` (in-memory and Doctrine) passed at once, as the handler is a thin composition of the tested domain method; PHPStan clean.
 
 ## Reviews
 

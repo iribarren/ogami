@@ -60,6 +60,8 @@ use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\Lists\UnknownThread;
+use App\Play\Domain\Campaign\Transfer\TransferFromOutdatedRelease;
+use App\Play\Domain\Campaign\Transfer\TransferToAnotherGameSystem;
 use App\Play\Domain\Campaign\Upgrade\CampaignUpToDate;
 use App\Play\Domain\Campaign\Upgrade\ReleaseUpgradeChanged;
 use App\Play\Domain\Campaign\Upgrade\ReleaseUpgradePlan;
@@ -199,6 +201,58 @@ final class Campaign
         }
 
         return self::reconstitute($id, $ownerId, $name, $pinnedRelease, $createdAt, [], $trackerValues, $flow?->key, $flow instanceof Flow ? FlowRun::start() : null);
+    }
+
+    /**
+     * Starts a new campaign from this one (ADR 0046), on the latest release of the same GameSystem,
+     * which this campaign plays: it carries every NPC, Thread and Campaign fact and the chosen
+     * Characters, all with their ids, and starts the rest as Campaign::create() does (Trackers at
+     * their initial value, a fresh FlowRun when it plays a Flow, no sessions). An NPC whose
+     * Character stays behind keeps its data and loses the promotion. This campaign is not changed.
+     *
+     * @param GameSystemSnapshot $latest       the latest release of the GameSystem; this campaign must play it
+     * @param ?string            $flowKey      a Flow of that release to play along, or null to play freely
+     * @param list<CharacterId>  $characterIds the Characters to carry, in any order; the new campaign keeps this campaign's order
+     *
+     * @throws TransferToAnotherGameSystem when the release belongs to another GameSystem
+     * @throws TransferFromOutdatedRelease when this campaign does not play the release
+     * @throws UnknownFlow                 when the release has no Flow with the key
+     * @throws UnknownCharacter            when this campaign holds no Character with an id
+     * @throws CharacterAlreadyExists      when an id is given twice
+     * @throws InvalidCampaignName         when the trimmed name is blank or longer than 100 characters
+     */
+    public function transfer(CampaignId $id, string $name, GameSystemSnapshot $latest, ?string $flowKey, array $characterIds, \DateTimeImmutable $createdAt): self
+    {
+        if ($latest->gameSystemKey() !== $this->gameSystemKey) {
+            throw TransferToAnotherGameSystem::of($this->gameSystemKey, $latest->gameSystemKey());
+        }
+
+        if ($latest->releaseVersion() !== $this->releaseVersion) {
+            throw TransferFromOutdatedRelease::of($this->releaseVersion, $latest->releaseVersion());
+        }
+
+        $flow = null === $flowKey ? null : ($latest->flow($flowKey) ?? throw UnknownFlow::withKey($flowKey));
+        $carried = [];
+        foreach ($characterIds as $characterId) {
+            if (isset($carried[$characterId->toString()])) {
+                throw CharacterAlreadyExists::withId($characterId);
+            }
+
+            if (!$this->character($characterId) instanceof Character) {
+                throw UnknownCharacter::withId($characterId);
+            }
+
+            $carried[$characterId->toString()] = true;
+        }
+
+        $new = self::create($id, $this->ownerId, $name, $this->pinnedRelease(), $createdAt, $latest->trackers(), $flow);
+        $new->characters = array_values(array_filter($this->characters, static fn (Character $character): bool => isset($carried[$character->id()->toString()])));
+        $new->npcs = array_map(static fn (Npc $npc): Npc => $npc->promotedTo() instanceof CharacterId && !isset($carried[$npc->promotedTo()->toString()]) ? $npc->withoutPromotion() : $npc, $this->npcs);
+        $new->threads = $this->threads;
+        $new->facts = $this->facts;
+        $new->assertFactsConsistent();
+
+        return $new;
     }
 
     /**

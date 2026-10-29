@@ -115,6 +115,15 @@ final readonly class Npc
         return new self($this->id, $this->name, $this->agenda, $this->tags, $this->freeTags, $this->weight, ItemStatus::Closed, $characterId);
     }
 
+    /**
+     * The same NPC, still closed, without the Character it became: the Character stays in another
+     * campaign (a transfer, ADR 0046), so the NPC keeps its data and nothing names a missing Character.
+     */
+    public function withoutPromotion(): self
+    {
+        return new self($this->id, $this->name, $this->agenda, $this->tags, $this->freeTags, $this->weight, $this->status, null);
+    }
+
     public function id(): NpcId
     {
         return $this->id;

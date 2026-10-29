@@ -9,6 +9,11 @@ use App\Play\Domain\Campaign\CampaignAlreadyExists;
 use App\Play\Domain\Campaign\CampaignId;
 use App\Play\Domain\Campaign\CampaignModifiedConcurrently;
 use App\Play\Domain\Campaign\CampaignRepository;
+use App\Play\Domain\Campaign\Characters\Character;
+use App\Play\Domain\Campaign\Characters\CharacterId;
+use App\Play\Domain\Campaign\Facts\Fact;
+use App\Play\Domain\Campaign\Facts\FactId;
+use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\FlowRunEvent;
 use App\Play\Domain\Campaign\FlowRun\FlowRunHistoryEntry;
@@ -16,9 +21,15 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunStage;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Hook;
+use App\Play\Domain\Campaign\Lists\ItemStatus;
+use App\Play\Domain\Campaign\Lists\Npc;
+use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\Thread;
+use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\SceneKind;
+use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -280,6 +291,26 @@ trait CampaignRepositoryContract
         self::assertSame(FlowRunStatus::Completed, $completed->flowRun()?->status());
         self::assertSame([FlowRunEvent::PhaseEnded, FlowRunEvent::Completed], array_map(static fn (FlowRunHistoryEntry $entry): FlowRunEvent => $entry->event, $completed->flowRun()->history()));
         self::assertSame('2026-10-10T09:30:00.123456-05:00', $completed->flowRun()->history()[1]->at->format('Y-m-d\\TH:i:s.uP'));
+    }
+
+    #[Test]
+    public function aTransferredCampaignIsKeptWhole(): void
+    {
+        $release = new GameSystemSnapshot('free-journal', 'Free journal', 1, null, [], []);
+        $npcs = [
+            Npc::of(NpcId::fromString('npc-1'), 'Mira', 'Wants the ledger', [], ['Fence'], 3, ItemStatus::Closed, CharacterId::fromString('c-1')),
+            Npc::of(NpcId::fromString('npc-2'), 'Brick', null, [], [], 1, ItemStatus::Closed, CharacterId::fromString('c-gone')),
+        ];
+        $characters = [Character::of(CharacterId::fromString('c-1'), 'Mira', [], [], [], NpcId::fromString('npc-1')), Character::of(CharacterId::fromString('c-gone'), 'Brick', [], [], [], NpcId::fromString('npc-2'))];
+        $facts = [Fact::of(FactId::fromString('fact-1'), null, 'Crew', 'Met in a bar', null, [FactLink::npc(NpcId::fromString('npc-1'))])];
+        $source = Campaign::reconstitute(CampaignId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6001'), self::OWNER, 'The job', PinnedRelease::of('free-journal', 1, 'Free journal'), new \DateTimeImmutable('2026-10-01T09:00:00+00:00'), [], [], null, null, $npcs, [Thread::of(ThreadId::fromString('thread-1'), 'The vault', [], [], 2)], $facts, $characters);
+
+        $transferred = $source->transfer(CampaignId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6002'), 'Making a Name', $release, null, [CharacterId::fromString('c-1')], new \DateTimeImmutable('2026-10-30T10:00:00+00:00'));
+        $this->campaigns()->add($transferred);
+
+        $loaded = $this->reloaded($transferred);
+        self::assertNull($loaded->npc(NpcId::fromString('npc-2'))?->promotedTo());
+        self::assertSame(['c-1'], array_map(static fn (Character $character): string => $character->id()->toString(), $loaded->characters()));
     }
 
     /**

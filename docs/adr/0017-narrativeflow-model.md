@@ -102,7 +102,7 @@ Flow
 - **Free play is not a flow.** "Play freely" means the campaign has no FlowRun.
 - **Creating a campaign:** the player picks one of the pinned release's flows, or "Play freely". The release may mark a default flow.
 - **Mid-campaign the flow is fixed.** Turning guidance off pauses the FlowRun, which resumes where it stopped. Switching to another flow is not supported.
-- Starting a new campaign with another flow while transferring facts, NPCs and Threads is a backlog item.
+- Starting a new campaign with another flow while carrying over facts, NPCs, Threads and chosen Characters is a campaign transfer ([ADR 0046](0046-campaign-transfer.md)).
 
 ### 8. Presentation (amends ADR 0016)
 

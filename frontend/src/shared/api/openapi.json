@@ -3678,6 +3678,125 @@
                 }
             }
         },
+        "/api/campaigns/{campaignId}/transfer": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Continue one of my campaigns in a new one, with another Flow or free play",
+                "operationId": "transferCampaign",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TransferCampaignRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The new campaign, on the latest release, with the source's NPCs, Threads and Campaign facts and the chosen Characters, all with their ids; Trackers at their initial value, no sessions. The Location header is its URL. The source is unchanged.",
+                        "headers": {
+                            "Location": {
+                                "description": "The URL of the new campaign.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The body is not valid JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The source does not play the latest release of its GameSystem (upgrade it first), or the generated id of the new campaign is already taken.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "The body is not an object with a string \"name\", a list of strings \"characterIds\" and a string or null \"flowKey\"; the name is blank or too long; the latest release has no Flow with this key; or a Character id is blank, repeated or not one of the source's Characters.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/campaigns/{campaignId}/flow-run/answer": {
             "post": {
                 "tags": [
@@ -14344,6 +14463,37 @@
                         "description": "1 to 3; 1 when omitted or null.",
                         "type": "integer",
                         "example": 2,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "TransferCampaignRequest": {
+                "required": [
+                    "name",
+                    "characterIds"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "The new campaign's name. Trimmed; not blank.",
+                        "type": "string",
+                        "example": "Making a Name",
+                        "maxLength": 100
+                    },
+                    "characterIds": {
+                        "description": "The ids of the source campaign's Characters to carry over, each at most once; empty to carry none.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"
+                        ]
+                    },
+                    "flowKey": {
+                        "description": "A Flow of the source's GameSystem release to play along in the new campaign; absent or null to play freely (the release's default Flow is not applied).",
+                        "type": "string",
+                        "example": "campaign",
                         "nullable": true
                     }
                 },

@@ -23,7 +23,7 @@ final readonly class TagResponse
         public string $label,
         #[OA\Property(description: 'Shown as a tooltip where Tags are chosen; null when the Tag has none.', example: 'Runs a faction or a crew.', nullable: true)]
         public ?string $hint,
-        #[OA\Property(description: 'The entity kinds that may carry the Tag; null when it applies to every kind.', type: 'array', items: new OA\Items(type: 'string', enum: ['character', 'npc', 'thread']), example: ['npc'], nullable: true)]
+        #[OA\Property(description: 'The entity kinds that may carry the Tag; null when it applies to every kind.', type: 'array', items: new OA\Items(type: 'string', enum: ['character', 'npc', 'thread', 'place']), example: ['npc'], nullable: true)]
         public ?array $appliesTo,
     ) {
     }

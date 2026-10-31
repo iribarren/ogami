@@ -14,7 +14,7 @@ use OpenApi\Attributes as OA;
 final readonly class FactLinkRequest
 {
     public function __construct(
-        #[OA\Property(example: 'npc', enum: ['npc', 'thread', 'fact'])]
+        #[OA\Property(example: 'npc', enum: ['npc', 'thread', 'place', 'fact'])]
         public string $kind,
         #[OA\Property(description: 'The id of the NPC, Thread or fact; it must be one the campaign holds.', format: 'uuid')]
         public string $id,

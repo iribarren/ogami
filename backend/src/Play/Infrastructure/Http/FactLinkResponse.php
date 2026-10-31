@@ -15,11 +15,11 @@ use OpenApi\Attributes as OA;
 final readonly class FactLinkResponse
 {
     private function __construct(
-        #[OA\Property(description: 'A subject is always an NPC or a Thread.', example: 'npc', enum: ['npc', 'thread', 'fact'])]
+        #[OA\Property(description: 'A subject is always an NPC, a Thread or a Place.', example: 'npc', enum: ['npc', 'thread', 'place', 'fact'])]
         public string $kind,
         #[OA\Property(format: 'uuid')]
         public string $id,
-        #[OA\Property(description: 'The NPC\'s or Thread\'s name, or the linked fact\'s label.', example: 'Mira Vane')]
+        #[OA\Property(description: 'The NPC\'s, Thread\'s or Place\'s name, or the linked fact\'s label.', example: 'Mira Vane')]
         public string $name,
     ) {
     }

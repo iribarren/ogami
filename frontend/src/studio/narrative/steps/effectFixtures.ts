@@ -18,4 +18,7 @@ export const every = [
   { kind: 'fillFact', slot: 'client', text: 'A fence' },
   { kind: 'sheet', field: 'hands', op: 'subtract', value: { dice: '1d4' } },
   { kind: 'sheet', field: 'stress', op: 'set', value: { formula: 'hands * 2' } },
+  { kind: 'createPlace', name: 'The keep', tags: ['gang'], note: 'x' },
+  { kind: 'closeThread', fact: 'rumour', note: 'y' },
+  { kind: 'closeThread', fact: null },
 ]

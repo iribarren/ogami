@@ -40,6 +40,8 @@ describe('an effect draft', () => {
     const stored = [
       { kind: 'createNpc', name: '', agenda: '', tags: [] },
       { kind: 'createThread', name: 'The debt', tags: [] },
+      { kind: 'createPlace', name: '', tags: [] },
+      { kind: 'closeThread', fact: '' },
       { kind: 'fillFact', slot: 'client', text: '' },
     ]
 
@@ -61,12 +63,16 @@ describe('an effect draft', () => {
     const blank: EffectDraft[] = [
       { kind: 'createNpc', name: '', agenda: '', tags: [], extra: {} },
       { kind: 'createThread', name: '', tags: [], extra: {} },
+      { kind: 'createPlace', name: '', tags: [], extra: {} },
+      { kind: 'closeThread', fact: '', extra: {} },
       { kind: 'fillFact', slot: 'client', text: '', extra: {} },
     ]
 
     expect(effectsToStored(blank, 'effects', {})).toEqual([
       { kind: 'createNpc' },
       { kind: 'createThread' },
+      { kind: 'createPlace' },
+      { kind: 'closeThread' },
       { kind: 'fillFact', slot: 'client' },
     ])
   })
@@ -89,6 +95,9 @@ describe('an effect draft', () => {
     ],
     ['a field of the wrong type', { kind: 'createNpc', name: 4 }],
     ['tags that are not keys', { kind: 'createThread', tags: 'gang' }],
+    ['place tags that are not keys', { kind: 'createPlace', tags: 'gang' }],
+    ['a place name that is not text', { kind: 'createPlace', name: 4 }],
+    ['a closeThread fact that is not text', { kind: 'closeThread', fact: 3 }],
     ['a missing required field', { kind: 'nextScene' }],
   ])('keeps %s exactly as stored, read-only', (_, stored) => {
     const drafts = effectsToDrafts([stored])
@@ -122,6 +131,53 @@ describe('an effect draft', () => {
     ['sheet', { kind: 'sheet', field: '', op: 'add', value: { form: 'integer', text: '1' } }],
   ] as const)('starts a new %s effect empty, to be picked', (kind, expected) => {
     expect(newEffect(kind)).toMatchObject(expected)
+  })
+
+  it('reads a closeThread without fact, with a slot key and with null, and writes each back as stored', () => {
+    const stored = [
+      { kind: 'closeThread' },
+      { kind: 'closeThread', fact: 'rumour' },
+      { kind: 'closeThread', fact: null },
+    ]
+
+    expect(effectsToDrafts(stored)).toMatchObject([
+      { kind: 'closeThread', fact: '' },
+      { kind: 'closeThread', fact: 'rumour' },
+      { kind: 'closeThread', fact: '' },
+    ])
+    expect(round(stored).effects).toEqual(stored)
+  })
+
+  it('writes a closeThread fact once picked, and drops a stored null for it', () => {
+    const [absent, nulled] = effectsToDrafts([
+      { kind: 'closeThread' },
+      { kind: 'closeThread', fact: null },
+    ])
+    if (absent?.kind !== 'closeThread' || nulled?.kind !== 'closeThread') {
+      throw new Error('Expected closeThread effects.')
+    }
+
+    expect(
+      effectsToStored(
+        [
+          { ...absent, fact: 'rumour' },
+          { ...nulled, fact: 'rumour' },
+        ],
+        'effects',
+        {},
+      ),
+    ).toEqual([
+      { kind: 'closeThread', fact: 'rumour' },
+      { kind: 'closeThread', fact: 'rumour' },
+    ])
+    expect(effectsToStored([{ ...absent, fact: '' }], 'effects', {})).toEqual([
+      { kind: 'closeThread' },
+    ])
+  })
+
+  it('starts a new closeThread and createPlace empty', () => {
+    expect(newEffect('closeThread')).toMatchObject({ kind: 'closeThread', fact: '' })
+    expect(newEffect('createPlace')).toMatchObject({ kind: 'createPlace', name: '', tags: [] })
   })
 
   it('guides: a sheet effect only where the context allows it, and the limit', () => {

@@ -129,6 +129,14 @@ describe('the effects editor', () => {
       { kind: 'createThread', name: 'The debt' },
     ],
     [
+      'createPlace',
+      async (user: ReturnType<typeof userEvent.setup>) => {
+        await typeText(user, card(1).getByLabelText('Name'), 'The keep')
+        await user.click(card(1).getByRole('checkbox', { name: 'Gang' }))
+      },
+      { kind: 'createPlace', name: 'The keep', tags: ['gang'] },
+    ],
+    [
       'fillFact',
       async (user: ReturnType<typeof userEvent.setup>) => {
         await chooseOption(user, 'Fact slot', 'client', card(1))
@@ -168,8 +176,42 @@ describe('the effects editor', () => {
     expect(latest.written).toEqual([{ kind: 'fillFact', slot: 'target' }])
   })
 
+  it('closes the picked Thread unless a thread fact slot is picked, and lists only thread slots', async () => {
+    const user = userEvent.setup()
+    const context = {
+      ...effectPickers,
+      factSlots: [
+        ...effectPickers.factSlots,
+        { key: 'rumour', name: 'Rumour', type: 'thread' },
+        { key: 'lair', name: 'Lair', type: 'place' },
+      ],
+    }
+    render(<Harness context={context} />)
+
+    await add(user, 'closeThread')
+    expect(latest.written).toEqual([{ kind: 'closeThread' }])
+    const options = await listOptions(user, card(1).getByLabelText('Thread fact slot'))
+    expect(options.map((option) => option.value)).toEqual(['', 'rumour'])
+    await chooseOption(user, 'Thread fact slot', 'rumour', card(1))
+
+    expect(latest.written).toEqual([{ kind: 'closeThread', fact: 'rumour' }])
+  })
+
+  it('shows a closeThread fact that is no thread slot and lets the server refuse it', () => {
+    render(<Harness stored={[{ kind: 'closeThread', fact: 'target' }]} />)
+
+    expect(card(1).getByLabelText('Thread fact slot')).toHaveTextContent('target')
+    expect(latest.written).toEqual([{ kind: 'closeThread', fact: 'target' }])
+  })
+
+  it('keeps a closeThread with a null fact as stored', () => {
+    render(<Harness stored={[{ kind: 'closeThread', fact: null }]} />)
+
+    expect(latest.written).toEqual([{ kind: 'closeThread', fact: null }])
+  })
+
   // jsdom measures no height: the test checks the options offered and the panel's height cap.
-  it('offers every effect kind, in a panel tall enough to show the tenth without scrolling', async () => {
+  it('offers every effect kind, in a panel tall enough to show the eleventh without scrolling', async () => {
     const user = userEvent.setup()
     render(<Harness allowSheet />)
 
@@ -181,7 +223,7 @@ describe('the effects editor', () => {
         .getAllByRole('option')
         .map((option) => option.getAttribute('data-option-value')),
     ).toEqual([...effectKinds])
-    // Ten rows of about 33px and the padding need 24rem; the default 20rem hid the last row.
+    // Eleven rows of about 33px and the padding fit 24rem; the default 20rem hid the last row.
     expect(document.querySelector('[data-slot="select-content"]')).toHaveClass(
       'max-h-[min(24rem,var(--radix-select-content-available-height))]',
     )

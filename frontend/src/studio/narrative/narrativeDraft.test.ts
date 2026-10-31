@@ -181,13 +181,27 @@ describe('a tag draft', () => {
 
   it.each([
     ['no kind', []],
-    ['every kind', ['character', 'npc', 'thread']],
-    ['every kind, some repeated', ['character', 'npc', 'thread', 'npc']],
+    ['every kind', ['character', 'npc', 'thread', 'place']],
+    ['every kind, some repeated', ['character', 'npc', 'thread', 'place', 'npc']],
   ])('omits the scope when it holds %s, since the tag then applies to all', (_name, appliesTo) => {
     const draft = tagToDraft({ key: 'gang', label: 'Gang' })
 
     expect(tagToItem({ ...(draft ?? newMissing()), appliesTo })).toEqual({
       item: { key: 'gang', label: 'Gang' },
+    })
+  })
+
+  it('reads and gives back a scope limited to places', () => {
+    const scoped = { key: 'near', label: 'Near', appliesTo: ['place'] }
+
+    expect(tagToItem(tagToDraft(scoped) ?? newMissing())).toEqual({ item: scoped })
+    expect(
+      tagToItem({
+        ...(tagToDraft(scoped) ?? newMissing()),
+        appliesTo: ['character', 'npc', 'thread'],
+      }),
+    ).toEqual({
+      item: { key: 'near', label: 'Near', appliesTo: ['character', 'npc', 'thread'] },
     })
   })
 
@@ -222,6 +236,12 @@ describe('a fact slot draft', () => {
     expect(factSlotToItem(factSlotToDraft(slot) ?? newMissing())).toEqual({ item: slot })
   })
 
+  it('reads and gives back a place slot', () => {
+    const place = { ...slot, type: 'place' }
+
+    expect(factSlotToItem(factSlotToDraft(place) ?? newMissing())).toEqual({ item: place })
+  })
+
   it('sends the type the form chose', () => {
     const draft = { ...(factSlotToDraft(slot) ?? newMissing()), type: 'thread' }
 
@@ -229,7 +249,7 @@ describe('a fact slot draft', () => {
   })
 
   it.each([
-    ['an unknown type', { ...slot, type: 'place' }],
+    ['an unknown type', { ...slot, type: 'faction' }],
     ['no type', { key: 'target', label: 'Target' }],
   ])('is not editable with %s', (_name, definition) => {
     expect(factSlotToDraft(definition)).toBeNull()

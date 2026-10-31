@@ -355,12 +355,14 @@ describe('creating', () => {
     }
     await create('villain', ['NPCs', 'Threads'])
     await create('anyone', [])
-    await create('everyone', ['Characters', 'NPCs', 'Threads'])
+    await create('everyone', ['Characters', 'NPCs', 'Threads', 'Places'])
+    await create('where', ['Places'])
 
     expect(tag.sent.map((request) => request.item)).toEqual([
       { key: 'villain', label: 'villain', appliesTo: ['npc', 'thread'] },
       { key: 'anyone', label: 'anyone' },
       { key: 'everyone', label: 'everyone' },
+      { key: 'where', label: 'where', appliesTo: ['place'] },
     ])
   })
 

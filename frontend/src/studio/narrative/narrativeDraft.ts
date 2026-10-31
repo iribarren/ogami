@@ -14,13 +14,14 @@ export type ItemResult = { item: StoredItem } | { errors: FieldErrors }
 
 export type TrackerKind = 'counter' | 'clock'
 
-export const factSlotTypes = ['text', 'npc', 'thread'] as const
+export const factSlotTypes = ['text', 'npc', 'thread', 'place'] as const
 
 /** The entity kinds a tag may be limited to (`appliesTo`), with the plural the form shows. */
 export const tagKinds = [
   { kind: 'character', label: 'Characters' },
   { kind: 'npc', label: 'NPCs' },
   { kind: 'thread', label: 'Threads' },
+  { kind: 'place', label: 'Places' },
 ] as const
 
 export interface LevelDraft {
@@ -266,7 +267,7 @@ export function tagToDraft(definition: StoredItem): LabelledDraft | null {
 
 export const tagToItem = (draft: LabelledDraft) => labelledToItem(draft, false)
 
-/** The fact slot as form state; null for a type that is not text, npc or thread. */
+/** The fact slot as form state; null for a type that is not text, npc, thread or place. */
 export function factSlotToDraft(definition: StoredItem): LabelledDraft | null {
   const { type } = definition
   const draft = labelledToDraft(definition, ['key', 'label', 'hint', 'type'])

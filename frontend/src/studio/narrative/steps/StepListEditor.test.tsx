@@ -450,12 +450,12 @@ describe('the step list editor', () => {
     await user.click(card(1).getByRole('checkbox', { name: 'Moods' }))
     await user.click(card(1).getByRole('checkbox', { name: 'Places' }))
     await replaceText(user, card(2).getByLabelText('Dice'), '2d6')
-    await chooseOption(user, 'Count of', 'thread', card(3))
+    await chooseOption(user, 'Count of', 'place', card(3))
     await user.click(card(3).getByRole('checkbox', { name: 'Gang' }))
 
     expect(saved(0)).toMatchObject({ inspiration: ['moods'] })
     expect(saved(1)).toMatchObject({ dice: '2d6' })
-    expect(saved(2)).toMatchObject({ count: { of: 'thread' } })
+    expect(saved(2)).toMatchObject({ count: { of: 'place' } })
     expect(saved(2)).not.toHaveProperty('count.tags')
 
     await chooseOption(user, 'Reads', 'tracker', card(3))
@@ -1384,13 +1384,13 @@ describe('the step list editor', () => {
       const user = userEvent.setup()
       render(<Harness stored={stepListPickCheck} />)
 
-      await chooseOption(user, 'Pick of', 'thread', card(1))
+      await chooseOption(user, 'Pick of', 'place', card(1))
       await chooseOption(user, 'Mode', 'choose', card(1))
       await user.click(card(1).getByRole('checkbox', { name: 'Gang' }))
       await replaceText(user, card(1).getByLabelText('Count max'), '2')
 
       expect(saved(0)).toMatchObject({
-        of: 'thread',
+        of: 'place',
         mode: 'choose',
         count: { min: 1, max: 2 },
       })

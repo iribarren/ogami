@@ -355,6 +355,25 @@ describe('a step draft', () => {
     })
   })
 
+  it('reads a pick and a count of places, and gives them back as stored', () => {
+    const pickPlace = { key: 'where', kind: 'pick', title: 'Where?', of: 'place', mode: 'random' }
+    const countPlace = {
+      ...condition,
+      count: { of: 'place', tags: ['gang'], scope: 'scene' },
+    }
+
+    expect(draftOf(pickPlace, 'pick')).toMatchObject({ of: 'place' })
+    expect(round(pickPlace)).toEqual({ steps: [pickPlace] })
+    expect(round(countPlace)).toEqual({ steps: [countPlace] })
+  })
+
+  it('keeps a pick of an unknown kind read-only', () => {
+    const odd = { key: 'where', kind: 'pick', title: 'Where?', of: 'region', mode: 'random' }
+
+    expect(round(odd)).toEqual({ steps: [odd] })
+    expect(stepsToDrafts([odd])[0]).toMatchObject({ kind: 'stored' })
+  })
+
   it('omits empty tags and empty found and none outcomes of a pick', () => {
     const emptied = { ...pick, tags: [], count: undefined, branches: { found: {}, none: {} } }
 

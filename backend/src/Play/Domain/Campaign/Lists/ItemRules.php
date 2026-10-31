@@ -9,8 +9,8 @@ use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Tag;
 
 /**
- * The rules NPCs and Threads share: trimmed names, unique release Tags and free tags, a weight.
- * Every violation fails through the factory the caller passes (InvalidNpc or InvalidThread), so
+ * The rules NPCs, Threads and Places share: trimmed names, unique release Tags and free tags, a weight.
+ * Every violation fails through the factory the caller passes (InvalidNpc, InvalidThread or InvalidPlace), so
  * the message names the right kind; nothing is clamped or deduplicated silently.
  */
 final class ItemRules
@@ -114,6 +114,26 @@ final class ItemRules
         }
 
         return $weight;
+    }
+
+    /**
+     * Release Tags of a Place: none applies to Places yet (ADR 0047), so a Tag the release defines
+     * is not applicable and one it does not define is unknown.
+     *
+     * @param list<string> $tags
+     *
+     * @throws UnknownReleaseTag when the release defines none of a key
+     * @throws TagNotApplicable  when the release defines it (no Tag applies to Places yet)
+     */
+    public static function assertPlaceTags(array $tags, GameSystemSnapshot $release): void
+    {
+        foreach ($tags as $key) {
+            if (!$release->tag($key) instanceof Tag) {
+                throw UnknownReleaseTag::withKey($key);
+            }
+
+            throw TagNotApplicable::forPlaces($key);
+        }
     }
 
     /**

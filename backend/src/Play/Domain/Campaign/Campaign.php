@@ -46,6 +46,7 @@ use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Lists\GeneratedItemId;
 use App\Play\Domain\Campaign\Lists\InvalidNpc;
+use App\Play\Domain\Campaign\Lists\InvalidPlace;
 use App\Play\Domain\Campaign\Lists\InvalidPromotion;
 use App\Play\Domain\Campaign\Lists\InvalidThread;
 use App\Play\Domain\Campaign\Lists\ItemRules;
@@ -53,11 +54,15 @@ use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcAlreadyExists;
 use App\Play\Domain\Campaign\Lists\NpcAlreadyPromoted;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\Place;
+use App\Play\Domain\Campaign\Lists\PlaceAlreadyExists;
+use App\Play\Domain\Campaign\Lists\PlaceId;
 use App\Play\Domain\Campaign\Lists\TagNotApplicable;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\Lists\ThreadAlreadyExists;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
+use App\Play\Domain\Campaign\Lists\UnknownPlace;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\Lists\UnknownThread;
 use App\Play\Domain\Campaign\Transfer\TransferFromOutdatedRelease;
@@ -99,7 +104,7 @@ use App\Randomness\Domain\RandomNumberGenerator;
  * take the pinned release and change the campaign all or nothing. Hand Tracker edits and Scene Type
  * switches are recorded in its history.
  *
- * It also keeps the player's NPCs and Threads (at most 500 of each), added, edited, closed and
+ * It also keeps the player's NPCs, Threads and Places (at most 500 of each), added, edited, closed and
  * reopened at any time. Their release Tags are keys of the pinned release. Lists keep creation
  * order; the readers put open items first. A Scene's cast lists NPCs of the campaign: picks and
  * created NPCs join the current scene's, the player edits it.
@@ -124,6 +129,8 @@ final class Campaign
     public const int MAX_NPCS = 500;
 
     public const int MAX_THREADS = 500;
+
+    public const int MAX_PLACES = 500;
 
     public const int MAX_FACTS = 500;
 
@@ -153,6 +160,7 @@ final class Campaign
      * @param list<Thread>       $threads       in creation order
      * @param list<Fact>         $facts         in creation order
      * @param list<Character>    $characters    in creation order
+     * @param list<Place>        $places        in creation order
      */
     private function __construct(
         private readonly string $id,
@@ -169,6 +177,7 @@ final class Campaign
         private array $threads = [],
         private array $facts = [],
         private array $characters = [],
+        private array $places = [],
     ) {
     }
 
@@ -269,10 +278,12 @@ final class Campaign
      * @param list<Thread>       $threads       in creation order
      * @param list<Fact>         $facts         in creation order
      * @param list<Character>    $characters    in creation order
+     * @param list<Place>        $places        in creation order
      *
      * @throws NpcAlreadyExists       when two NPCs share an id
      * @throws CharacterAlreadyExists when two Characters share an id
      * @throws ThreadAlreadyExists    when two Threads share an id
+     * @throws PlaceAlreadyExists     when two Places share an id
      * @throws FactAlreadyExists      when two facts share an id
      * @throws CampaignLimitReached   when there are more than 500 facts
      * @throws InvalidFact            when two facts fill one slot, or a fact links to itself
@@ -281,7 +292,7 @@ final class Campaign
      * @throws UnknownFact            when a link names a fact the campaign does not hold
      * @throws InvalidPromotion       when a promotion is named by one side only
      */
-    public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = [], ?string $flowKey = null, ?FlowRun $flowRun = null, array $npcs = [], array $threads = [], array $facts = [], array $characters = []): self
+    public static function reconstitute(CampaignId $id, string $ownerId, string $name, PinnedRelease $pinnedRelease, \DateTimeImmutable $createdAt, array $sessions, array $trackerValues = [], ?string $flowKey = null, ?FlowRun $flowRun = null, array $npcs = [], array $threads = [], array $facts = [], array $characters = [], array $places = []): self
     {
         $npcIds = [];
         foreach ($npcs as $npc) {
@@ -301,6 +312,16 @@ final class Campaign
             }
 
             $threadIds[$key] = true;
+        }
+
+        $placeIds = [];
+        foreach ($places as $place) {
+            $key = $place->id()->toString();
+            if (isset($placeIds[$key])) {
+                throw PlaceAlreadyExists::withId($place->id());
+            }
+
+            $placeIds[$key] = true;
         }
 
         $characterIds = [];
@@ -328,6 +349,7 @@ final class Campaign
             $threads,
             $facts,
             $characters,
+            $places,
         );
         $campaign->flowRun = $flowRun;
         $campaign->startMissingFlowRun();
@@ -1176,6 +1198,98 @@ final class Campaign
     }
 
     /**
+     * Adds an open Place at the end of the list. No release Tag applies to Places yet (ADR 0047),
+     * so release Tags are refused.
+     *
+     * @param list<string> $tags     release Tag keys of the pinned release
+     * @param list<string> $freeTags
+     *
+     * @throws InvalidPlace         when a value breaks a rule
+     * @throws UnknownReleaseTag    when a Tag key is not in the pinned release
+     * @throws TagNotApplicable     when a Tag is given (none applies to Places yet)
+     * @throws PlaceAlreadyExists   when the campaign holds a Place with this id
+     * @throws CampaignLimitReached when the campaign already holds 500 Places
+     */
+    public function addPlace(PlaceId $id, string $name, ?string $notes, array $tags, array $freeTags, int $weight, GameSystemSnapshot $release): Place
+    {
+        $this->assertPinned($release);
+        if (\count($this->places) >= self::MAX_PLACES) {
+            throw CampaignLimitReached::places(self::MAX_PLACES);
+        }
+
+        if ($this->place($id) instanceof Place) {
+            throw PlaceAlreadyExists::withId($id);
+        }
+
+        $place = Place::of($id, $name, $notes, $tags, $freeTags, $weight);
+        ItemRules::assertPlaceTags($place->tags(), $release);
+        $this->places = [...$this->places, $place];
+
+        return $place;
+    }
+
+    /**
+     * Replaces the Place's name, notes, Tags, free tags and weight; its status stays. All or nothing.
+     *
+     * @param list<string> $tags     release Tag keys of the pinned release
+     * @param list<string> $freeTags
+     *
+     * @throws UnknownPlace      when the campaign holds no Place with this id
+     * @throws InvalidPlace      when a value breaks a rule
+     * @throws UnknownReleaseTag when a Tag key is not in the pinned release
+     * @throws TagNotApplicable  when a Tag is given (none applies to Places yet)
+     */
+    public function editPlace(PlaceId $id, string $name, ?string $notes, array $tags, array $freeTags, int $weight, GameSystemSnapshot $release): Place
+    {
+        $this->assertPinned($release);
+        $index = $this->placeIndex($id);
+        $edited = $this->places[$index]->edited($name, $notes, $tags, $freeTags, $weight);
+        ItemRules::assertPlaceTags($edited->tags(), $release);
+        $this->places = $this->replaced($this->places, $index, $edited);
+
+        return $edited;
+    }
+
+    /**
+     * Closes the Place: it is no longer picked or counted. Closing a closed one changes nothing.
+     *
+     * @throws UnknownPlace when the campaign holds no Place with this id
+     */
+    public function closePlace(PlaceId $id): void
+    {
+        $index = $this->placeIndex($id);
+        if ($this->places[$index]->isOpen()) {
+            $this->places = $this->replaced($this->places, $index, $this->places[$index]->closed());
+        }
+    }
+
+    /**
+     * Reopens the Place. Reopening an open one changes nothing.
+     *
+     * @throws UnknownPlace when the campaign holds no Place with this id
+     */
+    public function reopenPlace(PlaceId $id): void
+    {
+        $index = $this->placeIndex($id);
+        if (!$this->places[$index]->isOpen()) {
+            $this->places = $this->replaced($this->places, $index, $this->places[$index]->reopened());
+        }
+    }
+
+    public function place(PlaceId $id): ?Place
+    {
+        return $this->places[$this->placeIndexOrNull($id) ?? -1] ?? null;
+    }
+
+    /**
+     * @return list<Place> the open ones first, then the closed ones, each in creation order
+     */
+    public function places(): array
+    {
+        return $this->openFirst($this->places);
+    }
+
+    /**
      * Adds a free Campaign fact at the end of the list.
      *
      * @param list<FactLink> $links
@@ -1844,6 +1958,25 @@ final class Campaign
     }
 
     /**
+     * @throws UnknownPlace
+     */
+    private function placeIndex(PlaceId $id): int
+    {
+        return $this->placeIndexOrNull($id) ?? throw UnknownPlace::withId($id);
+    }
+
+    private function placeIndexOrNull(PlaceId $id): ?int
+    {
+        foreach ($this->places as $index => $place) {
+            if ($place->id()->equals($id)) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @throws FactAlreadyExists    when a fact holds the id
      * @throws CampaignLimitReached when the campaign already holds 500 facts
      * @throws UnknownNpc           when a link names an NPC the campaign does not hold
@@ -2012,14 +2145,14 @@ final class Campaign
     }
 
     /**
-     * @template T of Npc|Thread|Fact|Character
+     * @template T of Npc|Thread|Place|Fact|Character
      *
      * @param list<T> $items
      * @param T       $item
      *
      * @return list<T> a copy with the item at the index replaced, so that the stored list is seen to change
      */
-    private function replaced(array $items, int $index, Npc|Thread|Fact|Character $item): array
+    private function replaced(array $items, int $index, Npc|Thread|Place|Fact|Character $item): array
     {
         $items[$index] = $item;
 
@@ -2027,7 +2160,7 @@ final class Campaign
     }
 
     /**
-     * @template T of Npc|Thread
+     * @template T of Npc|Thread|Place
      *
      * @param list<T> $items
      *
@@ -2036,8 +2169,8 @@ final class Campaign
     private function openFirst(array $items): array
     {
         return [
-            ...array_filter($items, static fn (Npc|Thread $item): bool => $item->isOpen()),
-            ...array_filter($items, static fn (Npc|Thread $item): bool => !$item->isOpen()),
+            ...array_filter($items, static fn (Npc|Thread|Place $item): bool => $item->isOpen()),
+            ...array_filter($items, static fn (Npc|Thread|Place $item): bool => !$item->isOpen()),
         ];
     }
 

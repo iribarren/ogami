@@ -13,7 +13,7 @@ import {
 export type Fact = components['schemas']['FactResponse']
 export type FactSlot = components['schemas']['FactSlotResponse']
 export type FactLink = components['schemas']['FactLinkRequest']
-/** What fills a slot: exactly one of a text, an existing NPC or Thread, or a new one by name. */
+/** What fills a slot: exactly one of a text, an existing NPC, Thread or Place, or a new one by name. */
 export type SlotFill = { text: string } | { subject: string } | { name: string }
 /** A free fact's label and text, to add or to edit. */
 export interface FreeFactFields {
@@ -23,7 +23,7 @@ export interface FreeFactFields {
 
 /**
  * The changes to the Campaign facts. Every change refetches the campaign: a fill may create an
- * NPC or Thread, and the server keeps the facts in their order and resolves names. A refusal of
+ * NPC, Thread or Place, and the server keeps the facts in their order and resolves names. A refusal of
  * 409 refetches too, as the campaign changed under the player.
  */
 export function useFactActions(campaignId: string) {

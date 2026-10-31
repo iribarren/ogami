@@ -61,6 +61,7 @@ afterEach(() => {
 describe('the list links in focus mode', () => {
   it.each([
     ['Threads', 'threads'],
+    ['Places', 'places'],
     ['NPCs', 'npcs'],
   ])('open the collapsed %s panel', async (name, id) => {
     const user = userEvent.setup()

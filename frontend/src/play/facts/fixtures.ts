@@ -1,5 +1,5 @@
 import type { Campaign } from '../campaigns/useCampaigns'
-import { lostMineWithLists, miraNpc, vaultThread } from '../lists/fixtures'
+import { lostMineWithLists, miraNpc, saltmarshPlace, vaultThread } from '../lists/fixtures'
 
 // Shared by the Facts panel tests and stories.
 
@@ -20,6 +20,8 @@ export const goalSlot: FactSlot = {
   hint: 'What does the character want?',
 }
 
+export const siteSlot: FactSlot = { key: 'site', label: 'The site', type: 'place', hint: null }
+
 /** A filled text slot, linked to Mira Vane. */
 export const cityFact: Fact = {
   id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9001',
@@ -39,6 +41,17 @@ export const princeFact: Fact = {
   text: null,
   subject: { kind: 'npc', id: miraNpc.id, name: miraNpc.name },
   value: miraNpc.name,
+  links: [],
+}
+
+/** A filled Place slot: Saltmarsh is the site. */
+export const siteFact: Fact = {
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9005',
+  slot: 'site',
+  label: 'The site',
+  text: null,
+  subject: { kind: 'place', id: saltmarshPlace.id, name: saltmarshPlace.name },
+  value: saltmarshPlace.name,
   links: [],
 }
 

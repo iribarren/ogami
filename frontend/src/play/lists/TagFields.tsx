@@ -11,7 +11,7 @@ export type ReleaseTag = Campaign['tags'][number]
 
 const chip = 'rounded-md px-1.5 py-0.5 text-xs font-medium'
 
-/** The Tags and free tags of an NPC, a Thread or a Character, as chips. */
+/** The Tags and free tags of an NPC, a Thread, a Place or a Character, as chips. */
 export function TagChips({
   tags,
   freeTags,
@@ -64,7 +64,7 @@ export function TagFields({
 }: {
   id: string
   /** What the form edits: a Tag limited to other kinds is not offered. */
-  kind: 'character' | 'npc' | 'thread'
+  kind: 'character' | 'npc' | 'thread' | 'place'
   releaseTags: ReleaseTag[]
   /** The Tag keys the item holds. */
   held: string[]

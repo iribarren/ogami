@@ -9,6 +9,7 @@ import {
   lockedDoorAnswer,
   luckCheckEntry,
   pickedNothing,
+  pickedPlace,
   pickedTwo,
   plainAnswer,
   sanityLossEntry,
@@ -116,6 +117,13 @@ describe('JournalEntryView', () => {
     const pick = screen.getByRole('article', { name: 'Pick Thread' })
     expect(pick).toHaveTextContent('Picked Thread: No match')
     expect(pick).not.toHaveTextContent('Tagged')
+  })
+
+  it('renders a pick of Places as the Place names', () => {
+    render(<JournalEntryView entry={pickedPlace} />)
+
+    const pick = screen.getByRole('article', { name: 'Pick Place' })
+    expect(pick).toHaveTextContent('Picked Place: Saltmarsh')
   })
 
   it('marks a fate question that answered with a random event', () => {

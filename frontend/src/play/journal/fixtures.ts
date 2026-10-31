@@ -568,6 +568,22 @@ export const pickedNothing: JournalEntry = {
   flowStep: { key: 'draw-thread', title: 'What comes up?', prompt: null },
 }
 
+/** A pick step that found one Place. */
+export const pickedPlace: JournalEntry = {
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7009',
+  sessionNumber: 1,
+  sceneNumber: 1,
+  recordedAt: '2026-10-05T12:19:00+00:00',
+  kind: 'pick',
+  content: {
+    kind: 'pick',
+    of: 'place',
+    tags: [],
+    picked: [{ id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3fa001', name: 'Saltmarsh' }],
+  },
+  flowStep: { key: 'where', title: 'Where do you go?', prompt: null },
+}
+
 /** What Vi's failed Sanity check took, recorded after the check: 1d6 Sanity and 1 Hit point. */
 export const sanityLossEntry: JournalEntry = {
   id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7010',

@@ -41,6 +41,7 @@ const answerLabels: Record<LikelihoodContent['answer'], string> = {
 const kindLabels: Record<PickContent['of'], string> = {
   npc: 'NPC',
   thread: 'Thread',
+  place: 'Place',
   character: 'Character',
 }
 

@@ -12,16 +12,18 @@ import { TagChips, TagFields, type ReleaseTag } from './TagFields'
 import { useFreeTags } from './useFreeTags'
 import { useListActions, type ListFields, type ListItem, type ListKind } from './useLists'
 
-/** What differs between the two lists: the word, the name limit and the agenda. */
+/** What differs between the lists: the word, the name limit, the agenda and the notes. */
 const kinds = {
-  npc: { noun: 'NPC', maxName: 100, hasAgenda: true },
-  thread: { noun: 'Thread', maxName: 200, hasAgenda: false },
+  npc: { noun: 'NPC', maxName: 100, hasAgenda: true, hasNotes: false },
+  thread: { noun: 'Thread', maxName: 200, hasAgenda: false, hasNotes: false },
+  place: { noun: 'Place', maxName: 200, hasAgenda: false, hasNotes: true },
 } as const
 
 const maxAgenda = 2000
+const maxNotes = 2000
 
 /**
- * The NPCs or the Threads of a campaign: open items first, closed ones under a collapsed
+ * The NPCs, Threads or Places of a campaign: open items first, closed ones under a collapsed
  * "Closed", with an inline form to add and edit. The API validates; its refusals show as they
  * come and keep the form as typed. Lists belong to the campaign, so no scene is needed.
  */
@@ -33,7 +35,11 @@ export function ListPanel({ campaign, kind }: { campaign: Campaign; kind: ListKi
   const [confirming, setConfirming] = useState<string | null>(null)
   // The id of the item being edited, 'new' for the add form, none when no form is open.
   const [form, setForm] = useState<string | null>(null)
-  const items: ListItem[] = kind === 'npc' ? campaign.npcs : campaign.threads
+  const items: ListItem[] = {
+    npc: campaign.npcs,
+    thread: campaign.threads,
+    place: campaign.places,
+  }[kind]
   const open = items.filter(({ status }) => status === 'open')
   const closed = items.filter(({ status }) => status === 'closed')
 
@@ -190,7 +196,7 @@ function ItemRow({
   facts: string[]
   releaseTags: ReleaseTag[]
   pending: boolean
-  /** The NPC promotion, null for a Thread. */
+  /** The NPC promotion, null for a Thread or a Place. */
   promotion: {
     confirming: boolean
     pending: boolean
@@ -202,6 +208,7 @@ function ItemRow({
   onToggle: () => void
 }) {
   const agenda = 'agenda' in item ? item.agenda : null
+  const notes = 'notes' in item ? item.notes : null
   // A promoted NPC is closed for good: it cannot be reopened or promoted again.
   const promoted = 'promotedTo' in item && item.promotedTo !== null
   return (
@@ -274,6 +281,7 @@ function ItemRow({
       {agenda !== null && agenda !== '' && (
         <p className="text-sm text-muted-foreground">{agenda}</p>
       )}
+      {notes !== null && notes !== '' && <p className="text-sm text-muted-foreground">{notes}</p>}
       {facts.length > 0 && (
         <p className="text-xs text-muted-foreground">Facts: {facts.join(', ')}</p>
       )}
@@ -299,9 +307,10 @@ function ItemForm({
   onSubmit: (fields: ListFields) => void
   onCancel: () => void
 }) {
-  const { noun, maxName, hasAgenda } = kinds[kind]
+  const { noun, maxName, hasAgenda, hasNotes } = kinds[kind]
   const id = useId()
   const agenda = item !== null && 'agenda' in item ? item.agenda : null
+  const notes = item !== null && 'notes' in item ? item.notes : null
   const free = useFreeTags(item?.freeTags ?? [])
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
@@ -319,6 +328,9 @@ function ItemForm({
     }
     if (hasAgenda) {
       fields.agenda = text('agenda').trim() === '' ? null : text('agenda')
+    }
+    if (hasNotes) {
+      fields.notes = text('notes').trim() === '' ? null : text('notes')
     }
     onSubmit(fields)
   }
@@ -348,6 +360,17 @@ function ItemForm({
               name="agenda"
               maxLength={maxAgenda}
               defaultValue={agenda ?? ''}
+            />
+          </div>
+        )}
+        {hasNotes && (
+          <div className="space-y-1">
+            <Label htmlFor={`${id}-notes`}>Notes</Label>
+            <Textarea
+              id={`${id}-notes`}
+              name="notes"
+              maxLength={maxNotes}
+              defaultValue={notes ?? ''}
             />
           </div>
         )}

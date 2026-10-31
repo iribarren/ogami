@@ -87,6 +87,7 @@ describe('the guided panel', () => {
 
   it.each([
     ['Threads', 'threads'],
+    ['Places', 'places'],
     ['NPCs', 'npcs'],
   ])('opens the collapsed %s panel from its link in the guide', async (name, id) => {
     const user = userEvent.setup()

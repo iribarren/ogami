@@ -12,7 +12,9 @@ import {
   ledgerThread,
   lostMineWithLists,
   miraNpc,
+  dunmerePlace,
   oldGuardNpc,
+  saltmarshPlace,
   vaultThread,
 } from './fixtures'
 
@@ -49,6 +51,10 @@ async function npcs() {
 
 async function threads() {
   return within(await screen.findByRole('region', { name: 'Threads' }))
+}
+
+async function places() {
+  return within(await screen.findByRole('region', { name: 'Places' }))
 }
 
 /** The collapsed "Closed (n)" part of a panel. */
@@ -494,6 +500,143 @@ describe('the Threads panel', () => {
       freeTags: ['Vault'],
       weight: 3,
     })
+  })
+})
+
+describe('the Places panel', () => {
+  it('lists open and closed Places with notes, weight and tags', async () => {
+    const user = userEvent.setup()
+    renderLists(lostMineWithLists)
+
+    const panel = await places()
+    expect(panel.getByText('Saltmarsh')).toBeInTheDocument()
+    expect(panel.getByText('A fishing town on the marsh.')).toBeInTheDocument()
+    expect(panel.getByText('Weight 2')).toBeInTheDocument()
+    expect(panel.getByText('Leader')).toBeInTheDocument()
+    expect(panel.getByText('Town')).toBeInTheDocument()
+    expect(within(closedSection(panel)).getByText(dunmerePlace.name)).toBeInTheDocument()
+
+    await user.click(panel.getByRole('button', { name: 'Add Place' }))
+    expect(panel.getByLabelText('Name')).toHaveAttribute('maxlength', '200')
+    expect(panel.getByLabelText('Notes')).toHaveAttribute('maxlength', '2000')
+    expect(panel.queryByLabelText('Agenda')).not.toBeInTheDocument()
+  })
+
+  it('shows the empty state for a campaign without Places', async () => {
+    renderLists({ ...lostMineCampaign, places: [] })
+
+    expect((await places()).getByText('No open Places yet.')).toBeInTheDocument()
+  })
+
+  it('offers notes to Places only', async () => {
+    const user = userEvent.setup()
+    renderLists(lostMineWithLists)
+
+    const panel = await npcs()
+    await user.click(panel.getByRole('button', { name: 'Add NPC' }))
+    expect(panel.queryByLabelText('Notes')).not.toBeInTheDocument()
+  })
+
+  it('offers only the Tags that apply to Places', async () => {
+    const user = userEvent.setup()
+    const near = { key: 'near', label: 'Near', hint: null, appliesTo: ['place' as const] }
+    const villain = { key: 'villain', label: 'Villain', hint: null, appliesTo: ['npc' as const] }
+    renderLists({ ...lostMineWithLists, tags: [...lostMineWithLists.tags, near, villain] })
+
+    const panel = await places()
+    await user.click(panel.getByRole('button', { name: 'Add Place' }))
+
+    expect(panel.getAllByRole('checkbox').map((box) => box.getAttribute('value'))).toEqual([
+      'leader',
+      'ally',
+      'near',
+    ])
+  })
+
+  it('adds a Place with notes, sending blank notes as null', async () => {
+    const user = userEvent.setup()
+    const sent: unknown[] = []
+    renderLists(
+      lostMineWithLists,
+      { [`POST ${path}/places`]: () => Response.json(saltmarshPlace, { status: 201 }) },
+      sent,
+    )
+
+    const panel = await places()
+    await user.click(panel.getByRole('button', { name: 'Add Place' }))
+    await user.type(panel.getByLabelText('Name'), 'The keep')
+    await user.type(panel.getByLabelText('Notes'), 'On the cliff.')
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+    await waitFor(() => {
+      expect(panel.queryByLabelText('Name')).not.toBeInTheDocument()
+    })
+    await user.click(panel.getByRole('button', { name: 'Add Place' }))
+    await user.type(panel.getByLabelText('Name'), 'The mill')
+    await user.type(panel.getByLabelText('Notes'), '   ')
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(2)
+    })
+    expect(sent[0]).toEqual({
+      name: 'The keep',
+      notes: 'On the cliff.',
+      tags: [],
+      freeTags: [],
+      weight: 1,
+    })
+    expect(sent[1]).toEqual({ name: 'The mill', notes: null, tags: [], freeTags: [], weight: 1 })
+  })
+
+  it('edits a Place with its notes prefilled, closes it and reopens another', async () => {
+    const user = userEvent.setup()
+    const sent: unknown[] = []
+    renderLists(
+      lostMineWithLists,
+      {
+        [`PUT ${path}/places/${saltmarshPlace.id}`]: () =>
+          Response.json({ ...saltmarshPlace, notes: 'Flooded.' }),
+        [`POST ${path}/places/${saltmarshPlace.id}/close`]: () =>
+          Response.json({ ...saltmarshPlace, status: 'closed' }),
+        [`POST ${path}/places/${dunmerePlace.id}/reopen`]: () =>
+          Response.json({ ...dunmerePlace, status: 'open' }),
+      },
+      sent,
+    )
+
+    const panel = await places()
+    await user.click(panel.getByRole('button', { name: 'Edit Saltmarsh' }))
+    expect(panel.getByLabelText('Notes')).toHaveValue('A fishing town on the marsh.')
+    await user.clear(panel.getByLabelText('Notes'))
+    await user.type(panel.getByLabelText('Notes'), 'Flooded.')
+    await user.click(panel.getByRole('button', { name: 'Save' }))
+    expect(await panel.findByText('Flooded.')).toBeInTheDocument()
+
+    await user.click(panel.getByRole('button', { name: 'Close Saltmarsh' }))
+    await user.click(panel.getByRole('button', { name: 'Reopen Dunmere' }))
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(3)
+    })
+    expect(sent[0]).toEqual({
+      name: 'Saltmarsh',
+      notes: 'Flooded.',
+      tags: ['leader'],
+      freeTags: ['Town'],
+      weight: 2,
+    })
+  })
+
+  it('shows the facts that link a Place, not an NPC with the same id', async () => {
+    const twin = { ...miraNpc, id: saltmarshPlace.id }
+    const fact = {
+      ...oathFact,
+      links: [{ kind: 'place' as const, id: saltmarshPlace.id, name: saltmarshPlace.name }],
+    }
+    renderLists({ ...lostMineWithFacts, npcs: [twin], facts: [fact] })
+
+    expect((await places()).getByText('Facts: The oath')).toBeInTheDocument()
+    expect((await npcs()).queryByText(/Facts:/)).not.toBeInTheDocument()
   })
 })
 

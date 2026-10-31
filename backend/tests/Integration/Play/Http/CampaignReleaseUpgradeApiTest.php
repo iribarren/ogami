@@ -128,7 +128,8 @@ final class CampaignReleaseUpgradeApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(200);
         $campaign = $this->campaignJson();
-        self::assertSame([['Saltmarsh', [], ['Town']]], array_map(static fn (array $place): array => [$place['name'], $place['tags'], $place['freeTags']], (array) $this->json()['places']));
+        $places = (array) $this->json()['places'];
+        self::assertSame([['Saltmarsh'], [[]], [['Town']]], [array_column($places, 'name'), array_column($places, 'tags'), array_column($places, 'freeTags')]);
         self::assertSame($id, $campaign['id']);
         self::assertSame(2, $campaign['pinnedRelease']['version']);
         self::assertSame([['reflexes' => 5, 'tags' => ['crew']]], array_map(static fn (array $character): array => ['reflexes' => $character['values']['reflexes'], 'tags' => $character['tags']], $campaign['characters']));

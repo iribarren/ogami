@@ -5,7 +5,7 @@ import { Button } from '@/shared/ui/button'
 import type { ListKind } from './useLists'
 
 /**
- * How a list is opened, provided by the screen that shows the Threads and NPCs panels. Without
+ * How a list is opened, provided by the screen that shows the Threads, Places and NPCs panels. Without
  * a provider there is no panel to open, so no links show.
  */
 const OpenListContext = createContext<((kind: ListKind) => void) | null>(null)
@@ -14,10 +14,11 @@ export const OpenListProvider = OpenListContext.Provider
 
 const links: { kind: ListKind; label: string }[] = [
   { kind: 'thread', label: 'Threads' },
+  { kind: 'place', label: 'Places' },
   { kind: 'npc', label: 'NPCs' },
 ]
 
-/** "Threads" and "NPCs" links that open those panels, for the guide and focus mode. */
+/** "Threads", "Places" and "NPCs" links that open those panels, for the guide and focus mode. */
 export function ListLinks() {
   const open = useContext(OpenListContext)
   if (open === null) {

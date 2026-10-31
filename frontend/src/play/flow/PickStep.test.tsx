@@ -11,6 +11,7 @@ import {
   atStep,
   chooseCharacterStep,
   chooseOneStep,
+  choosePlaceStep,
   chooseTwoStep,
   chooseUpToTwoStep,
   guidedWithLists,
@@ -26,6 +27,7 @@ import type { FlowStep } from './useFlowRun'
 const path = `/api/campaigns/${lostMineCampaign.id}`
 const mira = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7001'
 const brann = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7002'
+const saltmarsh = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3fa001'
 
 /** The Play screen with the FlowRun waiting on `step`; `sent` collects the command bodies. */
 function renderPick(step: FlowStep, commands: Record<string, FakeHandler> = {}) {
@@ -245,5 +247,21 @@ describe('a pick step over Characters', () => {
     renderPick(noMatchCharacterStep)
 
     expect((await card('Who is left to play?')).getByText('No match')).toBeInTheDocument()
+  })
+})
+
+describe('a pick step over Places', () => {
+  it('lists the Places as candidates and sends the one chosen, as for NPCs', async () => {
+    const user = userEvent.setup()
+    const { sent } = renderPick(choosePlaceStep, { 'flow-run/answer': answering(afterPick) })
+
+    const step = await card('Where do you go?')
+    expect(step.getByText('Choose 1 Place')).toBeInTheDocument()
+    await user.click(step.getByRole('checkbox', { name: 'Saltmarsh' }))
+    await user.click(step.getByRole('button', { name: 'Choose' }))
+
+    await waitFor(() => {
+      expect(sent['flow-run/answer']).toEqual({ stepKey: 'where', pickedIds: [saltmarsh] })
+    })
   })
 })

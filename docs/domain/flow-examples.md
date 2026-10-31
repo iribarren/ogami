@@ -494,6 +494,6 @@ sessionClosing
 | Scene chains for travel and delving | 1 |
 
 **Notes**
-- Places (map, regions, sites) are an open question. In M2 they are free Campaign facts.
+- Places: a Places list beside NPCs and Threads, sites created from tables, regions as Tags and distance as tracker bands ([ADR 0047](../adr/0047-places.md)). Until `play-places` lands they are free Campaign facts.
 - A dungeon repeats rooms only through a `nextScene` chain (accepted limit).
 - Picking Characters needs feature 10; in M2 the party is chosen from NPCs tagged `adventurer`.

@@ -1346,7 +1346,7 @@
           "additionalProperties": false,
           "properties": {
             "kind": { "const": "closeThread" },
-            "fact": { "$ref": "#/$defs/key" }
+            "fact": { "oneOf": [{ "$ref": "#/$defs/key" }, { "type": "null" }] }
           }
         },
         {

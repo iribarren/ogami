@@ -19,7 +19,7 @@ final readonly class FactSlotResponse
         public string $key,
         #[OA\Property(description: 'What players see for the slot.', example: 'The Prince')]
         public string $label,
-        #[OA\Property(description: 'What the slot takes: a text, an NPC or a Thread.', example: 'npc', enum: ['text', 'npc', 'thread'])]
+        #[OA\Property(description: 'What the slot takes: a text, an NPC, a Thread or a Place.', example: 'npc', enum: ['text', 'npc', 'thread', 'place'])]
         public string $type,
         #[OA\Property(description: 'Shown where the slot is filled; null when the slot has none.', example: 'Who rules the city?', nullable: true)]
         public ?string $hint,

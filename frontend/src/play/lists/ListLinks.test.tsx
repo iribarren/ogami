@@ -10,7 +10,7 @@ describe('ListLinks', () => {
     expect(screen.queryByRole('navigation', { name: 'Lists' })).not.toBeInTheDocument()
   })
 
-  it('opens the Threads or the NPCs panel from its link', async () => {
+  it('opens the Threads, Places or NPCs panel from its link', async () => {
     const user = userEvent.setup()
     const open = vi.fn()
     render(
@@ -21,7 +21,8 @@ describe('ListLinks', () => {
 
     await user.click(screen.getByRole('button', { name: 'NPCs' }))
     await user.click(screen.getByRole('button', { name: 'Threads' }))
+    await user.click(screen.getByRole('button', { name: 'Places' }))
 
-    expect(open.mock.calls).toEqual([['npc'], ['thread']])
+    expect(open.mock.calls).toEqual([['npc'], ['thread'], ['place']])
   })
 })

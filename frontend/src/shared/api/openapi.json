@@ -4095,7 +4095,7 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "The new campaign, on the latest release, with the source's NPCs, Threads and Campaign facts and the chosen Characters, all with their ids; Trackers at their initial value, no sessions. The Location header is its URL. The source is unchanged.",
+                        "description": "The new campaign, on the latest release, with the source's NPCs, Threads, Places and Campaign facts and the chosen Characters, all with their ids; Trackers at their initial value, no sessions. The Location header is its URL. The source is unchanged.",
                         "headers": {
                             "Location": {
                                 "description": "The URL of the new campaign.",
@@ -13005,6 +13005,7 @@
                         "enum": [
                             "npc",
                             "thread",
+                            "place",
                             "character"
                         ]
                     },
@@ -13061,13 +13062,14 @@
                         "example": "The Prince"
                     },
                     "type": {
-                        "description": "What the slot takes: a text, an NPC or a Thread.",
+                        "description": "What the slot takes: a text, an NPC, a Thread or a Place.",
                         "type": "string",
                         "example": "npc",
                         "enum": [
                             "text",
                             "npc",
-                            "thread"
+                            "thread",
+                            "place"
                         ]
                     },
                     "hint": {
@@ -13548,7 +13550,8 @@
                             "enum": [
                                 "character",
                                 "npc",
-                                "thread"
+                                "thread",
+                                "place"
                             ]
                         },
                         "example": [
@@ -13915,12 +13918,13 @@
                 ],
                 "properties": {
                     "kind": {
-                        "description": "A subject is always an NPC or a Thread.",
+                        "description": "A subject is always an NPC, a Thread or a Place.",
                         "type": "string",
                         "example": "npc",
                         "enum": [
                             "npc",
                             "thread",
+                            "place",
                             "fact"
                         ]
                     },
@@ -13929,7 +13933,7 @@
                         "format": "uuid"
                     },
                     "name": {
-                        "description": "The NPC's or Thread's name, or the linked fact's label.",
+                        "description": "The NPC's, Thread's or Place's name, or the linked fact's label.",
                         "type": "string",
                         "example": "Mira Vane"
                     }
@@ -14270,6 +14274,7 @@
                         "enum": [
                             "npc",
                             "thread",
+                            "place",
                             "fact"
                         ]
                     },
@@ -14344,13 +14349,13 @@
                         "nullable": true
                     },
                     "subject": {
-                        "description": "For an \"npc\" or \"thread\" slot: the id of an NPC or Thread the campaign holds (closed ones too).",
+                        "description": "For an \"npc\", \"thread\" or \"place\" slot: the id of an NPC, Thread or Place the campaign holds (closed ones too).",
                         "type": "string",
                         "format": "uuid",
                         "nullable": true
                     },
                     "name": {
-                        "description": "For an \"npc\" or \"thread\" slot: the name of a new open NPC or Thread (weight 1, no tags) to create and fill the slot with.",
+                        "description": "For an \"npc\", \"thread\" or \"place\" slot: the name of a new open NPC, Thread or Place (weight 1, no tags) to create and fill the slot with.",
                         "type": "string",
                         "example": "Valen Vane",
                         "nullable": true
@@ -14814,6 +14819,7 @@
                     "characters",
                     "npcs",
                     "threads",
+                    "places",
                     "trackers",
                     "facts",
                     "flow",
@@ -14843,6 +14849,13 @@
                     },
                     "threads": {
                         "description": "The Threads that lose release Tags, in creation order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/UpgradeDroppedTagsResponse"
+                        }
+                    },
+                    "places": {
+                        "description": "The Places that lose release Tags, in creation order.",
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/UpgradeDroppedTagsResponse"
@@ -15675,6 +15688,7 @@
                         "enum": [
                             "npc",
                             "thread",
+                            "place",
                             "character"
                         ]
                     },

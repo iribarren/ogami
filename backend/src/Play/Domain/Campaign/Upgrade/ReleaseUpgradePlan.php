@@ -17,6 +17,7 @@ final readonly class ReleaseUpgradePlan
      * @param list<CharacterUpgrade> $characters Characters in campaign order, only those that change
      * @param list<DroppedTags>      $npcs       NPCs that lose release Tags, in creation order
      * @param list<DroppedTags>      $threads    Threads that lose release Tags, in creation order
+     * @param list<DroppedTags>      $places     Places that lose release Tags, in creation order
      * @param list<TrackerChange>    $trackers   by Tracker key
      * @param list<UnslottedFact>    $facts      in creation order
      */
@@ -26,6 +27,7 @@ final readonly class ReleaseUpgradePlan
         public array $characters,
         public array $npcs,
         public array $threads,
+        public array $places,
         public array $trackers,
         public array $facts,
         public FlowChange $flow,
@@ -52,6 +54,7 @@ final readonly class ReleaseUpgradePlan
             'characters' => array_map(static fn (CharacterUpgrade $character): array => $character->toArray(), $this->characters),
             'npcs' => array_map(static fn (DroppedTags $npc): array => $npc->toArray(), $this->npcs),
             'threads' => array_map(static fn (DroppedTags $thread): array => $thread->toArray(), $this->threads),
+            'places' => array_map(static fn (DroppedTags $place): array => $place->toArray(), $this->places),
             'trackers' => array_map(static fn (TrackerChange $tracker): array => $tracker->toArray(), $this->trackers),
             'facts' => array_map(static fn (UnslottedFact $fact): array => $fact->toArray(), $this->facts),
             'flow' => $this->flow->toArray(),

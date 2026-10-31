@@ -17,9 +17,9 @@ final readonly class FillFactSlotRequest
     public function __construct(
         #[OA\Property(description: 'For a "text" slot: 1 to 2000 characters once trimmed.', example: 'Ashford', nullable: true)]
         public ?string $text,
-        #[OA\Property(description: 'For an "npc" or "thread" slot: the id of an NPC or Thread the campaign holds (closed ones too).', format: 'uuid', nullable: true)]
+        #[OA\Property(description: 'For an "npc", "thread" or "place" slot: the id of an NPC, Thread or Place the campaign holds (closed ones too).', format: 'uuid', nullable: true)]
         public ?string $subject,
-        #[OA\Property(description: 'For an "npc" or "thread" slot: the name of a new open NPC or Thread (weight 1, no tags) to create and fill the slot with.', example: 'Valen Vane', nullable: true)]
+        #[OA\Property(description: 'For an "npc", "thread" or "place" slot: the name of a new open NPC, Thread or Place (weight 1, no tags) to create and fill the slot with.', example: 'Valen Vane', nullable: true)]
         public ?string $name,
     ) {
     }

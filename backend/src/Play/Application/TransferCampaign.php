@@ -9,7 +9,7 @@ use App\Shared\Application\Bus\Command;
 /**
  * Starts a new campaign from one of the player's campaigns (ADR 0046): on the latest release of its
  * GameSystem, to play along one of its Flows or, with no Flow key, freely, carrying the NPCs, the
- * Threads, the Campaign facts and the chosen Characters. The caller generates the new id with
+ * Threads, the Places, the Campaign facts and the chosen Characters. The caller generates the new id with
  * CampaignIdGenerator, so it can read the campaign back once the command is handled.
  */
 final readonly class TransferCampaign implements Command

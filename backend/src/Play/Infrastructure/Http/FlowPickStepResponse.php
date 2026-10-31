@@ -22,7 +22,7 @@ final readonly class FlowPickStepResponse
      * @param list<ItemRefResponse> $candidates
      */
     private function __construct(
-        #[OA\Property(description: 'The kind of item picked.', example: 'npc', enum: ['npc', 'thread', 'character'])]
+        #[OA\Property(description: 'The kind of item picked.', example: 'npc', enum: ['npc', 'thread', 'place', 'character'])]
         public string $of,
         #[OA\Property(description: 'Drawn by the server, or chosen by the player.', example: 'choose', enum: ['random', 'choose'])]
         public string $mode,

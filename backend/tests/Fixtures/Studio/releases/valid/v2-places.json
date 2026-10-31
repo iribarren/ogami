@@ -24,7 +24,7 @@
       "play": [
         {"key": "pick-site", "kind": "pick", "title": "Where to?", "of": "place", "tags": ["near"], "mode": "choose", "branches": {"found": {"effects": [{"kind": "fillFact", "slot": "site"}]}, "none": {"next": "count"}}},
         {"key": "count", "kind": "condition", "title": "How many deep sites?", "count": {"of": "place", "tags": ["deep"]}, "bands": [{"upTo": 0, "next": "meet"}, {}]},
-        {"key": "meet", "kind": "prompt", "title": "A new site", "prompt": "Describe {picked}.", "effects": [{"kind": "createPlace"}, {"kind": "createPlace", "name": "Camp near {picked}", "tags": ["near", "ally"]}, {"kind": "closeThread"}, {"kind": "closeThread", "fact": "expedition"}]}
+        {"key": "meet", "kind": "prompt", "title": "A new site", "prompt": "Describe {picked}.", "effects": [{"kind": "createPlace"}, {"kind": "createPlace", "name": "Camp near {picked}", "tags": ["near", "ally"]}, {"kind": "closeThread"}, {"kind": "closeThread", "fact": null}, {"kind": "closeThread", "fact": "expedition"}]}
       ],
       "closing": []
     }

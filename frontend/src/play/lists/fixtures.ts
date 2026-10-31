@@ -1,11 +1,12 @@
 import { lostMineCampaign } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 
-// Shared by the NPC and Thread panel tests and stories.
+// Shared by the NPC, Thread and Place panel tests and stories.
 
 type Tag = Campaign['tags'][number]
 export type Npc = Campaign['npcs'][number]
 export type Thread = Campaign['threads'][number]
+export type Place = Campaign['places'][number]
 
 export const leaderTag: Tag = {
   key: 'leader',
@@ -66,11 +67,31 @@ export const ledgerThread: Thread = {
   status: 'closed',
 }
 
-/** `lostMineCampaign` with release Tags, open and closed NPCs and Threads. */
+export const saltmarshPlace: Place = {
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3fa001',
+  name: 'Saltmarsh',
+  tags: ['leader'],
+  freeTags: ['Town'],
+  weight: 2,
+  status: 'open',
+  notes: 'A fishing town on the marsh.',
+}
+
+export const dunmerePlace: Place = {
+  id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3fa002',
+  name: 'Dunmere',
+  tags: [],
+  freeTags: [],
+  weight: 1,
+  status: 'closed',
+  notes: null,
+}
+
+/** `lostMineCampaign` with release Tags, open and closed NPCs, Threads and Places. */
 export const lostMineWithLists: Campaign = {
   ...lostMineCampaign,
   tags: [leaderTag, allyTag],
   npcs: [miraNpc, brannNpc, oldGuardNpc],
   threads: [vaultThread, ledgerThread],
-  places: [],
+  places: [saltmarshPlace, dunmerePlace],
 }

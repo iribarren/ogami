@@ -13,13 +13,15 @@ import {
 
 export type Npc = Campaign['npcs'][number]
 export type Thread = Campaign['threads'][number]
-export type ListItem = Npc | Thread
-export type ListKind = 'npc' | 'thread'
+export type Place = Campaign['places'][number]
+export type ListItem = Npc | Thread | Place
+export type ListKind = 'npc' | 'thread' | 'place'
 
-/** What the player edits on an item; Threads have no agenda and never send one. */
+/** What the player edits on an item; only NPCs have an agenda and only Places have notes. */
 export interface ListFields {
   name: string
   agenda?: string | null
+  notes?: string | null
   tags: string[]
   freeTags: string[]
   weight: number
@@ -74,10 +76,29 @@ const endpoints: Record<ListKind, Endpoints> = {
         params: { path: { campaignId, threadId } },
       }),
   },
+  place: {
+    add: (api, campaignId, body) =>
+      api.POST('/api/campaigns/{campaignId}/places', { params: { path: { campaignId } }, body }),
+    edit: (api, campaignId, placeId, body) =>
+      api.PUT('/api/campaigns/{campaignId}/places/{placeId}', {
+        params: { path: { campaignId, placeId } },
+        body,
+      }),
+    close: (api, campaignId, placeId) =>
+      api.POST('/api/campaigns/{campaignId}/places/{placeId}/close', {
+        params: { path: { campaignId, placeId } },
+      }),
+    reopen: (api, campaignId, placeId) =>
+      api.POST('/api/campaigns/{campaignId}/places/{placeId}/reopen', {
+        params: { path: { campaignId, placeId } },
+      }),
+  },
 }
 
+const nouns: Record<ListKind, string> = { npc: 'NPC', thread: 'Thread', place: 'Place' }
+
 /**
- * The changes to the NPCs or the Threads of a campaign. `save` adds an item, or edits the one
+ * The changes to the NPCs, Threads or Places of a campaign. `save` adds an item, or edits the one
  * with `id`: an edit replaces the item in the cached campaign, an add refetches it (the server
  * keeps the open items first). `setStatus` closes or reopens an item and refetches. A refusal
  * of 409 refetches the campaign too.
@@ -85,7 +106,7 @@ const endpoints: Record<ListKind, Endpoints> = {
 export function useListActions(kind: ListKind, campaignId: string) {
   const api = useApiClient()
   const queryClient = useQueryClient()
-  const noun = kind === 'npc' ? 'NPC' : 'Thread'
+  const noun = nouns[kind]
   const refetch = () => queryClient.invalidateQueries({ queryKey: campaignKey(campaignId) })
 
   /** The item the API answers, or the refusal as a `CampaignError`. */
@@ -117,9 +138,14 @@ export function useListActions(kind: ListKind, campaignId: string) {
         }
         const replace = <T extends ListItem>(items: T[]) =>
           items.map((held) => (held.id === item.id ? (item as T) : held))
-        return kind === 'npc'
-          ? { ...campaign, npcs: replace(campaign.npcs) }
-          : { ...campaign, threads: replace(campaign.threads) }
+        switch (kind) {
+          case 'npc':
+            return { ...campaign, npcs: replace(campaign.npcs) }
+          case 'thread':
+            return { ...campaign, threads: replace(campaign.threads) }
+          case 'place':
+            return { ...campaign, places: replace(campaign.places) }
+        }
       })
     },
     onError,

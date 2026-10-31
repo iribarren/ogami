@@ -2509,7 +2509,7 @@ export interface components {
              * @example npc
              * @enum {string}
              */
-            of: "npc" | "thread" | "character";
+            of: "npc" | "thread" | "place" | "character";
             /**
              * @description Drawn by the server, or chosen by the player.
              * @example choose
@@ -2537,11 +2537,11 @@ export interface components {
              */
             label: string;
             /**
-             * @description What the slot takes: a text, an NPC or a Thread.
+             * @description What the slot takes: a text, an NPC, a Thread or a Place.
              * @example npc
              * @enum {string}
              */
-            type: "text" | "npc" | "thread";
+            type: "text" | "npc" | "thread" | "place";
             /**
              * @description Shown where the slot is filled; null when the slot has none.
              * @example Who rules the city?
@@ -2760,7 +2760,7 @@ export interface components {
              *       "npc"
              *     ]
              */
-            appliesTo: ("character" | "npc" | "thread")[] | null;
+            appliesTo: ("character" | "npc" | "thread" | "place")[] | null;
         };
         CheckPoolResponse: {
             /**
@@ -2958,15 +2958,15 @@ export interface components {
         };
         FactLinkResponse: {
             /**
-             * @description A subject is always an NPC or a Thread.
+             * @description A subject is always an NPC, a Thread or a Place.
              * @example npc
              * @enum {string}
              */
-            kind: "npc" | "thread" | "fact";
+            kind: "npc" | "thread" | "place" | "fact";
             /** Format: uuid */
             id: string;
             /**
-             * @description The NPC's or Thread's name, or the linked fact's label.
+             * @description The NPC's, Thread's or Place's name, or the linked fact's label.
              * @example Mira Vane
              */
             name: string;
@@ -3102,7 +3102,7 @@ export interface components {
              * @example npc
              * @enum {string}
              */
-            kind: "npc" | "thread" | "fact";
+            kind: "npc" | "thread" | "place" | "fact";
             /**
              * Format: uuid
              * @description The id of the NPC, Thread or fact; it must be one the campaign holds.
@@ -3145,11 +3145,11 @@ export interface components {
             text?: string | null;
             /**
              * Format: uuid
-             * @description For an "npc" or "thread" slot: the id of an NPC or Thread the campaign holds (closed ones too).
+             * @description For an "npc", "thread" or "place" slot: the id of an NPC, Thread or Place the campaign holds (closed ones too).
              */
             subject?: string | null;
             /**
-             * @description For an "npc" or "thread" slot: the name of a new open NPC or Thread (weight 1, no tags) to create and fill the slot with.
+             * @description For an "npc", "thread" or "place" slot: the name of a new open NPC, Thread or Place (weight 1, no tags) to create and fill the slot with.
              * @example Valen Vane
              */
             name?: string | null;
@@ -3349,6 +3349,8 @@ export interface components {
             npcs: components["schemas"]["UpgradeDroppedTagsResponse"][];
             /** @description The Threads that lose release Tags, in creation order. */
             threads: components["schemas"]["UpgradeDroppedTagsResponse"][];
+            /** @description The Places that lose release Tags, in creation order. */
+            places: components["schemas"]["UpgradeDroppedTagsResponse"][];
             /** @description The Tracker values that change, by Tracker key. */
             trackers: components["schemas"]["UpgradeTrackerChangeResponse"][];
             /** @description The slot facts that become free facts, in creation order. */
@@ -3790,7 +3792,7 @@ export interface components {
              * @example npc
              * @enum {string}
              */
-            of: "npc" | "thread" | "character";
+            of: "npc" | "thread" | "place" | "character";
             /** @description The keys of the release Tags the step asked for, as they were stored; empty when it asked for none. */
             tags: string[];
             /** @description The items picked, in the order picked, named as they were at pick time; empty when nothing matched. */
@@ -9425,7 +9427,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The new campaign, on the latest release, with the source's NPCs, Threads and Campaign facts and the chosen Characters, all with their ids; Trackers at their initial value, no sessions. The Location header is its URL. The source is unchanged. */
+            /** @description The new campaign, on the latest release, with the source's NPCs, Threads, Places and Campaign facts and the chosen Characters, all with their ids; Trackers at their initial value, no sessions. The Location header is its URL. The source is unchanged. */
             201: {
                 headers: {
                     /** @description The URL of the new campaign. */

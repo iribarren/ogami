@@ -131,6 +131,7 @@ function UpgradePlan({ plan, gear }: { plan: ReleaseUpgradePlan; gear: SheetGear
       .map(({ id, name, droppedTags }) => ({ id, name: `${name} (Character)`, tags: droppedTags })),
     ...plan.npcs.map(({ id, name, tags }) => ({ id, name: `${name} (NPC)`, tags })),
     ...plan.threads.map(({ id, name, tags }) => ({ id, name: `${name} (Thread)`, tags })),
+    ...plan.places.map(({ id, name, tags }) => ({ id, name: `${name} (Place)`, tags })),
   ]
 
   return (

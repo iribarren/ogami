@@ -13,15 +13,15 @@ import { useFactActions, type Fact, type FactLink, type FactSlot } from './useFa
 const maxLabel = 100
 const maxText = 2000
 const maxLinks = 20
-/** The longest name of a new NPC or Thread, as the lists take them. */
-const maxNewName = { npc: 100, thread: 200 } as const
+/** The longest name of a new NPC, Thread or Place, as the lists take them. */
+const maxNewName = { npc: 100, thread: 200, place: 200 } as const
 
-const kindNouns = { npc: 'NPC', thread: 'Thread', fact: 'Fact' } as const
+const kindNouns = { npc: 'NPC', thread: 'Thread', place: 'Place', fact: 'Fact' } as const
 
 /** A link as shown: its target's name, resolved by the server. */
 type NamedLink = Fact['links'][number]
 
-/** A link is its kind and id: an NPC and a Thread may share an id. */
+/** A link is its kind and id: an NPC, a Thread and a Place may share an id. */
 const sameLink = (a: NamedLink, b: NamedLink) => a.kind === b.kind && a.id === b.id
 
 /** Links as the API takes them: a kind and an id, never the name it resolved. */
@@ -319,7 +319,7 @@ function FreeFactForm({
 }
 
 /**
- * Fills or refills a Fact slot: a text slot takes a text, an NPC or Thread slot an existing item
+ * Fills or refills a Fact slot: a text slot takes a text, an NPC, Thread or Place slot an existing item
  * (closed ones too) or a new one by name. Exactly one value goes to the API.
  */
 function SlotForm({
@@ -377,7 +377,7 @@ function SlotForm({
   }
 
   const noun = kindNouns[slot.type]
-  const items = slot.type === 'npc' ? campaign.npcs : campaign.threads
+  const items = { npc: campaign.npcs, thread: campaign.threads, place: campaign.places }[slot.type]
   return (
     <form aria-label={`Fill ${slot.label}`} className={formClass} onSubmit={handleSubmit}>
       <fieldset disabled={pending} className="space-y-3">
@@ -423,7 +423,7 @@ function SlotForm({
 }
 
 /**
- * The links of a fact, edited as a draft and saved whole. It offers every NPC and Thread (closed
+ * The links of a fact, edited as a draft and saved whole. It offers every NPC, Thread and Place (closed
  * ones too) and every other fact, never the fact itself nor a link already there, up to 20.
  */
 function LinksForm({
@@ -447,6 +447,7 @@ function LinksForm({
   const targets: NamedLink[] = [
     ...campaign.npcs.map(({ id, name }) => ({ kind: 'npc' as const, id, name })),
     ...campaign.threads.map(({ id, name }) => ({ kind: 'thread' as const, id, name })),
+    ...campaign.places.map(({ id, name }) => ({ kind: 'place' as const, id, name })),
     ...campaign.facts
       .filter((held) => held.id !== fact.id)
       .map(({ id, label }) => ({ kind: 'fact' as const, id, name: label })),

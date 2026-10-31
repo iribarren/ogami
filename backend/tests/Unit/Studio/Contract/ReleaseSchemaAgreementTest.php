@@ -124,7 +124,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'v2-condition-count-bad-of' => ['sceneTypes[0].play[0].count.of: must be one of', '/sceneTypes/0/play/0/count/of'],
         'v2-condition-count-no-of' => ['sceneTypes[0].play[0].count.of: required', '/sceneTypes/0/play/0/count'],
         'v2-condition-neither' => ['sceneTypes[0].play[0]: requires tracker or count', '/sceneTypes/0/play/0'],
-        'v2-effect-close-thread-bad-fact-key' => ['sceneTypes[0].play[0].effects[0].fact: ', '/sceneTypes/0/play/0/effects/0/fact'],
+        'v2-effect-close-thread-bad-fact-key' => ['sceneTypes[0].play[0].effects[0].fact: must be 1 to 64 characters among a-z, 0-9 and "-", "Expedition!" given', '/sceneTypes/0/play/0/effects/0/fact'],
         'v2-effect-close-thread-with-tags' => ['sceneTypes[0].play[0].effects[0].tags: unknown property', '/sceneTypes/0/play/0/effects/0'],
         'v2-effect-npc-empty-name' => ['sceneTypes[0].play[0].effects[0].name: must not be empty', '/sceneTypes/0/play/0/effects/0/name'],
         'v2-effect-place-with-agenda' => ['sceneTypes[0].play[0].effects[0].agenda: unknown property', '/sceneTypes/0/play/0/effects/0'],

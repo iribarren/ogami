@@ -19,6 +19,8 @@ use App\Play\Domain\Campaign\InvalidCampaignName;
 use App\Play\Domain\Campaign\Lists\ItemStatus;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\Place;
+use App\Play\Domain\Campaign\Lists\PlaceId;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
@@ -34,7 +36,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * A transfer starts a new campaign from an existing one (ADR 0046): a fresh campaign of the same
- * release that carries the NPCs, the Threads, the Campaign facts and the chosen Characters, with
+ * release that carries the NPCs, the Threads, the Places, the Campaign facts and the chosen Characters, with
  * their ids. The source is never changed.
  */
 #[CoversClass(Campaign::class)]
@@ -97,7 +99,7 @@ final class CampaignTransferTest extends TestCase
     }
 
     #[Test]
-    public function everyNpcThreadAndFactComesAlongWithItsId(): void
+    public function everyNpcThreadPlaceAndFactComesAlongWithItsId(): void
     {
         $source = $this->source();
 
@@ -105,10 +107,13 @@ final class CampaignTransferTest extends TestCase
 
         self::assertEquals($source->npcs(), $new->npcs());
         self::assertEquals($source->threads(), $new->threads());
+        self::assertEquals($source->places(), $new->places());
         self::assertEquals($source->facts($this->release), $new->facts($this->release));
         self::assertSame(['npc-1', 'npc-2'], array_map(static fn (Npc $npc): string => $npc->id()->toString(), $new->npcs()));
         self::assertSame(['thread-1'], array_map(static fn (Thread $thread): string => $thread->id()->toString(), $new->threads()));
+        self::assertSame(['place-1', 'place-2'], array_map(static fn (Place $place): string => $place->id()->toString(), $new->places()));
         self::assertSame(ItemStatus::Closed, $new->npc(NpcId::fromString('npc-2'))?->status());
+        self::assertSame(ItemStatus::Closed, $new->place(PlaceId::fromString('place-2'))?->status());
     }
 
     #[Test]
@@ -239,7 +244,7 @@ final class CampaignTransferTest extends TestCase
 
     /**
      * Release 2 campaign "The job" on the one-shot with: NPC "npc-1" (promoted to "c-2", a legacy
-     * pair), a closed NPC, a Thread, a fact linking them, three Characters ("c-2" from "npc-1"),
+     * pair), a closed NPC, a Thread, two Places (one closed), a fact linking them, three Characters ("c-2" from "npc-1"),
      * one session and moved tracker values.
      *
      * @param list<Fact> $extraFacts facts added after "fact-1"
@@ -251,8 +256,12 @@ final class CampaignTransferTest extends TestCase
             Npc::of(NpcId::fromString('npc-2'), 'Brick', null, [], [], 1, ItemStatus::Closed),
         ];
         $threads = [Thread::of(ThreadId::fromString('thread-1'), 'The vault', [], ['Gig'], 2)];
+        $places = [
+            Place::of(PlaceId::fromString('place-1'), 'Saltmarsh', 'A fishing town', ['near'], ['Town'], 2),
+            Place::of(PlaceId::fromString('place-2'), 'Dunmere', null, [], [], 1, ItemStatus::Closed),
+        ];
         $facts = [
-            Fact::of(FactId::fromString('fact-1'), null, 'Crew', 'Met in a bar', null, [FactLink::npc(NpcId::fromString('npc-1')), FactLink::thread(ThreadId::fromString('thread-1'))]),
+            Fact::of(FactId::fromString('fact-1'), null, 'Crew', 'Met in a bar', null, [FactLink::npc(NpcId::fromString('npc-1')), FactLink::thread(ThreadId::fromString('thread-1')), FactLink::place(PlaceId::fromString('place-1'))]),
         ];
         $facts = [...$facts, ...$extraFacts];
         $characters = [
@@ -260,7 +269,7 @@ final class CampaignTransferTest extends TestCase
             Character::of(CharacterId::fromString('c-2'), 'Mira', ['ally'], ['Fence'], [], NpcId::fromString('npc-1')),
             Character::of(CharacterId::fromString('c-3'), 'Jax', [], [], []),
         ];
-        $source = Campaign::reconstitute(CampaignId::fromString('campaign-1'), 'user-1', 'The job', PinnedRelease::of('heist', 2, 'Heist'), new \DateTimeImmutable('2026-10-01T09:00:00+00:00'), [], ['alarm' => 3, 'heat' => 2], 'one-shot', FlowRun::start(), $npcs, $threads, $facts, $characters);
+        $source = Campaign::reconstitute(CampaignId::fromString('campaign-1'), 'user-1', 'The job', PinnedRelease::of('heist', 2, 'Heist'), new \DateTimeImmutable('2026-10-01T09:00:00+00:00'), [], ['alarm' => 3, 'heat' => 2], 'one-shot', FlowRun::start(), $npcs, $threads, $facts, $characters, places: $places);
         $source->startSession(new \DateTimeImmutable('2026-10-02T09:00:00+00:00'));
 
         return $source;

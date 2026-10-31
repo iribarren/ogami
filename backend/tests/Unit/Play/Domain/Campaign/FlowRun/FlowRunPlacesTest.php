@@ -119,6 +119,10 @@ final class FlowRunPlacesTest extends FlowRunTestCase
     {
         $empty = $this->inScene('closeslot');
         $empty->addThread(ThreadId::fromString('t1'), 'Thread', [], [], 1, $this->snapshot());
+        $empty->addPlace(PlaceId::fromString('p1'), 'Saltmarsh', null, [], [], 1, $this->snapshot());
+        $empty->completeFlowStep('lead', StepResult::pick(ItemKind::Thread, [new PickedItem('t1', 'Thread')]), $this->snapshot(), self::at());
+        $empty->completeFlowStep('where', StepResult::pick(ItemKind::Place, [new PickedItem('p1', 'Saltmarsh')]), $this->snapshot(), self::at());
+        self::assertEquals(new PickedItems(ItemKind::Place, ['p1']), self::flowRunOf($empty)->picked(), 'The Place pick replaced the Thread pick.');
         $emptyBefore = clone $empty;
         $empty->completeFlowStep('close', self::prompt('ok'), $this->snapshot(), self::at());
 
@@ -143,7 +147,7 @@ final class FlowRunPlacesTest extends FlowRunTestCase
 
         $campaign->completeFlowStep('close', self::prompt('ok'), $this->snapshot(), self::at());
 
-        self::assertSame([false, true], array_map(static fn (\App\Play\Domain\Campaign\Lists\Thread $thread): bool => $thread->isOpen(), [$campaign->threads()[1], $campaign->threads()[0]]));
+        self::assertSame([false, true], [$campaign->thread(ThreadId::fromString('t1'))?->isOpen(), $campaign->thread(ThreadId::fromString('t2'))?->isOpen()]);
     }
 
     #[Test]
@@ -306,7 +310,7 @@ final class FlowRunPlacesTest extends FlowRunTestCase
                 $prompt('other', 'Other', [['kind' => 'createThread', 'name' => 'Side quest']]),
                 $prompt('close', 'Close', [['kind' => 'closeThread', 'fact' => 'expedition']]),
             ]),
-            $sceneType('closeslot', [$prompt('close', 'Close', [['kind' => 'closeThread', 'fact' => 'expedition']])]),
+            $sceneType('closeslot', [$pick('lead', 'thread'), $pick('where', 'place'), $prompt('close', 'Close', [['kind' => 'closeThread', 'fact' => 'expedition']])]),
             $sceneType('closepicked', [$pick('lead', 'thread'), $prompt('close', 'Close', [['kind' => 'closeThread']])]),
             $sceneType('count', [
                 $prompt('start', 'Start'),

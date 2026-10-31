@@ -143,12 +143,17 @@ describe('the Play screen', () => {
     renderPlayScreen(lostMineCampaign)
 
     const tools = await screen.findByRole('complementary', { name: 'Play tools' })
-    for (const name of ['Dice', 'Facts', 'Threads', 'NPCs', 'Oracles']) {
+    for (const name of ['Dice', 'Facts', 'Threads', 'Places', 'NPCs', 'Oracles']) {
       expect(within(tools).getByRole('region', { name })).toBeInTheDocument()
     }
     expect(
       within(within(tools).getByRole('region', { name: 'NPCs' })).getByText(
         String(lostMineCampaign.npcs.length),
+      ),
+    ).toBeInTheDocument()
+    expect(
+      within(within(tools).getByRole('region', { name: 'Places' })).getByText(
+        String(lostMineCampaign.places.length),
       ),
     ).toBeInTheDocument()
 
@@ -399,6 +404,10 @@ describe('the Play screen', () => {
       [
         'Threads',
         'The open questions and goals your story follows. Add one when something needs resolving, such as a mystery, a promise or a rival, and close it when it is settled.',
+      ],
+      [
+        'Places',
+        'The towns, sites and rooms your story visits. Add one when the party finds it, and close it when it is cleared or lost.',
       ],
       ['NPCs', 'The people met in play. Add them as they appear; the flow adds some too.'],
       ['Characters', 'Your characters and their sheets. Open one to read or edit it.'],

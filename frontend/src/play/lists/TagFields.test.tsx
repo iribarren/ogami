@@ -7,6 +7,7 @@ const free = { freeTags: [], draft: '', setDraft: () => undefined, add: () => un
 const releaseTags: ReleaseTag[] = [
   { key: 'villain', label: 'Villain', hint: null, appliesTo: ['npc'] },
   { key: 'hero', label: 'Hero', hint: null, appliesTo: ['character'] },
+  { key: 'site', label: 'Site', hint: null, appliesTo: ['place'] },
 ]
 
 describe('TagFields', () => {
@@ -32,5 +33,22 @@ describe('TagFields', () => {
 
     expect(screen.getByRole('checkbox', { name: /Hero/ })).toBeChecked()
     expect(screen.queryByText('(no longer offered)')).not.toBeInTheDocument()
+  })
+
+  it('offers the Tags that apply to Places and the ones for every kind, not the others', () => {
+    render(
+      <TagFields
+        id="t"
+        kind="place"
+        releaseTags={[...releaseTags, { key: 'any', label: 'Any', hint: null, appliesTo: null }]}
+        held={[]}
+        free={free}
+      />,
+    )
+
+    expect(screen.getAllByRole('checkbox').map((box) => box.getAttribute('value'))).toEqual([
+      'site',
+      'any',
+    ])
   })
 })

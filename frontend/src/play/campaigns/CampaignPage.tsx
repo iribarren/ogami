@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Eye, Feather, HeartPulse, Route, ScrollText, UserRound, Users } from 'lucide-react'
+import { Eye, Feather, HeartPulse, MapPin, Route, ScrollText, UserRound, Users } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
 
 import { cn } from '@/shared/lib/utils'
@@ -107,7 +107,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
   // Shared by the step card and the controls below the composer, so one pending state covers both.
   const command = useFlowRunCommand(campaign.id)
   const openList = (kind: ListKind) => {
-    openPlayPanel(kind === 'npc' ? 'npcs' : 'threads')
+    openPlayPanel({ npc: 'npcs', thread: 'threads', place: 'places' }[kind])
   }
 
   return (
@@ -205,6 +205,15 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
             help="The open questions and goals your story follows. Add one when something needs resolving, such as a mystery, a promise or a rival, and close it when it is settled."
           >
             <ListPanel campaign={campaign} kind="thread" />
+          </PlayPanel>
+          <PlayPanel
+            id="places"
+            title="Places"
+            icon={<MapPin />}
+            count={campaign.places.length}
+            help="The towns, sites and rooms your story visits. Add one when the party finds it, and close it when it is cleared or lost."
+          >
+            <ListPanel campaign={campaign} kind="place" />
           </PlayPanel>
           <PlayPanel
             id="npcs"

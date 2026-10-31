@@ -82,11 +82,12 @@ final class GameSystemReleaseTranslatorPlacesTest extends TestCase
     }
 
     #[Test]
-    public function itMapsCreatePlaceAndCloseThreadWithAndWithoutAFactSlot(): void
+    public function itMapsCreatePlaceAndCloseThreadWithANullOrNoFactSlotOrANamedOne(): void
     {
         self::assertEquals([
             new CreatePlaceEffect(),
             new CreatePlaceEffect('Camp near {picked}', ['near', 'ally']),
+            new CloseThreadEffect(),
             new CloseThreadEffect(),
             new CloseThreadEffect('expedition'),
         ], $this->step('meet')->effects);

@@ -1,7 +1,7 @@
 # Feature: play-places
 
 - **Locator:** `odd/tasks/play-places.md` · Engram topic `odd/play-places/tasks`
-- **Issue:** [#330](https://github.com/iribarren/ogami/issues/330) · **Branch:** `feat/play-places-3-flow` (slice 3) · **Status:** in progress
+- **Issue:** [#330](https://github.com/iribarren/ogami/issues/330) · **Branch:** `feat/play-places-4-ui` (slice 4) · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-campaign-transfer` (PRs #327–#329)
@@ -52,13 +52,18 @@ Out of scope: a drawn map; adjacency or routes between places; a distance or reg
 - ACL `GameSystemReleaseTranslator`: `FactSlotType::Place`, `ItemKind::Place`, `CreatePlaceEffect`, `CloseThreadEffect` with optional slot.
 - Play: `FactFill`/`FactLinkKind` place, `FlowRun`/`FlowRunContext` createPlace, pick and count of places, closeThread by slot; `Campaign::transfer` carries places; `ReleaseUpgradePlanner` dropped Tags for places.
 
-### Slice 4: Places UI (Play and Studio frontend)
+### Slice 4: transfer, upgrade planner and Places UI (Play)
 
-- Play: `ListPanel` kind `place` (Places panel beside NPCs and Threads, `CampaignPage`, `playPanelStorage`), `FactsPanel` place slots and links, `PickForm`, journal pick content.
+- Slice 3 review fixes (T8).
+- T7: `Campaign::transfer` carries places; `ReleaseUpgradePlanner` dropped Tags for places (`ReleaseUpgradePlan.places`, `ReleaseUpgradePlanResponse.places`, fingerprint), `ReleaseUpgradeDialog` row; `make api`.
+- Play: `ListPanel` kind `place` (Places panel beside NPCs and Threads, `CampaignPage`, `playPanelStorage`, `ListLinks`, notes field), `FactsPanel` place slots and links, `PickForm`, journal pick content.
+
+### Slice 5: Places in Studio (frontend)
+
 - Studio: fact slot type `place`, `appliesTo` place, `createPlace` effect, `closeThread` fact select, pick and count of places.
-- e2e or Chrome pass: a flow that creates and picks a Place.
+- Chrome pass: a flow that creates and picks a Place.
 
-### Slice 5: `select` sheet field (every layer)
+### Slice 6: `select` sheet field (every layer)
 
 - Contract schema `selectField`, `SheetFields.php`, contract doc table, fixtures; ACL `sheetField()` arm, `SelectField`; `CharacterValues` checked/initial; `ReleaseUpgradePlanner` option removed → reset; `SheetFieldView`/`SheetFieldResponse` options; frontend `SheetFields` select control, `sheetValues`; Studio `SheetFieldDialog` options editor (reuse `ConditionOptionsEditor`), preview; ADR 0048; closing.
 
@@ -76,8 +81,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 1 | `feat/play-places-1-places-list` | `feat(play): play-places 1/5 places list` | T1, T2 | +1,740/−18 (HTTP moved to slice 2 to stay under the ceiling) |
 | 2 | `feat/play-places-2-places-api` | `feat(play): play-places 2/5 places api` | T4, T3 | ~1,400 (controller, request and response ~350, API tests ~550, Behat ~150, generated ~350) |
 | 3 | `feat/play-places-3-flow` | `feat(play): play-places 3/5 places in flows` | T15, T5–T7 | ~1,600 |
-| 4 | `feat/play-places-4-ui` | `feat(play): play-places 4/5 places ui` | T8–T10 | ~1,400 |
-| 5 | `feat/play-places-5-select-field` | `feat(play): play-places 5/5 select sheet field` | T11–T14 | ~1,600 |
+| 4 | `feat/play-places-4-ui` | `feat(play): play-places 4/6 places ui` | T8, T7, T9 | ~1,550 (T8 ~200, T7 ~450 with generated client, T9 ~900). T7 moved here from slice 3 (stop line); T10 moved to slice 5 to stay under the ceiling |
+| 5 | `feat/play-places-5-studio` | `feat(studio): play-places 5/6 places in studio` | T10, T16 | ~800 |
+| 6 | `feat/play-places-6-select-field` | `feat(play): play-places 6/6 select sheet field` | T11–T14 | ~1,600 |
 
 ## Tasks
 
@@ -87,17 +93,18 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T2 | 1 | Domain `Place` list on `Campaign` and application commands (add, edit, close, reopen), `CampaignView.places`, with unit tests | delegated writer (slice 1) | [x] | `cbc32634` |
 | T3 | 2 | HTTP only (persistence already landed in T2): `/api/campaigns/{id}/places` endpoints, `CampaignResponse.places`, API tests (201, 404, 409 concurrent, 422), Behat `places.feature`, `make api` | delegated writer (slice 2) | [x] | `1dae1c5e`, `11c7887f`, `08cdb655` |
 | T4 | 2 | Slice 1 review fixes: `CampaignPlacesType` limit reads `MAX_PLACES`; repository contract asserts the reloaded Places after close and edit (the doc naming was fixed by the parent) | delegated writer (slice 2) | [x] | `5c04084b` |
-| T15 | 3 | Slice 2 review fixes: close and reopen map the unreadable-release errors raised while building the response (`CampaignPlacesController.php:148`), with an API test; rename or drop `aLegacyCampaignWithoutPlacesReturnsAnEmptyList` (`CampaignPlacesApiTest.php:155-162`, only an empty campaign) | delegated writer (slice 3) | [x] | |
-| T5 | 3 | Contract: `place` slots and links, `createPlace`, `pick`/`count` of `place`, `appliesTo: place`, `closeThread.fact`; Studio validation, contract doc, fixtures | delegated writer (slice 3) | [x] | |
-| T6 | 3 | ACL and Play flow: createPlace, place slots, pick and count of places, closeThread by slot | delegated writer (slice 3) | [x] | |
-| T7 | 3 | Transfer carries places; upgrade planner dropped Tags for places | | [ ] | |
-| T8 | 4 | Slice 3 review fixes | | [ ] | |
-| T9 | 4 | Play UI: Places panel, facts place slots and links, pick form, journal | | [ ] | |
-| T10 | 4 | Studio UI: place slot type, `appliesTo` place, `createPlace`, `closeThread` fact, pick/count of places | | [ ] | |
-| T11 | 5 | Slice 4 review fixes | | [ ] | |
-| T12 | 5 | `select` field: contract, Studio validation, ACL, Play values, upgrade planner, API views; ADR 0048 | | [ ] | |
-| T13 | 5 | `select` field UI: Play sheet control, Studio sheet builder options and preview | | [ ] | |
-| T14 | 5 | Closing: Reviews, roadmap `Done:` line under B14 | | [ ] | |
+| T15 | 3 | Slice 2 review fixes: close and reopen map the unreadable-release errors raised while building the response (`CampaignPlacesController.php:148`), with an API test; rename or drop `aLegacyCampaignWithoutPlacesReturnsAnEmptyList` (`CampaignPlacesApiTest.php:155-162`, only an empty campaign) | delegated writer (slice 3) | [x] | `edea06cb` |
+| T5 | 3 | Contract: `place` slots and links, `createPlace`, `pick`/`count` of `place`, `appliesTo: place`, `closeThread.fact`; Studio validation, contract doc, fixtures | delegated writer (slice 3) | [x] | `099e0c7f` |
+| T6 | 3 | ACL and Play flow: createPlace, place slots, pick and count of places, closeThread by slot | delegated writer (slice 3) | [x] | `a19e213c`, `4908d090`, `bb532558` |
+| T7 | 4 | Transfer carries places; upgrade planner dropped Tags for places (plan, response, dialog row, `make api`). Moved from slice 3 (stop line) | delegated writer (slice 4) | [x] | |
+| T8 | 4 | Slice 3 review fixes: `closeThread.fact` accepts `null` in the schema (`v2.schema.json:1349`) as Studio does; `ReleaseSchemaAgreementTest:127` asserts the key-rule message; direct tests for `Campaign::createPlaceByEffect` (`Campaign.php:1043`); `FlowRunPlacesTest:120-123` picks a Thread first so the test proves the place pick; `FlowRunPlacesTest:146` looks the Place up by id | delegated writer (slice 4) | [x] | |
+| T9 | 4 | Play UI: Places panel, facts place slots and links, pick form, journal | delegated writer (slice 4) | [x] | |
+| T10 | 5 | Studio UI: place slot type, `appliesTo` place, `createPlace`, `closeThread` fact, pick/count of places | | [ ] | |
+| T16 | 5 | Slice 4 review fixes; Chrome pass: a flow that creates and picks a Place | | [ ] | |
+| T11 | 6 | Slice 5 review fixes | | [ ] | |
+| T12 | 6 | `select` field: contract, Studio validation, ACL, Play values, upgrade planner, API views; ADR 0048 | | [ ] | |
+| T13 | 6 | `select` field UI: Play sheet control, Studio sheet builder options and preview | | [ ] | |
+| T14 | 6 | Closing: Reviews, roadmap `Done:` line under B14 | | [ ] | |
 
 ## Progress
 
@@ -110,6 +117,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-31 T15: `CampaignPlacesController::place()` now maps `CampaignNotFound` (404) and the unreadable-release errors (500, same body as the commands) raised while building the response, which covers add, edit, close and reopen (the Threads controller maps none of these there; Facts does in `fact()`, which this mirrors). `aPinnedReleaseThatCannotBeReadIsAServerErrorWithoutInternals` now also posts close and reopen: RED observed (2 failures), GREEN after (`CampaignPlacesApiTest` 38 tests). `aLegacyCampaignWithoutPlacesReturnsAnEmptyList` dropped: `aRowStoredBeforePlacesExistedReadsWithNoPlaces` in the repository test covers a legacy row.
 - 2026-10-31 T5: contract in schema `v2.schema.json` and Studio (`Effects`, `Steps`, `ReleaseVersion2`, `StepParts`, `Catalog` docs, `DraftReferences`): slot type `place`, `createPlace`, `pick`/`count` of `place`, `appliesTo: place` (maxItems 4), `closeThread.fact` (Studio refuses an unknown or non-`thread` slot). RED observed (`ReleaseSchemaAgreementTest` 6 failures for the new fixtures); GREEN: `tests/Unit/Studio` 2357 tests. Fixtures `valid/v2-places` plus 2 structural and 3 semantic invalid; `ReleaseContentPlacesTest` and 2 `DraftReferencesTest` cases are new; 4 existing assertions listing the closed enums were updated (and `v2-fact-slot-bad-type` now uses `faction`, since `place` is valid). Contract doc updated for the Studio rules; its Play-behaviour rows land with T6.
 - 2026-10-31 T6: ACL and Play: `FactSlotType::Place`, `FactLinkKind::Place`, `ItemKind::Place` (replaces the slice 1 stopgap `assertPlaceTags`/`forPlaces`: release Tags with `appliesTo: place` apply, others are `TagNotApplicable`), `CreatePlaceEffect`, `CloseThreadEffect(factSlot)`, translator arms and fail-closed checks (a `closeThread.fact` naming an unknown or non-thread slot is an `InvalidGameSystemRelease`), `FlowRun`/`FlowRunContext`/`Campaign` (createPlaceByEffect at `MAX_PLACES` creates nothing, closeThreadOfFactSlot, pick and count of open places, place slots by pick or create, `FillFactSlotHandler` + facts controller mapping `UnknownPlace`/`InvalidPlace`/`PlaceAlreadyExists`). Found and fixed: `Campaign::adopt()` did not copy `places`, so a place created inside a draft (fill by name) was dropped. Tests written after the implementation, not observed RED: `FlowRunPlacesTest` (12), `GameSystemReleaseTranslatorPlacesTest` (14), `CampaignFactsTest` (+4), `FillFactSlotHandlerTest`, facts API test with a place slot and links, repository contract (place subject and link), plus existing Place tests moved from "no Tag applies" to scoped Tags (Behat `places.feature` scenario now accepts a Tag). The Play-behaviour rows of the contract doc land here. `make api` regenerated the OpenAPI client (description strings only) in its own commit. Focused: `tests/Unit` + `tests/Integration` 8011 tests OK, PHPStan clean, Behat `places.feature` 4 scenarios.
+- 2026-10-31: Slice 3 merged (#333). Plan becomes 6 slices: T7 moved to slice 4 (slice 3 stop line), T10 (Studio UI) to a new slice 5 with T16 (slice 4 fixes, Chrome pass); the `select` field is slice 6.
+- 2026-10-31 T8: `closeThread.fact` is `oneOf key | null` in `v2.schema.json`; `valid/v2-places` holds a `fact: null` effect. RED observed (the agreement test failed on that fixture with the old schema), GREEN after (`ReleaseSchemaAgreementTest` 420 tests); the bad-key case now asserts the full key-rule message. `CampaignPlacesTest` has 5 direct `createPlaceByEffect` tests (open Place with name and Tags, distinct generated ids, nothing at `MAX_PLACES`, `TagNotApplicable`, unpinned release), written after the existing code (they passed at once). `FlowRunPlacesTest`: the empty-slot closeThread case picks a Thread, then a Place, and asserts the Place pick replaced it; the picked-Threads case looks Threads up by id.
+- 2026-10-31 T7: `Campaign::transfer` carries `places` (a fact linking a Place made every transfer fail with `UnknownPlace` before; RED observed, 11 `CampaignTransferTest` errors with the source holding two Places and a place link). `ReleaseUpgradePlanner::plan()` takes places: `droppedFrom($places, ItemKind::Place)`, `ReleaseUpgradePlan.places` (in `toArray()`, so in the fingerprint; the plan is never stored, so no legacy plan to read), `upgradeRelease` edits Places with `keptTags`, and `freed()`/`freedText()` look a place subject up among Places (it used the Threads before). RED observed for the planner tests (`places` property missing, place-slot fact text was the id); `ReleaseUpgradePlanResponse.places` (required) and the API tests (plan, applied upgrade, transfer) were written after the code. `make api` regenerated the client (10 lines); dialog row `Name (Place) loses tag` and fixture and test updated. The translator places test lists the `fact: null` closeThread from the T8 fixture. `tests/Unit/Play`, `tests/Unit/Studio`, the two API test files and `ReleaseUpgrade.test.tsx` pass.
+- 2026-10-31 T9: Places panel (`ListKind` `place`, `useLists` place endpoints, `ListPanel` with a notes textarea for Places only, `ListLinks` "Places", `CampaignPage` panel `places` after Threads; `playPanelStorage` and `openPlayPanel` are keyed by panel id so a stored choice and an unknown stored value work unchanged), `TagFields` kind `place`, `FactsPanel` place slots (pick or create) and place link targets, `PickForm` and `JournalEntryView` label "Place". Journal entries hold no createPlace or closeThread content, so nothing else renders. Found: the OpenAPI enums of fact slot type, fact link kind, pick `of` and tag `appliesTo` did not list `place` (slice 3 gap), so the generated client typed them without it; fixed in its own commit `fix(api)` (enum values and descriptions, `make api`). Vitest tests were written after the code (not observed RED): `ListPanel` (Places list, notes, Tags, add with blank notes as null, edit, close, reopen, linked facts), `FactsPanel` (place slot fill existing or new, name shown, place link), `PickStep`, `JournalEntryView`, `ListLinks`, `TagFields`, stored panel choice via the Guided and Focus link tests, panel count and help in `CampaignPage`. `make verify` (backend QA, PHPUnit 8,019 tests and Behat, api-check, frontend QA, Vitest related 611 tests) passes after fixing one PHPStan finding and one ESLint finding in the new tests.
 
 ## Reviews
 
@@ -117,7 +128,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|
 | 1 | `review-7219a3078966f655` | `cbaae86c`, `cbc32634` | Approved. Findings fixed in slice 2 (T4): `CampaignPlacesType` reads `MAX_THREADS` instead of `MAX_PLACES` (warning); the repository contract should assert the reloaded Places after close and edit; this doc named `assertInRelease` instead of `assertPlaceTags` (fixed by the parent) | [#331](https://github.com/iribarren/ogami/pull/331) |
 | 2 | `review-9de8e8311f0c7a72` | `5c04084b`, `1dae1c5e` (reviewed, `main..1dae1c5e`); `11c7887f`, `08cdb655` (generated client and fixtures, not reviewed: user decision) | Approved. Findings fixed in slice 3 (T15): close and reopen don't map the unreadable-release errors raised while building the response (warning); `aLegacyCampaignWithoutPlacesReturnsAnEmptyList` only exercises an empty campaign (suggestion). Size +1,943/−33, exception accepted (generated client ~932) | [#332](https://github.com/iribarren/ogami/pull/332) |
+| 3 | `review-d5565eb2df883684` (`edea06cb`, `099e0c7f`), `review-2f82d64227651c87` (`a19e213c`), `review-a3f4002f30e5710b` (`4908d090`, `bb532558`) | `edea06cb`, `099e0c7f`, `a19e213c`, `4908d090`, `bb532558` | Approved in 3 candidates (the reviewer refused the 1,596-line slice and the 1,229-line T6, so T6 was split in two commits). Findings fixed in slice 4 (T8): `closeThread.fact` is not nullable in the schema; `ReleaseSchemaAgreementTest:127` does not assert the message; `createPlaceByEffect` has no direct test; `FlowRunPlacesTest:120-123` does not prove a place pick; `FlowRunPlacesTest:146` looks a Place up by position | [#333](https://github.com/iribarren/ogami/pull/333) |
 
 ## Next step
 
-Slice 3: writer builds T15, T5, T6, T7 on `feat/play-places-3-flow`. If the running size passes ~1,500 before T7, T7 moves to slice 4 (plan renumbered).
+Slice 4: writer builds T8, T7, T9 on `feat/play-places-4-ui`. If the running size passes ~1,500 before T9 is done, stop and report (the Play UI splits into its own slice).

@@ -15,7 +15,14 @@ import {
   viCharacter,
 } from '../characters/fixtures'
 import { gritEntry } from '../journal/fixtures'
-import { allyTag, brannNpc, leaderTag, lostMineWithLists, miraNpc } from '../lists/fixtures'
+import {
+  allyTag,
+  brannNpc,
+  leaderTag,
+  lostMineWithLists,
+  miraNpc,
+  saltmarshPlace,
+} from '../lists/fixtures'
 import type { FlowRun, FlowStep } from './useFlowRun'
 
 type GearEntry = Campaign['pinnedRelease']['gear'][number]
@@ -188,6 +195,12 @@ export const randomThreadStep = pickStep('draw-thread', 'What comes up?', {
   of: 'thread',
   mode: 'random',
   tags: [{ key: allyTag.key, label: allyTag.label }],
+})
+/** A `pick` step of Places: choose Saltmarsh. */
+export const choosePlaceStep = pickStep('where', 'Where do you go?', {
+  of: 'place',
+  tags: [],
+  candidates: [{ id: saltmarshPlace.id, name: saltmarshPlace.name }],
 })
 /** A `pick` step of Characters: choose one of Vi (the candidates are the campaign's Characters). */
 export const chooseCharacterStep = pickStep('who-plays', 'Who takes the job?', {

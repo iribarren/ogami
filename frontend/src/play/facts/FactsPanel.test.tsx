@@ -6,8 +6,25 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { lostMineCampaign } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
-import { brannNpc, ledgerThread, miraNpc, oldGuardNpc, vaultThread } from '../lists/fixtures'
-import { cityFact, goalSlot, guildFact, lostMineWithFacts, oathFact, princeFact } from './fixtures'
+import {
+  brannNpc,
+  dunmerePlace,
+  ledgerThread,
+  miraNpc,
+  oldGuardNpc,
+  saltmarshPlace,
+  vaultThread,
+} from '../lists/fixtures'
+import {
+  cityFact,
+  goalSlot,
+  guildFact,
+  lostMineWithFacts,
+  oathFact,
+  princeFact,
+  siteFact,
+  siteSlot,
+} from './fixtures'
 
 const path = `/api/campaigns/${lostMineWithFacts.id}`
 
@@ -149,6 +166,73 @@ describe('the Facts panel', () => {
 
     await waitFor(() => {
       expect(sent).toEqual([{ name: 'Find the heir' }])
+    })
+  })
+
+  it('fills a Place slot with an existing Place, a closed one too, or a new one by name', async () => {
+    const user = userEvent.setup()
+    const sent: unknown[] = []
+    renderFacts(
+      { ...lostMineWithFacts, factSlots: [siteSlot], facts: [] },
+      { [`PUT ${path}/fact-slots/site`]: () => Response.json(siteFact) },
+      sent,
+    )
+
+    const panel = await facts()
+    await user.click(panel.getByRole('button', { name: `Fill ${siteSlot.label}` }))
+    const form = within(panel.getByRole('form', { name: 'Fill The site' }))
+    expect(form.getByRole('option', { name: 'Saltmarsh' })).toBeInTheDocument()
+    expect(form.getByRole('option', { name: 'Dunmere (closed)' })).toBeInTheDocument()
+    await user.selectOptions(form.getByLabelText('Place'), dunmerePlace.id)
+    await user.click(form.getByRole('button', { name: 'Save' }))
+    await waitFor(() => {
+      expect(sent).toEqual([{ subject: dunmerePlace.id }])
+    })
+
+    await user.click(panel.getByRole('button', { name: `Fill ${siteSlot.label}` }))
+    const again = within(panel.getByRole('form', { name: 'Fill The site' }))
+    expect(again.getByLabelText('New Place name')).toHaveAttribute('maxlength', '200')
+    await user.type(again.getByLabelText('New Place name'), ' The keep ')
+    await user.click(again.getByRole('button', { name: 'Save' }))
+    await waitFor(() => {
+      expect(sent).toEqual([{ subject: dunmerePlace.id }, { name: 'The keep' }])
+    })
+  })
+
+  it('shows the name of the Place filling a slot', async () => {
+    renderFacts({ ...lostMineWithFacts, factSlots: [siteSlot], facts: [siteFact] })
+
+    expect((await facts()).getByText(saltmarshPlace.name)).toBeInTheDocument()
+  })
+
+  it('links a fact to an open or closed Place and tells it from an NPC with the same id', async () => {
+    const user = userEvent.setup()
+    const sent: unknown[] = []
+    const twin = { ...miraNpc, id: saltmarshPlace.id, name: 'Not the place' }
+    renderFacts(
+      { ...lostMineWithFacts, npcs: [...lostMineWithFacts.npcs, twin] },
+      { [`PUT ${path}/facts/${oathFact.id}`]: () => Response.json(oathFact) },
+      sent,
+    )
+
+    const panel = await facts()
+    await user.click(panel.getByRole('button', { name: 'Edit links of The oath' }))
+    const form = within(panel.getByRole('form', { name: 'Links of The oath' }))
+    expect(form.getByRole('option', { name: 'Place: Dunmere' })).toBeInTheDocument()
+    await user.selectOptions(form.getByLabelText('Link to'), `place:${saltmarshPlace.id}`)
+    await user.click(form.getByRole('button', { name: 'Add link' }))
+    expect(form.getByText('Saltmarsh (Place)')).toBeInTheDocument()
+    expect(form.getByRole('option', { name: 'NPC: Not the place' })).toBeInTheDocument()
+    await user.click(form.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([
+        {
+          label: 'The oath',
+          text: 'Never steal from the poor.',
+          links: [{ kind: 'place', id: saltmarshPlace.id }],
+        },
+      ])
     })
   })
 

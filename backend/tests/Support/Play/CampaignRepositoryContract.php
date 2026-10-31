@@ -24,6 +24,8 @@ use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\Lists\ItemStatus;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\Place;
+use App\Play\Domain\Campaign\Lists\PlaceId;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
@@ -291,6 +293,25 @@ trait CampaignRepositoryContract
         self::assertSame(FlowRunStatus::Completed, $completed->flowRun()?->status());
         self::assertSame([FlowRunEvent::PhaseEnded, FlowRunEvent::Completed], array_map(static fn (FlowRunHistoryEntry $entry): FlowRunEvent => $entry->event, $completed->flowRun()->history()));
         self::assertSame('2026-10-10T09:30:00.123456-05:00', $completed->flowRun()->history()[1]->at->format('Y-m-d\\TH:i:s.uP'));
+    }
+
+    #[Test]
+    public function aCampaignWithPlacesIsKeptWhole(): void
+    {
+        $places = [
+            Place::of(PlaceId::fromString('place-1'), 'Saltmarsh', 'A fishing town', [], ['Town', 'Harbour'], 3),
+            Place::of(PlaceId::fromString('place-2'), 'Dunmere', null, [], [], 1, ItemStatus::Closed),
+        ];
+        $campaign = Campaign::reconstitute(CampaignId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6003'), self::OWNER, 'The marches', PinnedRelease::of('free-journal', 1, 'Free journal'), new \DateTimeImmutable('2026-10-31T09:00:00+00:00'), [], places: $places);
+        $this->campaigns()->add($campaign);
+
+        $loaded = $this->reloaded($campaign);
+        self::assertEquals($places, $loaded->places());
+
+        $loaded->closePlace(PlaceId::fromString('place-1'));
+        $loaded->editPlace(PlaceId::fromString('place-2'), 'Dunmere Keep', 'Ruined', [], ['Ruin'], 2, new GameSystemSnapshot('free-journal', 'Free journal', 1, null, [], []));
+        $this->campaigns()->save($loaded);
+        $this->reloaded($loaded);
     }
 
     #[Test]

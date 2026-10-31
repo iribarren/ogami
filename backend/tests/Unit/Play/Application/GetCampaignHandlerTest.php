@@ -21,6 +21,7 @@ use App\Play\Application\NpcView;
 use App\Play\Application\OracleTableView;
 use App\Play\Application\OwnedCampaigns;
 use App\Play\Application\PinnedReleaseView;
+use App\Play\Application\PlaceView;
 use App\Play\Application\PublishedGameSystemReleases;
 use App\Play\Application\SceneTypeSummaryView;
 use App\Play\Application\SceneView;
@@ -38,6 +39,7 @@ use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\FlowRun\FlowRunStatus;
 use App\Play\Domain\Campaign\Hook;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\PlaceId;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\Scene;
@@ -125,6 +127,7 @@ final class GetCampaignHandlerTest extends TestCase
             [],
             [],
             [],
+            [],
         ), $view);
     }
 
@@ -168,6 +171,25 @@ final class GetCampaignHandlerTest extends TestCase
             new NpcView('npc-1', 'Mira', 'Wants the ledger', ['rival'], ['Fence'], 3, 'closed', null),
         ], $view->npcs);
         self::assertEquals([new ThreadView('thread-1', 'Rob the vault', ['ally'], ['Heist'], 2, 'open')], $view->threads);
+    }
+
+    #[Test]
+    public function itShowsThePlacesOpenFirst(): void
+    {
+        $release = Snapshots::withTags('heist', 'Heist', 1);
+        $this->releases->add($release);
+        $campaign = Campaign::create(CampaignId::fromString('campaign-2'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-10T09:00:00+00:00'));
+        $campaign->addPlace(PlaceId::fromString('place-1'), 'Saltmarsh', 'Fishing town', [], ['Town'], 2, $release);
+        $campaign->addPlace(PlaceId::fromString('place-2'), 'Dunmere', null, [], [], 1, $release);
+        $campaign->closePlace(PlaceId::fromString('place-1'));
+        $this->campaigns->add($campaign);
+
+        $view = ($this->handler)(new GetCampaign('campaign-2', 'user-1'));
+
+        self::assertEquals([
+            new PlaceView('place-2', 'Dunmere', null, [], [], 1, 'open'),
+            new PlaceView('place-1', 'Saltmarsh', 'Fishing town', [], ['Town'], 2, 'closed'),
+        ], $view->places);
     }
 
     #[Test]

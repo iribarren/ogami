@@ -71,6 +71,7 @@ final readonly class GetCampaignHandler implements QueryHandler
             array_map(static fn (Check $check): CheckView => CheckView::of($check, $labels), $snapshot->checks()),
             array_map(NpcView::of(...), $campaign->npcs()),
             array_map(ThreadView::of(...), $campaign->threads()),
+            array_map(PlaceView::of(...), $campaign->places()),
             array_map(FactSlotView::of(...), $snapshot->factSlots()),
             array_map(static fn (Fact $fact): FactView => self::fact($fact, $campaign, $snapshot), $campaign->facts($snapshot)),
             array_map(static fn (Character $character): CharacterView => CharacterView::of($character, $snapshot->sheet(), $trackerValues), $campaign->characters()),

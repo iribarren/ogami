@@ -27,6 +27,8 @@ use App\Play\Domain\Campaign\FlowRun\ShopStock;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\Place;
+use App\Play\Domain\Campaign\Lists\PlaceId;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
@@ -56,6 +58,7 @@ use App\Play\Infrastructure\Persistence\Doctrine\CampaignCharactersType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignFactsType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignFlowRunType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignNpcsType;
+use App\Play\Infrastructure\Persistence\Doctrine\CampaignPlacesType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignSessionsType;
 use App\Play\Infrastructure\Persistence\Doctrine\CampaignThreadsType;
 use App\Play\Infrastructure\Persistence\Doctrine\DoctrineCampaignRepository;
@@ -77,6 +80,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 #[CoversClass(CampaignFlowRunType::class)]
 #[CoversClass(CampaignNpcsType::class)]
 #[CoversClass(CampaignThreadsType::class)]
+#[CoversClass(CampaignPlacesType::class)]
 #[CoversClass(CampaignFactsType::class)]
 final class DoctrineCampaignRepositoryTest extends KernelTestCase
 {
@@ -1163,6 +1167,36 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
     }
 
     #[Test]
+    public function aRowStoredBeforePlacesExistedReadsWithNoPlaces(): void
+    {
+        $connection = $this->entityManager->getConnection();
+        $connection->executeStatement(
+            "INSERT INTO play_campaign (id, owner_id, name, game_system_key, release_version, game_system_name, created_at, sessions, tracker_values) VALUES ('01890a5d-ac96-774b-bcce-b302099a8057', ?, 'Old', 'heist', 1, 'Heist', '2026-10-06 10:00:00+00', '[]', '{}')",
+            [self::OWNER],
+        );
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId(CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057'));
+
+        self::assertSame([], $loaded?->places());
+        self::assertSame('[]', $connection->fetchOne('SELECT places::text FROM play_campaign WHERE id = ?', ['01890a5d-ac96-774b-bcce-b302099a8057']));
+    }
+
+    #[Test]
+    public function aPlaceStoredWithoutNotesReadsWithNone(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->campaign($id->toString(), self::OWNER, '2026-10-06'));
+        $stored = [['id' => 'place-1', 'name' => 'Saltmarsh', 'tags' => [], 'freeTags' => ['Town'], 'weight' => 2, 'status' => 'open']];
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET places = ? WHERE id = ?', [json_encode($stored, \JSON_THROW_ON_ERROR), $id->toString()]);
+        $this->forgetLoaded();
+
+        $place = $this->repository->ofId($id)?->place(PlaceId::fromString('place-1'));
+
+        self::assertEquals(Place::of(PlaceId::fromString('place-1'), 'Saltmarsh', null, [], ['Town'], 2), $place);
+    }
+
+    #[Test]
     public function aRowStoredBeforeCharactersExistedReadsWithNoCharacters(): void
     {
         $connection = $this->entityManager->getConnection();
@@ -1339,6 +1373,20 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'thread blank id' => ['threads', $thread(['id' => '']), 'A Thread id must not be blank.'];
         yield 'thread duplicate id' => ['threads', json_encode([$threadRow([]), $threadRow(['name' => 'Debts'])], \JSON_THROW_ON_ERROR), 'Stored campaign threads: id "thread-1" is listed twice.'];
         yield 'threads over the limit' => ['threads', json_encode(array_map(static fn (int $i): array => ['id' => 'thread-'.$i, 'name' => 'Thread '.$i, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open'], range(1, 501)), \JSON_THROW_ON_ERROR), 'Stored campaign threads: at most 500 Threads are allowed, got 501.'];
+        $placeRow = static fn (array $fields): array => $fields + ['id' => 'place-1', 'name' => 'Saltmarsh', 'notes' => null, 'tags' => [], 'freeTags' => [], 'weight' => 1, 'status' => 'open'];
+        $place = static fn (array $fields): string => json_encode([$placeRow($fields)], \JSON_THROW_ON_ERROR);
+
+        yield 'places not a list' => ['places', '{"a": 1}', 'Stored campaign places: "places" must be a list.'];
+        yield 'place unknown status' => ['places', $place(['status' => 'done']), 'Stored campaign places: "status" must be one of "open", "closed".'];
+        yield 'place missing name' => ['places', $place(['name' => null]), 'Stored campaign places: "name" must be a string.'];
+        yield 'place notes not a string' => ['places', $place(['notes' => 4]), 'Stored campaign places: "notes" must be a string.'];
+        yield 'place notes too long' => ['places', $place(['notes' => str_repeat('a', 2001)]), 'The notes must be at most 2000 characters, got 2001.'];
+        yield 'place weight out of range' => ['places', $place(['weight' => 0]), 'The weight must be 1 to 3, got 0.'];
+        yield 'place free tags not strings' => ['places', $place(['freeTags' => 'Town']), 'Stored campaign places: "freeTags" must be a list of strings.'];
+        yield 'place blank name' => ['places', $place(['name' => ' ']), 'The name must not be blank.'];
+        yield 'place blank id' => ['places', $place(['id' => '']), 'A Place id must not be blank.'];
+        yield 'place duplicate id' => ['places', json_encode([$placeRow([]), $placeRow(['name' => 'Dunmere'])], \JSON_THROW_ON_ERROR), 'Stored campaign places: id "place-1" is listed twice.'];
+        yield 'places over the limit' => ['places', json_encode(array_map(static fn (int $i): array => ['id' => 'place-'.$i] + $placeRow([]), range(1, 501)), \JSON_THROW_ON_ERROR), 'Stored campaign places: at most 500 Places are allowed, got 501.'];
         $factRow = static fn (array $fields): array => $fields + ['id' => 'fact-1', 'slot' => null, 'label' => 'Guild', 'text' => 'Owes a debt', 'subject' => null, 'links' => []];
         $fact = static fn (array $fields): string => json_encode([$factRow($fields)], \JSON_THROW_ON_ERROR);
 
@@ -1387,7 +1435,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
     }
 
     /**
-     * @return iterable<string, array{CampaignNpcsType|CampaignThreadsType|CampaignFactsType|CampaignCharactersType, mixed}>
+     * @return iterable<string, array{CampaignNpcsType|CampaignThreadsType|CampaignPlacesType|CampaignFactsType|CampaignCharactersType, mixed}>
      */
     public static function valuesThatAreNotLists(): iterable
     {
@@ -1403,11 +1451,14 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'threads: a string' => [new CampaignThreadsType(), 'thread-1'];
         yield 'threads: a stored-shape array item' => [new CampaignThreadsType(), [['id' => 'thread-1']]];
         yield 'threads: an npc among them' => [new CampaignThreadsType(), [Npc::of(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1)]];
+        yield 'places: a string' => [new CampaignPlacesType(), 'place-1'];
+        yield 'places: a stored-shape array item' => [new CampaignPlacesType(), [['id' => 'place-1']]];
+        yield 'places: an npc among them' => [new CampaignPlacesType(), [Npc::of(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1)]];
     }
 
     #[Test]
     #[DataProvider('valuesThatAreNotLists')]
-    public function aValueThatIsNotAListOfItemsIsRefusedBeforeItIsWritten(CampaignNpcsType|CampaignThreadsType|CampaignFactsType|CampaignCharactersType $type, mixed $value): void
+    public function aValueThatIsNotAListOfItemsIsRefusedBeforeItIsWritten(CampaignNpcsType|CampaignThreadsType|CampaignPlacesType|CampaignFactsType|CampaignCharactersType $type, mixed $value): void
     {
         $this->expectException(InvalidType::class);
 

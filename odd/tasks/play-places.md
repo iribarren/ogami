@@ -78,8 +78,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; ADR 0047 "Places" (+ ADR index); glossary row "Place"; `docs/vision.md` row answered; example 5 note and roadmap B15 prompt point to ADR 0047 | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Domain `Place` list on `Campaign` and application commands (add, edit, close, reopen), `CampaignView.places`, with unit tests | delegated writer (slice 1) | [ ] | |
-| T3 | 1 | Persistence (JSONB column, type, migration, legacy rows) and `/api/campaigns/{id}/places` endpoints, `CampaignResponse.places`, API tests (201, 404, 409 concurrent, 422), Behat `places.feature`, `make api` | delegated writer (slice 1) | [ ] | |
+| T2 | 1 | Domain `Place` list on `Campaign` and application commands (add, edit, close, reopen), `CampaignView.places`, with unit tests | delegated writer (slice 1) | [x] | |
+| T3 | 1 | HTTP only (persistence already landed in T2): `/api/campaigns/{id}/places` endpoints, `CampaignResponse.places`, API tests (201, 404, 409 concurrent, 422), Behat `places.feature`, `make api` | delegated writer (slice 1) | [ ] | |
 | T4 | 2 | Slice 1 review fixes | | [ ] | |
 | T5 | 2 | Contract: `place` slots and links, `createPlace`, `pick`/`count` of `place`, `appliesTo: place`, `closeThread.fact`; Studio validation, contract doc, fixtures | | [ ] | |
 | T6 | 2 | ACL and Play flow: createPlace, place slots, pick and count of places, closeThread by slot | | [ ] | |
@@ -96,6 +96,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - 2026-10-31: Exploration (read-only explorer): NPCs and Threads are JSONB lists on the Campaign with closed enums `FactSlotType` (text/npc/thread) and `ItemKind` (npc/thread/character) matched exhaustively in `Campaign`, `FlowRun`, `FlowRunContext`, `ReleaseUpgradePlanner` and `GameSystemReleaseTranslator`; `tag.appliesTo` maxItems 3; sheet field types are number, text, list, track, derived, conditions, inventory (conditions' `options` is the model for `select`); latest ADR 0046; schema version 2. User decisions: Places list; `closeThread` by fact slot in scope.
 - 2026-10-31 T1: ADR 0047, ADR index, glossary "Place", vision question answered, example 5 note; roadmap B15 left unchanged (its prompt is a code block, no link renders). Docs only, no test.
+- 2026-10-31 T2: `Place`, `PlaceId` and errors; `Campaign` places (MAX_PLACES, add/edit/close/reopen, reconstitute check); application commands, `PlaceView`, `CampaignView.places`. `ItemRules::assertPlaceTags` and `TagNotApplicable::forPlaces` refuse release Tags without touching `ItemKind`. RED observed for `CampaignPlacesTest` (21 failures, classes missing); `PlaceHandlersTest` and the `GetCampaignHandlerTest` places case were written first but only run once the code existed. Persistence moved into this commit (not T3): Doctrine hydrates `Campaign` without its constructor, so an unmapped `places` property made every DB-backed test fail (500, uninitialized typed property) at the T2 commit alone. It adds `CampaignPlacesType` (JSONB, notes), the `places` column mapping with its `[]` default, migration `Version20261031120000`, `UuidPlaceIdGenerator`, the whole-aggregate round trip in `CampaignRepositoryContract`, and legacy-row and malformed-list tests. The persistence tests were written alongside the code, not observed RED first. `tests/Unit/Play`, `tests/Integration/Play/Persistence` and `tests/Unit/Play/Infrastructure` pass.
 
 ## Reviews
 

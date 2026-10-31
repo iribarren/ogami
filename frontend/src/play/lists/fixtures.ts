@@ -72,4 +72,5 @@ export const lostMineWithLists: Campaign = {
   tags: [leaderTag, allyTag],
   npcs: [miraNpc, brannNpc, oldGuardNpc],
   threads: [vaultThread, ledgerThread],
+  places: [],
 }

@@ -601,6 +601,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/places": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a Place to one of my campaigns */
+        post: operations["addPlace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/places/{placeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the name, notes, Tags, free tags and weight of a Place of one of my campaigns */
+        put: operations["editPlace"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/places/{placeId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close a Place of one of my campaigns: flows no longer pick or count it */
+        post: operations["closePlace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/places/{placeId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reopen a Place of one of my campaigns */
+        post: operations["reopenPlace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaignId}/release-upgrade": {
         parameters: {
             query?: never;
@@ -2854,6 +2922,40 @@ export interface components {
              */
             status: "open" | "closed";
         };
+        PlaceResponse: {
+            /** Format: uuid */
+            id: string;
+            /** @example Saltmarsh */
+            name: string;
+            /**
+             * @description The keys of the pinned release's Tags the Place carries; flows pick and count by them.
+             * @example []
+             */
+            tags: string[];
+            /**
+             * @description The player's own labels, as typed; flows never match them.
+             * @example [
+             *       "Town"
+             *     ]
+             */
+            freeTags: string[];
+            /**
+             * @description Favours the Place in a random pick: 1 to 3.
+             * @example 1
+             */
+            weight: number;
+            /**
+             * @description A closed Place is no longer picked or counted.
+             * @example open
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            /**
+             * @description Free text about the Place; null when there are none.
+             * @example A fishing town on the marsh
+             */
+            notes: string | null;
+        };
         FactLinkResponse: {
             /**
              * @description A subject is always an NPC or a Thread.
@@ -2942,6 +3044,8 @@ export interface components {
             npcs: components["schemas"]["NpcResponse"][];
             /** @description The campaign's Threads: the open ones first, then the closed ones, each in creation order. */
             threads: components["schemas"]["ThreadResponse"][];
+            /** @description The campaign's Places: the open ones first, then the closed ones, each in creation order; empty for a campaign without any. */
+            places: components["schemas"]["PlaceResponse"][];
             /** @description The Fact slots of the pinned release, in definition order; empty for releases without any. */
             factSlots: components["schemas"]["FactSlotResponse"][];
             /** @description The campaign's facts: the slot facts first, in slot order, then the free facts in creation order; empty for a campaign without any. */
@@ -3072,6 +3176,35 @@ export interface components {
              * @description The player's own labels, at most 10 of 1 to 50 characters, unique ignoring case; none when omitted or null.
              * @example [
              *       "Fence"
+             *     ]
+             */
+            freeTags?: string[] | null;
+            /**
+             * @description 1 to 3; 1 when omitted or null.
+             * @example 2
+             */
+            weight?: number | null;
+        };
+        PlaceRequest: {
+            /**
+             * @description 1 to 200 characters once trimmed.
+             * @example Saltmarsh
+             */
+            name: string;
+            /**
+             * @description Free text about the Place, at most 2,000 characters once trimmed; none when omitted, null or blank.
+             * @example A fishing town on the marsh
+             */
+            notes?: string | null;
+            /**
+             * @description Keys of Tags of the campaign's pinned release, at most 10, each once. No Tag applies to Places yet, so any Tag is refused; none when omitted or null.
+             * @example []
+             */
+            tags?: string[] | null;
+            /**
+             * @description The player's own labels, at most 10 of 1 to 50 characters, unique ignoring case; none when omitted or null.
+             * @example [
+             *       "Town"
              *     ]
              */
             freeTags?: string[] | null;
@@ -8518,6 +8651,303 @@ export interface operations {
             };
             /** @description A Tag of the NPC is not in the pinned release, or the sheet's start max cannot be computed. */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    addPlace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaceRequest"];
+            };
+        };
+        responses: {
+            /** @description The new, open Place. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no string "name", or a field of another JSON type than documented. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The campaign already holds 500 Places, or another request changed it meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A value breaks a rule (blank or too long name, too long notes, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is given: it is not in the pinned release, or no Tag applies to Places yet. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    editPlace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                placeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaceRequest"];
+            };
+        };
+        responses: {
+            /** @description The edited Place; its status stays. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceResponse"];
+                };
+            };
+            /** @description The JSON body is malformed, has no string "name", or a field of another JSON type than documented. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or it holds no Place with this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request changed the campaign meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The body is not JSON. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A value breaks a rule (blank or too long name, too long notes, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is given: it is not in the pinned release, or no Tag applies to Places yet. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    closePlace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                placeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The closed Place. Closing a closed one changes nothing. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or it holds no Place with this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request changed the campaign meanwhile. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reopenPlace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                placeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The reopened Place. Reopening an open one changes nothing. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or it holds no Place with this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another request changed the campaign meanwhile. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -3100,6 +3100,394 @@
                 }
             }
         },
+        "/api/campaigns/{campaignId}/places": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Add a Place to one of my campaigns",
+                "operationId": "addPlace",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PlaceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The new, open Place.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PlaceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no string \"name\", or a field of another JSON type than documented.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The campaign already holds 500 Places, or another request changed it meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A value breaks a rule (blank or too long name, too long notes, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is given: it is not in the pinned release, or no Tag applies to Places yet.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/places/{placeId}": {
+            "put": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Replace the name, notes, Tags, free tags and weight of a Place of one of my campaigns",
+                "operationId": "editPlace",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "placeId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PlaceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The edited Place; its status stays.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PlaceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "The JSON body is malformed, has no string \"name\", or a field of another JSON type than documented.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or it holds no Place with this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "415": {
+                        "description": "The body is not JSON.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A value breaks a rule (blank or too long name, too long notes, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is given: it is not in the pinned release, or no Tag applies to Places yet.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/places/{placeId}/close": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Close a Place of one of my campaigns: flows no longer pick or count it",
+                "operationId": "closePlace",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "placeId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The closed Place. Closing a closed one changes nothing.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PlaceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or it holds no Place with this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/places/{placeId}/reopen": {
+            "post": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Reopen a Place of one of my campaigns",
+                "operationId": "reopenPlace",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "placeId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The reopened Place. Reopening an open one changes nothing.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PlaceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or it holds no Place with this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Another request changed the campaign meanwhile.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/campaigns/{campaignId}/release-upgrade": {
             "get": {
                 "tags": [
@@ -13459,6 +13847,66 @@
                 },
                 "type": "object"
             },
+            "PlaceResponse": {
+                "required": [
+                    "id",
+                    "name",
+                    "tags",
+                    "freeTags",
+                    "weight",
+                    "status",
+                    "notes"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Saltmarsh"
+                    },
+                    "tags": {
+                        "description": "The keys of the pinned release's Tags the Place carries; flows pick and count by them.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": []
+                    },
+                    "freeTags": {
+                        "description": "The player's own labels, as typed; flows never match them.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "Town"
+                        ]
+                    },
+                    "weight": {
+                        "description": "Favours the Place in a random pick: 1 to 3.",
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "status": {
+                        "description": "A closed Place is no longer picked or counted.",
+                        "type": "string",
+                        "example": "open",
+                        "enum": [
+                            "open",
+                            "closed"
+                        ]
+                    },
+                    "notes": {
+                        "description": "Free text about the Place; null when there are none.",
+                        "type": "string",
+                        "example": "A fishing town on the marsh",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "FactLinkResponse": {
                 "required": [
                     "kind",
@@ -13564,6 +14012,7 @@
                     "checks",
                     "npcs",
                     "threads",
+                    "places",
                     "factSlots",
                     "facts",
                     "characters"
@@ -13679,6 +14128,13 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/ThreadResponse"
+                        }
+                    },
+                    "places": {
+                        "description": "The campaign's Places: the open ones first, then the closed ones, each in creation order; empty for a campaign without any.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PlaceResponse"
                         }
                     },
                     "factSlots": {
@@ -13937,6 +14393,51 @@
                         },
                         "example": [
                             "Fence"
+                        ],
+                        "nullable": true
+                    },
+                    "weight": {
+                        "description": "1 to 3; 1 when omitted or null.",
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "PlaceRequest": {
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "description": "1 to 200 characters once trimmed.",
+                        "type": "string",
+                        "example": "Saltmarsh"
+                    },
+                    "notes": {
+                        "description": "Free text about the Place, at most 2,000 characters once trimmed; none when omitted, null or blank.",
+                        "type": "string",
+                        "example": "A fishing town on the marsh",
+                        "nullable": true
+                    },
+                    "tags": {
+                        "description": "Keys of Tags of the campaign's pinned release, at most 10, each once. No Tag applies to Places yet, so any Tag is refused; none when omitted or null.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [],
+                        "nullable": true
+                    },
+                    "freeTags": {
+                        "description": "The player's own labels, at most 10 of 1 to 50 characters, unique ignoring case; none when omitted or null.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "example": [
+                            "Town"
                         ],
                         "nullable": true
                     },

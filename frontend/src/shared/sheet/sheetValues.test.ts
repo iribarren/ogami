@@ -95,6 +95,43 @@ describe('a conditions field', () => {
   })
 })
 
+const stance: SheetFieldView = {
+  ...gear,
+  key: 'stance',
+  label: 'Stance',
+  type: 'select',
+  options: [
+    { key: 'guarded', label: 'Guarded' },
+    { key: 'reckless', label: 'Reckless' },
+  ],
+  defaultOption: 'guarded',
+}
+
+describe('a select field (ADR 0048)', () => {
+  it('starts at the default option, or none without one, for a value not stored yet', () => {
+    expect(valueOrDefault(stance, undefined)).toBe('guarded')
+    expect(valueOrDefault({ ...stance, defaultOption: null }, undefined)).toBeNull()
+    expect(toDraft(stance, undefined)).toBe('guarded')
+  })
+
+  it('keeps a stored null as none and reads an unexpected shape as none', () => {
+    expect(valueOrDefault(stance, null)).toBeNull()
+    expect(toDraft(stance, null)).toBe('')
+    expect(valueOrDefault(stance, 3)).toBeNull()
+  })
+
+  it('sends the chosen key, and null for none', () => {
+    expect(fromDraft(stance, 'reckless')).toBe('reckless')
+    expect(fromDraft(stance, '')).toBeNull()
+  })
+
+  it('summarizes the chosen option by label, and leaves none out', () => {
+    expect(summarize(stance, 'reckless')).toBe('Stance: Reckless')
+    expect(summarize(stance, 'gone')).toBe('Stance: gone')
+    expect(summarize(stance, null)).toBeNull()
+  })
+})
+
 describe('an inventory field (ADR 0045)', () => {
   const pack: SheetFieldView = { ...gear, key: 'pack', label: 'Pack', type: 'inventory' }
   const catalog: SheetGear[] = [

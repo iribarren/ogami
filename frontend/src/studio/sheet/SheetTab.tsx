@@ -2,6 +2,7 @@ import {
   ArrowDown,
   ArrowUp,
   Backpack,
+  ChevronsUpDown,
   Hash,
   List,
   ListChecks,
@@ -305,12 +306,13 @@ const typeIcons: Record<string, ReactNode> = {
   derived: <Sigma />,
   list: <List />,
   conditions: <ListChecks />,
+  select: <ChevronsUpDown />,
   inventory: <Backpack />,
 }
 
-/** "Hurt, Exhausted" for a conditions field: its options in order, those that are not labelled left out. */
+/** "Hurt, Exhausted" for a conditions or select field: its options in order, those that are not labelled left out. */
 function optionsHint({ type, options }: StoredField): string | null {
-  if (type !== 'conditions' || !Array.isArray(options)) {
+  if ((type !== 'conditions' && type !== 'select') || !Array.isArray(options)) {
     return null
   }
   const labels = (options as unknown[]).flatMap((option) =>

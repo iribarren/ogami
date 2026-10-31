@@ -284,6 +284,67 @@ describe('where a field moves to', () => {
   })
 })
 
+describe('a select field (ADR 0048)', () => {
+  const stored = {
+    key: 'stance',
+    label: 'Stance',
+    type: 'select',
+    options: [
+      { key: 'guarded', label: 'Guarded' },
+      { key: 'reckless', label: 'Reckless' },
+    ],
+    default: 'reckless',
+  }
+
+  it('reads its options and default, and writes them back as stored', () => {
+    const draft = readField(stored)
+
+    expect(draft).toMatchObject({ type: 'select', defaultOption: 'reckless' })
+    expect(writeField(draft ?? blankField(null), null)).toEqual({ field: stored })
+  })
+
+  it('leaves the default out when none is picked', () => {
+    const noDefault: Record<string, unknown> = { ...stored }
+    delete noDefault.default
+
+    const draft = readField(noDefault)
+
+    expect(draft?.defaultOption).toBe('')
+    expect(writeField(draft ?? blankField(null), null)).toEqual({ field: noDefault })
+  })
+
+  it.each([
+    ['no options', { ...stored, options: undefined }],
+    ['an option with another property', { ...stored, options: [{ key: 'a', label: 'A', x: 1 }] }],
+    ['a default that is not text', { ...stored, default: 3 }],
+  ])('cannot be edited with %s', (_name, field) => {
+    expect(readField(field)).toBeNull()
+  })
+
+  it('asks for a default that is one of its options', () => {
+    const options = [{ key: 'a', label: 'A' }]
+
+    expect(writeField(filled({ type: 'select', options, defaultOption: 'ghost' }), null)).toEqual({
+      errors: { defaultOption: 'Pick one of the options, or none.' },
+    })
+  })
+
+  it('takes up to 50 options, where a conditions field takes 20', () => {
+    const options = (count: number) =>
+      Array.from({ length: count }, (_, at) => ({ key: `o-${String(at)}`, label: 'O' }))
+
+    expect(writeField(filled({ type: 'select', options: options(50) }), null)).toHaveProperty(
+      'field',
+    )
+    expect(writeField(filled({ type: 'select', options: options(51) }), null)).toEqual({
+      errors: { options: 'A select field has 1 to 50 options.' },
+    })
+    expect(writeField(filled({ type: 'conditions', options: options(21) }), null)).toEqual({
+      errors: { options: 'A conditions field has 1 to 20 options.' },
+    })
+  })
+})
+
 describe('a conditions field', () => {
   const stored = {
     key: 'physical',

@@ -10,7 +10,7 @@ const inner = (value: unknown, property: string) =>
   typeof value === 'object' && value !== null && property in value
     ? text((value as Record<string, unknown>)[property])
     : null
-/** The `{key, label}` options of a conditions field; an item that is not one is left out. */
+/** The `{key, label}` options of a conditions or select field; an item that is not one is left out. */
 const optionsOf = (value: unknown): { key: string; label: string }[] =>
   Array.isArray(value)
     ? (value as unknown[]).flatMap((option) => {
@@ -93,7 +93,8 @@ export function previewTemplate(
       roll: inner(stored.roll, 'dice'),
       startMax: inner(stored.startMax, 'formula'),
       span: count(stored.span) ?? 1,
-      options: type === 'conditions' ? optionsOf(stored.options) : null,
+      options: type === 'conditions' || type === 'select' ? optionsOf(stored.options) : null,
+      defaultOption: type === 'select' ? text(stored.default) : null,
       ...(type === 'inventory'
         ? {
             capacity: count(stored.capacity),

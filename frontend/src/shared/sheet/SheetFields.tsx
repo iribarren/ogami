@@ -4,6 +4,7 @@ import { Button } from '@/shared/ui/button'
 import { Checkbox } from '@/shared/ui/checkbox'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
+import { NativeSelect } from '@/shared/ui/native-select'
 import { Textarea } from '@/shared/ui/textarea'
 
 import type { DerivedResult } from './derivedValues'
@@ -265,6 +266,31 @@ function FieldControl({
           </div>
         ))}
       </fieldset>
+    )
+  }
+
+  if (field.type === 'select' && typeof draft === 'string') {
+    // The draft is the chosen option key; '' is "none chosen", which is a value a Character may hold.
+    return (
+      <div className="space-y-1">
+        <Label htmlFor={id}>{field.label}</Label>
+        <NativeSelect
+          id={id}
+          aria-describedby={field.hint === null ? undefined : hintId}
+          value={draft}
+          onChange={(event) => {
+            onChange(event.target.value)
+          }}
+        >
+          <option value="">None</option>
+          {(field.options ?? []).map((option) => (
+            <option key={option.key} value={option.key}>
+              {option.label}
+            </option>
+          ))}
+        </NativeSelect>
+        {hint}
+      </div>
     )
   }
 

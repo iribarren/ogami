@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "select-field", "name": "Select field", "description": "Select sheet fields, with and without a default, the way the contract shows them."},
+  "oracles": {"tables": [], "likelihood": []},
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [],
+  "flows": [],
+  "sheet": {
+    "fields": [
+      {"key": "vigor", "label": "Vigor", "type": "number", "min": 0, "max": 5, "default": 2},
+      {
+        "key": "stance", "label": "Stance", "type": "select", "hint": "How the Character fights.",
+        "options": [{"key": "guarded", "label": "Guarded"}, {"key": "reckless", "label": "Reckless"}],
+        "default": "guarded"
+      },
+      {
+        "key": "origin", "label": "Origin", "type": "select",
+        "options": [{"key": "coast", "label": "Coast"}, {"key": "hills", "label": "Hills"}, {"key": "city", "label": "City"}]
+      }
+    ]
+  },
+  "checks": []
+}

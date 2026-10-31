@@ -72,8 +72,8 @@ final class CampaignPlacesType extends JsonType
             throw $this->malformed('places', 'a list');
         }
 
-        if (\count($data) > Campaign::MAX_THREADS) {
-            throw ValueNotConvertible::new('places', self::NAME, \sprintf('Stored campaign places: at most %d Places are allowed, got %d.', Campaign::MAX_THREADS, \count($data)));
+        if (\count($data) > Campaign::MAX_PLACES) {
+            throw ValueNotConvertible::new('places', self::NAME, \sprintf('Stored campaign places: at most %d Places are allowed, got %d.', Campaign::MAX_PLACES, \count($data)));
         }
 
         $items = array_map($this->place(...), $data);

@@ -44,7 +44,7 @@ export type StepKind = (typeof stepKinds)[number]
 export const stockForms = ['none', 'fixed', 'dice'] as const
 export type StockForm = (typeof stockForms)[number]
 
-export const countTargets = ['npc', 'thread', 'character'] as const
+export const countTargets = ['npc', 'thread', 'place', 'character'] as const
 export type CountTarget = (typeof countTargets)[number]
 
 export interface BandDraft {

@@ -27,6 +27,7 @@ export const effectKinds = [
   'sceneTitle',
   'createNpc',
   'createThread',
+  'createPlace',
   'closeThread',
   'fillFact',
   'sheet',
@@ -54,10 +55,16 @@ interface Extra {
 export type EffectDraft =
   | (Extra & { kind: 'tracker'; tracker: string; op: 'add' | 'set'; value: ValueDraft })
   | (Extra & { kind: 'nextScene' | 'switchSceneType'; sceneType: string })
-  | (Extra & { kind: 'endPhase' | 'closeThread' })
+  | (Extra & { kind: 'endPhase' })
+  | (Extra & {
+      kind: 'closeThread'
+      /** The key of a thread fact slot whose Thread is closed; '' closes the picked Thread. */
+      fact: string
+    })
   | (Extra & { kind: 'sceneTitle'; title: string })
   | (Extra & { kind: 'createNpc'; name: string; agenda: string; tags: string[] })
   | (Extra & { kind: 'createThread'; name: string; tags: string[] })
+  | (Extra & { kind: 'createPlace'; name: string; tags: string[] })
   | (Extra & { kind: 'fillFact'; slot: string; text: string })
   | (Extra & {
       kind: 'sheet'
@@ -87,7 +94,8 @@ export const effectFields: Record<EffectKind, readonly string[]> = {
   sceneTitle: ['title'],
   createNpc: ['name', 'agenda', 'tags'],
   createThread: ['name', 'tags'],
-  closeThread: [],
+  createPlace: ['name', 'tags'],
+  closeThread: ['fact'],
   fillFact: ['slot', 'text'],
   sheet: ['field', 'op', 'value'],
 }
@@ -99,7 +107,7 @@ const oneOf = <T extends string>(options: readonly T[], value: unknown): T | nul
   options.find((option) => option === value) ?? null
 
 /** The optional text and list fields: stored empty, they mean absent but are kept as stored. */
-const optional = ['name', 'agenda', 'tags', 'text']
+const optional = ['name', 'agenda', 'tags', 'text', 'fact']
 const isEmpty = (value: unknown) => value === '' || (Array.isArray(value) && value.length === 0)
 
 /** The effect as form state; one this editor cannot edit is kept as stored. */
@@ -133,8 +141,16 @@ export function effectToDraft(stored: unknown): EffectDraft {
       return sceneType === null ? unreadable : { kind, sceneType, extra }
     }
     case 'endPhase':
-    case 'closeThread':
       return { kind, extra }
+    case 'closeThread': {
+      const fact = textOf(stored, 'fact')
+      // A stored null means the same as absent; it is kept as stored until a slot is picked.
+      return stored.fact === null
+        ? { kind, fact: '', extra: { ...extra, fact: null } }
+        : fact === null
+          ? unreadable
+          : { kind, fact, extra }
+    }
     case 'sceneTitle': {
       const title = required(stored, 'title')
       return title === null ? unreadable : { kind, title, extra }
@@ -146,6 +162,7 @@ export function effectToDraft(stored: unknown): EffectDraft {
         : { kind, name, agenda, tags, extra }
     }
     case 'createThread':
+    case 'createPlace':
       return name === null || tags === null ? unreadable : { kind, name, tags, extra }
     case 'fillFact': {
       const slot = required(stored, 'slot')
@@ -189,13 +206,15 @@ export function newEffect(kind: EffectKind): EditedEffect {
     case 'switchSceneType':
       return { kind, sceneType: '', extra }
     case 'endPhase':
-    case 'closeThread':
       return { kind, extra }
+    case 'closeThread':
+      return { kind, fact: '', extra }
     case 'sceneTitle':
       return { kind, title: '', extra }
     case 'createNpc':
       return { kind, name: '', agenda: '', tags: [], extra }
     case 'createThread':
+    case 'createPlace':
       return { kind, name: '', tags: [], extra }
     case 'fillFact':
       return { kind, slot: '', text: '', extra }
@@ -271,8 +290,9 @@ function effectToStored(
     case 'switchSceneType':
       return { ...extra, kind, sceneType: effect.sceneType }
     case 'endPhase':
-    case 'closeThread':
       return { ...extra, kind }
+    case 'closeThread':
+      return { ...extra, kind, ...given({ fact: effect.fact }) }
     case 'sceneTitle':
       return { ...extra, kind, title: effect.title }
     case 'createNpc':
@@ -282,6 +302,7 @@ function effectToStored(
         ...given({ name: effect.name, agenda: effect.agenda, tags: effect.tags }),
       }
     case 'createThread':
+    case 'createPlace':
       return { ...extra, kind, ...given({ name: effect.name, tags: effect.tags }) }
     case 'fillFact':
       return { ...extra, kind, slot: effect.slot, ...given({ text: effect.text }) }

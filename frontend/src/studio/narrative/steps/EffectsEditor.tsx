@@ -139,6 +139,7 @@ function EffectFields({
       )
     case 'createNpc':
     case 'createThread':
+    case 'createPlace':
       return (
         <>
           <TextField
@@ -260,8 +261,20 @@ function EffectFields({
         </>
       )
     }
-    case 'endPhase':
     case 'closeThread':
+      return (
+        <PickField
+          label="Thread fact slot"
+          value={effect.fact}
+          options={factSlots.filter((slot) => slot.type === 'thread')}
+          placeholder="The picked Thread"
+          error={problem('fact')}
+          onChange={(fact) => {
+            set({ fact })
+          }}
+        />
+      )
+    case 'endPhase':
       return <p className="text-sm text-muted-foreground">This effect has no fields.</p>
   }
 }

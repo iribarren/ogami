@@ -591,15 +591,25 @@ describe('the Places panel', () => {
   it('edits a Place with its notes prefilled, closes it and reopens another', async () => {
     const user = userEvent.setup()
     const sent: unknown[] = []
-    renderLists(
+    const { server, fakeApi } = renderLists(
       lostMineWithLists,
       {
         [`PUT ${path}/places/${saltmarshPlace.id}`]: () =>
           Response.json({ ...saltmarshPlace, notes: 'Flooded.' }),
-        [`POST ${path}/places/${saltmarshPlace.id}/close`]: () =>
-          Response.json({ ...saltmarshPlace, status: 'closed' }),
-        [`POST ${path}/places/${dunmerePlace.id}/reopen`]: () =>
-          Response.json({ ...dunmerePlace, status: 'open' }),
+        [`POST ${path}/places/${saltmarshPlace.id}/close`]: () => {
+          server.campaign = {
+            ...server.campaign,
+            places: [{ ...saltmarshPlace, status: 'closed' }, dunmerePlace],
+          }
+          return Response.json({ ...saltmarshPlace, status: 'closed' })
+        },
+        [`POST ${path}/places/${dunmerePlace.id}/reopen`]: () => {
+          server.campaign = {
+            ...server.campaign,
+            places: [saltmarshPlace, { ...dunmerePlace, status: 'open' }],
+          }
+          return Response.json({ ...dunmerePlace, status: 'open' })
+        },
       },
       sent,
     )
@@ -613,11 +623,13 @@ describe('the Places panel', () => {
     expect(await panel.findByText('Flooded.')).toBeInTheDocument()
 
     await user.click(panel.getByRole('button', { name: 'Close Saltmarsh' }))
+    expect(await panel.findByRole('button', { name: 'Reopen Saltmarsh' })).toBeInTheDocument()
     await user.click(panel.getByRole('button', { name: 'Reopen Dunmere' }))
+    expect(await panel.findByRole('button', { name: 'Close Dunmere' })).toBeInTheDocument()
 
-    await waitFor(() => {
-      expect(sent).toHaveLength(3)
-    })
+    expect(fakeApi.requests).toContain(`POST ${path}/places/${saltmarshPlace.id}/close`)
+    expect(fakeApi.requests).toContain(`POST ${path}/places/${dunmerePlace.id}/reopen`)
+    expect(sent).toHaveLength(3)
     expect(sent[0]).toEqual({
       name: 'Saltmarsh',
       notes: 'Flooded.',

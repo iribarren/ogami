@@ -68,7 +68,7 @@ final class CampaignCharactersInventoryApiTest extends WebTestCase
         /** @var array<string, array<string, mixed>> $fields */
         $fields = array_column((array) ($pinned['sheet'] ?? null), null, 'key');
         self::assertSame(
-            ['key' => 'gear', 'label' => 'Gear', 'hint' => null, 'group' => null, 'type' => 'inventory', 'min' => null, 'max' => null, 'default' => null, 'multiline' => null, 'maxLength' => null, 'itemLabel' => null, 'maxItems' => null, 'formula' => null, 'roll' => null, 'startMax' => null, 'span' => 1, 'options' => null, 'capacity' => 20, 'maxStacks' => 50, 'categories' => ['Gear', 'Food']],
+            ['key' => 'gear', 'label' => 'Gear', 'hint' => null, 'group' => null, 'type' => 'inventory', 'min' => null, 'max' => null, 'default' => null, 'multiline' => null, 'maxLength' => null, 'itemLabel' => null, 'maxItems' => null, 'formula' => null, 'roll' => null, 'startMax' => null, 'span' => 1, 'options' => null, 'capacity' => 20, 'maxStacks' => 50, 'categories' => ['Gear', 'Food'], 'defaultOption' => null],
             $fields['gear'] ?? null,
         );
         self::assertSame([null, 10, ['Chrome']], [$fields['cyberware']['capacity'], $fields['cyberware']['maxStacks'], $fields['cyberware']['categories']]);

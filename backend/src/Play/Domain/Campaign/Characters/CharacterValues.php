@@ -11,6 +11,7 @@ use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\InventoryField;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
+use App\Play\Domain\GameSystem\Sheet\SelectField;
 use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
 use App\Play\Domain\GameSystem\Sheet\TextField;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
@@ -18,7 +19,7 @@ use App\Play\Domain\GameSystem\Sheet\TrackField;
 /**
  * The values of a Character against the sheet of the pinned release (ADR 0022). A number is an
  * integer, a text a string, a list a list of strings, a conditions field the list of its marked option keys
- * (each a declared option, once, in declared order), an inventory field a list of stacks (ADR 0045), a track {current, max}. Nothing is coerced
+ * (each a declared option, once, in declared order), a select field the key of its chosen option or null (ADR 0048), an inventory field a list of stacks (ADR 0045), a track {current, max}. Nothing is coerced
  * ("3" is not a number) and nothing is clamped; a value that breaks its field fails with
  * InvalidCharacter.
  *
@@ -43,7 +44,7 @@ final class CharacterValues
     /**
      * @param array<mixed> $given field key to value; a missing key takes the field default
      *
-     * @return array<string, int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}> one value per stored field of the sheet
+     * @return array<string, int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}|null> one value per stored field of the sheet
      *
      * @throws InvalidCharacter on an unknown key, a value for a derived field, a value of the wrong type or out of bounds
      */
@@ -75,7 +76,7 @@ final class CharacterValues
     /**
      * @param array<mixed> $values
      *
-     * @return array<string, int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}>
+     * @return array<string, int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}|null>
      *
      * @throws InvalidCharacter when a value has no valid shape
      */
@@ -85,6 +86,8 @@ final class CharacterValues
         foreach ($values as $key => $value) {
             $key = (string) $key;
             $checked[$key] = match (true) {
+                // A select field with no option chosen (ADR 0048); the template is not known here, so its options are not checked.
+                null === $value => null,
                 \is_int($value) => self::number($key, $value, -NumberField::LIMIT, NumberField::LIMIT),
                 \is_string($value) => self::text($key, $value, self::MAX_TEXT_LENGTH, true),
                 // A list of lists is an inventory's stacks; the template is not known here, so their gear is not checked against a catalog.
@@ -99,15 +102,16 @@ final class CharacterValues
     }
 
     /**
-     * @return int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}
+     * @return int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}|null
      */
-    private static function checked(Field $field, mixed $value): int|string|array
+    private static function checked(Field $field, mixed $value): int|string|array|null
     {
         return match (true) {
             $field instanceof NumberField => self::number($field->key, $value, $field->min ?? -NumberField::LIMIT, $field->max ?? NumberField::LIMIT),
             $field instanceof TextField => self::text($field->key, $value, $field->limit(), $field->multiline),
             $field instanceof ListField => self::items($field->key, $value, $field->limit()),
             $field instanceof ConditionsField => self::conditions($field, $value),
+            $field instanceof SelectField => self::option($field, $value),
             $field instanceof InventoryField => self::inventory($field, $value),
             $field instanceof TrackField => self::track($field->key, $value, $field->max),
             default => throw new \LogicException(\sprintf('Unknown field type %s.', $field::class)),
@@ -117,15 +121,16 @@ final class CharacterValues
     /**
      * What a Character holds in a field it was given no value for.
      *
-     * @return int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}
+     * @return int|string|list<string>|list<array<string, int|string>>|array{current: int, max: int}|null
      */
-    public static function initial(Field $field): int|string|array
+    public static function initial(Field $field): int|string|array|null
     {
         return match (true) {
             $field instanceof NumberField => $field->initial(),
             $field instanceof TextField => '',
             $field instanceof ListField, $field instanceof ConditionsField, $field instanceof InventoryField => [],
             $field instanceof TrackField => ['current' => $field->max ?? 0, 'max' => $field->max ?? 0],
+            $field instanceof SelectField => $field->default,
             default => throw new \LogicException(\sprintf('Unknown field type %s.', $field::class)),
         };
     }
@@ -214,6 +219,22 @@ final class CharacterValues
         }
 
         return $field->ordered($value);
+    }
+
+    /**
+     * The chosen option key of a select field, or null for none.
+     */
+    private static function option(SelectField $field, mixed $value): ?string
+    {
+        if (null !== $value && !\is_string($value)) {
+            throw InvalidCharacter::because(\sprintf('Field "%s" must be an option key or null.', $field->key));
+        }
+
+        if (null !== $value && !$field->has($value)) {
+            throw InvalidCharacter::because(\sprintf('Field "%s" has no option "%s".', $field->key, $value));
+        }
+
+        return $value;
     }
 
     /**

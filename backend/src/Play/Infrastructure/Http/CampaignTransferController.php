@@ -57,7 +57,7 @@ final readonly class CampaignTransferController
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: TransferCampaignRequest::class)))]
     #[OA\Response(
         response: 201,
-        description: 'The new campaign, on the latest release, with the source\'s NPCs, Threads and Campaign facts and the chosen Characters, all with their ids; Trackers at their initial value, no sessions. The Location header is its URL. The source is unchanged.',
+        description: 'The new campaign, on the latest release, with the source\'s NPCs, Threads, Places and Campaign facts and the chosen Characters, all with their ids; Trackers at their initial value, no sessions. The Location header is its URL. The source is unchanged.',
         headers: [new OA\Header(header: 'Location', description: 'The URL of the new campaign.', schema: new OA\Schema(type: 'string'))],
         content: new OA\JsonContent(ref: new Model(type: CampaignResponse::class)),
     )]

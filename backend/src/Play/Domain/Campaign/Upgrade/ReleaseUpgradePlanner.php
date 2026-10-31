@@ -13,6 +13,7 @@ use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\Facts\Fact;
 use App\Play\Domain\Campaign\Facts\FactLinkKind;
 use App\Play\Domain\Campaign\Lists\Npc;
+use App\Play\Domain\Campaign\Lists\Place;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\FactSlot;
@@ -45,10 +46,11 @@ final readonly class ReleaseUpgradePlanner
      * @param list<Character>    $characters    in campaign order
      * @param list<Npc>          $npcs          in creation order
      * @param list<Thread>       $threads       in creation order
+     * @param list<Place>        $places        in creation order
      * @param array<string, int> $trackerValues
      * @param list<Fact>         $facts         in creation order
      */
-    public function plan(array $characters, array $npcs, array $threads, array $trackerValues, array $facts, ?string $flowKey, bool $hasFlowRun): ReleaseUpgradePlan
+    public function plan(array $characters, array $npcs, array $threads, array $places, array $trackerValues, array $facts, ?string $flowKey, bool $hasFlowRun): ReleaseUpgradePlan
     {
         $upgrades = [];
         foreach ($characters as $character) {
@@ -65,8 +67,9 @@ final readonly class ReleaseUpgradePlanner
             $upgrades,
             $this->droppedFrom($npcs, ItemKind::Npc),
             $this->droppedFrom($threads, ItemKind::Thread),
+            $this->droppedFrom($places, ItemKind::Place),
             $this->trackerChanges($trackerValues),
-            $this->unslotted($facts, $npcs, $threads),
+            $this->unslotted($facts, $npcs, $threads, $places),
             $this->flowChange($flowKey, $hasFlowRun),
         );
     }
@@ -162,8 +165,9 @@ final readonly class ReleaseUpgradePlanner
      *
      * @param list<Npc>    $npcs
      * @param list<Thread> $threads
+     * @param list<Place>  $places
      */
-    public function freed(Fact $fact, array $npcs, array $threads): Fact
+    public function freed(Fact $fact, array $npcs, array $threads, array $places): Fact
     {
         $subject = $fact->subject();
         $links = $fact->links();
@@ -174,7 +178,7 @@ final readonly class ReleaseUpgradePlanner
             }
         }
 
-        return Fact::of($fact->id(), null, $this->freedLabel($fact), $this->freedText($fact, $npcs, $threads), null, $links);
+        return Fact::of($fact->id(), null, $this->freedLabel($fact), $this->freedText($fact, $npcs, $threads, $places), null, $links);
     }
 
     /**
@@ -454,7 +458,7 @@ final readonly class ReleaseUpgradePlanner
     }
 
     /**
-     * @param list<Npc|Thread> $items
+     * @param list<Npc|Thread|Place> $items
      *
      * @return list<DroppedTags>
      */
@@ -497,15 +501,16 @@ final readonly class ReleaseUpgradePlanner
      * @param list<Fact>   $facts
      * @param list<Npc>    $npcs
      * @param list<Thread> $threads
+     * @param list<Place>  $places
      *
      * @return list<UnslottedFact>
      */
-    private function unslotted(array $facts, array $npcs, array $threads): array
+    private function unslotted(array $facts, array $npcs, array $threads, array $places): array
     {
         $unslotted = [];
         foreach ($facts as $fact) {
             if (null !== $fact->slot() && !$this->target->factSlot($fact->slot()) instanceof FactSlot) {
-                $unslotted[] = new UnslottedFact($fact->id()->toString(), $fact->slot(), $this->freedLabel($fact), $this->freedText($fact, $npcs, $threads));
+                $unslotted[] = new UnslottedFact($fact->id()->toString(), $fact->slot(), $this->freedLabel($fact), $this->freedText($fact, $npcs, $threads, $places));
             }
         }
 
@@ -529,16 +534,22 @@ final readonly class ReleaseUpgradePlanner
     /**
      * @param list<Npc>    $npcs
      * @param list<Thread> $threads
+     * @param list<Place>  $places
      */
-    private function freedText(Fact $fact, array $npcs, array $threads): string
+    private function freedText(Fact $fact, array $npcs, array $threads, array $places): string
     {
         $subject = $fact->subject();
         if (!$subject instanceof \App\Play\Domain\Campaign\Facts\FactLink || null !== $fact->text()) {
             return (string) $fact->text();
         }
 
-        $items = FactLinkKind::Npc === $subject->kind ? $npcs : $threads;
-        $named = array_find($items, static fn (Npc|Thread $item): bool => $item->id()->toString() === $subject->id);
+        $items = match ($subject->kind) {
+            FactLinkKind::Npc => $npcs,
+            FactLinkKind::Thread => $threads,
+            FactLinkKind::Place => $places,
+            FactLinkKind::Fact => [],
+        };
+        $named = array_find($items, static fn (Npc|Thread|Place $item): bool => $item->id()->toString() === $subject->id);
 
         return $named?->name() ?? $subject->id;
     }

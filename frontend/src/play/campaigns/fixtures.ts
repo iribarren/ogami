@@ -462,6 +462,7 @@ export const lostMineUpgrade: ReleaseUpgrade = {
     threads: [
       { id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7003', name: 'The missing map', tags: ['quest'] },
     ],
+    places: [{ id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7005', name: 'Saltmarsh', tags: ['near'] }],
     trackers: [
       { trackerKey: 'heat', name: 'Heat', kind: 'clamped', before: 9, after: 6 },
       { trackerKey: 'luck-pool', name: 'Luck pool', kind: 'removed', before: 2, after: null },
@@ -492,6 +493,7 @@ export const trackerOnlyUpgrade: ReleaseUpgrade = {
     characters: [],
     npcs: [],
     threads: [],
+    places: [],
     trackers: [{ trackerKey: 'heat', name: 'Heat', kind: 'clamped', before: 9, after: 6 }],
     facts: [],
     flow: { fromFlowKey: null, toFlowKey: null, restarted: false },

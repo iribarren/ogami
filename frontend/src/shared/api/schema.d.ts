@@ -3349,6 +3349,8 @@ export interface components {
             npcs: components["schemas"]["UpgradeDroppedTagsResponse"][];
             /** @description The Threads that lose release Tags, in creation order. */
             threads: components["schemas"]["UpgradeDroppedTagsResponse"][];
+            /** @description The Places that lose release Tags, in creation order. */
+            places: components["schemas"]["UpgradeDroppedTagsResponse"][];
             /** @description The Tracker values that change, by Tracker key. */
             trackers: components["schemas"]["UpgradeTrackerChangeResponse"][];
             /** @description The slot facts that become free facts, in creation order. */
@@ -9425,7 +9427,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The new campaign, on the latest release, with the source's NPCs, Threads and Campaign facts and the chosen Characters, all with their ids; Trackers at their initial value, no sessions. The Location header is its URL. The source is unchanged. */
+            /** @description The new campaign, on the latest release, with the source's NPCs, Threads, Places and Campaign facts and the chosen Characters, all with their ids; Trackers at their initial value, no sessions. The Location header is its URL. The source is unchanged. */
             201: {
                 headers: {
                     /** @description The URL of the new campaign. */

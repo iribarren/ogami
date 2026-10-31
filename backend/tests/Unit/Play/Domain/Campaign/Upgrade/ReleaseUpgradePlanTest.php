@@ -12,6 +12,7 @@ use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Facts\FactFill;
 use App\Play\Domain\Campaign\Facts\FactId;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\PlaceId;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\Upgrade\CampaignUpToDate;
@@ -358,6 +359,7 @@ final class ReleaseUpgradePlanTest extends TestCase
         self::assertSame([], $plan->characters);
         self::assertSame([], $plan->npcs);
         self::assertSame([], $plan->threads);
+        self::assertSame([], $plan->places);
         self::assertSame([], $plan->trackers);
         self::assertSame([], $plan->facts);
     }
@@ -400,6 +402,63 @@ final class ReleaseUpgradePlanTest extends TestCase
         $campaign->upgradeRelease($pinned, $target, $plan->fingerprint(), new \DateTimeImmutable('2026-10-18T10:00:00+00:00'));
 
         self::assertSame([['ally'], ['boss'], []], [$campaign->characters()[0]->tags(), $campaign->npcs()[0]->tags(), $campaign->threads()[0]->tags()]);
+    }
+
+    #[Test]
+    public function tagsThatLeaveTheReleaseOrNoLongerApplyToPlacesAreDroppedFromPlacesAndAppliedByTheUpgrade(): void
+    {
+        $pinned = UpgradeFixtures::release(1, [], ['near', 'deep', 'ally']);
+        $campaign = UpgradeFixtures::campaign($pinned);
+        $campaign->addPlace(PlaceId::fromString('place-1'), 'Saltmarsh', 'Fishing', ['near', 'deep', 'ally'], ['Town'], 2, $pinned);
+        $campaign->addPlace(PlaceId::fromString('place-2'), 'Dunmere', null, ['near'], [], 1, $pinned);
+        $campaign->closePlace(PlaceId::fromString('place-2'));
+        // In v2 "near" is gone, "deep" is for NPCs only and "ally" still applies to Places.
+        $target = UpgradeFixtures::release(2, [], [new Tag('deep', 'Deep', null, [ItemKind::Npc]), new Tag('ally', 'Ally', null, [ItemKind::Place])]);
+
+        $plan = $campaign->planReleaseUpgrade($pinned, $target);
+
+        self::assertSame([['place-1', 'Saltmarsh', ['near', 'deep']], ['place-2', 'Dunmere', ['near']]], array_map(static fn (DroppedTags $place): array => [$place->id, $place->name, $place->tags], $plan->places));
+        self::assertSame('places', array_keys($plan->toArray())[5]);
+
+        $campaign->upgradeRelease($pinned, $target, $plan->fingerprint(), new \DateTimeImmutable('2026-10-18T10:00:00+00:00'));
+
+        $places = $campaign->places();
+        self::assertSame([['ally'], []], [$places[0]->tags(), $places[1]->tags()]);
+        self::assertSame(['Saltmarsh', 'Fishing', ['Town'], 2, true, false], [$places[0]->name(), $places[0]->notes(), $places[0]->freeTags(), $places[0]->weight(), $places[0]->isOpen(), $places[1]->isOpen()]);
+    }
+
+    #[Test]
+    public function thePlansFingerprintChangesWithThePlacesThatLoseTags(): void
+    {
+        $pinned = UpgradeFixtures::release(1, [], ['near']);
+        $campaign = UpgradeFixtures::campaign($pinned);
+        $before = $campaign->planReleaseUpgrade($pinned, UpgradeFixtures::release(2))->fingerprint();
+        $campaign->addPlace(PlaceId::fromString('place-1'), 'Saltmarsh', null, ['near'], [], 1, $pinned);
+
+        self::assertNotSame($before, $campaign->planReleaseUpgrade($pinned, UpgradeFixtures::release(2))->fingerprint());
+    }
+
+    #[Test]
+    public function aFactInAPlaceSlotThatIsGoneBecomesAFreeFactNamingThePlaceAndLinkingIt(): void
+    {
+        $slots = [new FactSlot('site', 'The Site', FactSlotType::Place), new FactSlot('expedition', 'Expedition', FactSlotType::Thread)];
+        $pinned = UpgradeFixtures::release(1, factSlots: $slots);
+        $campaign = UpgradeFixtures::campaign($pinned);
+        $campaign->fillFactSlot(FactId::fromString('fact-1'), 'site', FactFill::newPlace(PlaceId::fromString('place-1'), 'Saltmarsh'), $pinned);
+        $campaign->fillFactSlot(FactId::fromString('fact-2'), 'expedition', FactFill::newThread(ThreadId::fromString('thread-1'), 'Find the ledger'), $pinned);
+        $target = UpgradeFixtures::release(2);
+
+        $plan = $campaign->planReleaseUpgrade($pinned, $target);
+
+        self::assertSame(
+            [['fact-1', 'site', 'The Site', 'Saltmarsh'], ['fact-2', 'expedition', 'Expedition', 'Find the ledger']],
+            array_map(static fn (\App\Play\Domain\Campaign\Upgrade\UnslottedFact $fact): array => [$fact->factId, $fact->slotKey, $fact->label, $fact->text], $plan->facts),
+        );
+
+        $campaign->upgradeRelease($pinned, $target, $plan->fingerprint(), new \DateTimeImmutable('2026-10-18T10:00:00+00:00'));
+
+        $freed = $campaign->facts($target)[0];
+        self::assertSame([null, 'Saltmarsh', 'place-1'], [$freed->slot(), $freed->text(), $freed->links()[0]->id]);
     }
 
     #[Test]
@@ -495,7 +554,7 @@ final class ReleaseUpgradePlanTest extends TestCase
 
         $plan = UpgradeFixtures::campaign($pinned)->planReleaseUpgrade($pinned, UpgradeFixtures::release(3));
 
-        self::assertSame([], [...$plan->characters, ...$plan->npcs, ...$plan->threads, ...$plan->trackers, ...$plan->facts]);
+        self::assertSame([], [...$plan->characters, ...$plan->npcs, ...$plan->threads, ...$plan->places, ...$plan->trackers, ...$plan->facts]);
         self::assertFalse($plan->flow->restarted);
     }
 

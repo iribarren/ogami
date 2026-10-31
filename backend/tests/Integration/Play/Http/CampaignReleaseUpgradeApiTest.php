@@ -65,6 +65,7 @@ final class CampaignReleaseUpgradeApiTest extends WebTestCase
         $id = $this->createCampaign();
         $characterId = $this->addCharacter($id);
         $npcId = $this->addNpc($id);
+        $placeId = $this->addPlace($id);
         $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9102', $this->target());
 
         $this->client->request('GET', \sprintf('/api/campaigns/%s/release-upgrade', $id));
@@ -81,7 +82,7 @@ final class CampaignReleaseUpgradeApiTest extends WebTestCase
             $plan['characters'] ?? null,
         );
         self::assertSame([['id' => $npcId, 'name' => 'Mira', 'tags' => ['leader']]], $plan['npcs'] ?? null);
-        self::assertSame([[], [], ['fromFlowKey' => null, 'toFlowKey' => null, 'restarted' => false]], [$plan['threads'] ?? null, $plan['trackers'] ?? null, $plan['flow'] ?? null]);
+        self::assertSame([[], [['id' => $placeId, 'name' => 'Saltmarsh', 'tags' => ['leader']]], [], ['fromFlowKey' => null, 'toFlowKey' => null, 'restarted' => false]], [$plan['threads'] ?? null, $plan['places'] ?? null, $plan['trackers'] ?? null, $plan['flow'] ?? null]);
         self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $this->fingerprintOf($id));
         $campaign = $this->campaign($id);
         self::assertSame([1, 9, ['crew', 'leader']], [$campaign['pinnedRelease']['version'], $campaign['characters'][0]['values']['reflexes'], $campaign['characters'][0]['tags']]);
@@ -119,6 +120,7 @@ final class CampaignReleaseUpgradeApiTest extends WebTestCase
         $id = $this->createCampaign();
         $this->addCharacter($id);
         $this->addNpc($id);
+        $this->addPlace($id);
         $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9102', $this->target());
         $fingerprint = $this->fingerprintOf($id);
 
@@ -126,6 +128,7 @@ final class CampaignReleaseUpgradeApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(200);
         $campaign = $this->campaignJson();
+        self::assertSame([['Saltmarsh', [], ['Town']]], array_map(static fn (array $place): array => [$place['name'], $place['tags'], $place['freeTags']], (array) $this->json()['places']));
         self::assertSame($id, $campaign['id']);
         self::assertSame(2, $campaign['pinnedRelease']['version']);
         self::assertSame([['reflexes' => 5, 'tags' => ['crew']]], array_map(static fn (array $character): array => ['reflexes' => $character['values']['reflexes'], 'tags' => $character['tags']], $campaign['characters']));
@@ -143,7 +146,7 @@ final class CampaignReleaseUpgradeApiTest extends WebTestCase
         self::assertIsString($id);
         $this->publish('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9202', ReleaseArrays::with(ReleaseViews::fixtureContent('valid/v2-minimal'), 'sheet', ['fields' => [['key' => 'role', 'label' => 'Role', 'type' => 'text']]]));
         $plan = $this->previewedPlan($id);
-        self::assertSame([[], [], [], [], [], ['fromFlowKey' => null, 'toFlowKey' => null, 'restarted' => false]], [$plan['characters'], $plan['npcs'], $plan['threads'], $plan['trackers'], $plan['facts'], $plan['flow']]);
+        self::assertSame([[], [], [], [], [], [], ['fromFlowKey' => null, 'toFlowKey' => null, 'restarted' => false]], [$plan['characters'], $plan['npcs'], $plan['threads'], $plan['places'], $plan['trackers'], $plan['facts'], $plan['flow']]);
 
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/release-upgrade', $id), ['toVersion' => 2, 'fingerprint' => $plan['fingerprint']]);
 
@@ -482,6 +485,16 @@ final class CampaignReleaseUpgradeApiTest extends WebTestCase
     private function addNpc(string $campaignId): string
     {
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/npcs', $campaignId), ['name' => 'Mira', 'tags' => ['leader']]);
+        self::assertResponseStatusCodeSame(201);
+        $id = $this->json()['id'] ?? null;
+        self::assertIsString($id);
+
+        return $id;
+    }
+
+    private function addPlace(string $campaignId): string
+    {
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/places', $campaignId), ['name' => 'Saltmarsh', 'tags' => ['leader'], 'freeTags' => ['Town']]);
         self::assertResponseStatusCodeSame(201);
         $id = $this->json()['id'] ?? null;
         self::assertIsString($id);

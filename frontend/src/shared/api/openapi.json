@@ -4095,7 +4095,7 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "The new campaign, on the latest release, with the source's NPCs, Threads and Campaign facts and the chosen Characters, all with their ids; Trackers at their initial value, no sessions. The Location header is its URL. The source is unchanged.",
+                        "description": "The new campaign, on the latest release, with the source's NPCs, Threads, Places and Campaign facts and the chosen Characters, all with their ids; Trackers at their initial value, no sessions. The Location header is its URL. The source is unchanged.",
                         "headers": {
                             "Location": {
                                 "description": "The URL of the new campaign.",
@@ -14814,6 +14814,7 @@
                     "characters",
                     "npcs",
                     "threads",
+                    "places",
                     "trackers",
                     "facts",
                     "flow",
@@ -14843,6 +14844,13 @@
                     },
                     "threads": {
                         "description": "The Threads that lose release Tags, in creation order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/UpgradeDroppedTagsResponse"
+                        }
+                    },
+                    "places": {
+                        "description": "The Places that lose release Tags, in creation order.",
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/UpgradeDroppedTagsResponse"

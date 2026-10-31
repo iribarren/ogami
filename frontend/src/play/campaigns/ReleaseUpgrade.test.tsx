@@ -104,6 +104,7 @@ describe('the release upgrade', () => {
     expect(tags).toHaveTextContent('Vi (Character) loses thief')
     expect(tags).toHaveTextContent('Old Tam (NPC) loses guard')
     expect(tags).toHaveTextContent('The missing map (Thread) loses quest')
+    expect(tags).toHaveTextContent('Saltmarsh (Place) loses near')
     const trackers = within(dialog).getByRole('region', { name: 'Trackers' })
     expect(within(trackers).getByText('Heat (clamped): 9 → 6')).toBeInTheDocument()
     expect(within(trackers).getByText('Luck pool (removed): 2')).toBeInTheDocument()

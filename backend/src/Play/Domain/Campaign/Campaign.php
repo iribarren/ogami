@@ -214,7 +214,7 @@ final class Campaign
 
     /**
      * Starts a new campaign from this one (ADR 0046), on the latest release of the same GameSystem,
-     * which this campaign plays: it carries every NPC, Thread and Campaign fact and the chosen
+     * which this campaign plays: it carries every NPC, Thread, Place and Campaign fact and the chosen
      * Characters, all with their ids, and starts the rest as Campaign::create() does (Trackers at
      * their initial value, a fresh FlowRun when it plays a Flow, no sessions). An NPC whose
      * Character stays behind keeps its data and loses the promotion. This campaign is not changed.
@@ -258,6 +258,7 @@ final class Campaign
         $new->characters = array_values(array_filter($this->characters, static fn (Character $character): bool => isset($carried[$character->id()->toString()])));
         $new->npcs = array_map(static fn (Npc $npc): Npc => $npc->promotedTo() instanceof CharacterId && !isset($carried[$npc->promotedTo()->toString()]) ? $npc->withoutPromotion() : $npc, $this->npcs);
         $new->threads = $this->threads;
+        $new->places = $this->places;
         $new->facts = $this->facts;
         $new->assertFactsConsistent();
 
@@ -266,7 +267,7 @@ final class Campaign
 
     /**
      * Rebuilds a stored campaign, e.g. from persistence. No rule is checked again, except that the
-     * NPCs, the Threads and the facts each have distinct ids (the invariant an id lookup relies on)
+     * NPCs, the Threads, the Places and the facts each have distinct ids (the invariant an id lookup relies on)
      * and that the facts hold together (see assertFactsConsistent()).
      *
      * @param list<Session>      $sessions      in number order
@@ -1743,7 +1744,7 @@ final class Campaign
             throw CampaignUpToDate::at($this->releaseVersion, $target->releaseVersion());
         }
 
-        return new ReleaseUpgradePlanner($pinned, $target)->plan($this->characters, $this->npcs, $this->threads, $this->trackerValues, $this->facts, $this->flowKey, $this->flowRun instanceof FlowRun);
+        return new ReleaseUpgradePlanner($pinned, $target)->plan($this->characters, $this->npcs, $this->threads, $this->places, $this->trackerValues, $this->facts, $this->flowKey, $this->flowRun instanceof FlowRun);
     }
 
     /**
@@ -1772,8 +1773,9 @@ final class Campaign
         $draft->characters = array_map(static fn (Character $character): Character => Character::of($character->id(), $character->name(), $planner->keptTags($character->tags(), ItemKind::Character), $character->freeTags(), $planner->fit($character)->values, $character->promotedFrom()), $this->characters);
         $draft->npcs = array_map(static fn (Npc $npc): Npc => $npc->edited($npc->name(), $npc->agenda(), $planner->keptTags($npc->tags(), ItemKind::Npc), $npc->freeTags(), $npc->weight()), $this->npcs);
         $draft->threads = array_map(static fn (Thread $thread): Thread => $thread->edited($thread->name(), $planner->keptTags($thread->tags(), ItemKind::Thread), $thread->freeTags(), $thread->weight()), $this->threads);
+        $draft->places = array_map(static fn (Place $place): Place => $place->edited($place->name(), $place->notes(), $planner->keptTags($place->tags(), ItemKind::Place), $place->freeTags(), $place->weight()), $this->places);
         $draft->trackerValues = $planner->keptTrackerValues($this->trackerValues);
-        $draft->facts = array_map(fn (Fact $fact): Fact => null !== $fact->slot() && !$target->factSlot($fact->slot()) instanceof FactSlot ? $planner->freed($fact, $this->npcs, $this->threads) : $fact, $this->facts);
+        $draft->facts = array_map(fn (Fact $fact): Fact => null !== $fact->slot() && !$target->factSlot($fact->slot()) instanceof FactSlot ? $planner->freed($fact, $this->npcs, $this->threads, $this->places) : $fact, $this->facts);
         $draft->flowKey = $planner->targetFlowKey($this->flowKey);
         $draft->flowRun = null === $draft->flowKey ? null : FlowRun::start();
         if (FlowRunStatus::Paused === $this->flowRun?->status()) {

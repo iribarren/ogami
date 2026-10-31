@@ -13,13 +13,14 @@ use OpenApi\Attributes as OA;
  * What upgrading the campaign to the latest release of its GameSystem changes (ADR 0035). Nothing
  * else changes; confirming sends its version and fingerprint back.
  */
-#[OA\Schema(required: ['from', 'to', 'characters', 'npcs', 'threads', 'trackers', 'facts', 'flow', 'gear', 'fingerprint'])]
+#[OA\Schema(required: ['from', 'to', 'characters', 'npcs', 'threads', 'places', 'trackers', 'facts', 'flow', 'gear', 'fingerprint'])]
 final readonly class ReleaseUpgradePlanResponse
 {
     /**
      * @param list<UpgradeCharacterResponse>     $characters
      * @param list<UpgradeDroppedTagsResponse>   $npcs
      * @param list<UpgradeDroppedTagsResponse>   $threads
+     * @param list<UpgradeDroppedTagsResponse>   $places
      * @param list<UpgradeTrackerChangeResponse> $trackers
      * @param list<UpgradeUnslottedFactResponse> $facts
      * @param list<GearEntryResponse>            $gear
@@ -35,6 +36,8 @@ final readonly class ReleaseUpgradePlanResponse
         public array $npcs,
         #[OA\Property(description: 'The Threads that lose release Tags, in creation order.', type: 'array', items: new OA\Items(ref: new Model(type: UpgradeDroppedTagsResponse::class)))]
         public array $threads,
+        #[OA\Property(description: 'The Places that lose release Tags, in creation order.', type: 'array', items: new OA\Items(ref: new Model(type: UpgradeDroppedTagsResponse::class)))]
+        public array $places,
         #[OA\Property(description: 'The Tracker values that change, by Tracker key.', type: 'array', items: new OA\Items(ref: new Model(type: UpgradeTrackerChangeResponse::class)))]
         public array $trackers,
         #[OA\Property(description: 'The slot facts that become free facts, in creation order.', type: 'array', items: new OA\Items(ref: new Model(type: UpgradeUnslottedFactResponse::class)))]
@@ -59,6 +62,7 @@ final readonly class ReleaseUpgradePlanResponse
             array_map(UpgradeCharacterResponse::fromUpgrade(...), $plan->characters),
             array_map(UpgradeDroppedTagsResponse::fromDropped(...), $plan->npcs),
             array_map(UpgradeDroppedTagsResponse::fromDropped(...), $plan->threads),
+            array_map(UpgradeDroppedTagsResponse::fromDropped(...), $plan->places),
             array_map(UpgradeTrackerChangeResponse::fromChange(...), $plan->trackers),
             array_map(UpgradeUnslottedFactResponse::fromFact(...), $plan->facts),
             UpgradeFlowChangeResponse::fromChange($plan->flow),

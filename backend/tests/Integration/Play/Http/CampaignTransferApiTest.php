@@ -47,6 +47,7 @@ final class CampaignTransferApiTest extends WebTestCase
         $this->add($source, 'characters', ['name' => 'Jax']);
         $npc = $this->add($source, 'npcs', ['name' => 'Mira', 'agenda' => 'Wants the ledger']);
         $thread = $this->add($source, 'threads', ['name' => 'The vault']);
+        $place = $this->add($source, 'places', ['name' => 'Saltmarsh', 'notes' => 'A fishing town']);
         $this->client->jsonRequest('PUT', \sprintf('/api/campaigns/%s/trackers/heat', $source), ['value' => 3]);
         self::assertResponseIsSuccessful();
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/sessions', $source));
@@ -66,6 +67,7 @@ final class CampaignTransferApiTest extends WebTestCase
         self::assertSame([$vi], array_column($this->items($new, 'characters'), 'id'));
         self::assertSame([$npc], array_column($this->items($new, 'npcs'), 'id'));
         self::assertSame([$thread], array_column($this->items($new, 'threads'), 'id'));
+        self::assertSame([$place], array_column($this->items($new, 'places'), 'id'));
         self::assertSame(-5, $this->heat($new));
         $kept = $this->campaign($source);
         self::assertSame(['The job', 'heist', 1, 3], [$kept['name'], $kept['flowKey'], $kept['currentSessionNumber'], $this->heat($kept)]);

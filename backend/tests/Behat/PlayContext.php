@@ -10,6 +10,8 @@ use App\Play\Application\AddFact;
 use App\Play\Application\AddFactHandler;
 use App\Play\Application\AddNpc;
 use App\Play\Application\AddNpcHandler;
+use App\Play\Application\AddPlace;
+use App\Play\Application\AddPlaceHandler;
 use App\Play\Application\AddThread;
 use App\Play\Application\AddThreadHandler;
 use App\Play\Application\CampaignJournal;
@@ -20,6 +22,8 @@ use App\Play\Application\CastMemberView;
 use App\Play\Application\CharacterView;
 use App\Play\Application\CloseNpc;
 use App\Play\Application\CloseNpcHandler;
+use App\Play\Application\ClosePlace;
+use App\Play\Application\ClosePlaceHandler;
 use App\Play\Application\CloseThread;
 use App\Play\Application\CloseThreadHandler;
 use App\Play\Application\CompleteFlowStep;
@@ -34,6 +38,8 @@ use App\Play\Application\EditFact;
 use App\Play\Application\EditFactHandler;
 use App\Play\Application\EditNpc;
 use App\Play\Application\EditNpcHandler;
+use App\Play\Application\EditPlace;
+use App\Play\Application\EditPlaceHandler;
 use App\Play\Application\EditThread;
 use App\Play\Application\EditThreadHandler;
 use App\Play\Application\EndFlowScene;
@@ -60,6 +66,7 @@ use App\Play\Application\PauseGuidance;
 use App\Play\Application\PauseGuidanceHandler;
 use App\Play\Application\PickSceneType;
 use App\Play\Application\PickSceneTypeHandler;
+use App\Play\Application\PlaceView;
 use App\Play\Application\PreviewReleaseUpgrade;
 use App\Play\Application\PreviewReleaseUpgradeHandler;
 use App\Play\Application\PromoteNpc;
@@ -75,6 +82,8 @@ use App\Play\Application\RecordRollHandler;
 use App\Play\Application\ReleaseUpgradePreview;
 use App\Play\Application\ReopenNpc;
 use App\Play\Application\ReopenNpcHandler;
+use App\Play\Application\ReopenPlace;
+use App\Play\Application\ReopenPlaceHandler;
 use App\Play\Application\ReopenThread;
 use App\Play\Application\ReopenThreadHandler;
 use App\Play\Application\ResumeGuidance;
@@ -108,6 +117,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunView;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\InvalidSceneCast;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\TagNotApplicable;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
@@ -177,6 +187,10 @@ final class PlayContext implements Context
     private readonly EditThreadHandler $editThread;
     private readonly CloseThreadHandler $closeThread;
     private readonly ReopenThreadHandler $reopenThread;
+    private readonly AddPlaceHandler $addPlace;
+    private readonly EditPlaceHandler $editPlace;
+    private readonly ClosePlaceHandler $closePlace;
+    private readonly ReopenPlaceHandler $reopenPlace;
     private readonly ListMyCampaignsHandler $listMyCampaigns;
     private readonly GetCampaignHandler $getCampaign;
     private readonly SequentialJournalEntryIdGenerator $entryIds;
@@ -198,6 +212,7 @@ final class PlayContext implements Context
     private int $npcCount = 0;
     private int $characterCount = 0;
     private int $threadCount = 0;
+    private int $placeCount = 0;
     private int $factCount = 0;
     private ?\Throwable $failure = null;
     private ?ReleaseUpgradePreview $preview = null;
@@ -277,6 +292,10 @@ final class PlayContext implements Context
         $this->editThread = new EditThreadHandler($owned, $campaigns, $this->releases);
         $this->closeThread = new CloseThreadHandler($owned, $campaigns);
         $this->reopenThread = new ReopenThreadHandler($owned, $campaigns);
+        $this->addPlace = new AddPlaceHandler($owned, $campaigns, $this->releases);
+        $this->editPlace = new EditPlaceHandler($owned, $campaigns, $this->releases);
+        $this->closePlace = new ClosePlaceHandler($owned, $campaigns);
+        $this->reopenPlace = new ReopenPlaceHandler($owned, $campaigns);
         $this->listMyCampaigns = new ListMyCampaignsHandler($campaigns);
         $this->getCampaign = new GetCampaignHandler($owned, $this->releases);
         $this->recordNote = new RecordNoteHandler($this->journal);
@@ -694,6 +713,45 @@ final class PlayContext implements Context
         ($this->reopenThread)(new ReopenThread($this->campaignId(), self::ME, $this->thread($name)->id));
     }
 
+    #[Given('I added the Place :name with the notes :notes and the free tag :freeTag')]
+    public function iAddedThePlace(string $name, string $notes, string $freeTag): void
+    {
+        $this->iAddThePlace($name, $notes, $freeTag);
+        $this->assertNoFailure();
+    }
+
+    #[When('I add the Place :name with the notes :notes and the free tag :freeTag')]
+    public function iAddThePlace(string $name, string $notes, string $freeTag): void
+    {
+        $this->attempt(fn () => ($this->addPlace)(new AddPlace($this->campaignId(), self::ME, 'place-'.++$this->placeCount, $name, $notes, [], [$freeTag], 1)));
+    }
+
+    #[When('I try to add the Place :name with the Tag :tag')]
+    public function iTryToAddThePlaceWithTheTag(string $name, string $tag): void
+    {
+        $this->attempt(fn () => ($this->addPlace)(new AddPlace($this->campaignId(), self::ME, 'place-'.++$this->placeCount, $name, null, [$tag], [], 1)));
+    }
+
+    #[When('I rename the Place :name to :newName with the weight :weight')]
+    public function iEditThePlace(string $name, string $newName, int $weight): void
+    {
+        $place = $this->place($name);
+        $this->attempt(fn () => ($this->editPlace)(new EditPlace($this->campaignId(), self::ME, $place->id, $newName, $place->notes, $place->tags, $place->freeTags, $weight)));
+        $this->assertNoFailure();
+    }
+
+    #[When('I close the Place :name')]
+    public function iCloseThePlace(string $name): void
+    {
+        ($this->closePlace)(new ClosePlace($this->campaignId(), self::ME, $this->place($name)->id));
+    }
+
+    #[When('I reopen the Place :name')]
+    public function iReopenThePlace(string $name): void
+    {
+        ($this->reopenPlace)(new ReopenPlace($this->campaignId(), self::ME, $this->place($name)->id));
+    }
+
     #[When('I write the note :text')]
     public function iWriteTheNote(string $text): void
     {
@@ -1069,6 +1127,21 @@ final class PlayContext implements Context
         );
     }
 
+    #[Then('my Places are:')]
+    public function myPlacesAre(TableNode $table): void
+    {
+        Assert::assertSame(
+            array_map(static fn (array $row): array => [$row['name'], '' === $row['notes'] ? null : $row['notes'], $row['free tags'], (int) $row['weight'], $row['status']], $table->getColumnsHash()),
+            array_map(static fn (PlaceView $place): array => [$place->name, $place->notes, implode(', ', $place->freeTags), $place->weight, $place->status], $this->myCampaign()->places),
+        );
+    }
+
+    #[Then('I am told that no Tag applies to Places')]
+    public function iAmToldThatNoTagAppliesToPlaces(): void
+    {
+        Assert::assertInstanceOf(TagNotApplicable::class, $this->failure);
+    }
+
     #[Then('my campaign offers the Tags :keys')]
     public function myCampaignOffersTheTags(string $keys): void
     {
@@ -1275,6 +1348,11 @@ final class PlayContext implements Context
         return array_find($this->myCampaign()->threads, static fn (ThreadView $thread): bool => $thread->name === $name) ?? throw new \LogicException(\sprintf('No Thread "%s".', $name));
     }
 
+    private function place(string $name): PlaceView
+    {
+        return array_find($this->myCampaign()->places, static fn (PlaceView $place): bool => $place->name === $name) ?? throw new \LogicException(\sprintf('No Place "%s".', $name));
+    }
+
     private function character(string $name): CharacterView
     {
         return array_find($this->myCampaign()->characters, static fn (CharacterView $character): bool => $character->name === $name) ?? throw new \LogicException(\sprintf('No Character "%s".', $name));
@@ -1291,7 +1369,7 @@ final class PlayContext implements Context
 
         try {
             $action();
-        } catch (CampaignNotFound|NoCurrentSession|SessionAlreadyUnderWay|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag|UnknownNpc|InvalidSceneCast|InvalidFact|InvalidCharacter|UnknownCharacter|ReleaseUpgradeChanged|CampaignUpToDate|TransferFromOutdatedRelease|InvalidNoteAttachment $failure) {
+        } catch (CampaignNotFound|NoCurrentSession|SessionAlreadyUnderWay|NoCurrentScene|GameSystemReleaseNotFound|UnknownGameSystemOracle|FlowRunNotActive|StepCannotBeSkipped|UnknownReleaseTag|TagNotApplicable|UnknownNpc|InvalidSceneCast|InvalidFact|InvalidCharacter|UnknownCharacter|ReleaseUpgradeChanged|CampaignUpToDate|TransferFromOutdatedRelease|InvalidNoteAttachment $failure) {
             $this->failure = $failure;
         }
     }

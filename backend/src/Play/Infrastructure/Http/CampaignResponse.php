@@ -12,9 +12,9 @@ use OpenApi\Attributes as OA;
 /**
  * One campaign as its owner plays it: the pinned release, sessions with their scenes, the current
  * session and scene, the oracles of the pinned release, its Trackers with the campaign's values,
- * the Flow played, the release's Flows, Scene Types and Tags, and the campaign's NPCs, Threads, Fact slots, facts and Characters.
+ * the Flow played, the release's Flows, Scene Types and Tags, and the campaign's NPCs, Threads, Places, Fact slots, facts and Characters.
  */
-#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles', 'trackers', 'flowKey', 'flowRun', 'flows', 'sceneTypes', 'tags', 'checks', 'npcs', 'threads', 'factSlots', 'facts', 'characters'])]
+#[OA\Schema(required: ['id', 'name', 'createdAt', 'pinnedRelease', 'sessions', 'currentSessionNumber', 'currentSceneNumber', 'oracleTables', 'likelihoodOracles', 'trackers', 'flowKey', 'flowRun', 'flows', 'sceneTypes', 'tags', 'checks', 'npcs', 'threads', 'places', 'factSlots', 'facts', 'characters'])]
 final readonly class CampaignResponse
 {
     /**
@@ -28,6 +28,7 @@ final readonly class CampaignResponse
      * @param list<CheckResponse>            $checks
      * @param list<NpcResponse>              $npcs
      * @param list<ThreadResponse>           $threads
+     * @param list<PlaceResponse>            $places
      * @param list<FactSlotResponse>         $factSlots
      * @param list<FactResponse>             $facts
      * @param list<CharacterResponse>        $characters
@@ -110,6 +111,12 @@ final readonly class CampaignResponse
         )]
         public array $threads,
         #[OA\Property(
+            description: 'The campaign\'s Places: the open ones first, then the closed ones, each in creation order; empty for a campaign without any.',
+            type: 'array',
+            items: new OA\Items(ref: new Model(type: PlaceResponse::class)),
+        )]
+        public array $places,
+        #[OA\Property(
             description: 'The Fact slots of the pinned release, in definition order; empty for releases without any.',
             type: 'array',
             items: new OA\Items(ref: new Model(type: FactSlotResponse::class)),
@@ -151,6 +158,7 @@ final readonly class CampaignResponse
             array_map(CheckResponse::fromView(...), $view->checks),
             array_map(NpcResponse::fromView(...), $view->npcs),
             array_map(ThreadResponse::fromView(...), $view->threads),
+            array_map(PlaceResponse::fromView(...), $view->places),
             array_map(FactSlotResponse::fromView(...), $view->factSlots),
             array_map(FactResponse::fromView(...), $view->facts),
             array_map(CharacterResponse::fromView(...), $view->characters),

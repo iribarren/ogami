@@ -311,7 +311,7 @@ trait CampaignRepositoryContract
         $loaded->closePlace(PlaceId::fromString('place-1'));
         $loaded->editPlace(PlaceId::fromString('place-2'), 'Dunmere Keep', 'Ruined', [], ['Ruin'], 2, new GameSystemSnapshot('free-journal', 'Free journal', 1, null, [], []));
         $this->campaigns()->save($loaded);
-        $this->reloaded($loaded);
+        self::assertEquals($loaded->places(), $this->reloaded($loaded)->places());
     }
 
     #[Test]

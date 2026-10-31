@@ -196,6 +196,73 @@ final class CampaignPlacesTest extends TestCase
     }
 
     #[Test]
+    public function aPlaceCreatedByAnEffectIsOpenNamedTaggedAndReturned(): void
+    {
+        $campaign = $this->campaign();
+
+        $place = $campaign->createPlaceByEffect('The sunken chapel', ['near'], $this->release);
+
+        self::assertInstanceOf(Place::class, $place);
+        self::assertSame(['The sunken chapel', ['near'], [], null, ItemRules::DEFAULT_WEIGHT, ItemStatus::Open], [$place->name(), $place->tags(), $place->freeTags(), $place->notes(), $place->weight(), $place->status()]);
+        self::assertSame([$place], $campaign->places());
+    }
+
+    #[Test]
+    public function placesCreatedByEffectsGetDistinctGeneratedIds(): void
+    {
+        $campaign = $this->campaign();
+
+        $first = $campaign->createPlaceByEffect('Saltmarsh', [], $this->release);
+        $second = $campaign->createPlaceByEffect('Dunmere', [], $this->release);
+
+        self::assertNotSame($first?->id()->toString(), $second?->id()->toString());
+        self::assertCount(2, $campaign->places());
+    }
+
+    #[Test]
+    public function aPlaceIsNotCreatedByAnEffectAtTheLimit(): void
+    {
+        $campaign = $this->campaign();
+        for ($i = 1; $i <= Campaign::MAX_PLACES; ++$i) {
+            $campaign->addPlace(PlaceId::fromString('place-'.$i), 'Place '.$i, null, [], [], 1, $this->release);
+        }
+
+        self::assertNull($campaign->createPlaceByEffect('One too many', [], $this->release));
+        self::assertCount(Campaign::MAX_PLACES, $campaign->places());
+    }
+
+    #[Test]
+    public function aPlaceEffectWithATagThatDoesNotApplyCreatesNothing(): void
+    {
+        $campaign = $this->campaign();
+
+        try {
+            $campaign->createPlaceByEffect('Saltmarsh', ['rival'], $this->release);
+            self::fail('The Tag limited to NPCs was accepted.');
+        } catch (TagNotApplicable $exception) {
+            self::assertSame('Tag "rival" does not apply to Places.', $exception->getMessage());
+        }
+
+        self::assertSame([], $campaign->places());
+    }
+
+    #[Test]
+    public function aPlaceEffectIsRefusedForAReleaseThatIsNotThePinnedOne(): void
+    {
+        $campaign = $this->campaign();
+        $other = new GameSystemSnapshot('heist', 'Heist', 2, null, [], []);
+
+        try {
+            $campaign->createPlaceByEffect('Saltmarsh', [], $other);
+            self::fail('The release that is not pinned was accepted.');
+        } catch (\LogicException $exception) {
+            self::assertSame('The campaign works with its pinned release.', $exception->getMessage());
+        }
+
+        self::assertSame([], $campaign->places());
+    }
+
+    #[Test]
     public function anUnknownPlaceIsRefusedByEveryCommandThatNamesOne(): void
     {
         $campaign = $this->campaign();

@@ -1,7 +1,7 @@
 # Feature: play-places
 
 - **Locator:** `odd/tasks/play-places.md` · Engram topic `odd/play-places/tasks`
-- **Issue:** [#330](https://github.com/iribarren/ogami/issues/330) · **Branch:** `feat/play-places-5-studio` (slice 5) · **Status:** in progress
+- **Issue:** [#330](https://github.com/iribarren/ogami/issues/330) · **Branch:** `feat/play-places-6-select-field` (slice 6) · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-campaign-transfer` (PRs #327–#329)
@@ -83,7 +83,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 3 | `feat/play-places-3-flow` | `feat(play): play-places 3/5 places in flows` | T15, T5–T7 | ~1,600 |
 | 4 | `feat/play-places-4-ui` | `feat(play): play-places 4/6 places ui` | T8, T7, T9 | ~1,550 (T8 ~200, T7 ~450 with generated client, T9 ~900). T7 moved here from slice 3 (stop line); T10 moved to slice 5 to stay under the ceiling |
 | 5 | `feat/play-places-5-studio` | `feat(studio): play-places 5/6 places in studio` | T10, T16 | ~800 |
-| 6 | `feat/play-places-6-select-field` | `feat(play): play-places 6/6 select sheet field` | T11–T14 | ~1,600 |
+| 6 | `feat/play-places-6-select-field` | `feat(play): play-places 6/6 select sheet field` | T11–T14 | ~1,600 (T11 ~40, T12 ~850 in two commits: contract and Studio, then ACL, Play and API; T13 ~650; T14 doc). Stop line: if T11–T12 already pass ~1,100, T13 moves to a slice 7 |
 
 ## Tasks
 
@@ -99,9 +99,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T7 | 4 | Transfer carries places; upgrade planner dropped Tags for places (plan, response, dialog row, `make api`). Moved from slice 3 (stop line) | delegated writer (slice 4) | [x] | `3d417774`, `b4ecc2b8` |
 | T8 | 4 | Slice 3 review fixes: `closeThread.fact` accepts `null` in the schema (`v2.schema.json:1349`) as Studio does; `ReleaseSchemaAgreementTest:127` asserts the key-rule message; direct tests for `Campaign::createPlaceByEffect` (`Campaign.php:1043`); `FlowRunPlacesTest:120-123` picks a Thread first so the test proves the place pick; `FlowRunPlacesTest:146` looks the Place up by id | delegated writer (slice 4) | [x] | `85396d33` |
 | T9 | 4 | Play UI: Places panel, facts place slots and links, pick form, journal | delegated writer (slice 4) | [x] | `3338e82d` |
-| T10 | 5 | Studio UI: place slot type, `appliesTo` place, `createPlace`, `closeThread` fact, pick/count of places | delegated writer (slice 5) | [x] | |
-| T16 | 5 | Slice 4 review fixes: the Places close and reopen test (`ListPanel.test.tsx:615-627`) asserts the endpoints called and the refetched open and closed state; Chrome pass: a flow that creates and picks a Place | | [ ] | |
-| T11 | 6 | Slice 5 review fixes | | [ ] | |
+| T10 | 5 | Studio UI: place slot type, `appliesTo` place, `createPlace`, `closeThread` fact, pick/count of places | delegated writer (slice 5) | [x] | `98d142a9` |
+| T16 | 5 | Slice 4 review fixes: the Places close and reopen test (`ListPanel.test.tsx:615-627`) asserts the endpoints called and the refetched open and closed state; Chrome pass: a flow that creates and picks a Place (skipped, user decision: extension not connected) | delegated writer (slice 5) | [x] | `9e31c19c` |
+| T11 | 6 | Slice 5 review fix: a `closeThread` effect stored with `fact: null`, slot picked then cleared, writes `fact: null` again (`effectDraft.ts:146-147`); pin that path with a test | delegated writer (slice 6) | [x] | |
 | T12 | 6 | `select` field: contract, Studio validation, ACL, Play values, upgrade planner, API views; ADR 0048 | | [ ] | |
 | T13 | 6 | `select` field UI: Play sheet control, Studio sheet builder options and preview | | [ ] | |
 | T14 | 6 | Closing: Reviews, roadmap `Done:` line under B14 | | [ ] | |
@@ -123,6 +123,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-31 T9: Places panel (`ListKind` `place`, `useLists` place endpoints, `ListPanel` with a notes textarea for Places only, `ListLinks` "Places", `CampaignPage` panel `places` after Threads; `playPanelStorage` and `openPlayPanel` are keyed by panel id so a stored choice and an unknown stored value work unchanged), `TagFields` kind `place`, `FactsPanel` place slots (pick or create) and place link targets, `PickForm` and `JournalEntryView` label "Place". Journal entries hold no createPlace or closeThread content, so nothing else renders. Found: the OpenAPI enums of fact slot type, fact link kind, pick `of` and tag `appliesTo` did not list `place` (slice 3 gap), so the generated client typed them without it; fixed in its own commit `fix(api)` (enum values and descriptions, `make api`). Vitest tests were written after the code (not observed RED): `ListPanel` (Places list, notes, Tags, add with blank notes as null, edit, close, reopen, linked facts), `FactsPanel` (place slot fill existing or new, name shown, place link), `PickStep`, `JournalEntryView`, `ListLinks`, `TagFields`, stored panel choice via the Guided and Focus link tests, panel count and help in `CampaignPage`. `make verify` (backend QA, PHPUnit 8,019 tests and Behat, api-check, frontend QA, Vitest related 611 tests) passes after fixing one PHPStan finding and one ESLint finding in the new tests.
 - 2026-10-31 T16: the Places close and reopen test (`ListPanel.test.tsx`) now mirrors the NPC one: the close and reopen handlers update the fake server campaign, and the test waits for the refetched state (`Reopen Saltmarsh`, `Close Dunmere`) and asserts `POST .../places/{id}/close` and `/reopen` in `fakeApi.requests`. Test-only change on existing code, so it passed at once (no RED; the old test asserted neither). Chrome pass pending (parent); T16 stays `[ ]` until then.
 - 2026-10-31 T10: Studio flow editor: fact slot type `place` and tag `appliesTo` "Places" (`narrativeDraft.ts`), pick and count `of: place` (`countTargets`), effect `createPlace` (name, tags; same form as `createThread`), and `closeThread.fact` (`fact` draft field, "Thread fact slot" picker listing only thread slots, empty = the picked Thread). A stored `fact: null` reads as empty and is kept as `null` until a slot is picked; a non-string `fact` is unreadable (kept read-only); a `fact` naming a non-thread slot is shown and left for the publisher to refuse. The effect Tag list is not filtered by `appliesTo` for any kind (existing behaviour), so `createPlace` offers every Tag as `createThread` does. RED observed first: 16 failing Vitest cases across `effectDraft`, `narrativeDraft`, `stepDraft`, `EffectsEditor`, `StepListEditor` (the pick/count tests now choose `place`); GREEN after (`src/studio/narrative` and `src/play/lists`). `NarrativeTab.test` updated for the fourth tag kind. Existing tests of kinds without `fact` or `place` pass unchanged.
+- 2026-10-31 T11: pinned the slice 5 finding in `effectDraft.test.ts`: a stored `closeThread` `fact: null`, slot picked then cleared, serialises as `fact: null` (the stored shape round-trips; the schema accepts it). No code change: it is what the T10 rule says ("kept as `null` until a slot is picked"). Test-only on existing code, so it passed at once (no RED).
 
 ## Reviews
 
@@ -132,7 +133,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 2 | `review-9de8e8311f0c7a72` | `5c04084b`, `1dae1c5e` (reviewed, `main..1dae1c5e`); `11c7887f`, `08cdb655` (generated client and fixtures, not reviewed: user decision) | Approved. Findings fixed in slice 3 (T15): close and reopen don't map the unreadable-release errors raised while building the response (warning); `aLegacyCampaignWithoutPlacesReturnsAnEmptyList` only exercises an empty campaign (suggestion). Size +1,943/−33, exception accepted (generated client ~932) | [#332](https://github.com/iribarren/ogami/pull/332) |
 | 3 | `review-d5565eb2df883684` (`edea06cb`, `099e0c7f`), `review-2f82d64227651c87` (`a19e213c`), `review-a3f4002f30e5710b` (`4908d090`, `bb532558`) | `edea06cb`, `099e0c7f`, `a19e213c`, `4908d090`, `bb532558` | Approved in 3 candidates (the reviewer refused the 1,596-line slice and the 1,229-line T6, so T6 was split in two commits). Findings fixed in slice 4 (T8): `closeThread.fact` is not nullable in the schema; `ReleaseSchemaAgreementTest:127` does not assert the message; `createPlaceByEffect` has no direct test; `FlowRunPlacesTest:120-123` does not prove a place pick; `FlowRunPlacesTest:146` looks a Place up by position | [#333](https://github.com/iribarren/ogami/pull/333) |
 | 4 | `review-dc4caf81fa8a3d19` | `85396d33`, `3d417774`, `b4ecc2b8`, `3338e82d` | Approved. Finding fixed in slice 5 (T16): the Places close and reopen test (`ListPanel.test.tsx:615-627`) does not assert the endpoints or the refetched state. Size +735/−120 | [#334](https://github.com/iribarren/ogami/pull/334) |
+| 5 | `review-5a93489a7101da2f` | `9e31c19c`, `98d142a9` | Approved. Finding fixed in slice 6 (T11): a `closeThread` stored with `fact: null`, slot picked then cleared, writes `fact: null` again (`effectDraft.ts:146-147`), untested. Chrome pass skipped (user decision). Size +227/−35 | [#335](https://github.com/iribarren/ogami/pull/335) |
 
 ## Next step
 
-Slice 5: writer builds T16 (review fix) and T10 (Studio UI) on `feat/play-places-5-studio`; the parent runs the Chrome pass, then review and PR. Then slice 6 (`select` field).
+Slice 6: writer builds T11 (slice 5 fix), T12 (`select` field backend, ADR 0048) and T13 (`select` field UI) on `feat/play-places-6-select-field`; then review, PR, and the closing doc commit (T14).

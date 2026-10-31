@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Domain\Campaign\Facts;
 
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\PlaceId;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 
 /**
@@ -40,6 +41,11 @@ final readonly class FactLink
     public static function thread(ThreadId $id): self
     {
         return new self(FactLinkKind::Thread, $id->toString());
+    }
+
+    public static function place(PlaceId $id): self
+    {
+        return new self(FactLinkKind::Place, $id->toString());
     }
 
     public static function fact(FactId $id): self

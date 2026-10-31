@@ -190,11 +190,13 @@ final class DraftReferencesTest extends TestCase
         // Tags.
         yield 'createNpc tags' => ['tag', 'crew', self::effect(['kind' => 'createNpc', 'tags' => ['leader', 'crew']]), [$effect]];
         yield 'createThread tags' => ['tag', 'crew', self::effect(['kind' => 'createThread', 'tags' => ['crew']]), [$effect]];
+        yield 'createPlace tags' => ['tag', 'crew', self::effect(['kind' => 'createPlace', 'tags' => ['crew']]), [$effect]];
         yield 'condition count tags' => ['tag', 'crew', self::step(['key' => 'c', 'kind' => 'condition', 'count' => ['of' => 'npc', 'tags' => ['crew']], 'bands' => [[]]]), [$step]];
         yield 'pick tags' => ['tag', 'crew', self::step(['key' => 'p', 'kind' => 'pick', 'of' => 'npc', 'tags' => ['crew'], 'mode' => 'random']), [$step]];
 
         // Fact slots.
         yield 'fillFact slot' => ['factSlot', 'city', self::effect(['kind' => 'fillFact', 'slot' => 'city']), [$effect]];
+        yield 'closeThread fact' => ['factSlot', 'expedition', self::effect(['kind' => 'closeThread', 'fact' => 'expedition']), [$effect]];
         yield 'fact placeholder in a step' => ['factSlot', 'city', self::step(['key' => 'p', 'kind' => 'prompt', 'title' => 'Back in {fact:city}']), [$step]];
         yield 'fact placeholder in effect text' => ['factSlot', 'city', self::effect(['kind' => 'createNpc', 'agenda' => 'Rule {fact:city}']), [$effect]];
     }

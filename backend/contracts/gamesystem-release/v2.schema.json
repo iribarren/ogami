@@ -24,13 +24,13 @@
       "items": { "$ref": "#/$defs/tracker" }
     },
     "factSlots": {
-      "description": "Slots a Campaign fills with facts: a text, an NPC or a Thread. Flows fill them with the fillFact effect. May be empty.",
+      "description": "Slots a Campaign fills with facts: a text, an NPC, a Thread or a Place. Flows fill them with the fillFact effect. May be empty.",
       "type": "array",
       "maxItems": 100,
       "items": { "$ref": "#/$defs/factSlot" }
     },
     "tags": {
-      "description": "Tags NPCs and Threads carry, picked and counted by key. Optional; may be empty.",
+      "description": "Tags NPCs, Threads and Places carry, picked and counted by key. Optional; may be empty.",
       "type": ["array", "null"],
       "maxItems": 50,
       "items": { "$ref": "#/$defs/tag" }
@@ -385,9 +385,9 @@
           "description": "The entity kinds the tag may be carried by, unique; absent or null, it applies to all of them.",
           "type": ["array", "null"],
           "minItems": 1,
-          "maxItems": 3,
+          "maxItems": 4,
           "uniqueItems": true,
-          "items": { "enum": ["character", "npc", "thread"] }
+          "items": { "enum": ["character", "npc", "thread", "place"] }
         }
       }
     },
@@ -602,7 +602,7 @@
       "properties": {
         "key": { "$ref": "#/$defs/key" },
         "label": { "$ref": "#/$defs/label" },
-        "type": { "enum": ["text", "npc", "thread"] },
+        "type": { "enum": ["text", "npc", "thread", "place"] },
         "hint": { "type": ["string", "null"], "maxLength": 500 }
       }
     },
@@ -1136,7 +1136,7 @@
       }
     },
     "conditionStep": {
-      "description": "Compares a tracker, or the number of open NPCs or Threads, to bands; never mandatory, never skipped, writes no entry. Exactly one of tracker or count.",
+      "description": "Compares a tracker, or the number of open NPCs, Threads or Places, to bands; never mandatory, never skipped, writes no entry. Exactly one of tracker or count.",
       "type": "object",
       "required": ["key", "kind", "title", "bands"],
       "additionalProperties": false,
@@ -1183,12 +1183,12 @@
       "required": ["of"],
       "additionalProperties": false,
       "properties": {
-        "of": { "enum": ["npc", "thread", "character"] },
+        "of": { "enum": ["npc", "thread", "place", "character"] },
         "tags": { "$ref": "#/$defs/tagKeys" }
       }
     },
     "pickStep": {
-      "description": "Picks open NPCs, Threads or Characters carrying all the tags: at random, or chosen by the player. Outcome found or none.",
+      "description": "Picks open NPCs, Threads, Places or Characters carrying all the tags: at random, or chosen by the player. Outcome found or none.",
       "type": "object",
       "required": ["key", "kind", "title", "of", "mode"],
       "additionalProperties": false,
@@ -1201,7 +1201,7 @@
         "mandatory": { "$ref": "#/$defs/optionalFlag" },
         "next": { "$ref": "#/$defs/next" },
         "effects": { "$ref": "#/$defs/optionalEffects" },
-        "of": { "enum": ["npc", "thread", "character"] },
+        "of": { "enum": ["npc", "thread", "place", "character"] },
         "tags": { "$ref": "#/$defs/tagKeys" },
         "mode": { "enum": ["random", "choose"] },
         "count": {
@@ -1345,7 +1345,18 @@
           "required": ["kind"],
           "additionalProperties": false,
           "properties": {
-            "kind": { "const": "closeThread" }
+            "kind": { "const": "closeThread" },
+            "fact": { "$ref": "#/$defs/key" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "const": "createPlace" },
+            "name": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
+            "tags": { "$ref": "#/$defs/tagKeys" }
           }
         },
         {

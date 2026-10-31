@@ -13,6 +13,8 @@ use App\Play\Domain\Campaign\InsufficientFunds;
 use App\Play\Domain\Campaign\InventoryFull;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\Place;
+use App\Play\Domain\Campaign\Lists\PlaceId;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Scene;
@@ -31,6 +33,7 @@ use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\CloseThreadEffect;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
 use App\Play\Domain\GameSystem\Flow\CreateNpcEffect;
+use App\Play\Domain\GameSystem\Flow\CreatePlaceEffect;
 use App\Play\Domain\GameSystem\Flow\CreateThreadEffect;
 use App\Play\Domain\GameSystem\Flow\Effect;
 use App\Play\Domain\GameSystem\Flow\EndPhaseEffect;
@@ -1299,12 +1302,16 @@ final class FlowRun
             if ('' !== $title) {
                 $context->renameScene($title);
             }
-        } elseif ($effect instanceof CreateNpcEffect || $effect instanceof CreateThreadEffect) {
+        } elseif ($effect instanceof CreateNpcEffect || $effect instanceof CreateThreadEffect || $effect instanceof CreatePlaceEffect) {
             $this->createItem($effect, $answer, $context);
         } elseif ($effect instanceof FillFactEffect) {
             $this->fillFact($effect, $answer, $context);
         } elseif ($effect instanceof CloseThreadEffect) {
-            $context->closePickedThreads($this->picked);
+            if (null === $effect->factSlot) {
+                $context->closePickedThreads($this->picked);
+            } else {
+                $context->closeThreadOfFactSlot($effect->factSlot);
+            }
         } elseif ($effect instanceof SwitchSceneTypeEffect) {
             return $this->switchSceneTypeByEffect($effect->sceneType, $context);
         }
@@ -1313,24 +1320,35 @@ final class FlowRun
     }
 
     /**
-     * Creates an open NPC or Thread in the hook Scene or scene under way: name and agenda rendered
-     * and cut like a scene title; a name that comes out empty is "New <label of the first Tag>", or
-     * "New NPC" / "New Thread". What is created is "{picked}" (and a created NPC joins the scene's
-     * cast); when the campaign holds the most items of the kind, nothing is created and "{picked}"
-     * stays.
+     * Creates an open NPC, Thread or Place in the hook Scene or scene under way: name and agenda
+     * rendered and cut like a scene title; a name that comes out empty is "New <label of the first
+     * Tag>", or "New NPC" / "New Thread" / "New Place". What is created is "{picked}" (and a created
+     * NPC joins the scene's cast; Threads and Places have none); when the campaign holds the most
+     * items of the kind, nothing is created and "{picked}" stays.
      */
-    private function createItem(CreateNpcEffect|CreateThreadEffect $effect, ?string $answer, FlowRunContext $context): void
+    private function createItem(CreateNpcEffect|CreateThreadEffect|CreatePlaceEffect $effect, ?string $answer, FlowRunContext $context): void
     {
         $this->enterHookScene($context);
         $isNpc = $effect instanceof CreateNpcEffect;
-        $name = $this->renderedEffectText($effect->name ?? '', $isNpc ? Npc::MAX_NAME_LENGTH : Thread::MAX_NAME_LENGTH, $answer, $context);
+        $max = match (true) {
+            $isNpc => Npc::MAX_NAME_LENGTH,
+            $effect instanceof CreateThreadEffect => Thread::MAX_NAME_LENGTH,
+            default => Place::MAX_NAME_LENGTH,
+        };
+        $name = $this->renderedEffectText($effect->name ?? '', $max, $answer, $context);
         if ('' === $name) {
-            $name = 'New '.(isset($effect->tags[0]) ? ($context->release->tag($effect->tags[0])->label ?? $effect->tags[0]) : ($isNpc ? 'NPC' : 'Thread'));
+            $name = 'New '.(isset($effect->tags[0]) ? ($context->release->tag($effect->tags[0])->label ?? $effect->tags[0]) : match (true) {
+                $isNpc => 'NPC',
+                $effect instanceof CreateThreadEffect => 'Thread',
+                default => 'Place',
+            });
         }
 
-        $created = $effect instanceof CreateNpcEffect
-            ? $context->createNpc($name, null === $effect->agenda ? null : $this->renderedEffectText($effect->agenda, Npc::MAX_AGENDA_LENGTH, $answer, $context), $effect->tags)
-            : $context->createThread($name, $effect->tags);
+        $created = match (true) {
+            $effect instanceof CreateNpcEffect => $context->createNpc($name, null === $effect->agenda ? null : $this->renderedEffectText($effect->agenda, Npc::MAX_AGENDA_LENGTH, $answer, $context), $effect->tags),
+            $effect instanceof CreateThreadEffect => $context->createThread($name, $effect->tags),
+            default => $context->createPlace($name, $effect->tags),
+        };
         if ($created instanceof PickedItems) {
             $this->picked = $created;
             $context->joinSceneCast($created);
@@ -1339,8 +1357,8 @@ final class FlowRun
 
     /**
      * Fills a Fact slot, which is no scene's business: a text slot takes the rendered text (the
-     * answer when omitted), trimmed and cut to the longest fact text; an NPC or Thread slot takes
-     * the first item of its kind in "{picked}". An empty text, a missing answer when no text is given,
+     * answer when omitted), trimmed and cut to the longest fact text; an NPC, Thread or Place
+     * slot takes the first item of its kind in "{picked}". An empty text, a missing answer when no text is given,
      * or nothing of the kind picked, changes nothing; a campaign at its most facts adds none.
      */
     private function fillFact(FillFactEffect $effect, ?string $answer, FlowRunContext $context): void
@@ -1360,14 +1378,19 @@ final class FlowRun
             return;
         }
 
-        // A picked Character fits no slot (they hold NPCs and Threads): like any other kind mismatch, nothing is linked.
+        // A picked Character fits no slot (they hold NPCs, Threads and Places): like any other kind mismatch, nothing is linked.
         $slotKind = match ($type) {
             FactSlotType::Npc => ItemKind::Npc,
             FactSlotType::Thread => ItemKind::Thread,
+            FactSlotType::Place => ItemKind::Place,
         };
         $id = $this->picked instanceof PickedItems && $this->picked->kind === $slotKind ? ($this->picked->ids[0] ?? null) : null;
         if (null !== $id) {
-            $context->fillFact($effect->slot, null, FactSlotType::Npc === $type ? FactLink::npc(NpcId::fromString($id)) : FactLink::thread(ThreadId::fromString($id)));
+            $context->fillFact($effect->slot, null, match ($type) {
+                FactSlotType::Npc => FactLink::npc(NpcId::fromString($id)),
+                FactSlotType::Thread => FactLink::thread(ThreadId::fromString($id)),
+                FactSlotType::Place => FactLink::place(PlaceId::fromString($id)),
+            });
         }
     }
 

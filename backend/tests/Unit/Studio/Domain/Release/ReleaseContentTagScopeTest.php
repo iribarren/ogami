@@ -75,10 +75,10 @@ final class ReleaseContentTagScopeTest extends TestCase
     {
         yield 'not a list' => [self::release('tags.0.appliesTo', 'npc'), 'tags[0].appliesTo: must be a list'];
         yield 'empty' => [self::release('tags.0.appliesTo', []), 'tags[0].appliesTo: at least 1'];
-        yield 'an unknown kind' => [self::release('tags.0.appliesTo', ['npc', 'faction']), 'tags[0].appliesTo[1]: must be one of "character", "npc", "thread", \'faction\' given'];
+        yield 'an unknown kind' => [self::release('tags.0.appliesTo', ['npc', 'faction']), 'tags[0].appliesTo[1]: must be one of "character", "npc", "thread", "place", \'faction\' given'];
         yield 'not a string' => [self::release('tags.0.appliesTo', [3]), 'tags[0].appliesTo[0]: must be one of'];
         yield 'a duplicate' => [self::release('tags.0.appliesTo', ['npc', 'npc']), 'tags[0].appliesTo[1]: duplicate kind "npc"'];
-        yield 'more than three' => [self::release('tags.0.appliesTo', ['npc', 'thread', 'character', 'npc']), 'tags[0].appliesTo: at most 3'];
+        yield 'more than four' => [self::release('tags.0.appliesTo', ['npc', 'thread', 'character', 'place', 'npc']), 'tags[0].appliesTo: at most 4'];
     }
 
     /**

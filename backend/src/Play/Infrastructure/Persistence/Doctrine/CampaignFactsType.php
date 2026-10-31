@@ -21,8 +21,8 @@ use Doctrine\DBAL\Types\JsonType;
  * (ADR 0007).
  *
  * Stored shape: [{id, slot, label, text, subject, links}], in creation order; `slot` is a Fact slot
- * key or null (a free fact), `subject` is null or {kind, id} (an NPC or a Thread), `links` is a list
- * of {kind, id} with kind "npc", "thread" or "fact". The column defaults to an empty list, which is
+ * key or null (a free fact), `subject` is null or {kind, id} (an NPC, a Thread or a Place), `links` is a list
+ * of {kind, id} with kind "npc", "thread", "place" or "fact". The column defaults to an empty list, which is
  * what a campaign stored before facts reads as. Reading checks the shape, the 500 limit, distinct
  * ids, one fact per slot and the rules Fact::of() holds (not whether the slot is in the release, nor
  * whether links and subjects name things of the campaign: the pinned release and the Campaign tell,
@@ -145,7 +145,7 @@ final class CampaignFactsType extends JsonType
     {
         $kind = $this->field($data, 'kind');
         if (!\is_string($kind) || !($linkKind = FactLinkKind::tryFrom($kind)) instanceof FactLinkKind) {
-            throw $this->malformed($field, 'a link with kind "npc", "thread" or "fact"');
+            throw $this->malformed($field, 'a link with kind "npc", "thread", "place" or "fact"');
         }
 
         return FactLink::of($linkKind, $this->string($data, 'id'));

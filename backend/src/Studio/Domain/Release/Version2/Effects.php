@@ -23,6 +23,7 @@ final class Effects
     public const int MAX_NPC_NAME_LENGTH = 100;
     public const int MAX_NPC_AGENDA_LENGTH = 2000;
     public const int MAX_THREAD_NAME_LENGTH = 200;
+    public const int MAX_PLACE_NAME_LENGTH = 200;
     public const int MAX_FACT_TEXT_LENGTH = 2000;
 
     /** Fields of each kind, in schema order: name => required. */
@@ -34,7 +35,8 @@ final class Effects
         'sceneTitle' => ['kind' => true, 'title' => true],
         'createNpc' => ['kind' => true, 'name' => false, 'agenda' => false, 'tags' => false],
         'createThread' => ['kind' => true, 'name' => false, 'tags' => false],
-        'closeThread' => ['kind' => true],
+        'closeThread' => ['kind' => true, 'fact' => false],
+        'createPlace' => ['kind' => true, 'name' => false, 'tags' => false],
         'fillFact' => ['kind' => true, 'slot' => true, 'text' => false],
         'sheet' => ['kind' => true, 'field' => true, 'op' => true, 'value' => false],
     ];
@@ -115,7 +117,7 @@ final class Effects
 
     /**
      * A list of at most MAX_TAGS unique keys, each a tag of the release that applies to $kind (the
-     * kind of entity the step targets: npc, thread or character).
+     * kind of entity the step targets: npc, thread, place or character).
      *
      * @return list<string> the keys; empty when absent
      */
@@ -191,6 +193,23 @@ final class Effects
                 }
 
                 $effect['tags'] = self::tags($effect['tags'] ?? null, $path.'.tags', $catalog, 'thread');
+                break;
+            case 'createPlace':
+                if (isset($effect['name'])) {
+                    ReleaseFields::text($effect['name'], $path.'.name', 1, self::MAX_PLACE_NAME_LENGTH);
+                }
+
+                $effect['tags'] = self::tags($effect['tags'] ?? null, $path.'.tags', $catalog, 'place');
+                break;
+            case 'closeThread':
+                if (isset($effect['fact'])) {
+                    $effect['fact'] = self::factSlot($effect['fact'], $path.'.fact', $catalog);
+                    $type = $catalog->factSlotType($effect['fact']);
+                    if ('thread' !== $type) {
+                        throw InvalidReleaseContent::at($path.'.fact', \sprintf('only allowed for a thread slot, fact slot "%s" is %s %s slot', $effect['fact'], 'npc' === $type ? 'an' : 'a', $type));
+                    }
+                }
+
                 break;
             case 'fillFact':
                 $effect['slot'] = self::factSlot($effect['slot'], $path.'.slot', $catalog);

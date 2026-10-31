@@ -27,6 +27,7 @@ use App\Play\Domain\Campaign\Lists\TagNotApplicable;
 use App\Play\Domain\Campaign\Lists\UnknownPlace;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Tag;
@@ -58,7 +59,8 @@ final class PlaceHandlersTest extends TestCase
     protected function setUp(): void
     {
         $releases = new InMemoryPublishedGameSystemReleases();
-        $releases->add(Snapshots::withTags('heist', 'Heist', 1));
+        // Tags: "ally" for every kind, "rival" for NPCs only.
+        $releases->add(new GameSystemSnapshot('heist', 'Heist', 1, null, [], [], tags: [new Tag('ally', 'Ally'), new Tag('rival', 'Rival', appliesTo: [ItemKind::Npc])]));
         // A newer release with other Tags: the commands follow the pinned v1.
         $releases->add(new GameSystemSnapshot('heist', 'Heist, revised', 2, null, [], [], tags: [new Tag('boss', 'Boss')]));
         $this->campaigns = new InMemoryCampaignRepository();
@@ -80,7 +82,7 @@ final class PlaceHandlersTest extends TestCase
     }
 
     #[Test]
-    public function aReleaseTagIsRefusedAndNothingChanges(): void
+    public function aReleaseTagOfAnotherKindOrAnUnknownOneIsRefusedAndNothingChanges(): void
     {
         foreach ([['rival', TagNotApplicable::class], ['boss', UnknownReleaseTag::class]] as [$tag, $exception]) {
             try {
@@ -92,6 +94,14 @@ final class PlaceHandlersTest extends TestCase
         }
 
         self::assertSame([], $this->campaign()->places());
+    }
+
+    #[Test]
+    public function aReleaseTagThatAppliesToPlacesIsKept(): void
+    {
+        ($this->add)(new AddPlace('campaign-1', 'user-1', 'place-1', 'Saltmarsh', null, ['ally'], [], 1));
+
+        self::assertSame(['ally'], $this->place('place-1')?->tags());
     }
 
     #[Test]

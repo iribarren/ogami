@@ -66,6 +66,7 @@ use App\Play\Application\PauseGuidance;
 use App\Play\Application\PauseGuidanceHandler;
 use App\Play\Application\PickSceneType;
 use App\Play\Application\PickSceneTypeHandler;
+use App\Play\Application\PlaceIdGenerator;
 use App\Play\Application\PlaceView;
 use App\Play\Application\PreviewReleaseUpgrade;
 use App\Play\Application\PreviewReleaseUpgradeHandler;
@@ -117,6 +118,7 @@ use App\Play\Domain\Campaign\FlowRun\FlowRunView;
 use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\InvalidSceneCast;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\PlaceId;
 use App\Play\Domain\Campaign\Lists\TagNotApplicable;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
@@ -285,6 +287,19 @@ final class PlayContext implements Context
                 public function generate(): ThreadId
                 {
                     return ThreadId::fromString('thread-'.($this->next)());
+                }
+            },
+            new readonly class(fn (): int => ++$this->placeCount) implements PlaceIdGenerator {
+                /**
+                 * @param \Closure(): int $next
+                 */
+                public function __construct(private \Closure $next)
+                {
+                }
+
+                public function generate(): PlaceId
+                {
+                    return PlaceId::fromString('place-'.($this->next)());
                 }
             },
         );
@@ -1134,12 +1149,6 @@ final class PlayContext implements Context
             array_map(static fn (array $row): array => [$row['name'], '' === $row['notes'] ? null : $row['notes'], $row['free tags'], (int) $row['weight'], $row['status']], $table->getColumnsHash()),
             array_map(static fn (PlaceView $place): array => [$place->name, $place->notes, implode(', ', $place->freeTags), $place->weight, $place->status], $this->myCampaign()->places),
         );
-    }
-
-    #[Then('I am told that no Tag applies to Places')]
-    public function iAmToldThatNoTagAppliesToPlaces(): void
-    {
-        Assert::assertInstanceOf(TagNotApplicable::class, $this->failure);
     }
 
     #[Then('my campaign offers the Tags :keys')]

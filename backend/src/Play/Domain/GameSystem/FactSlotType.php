@@ -9,4 +9,5 @@ enum FactSlotType: string
     case Text = 'text';
     case Npc = 'npc';
     case Thread = 'thread';
+    case Place = 'place';
 }

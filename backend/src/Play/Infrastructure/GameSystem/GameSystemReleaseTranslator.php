@@ -27,6 +27,7 @@ use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\CloseThreadEffect;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
 use App\Play\Domain\GameSystem\Flow\CreateNpcEffect;
+use App\Play\Domain\GameSystem\Flow\CreatePlaceEffect;
 use App\Play\Domain\GameSystem\Flow\CreateThreadEffect;
 use App\Play\Domain\GameSystem\Flow\Effect;
 use App\Play\Domain\GameSystem\Flow\EndPhaseEffect;
@@ -260,7 +261,7 @@ final readonly class GameSystemReleaseTranslator
     }
 
     /**
-     * Every Tag key a pick step, count condition or NPC / Thread Effect lists must be one of the
+     * Every Tag key a pick step, count condition or NPC / Thread / Place Effect lists must be one of the
      * release's Tags. Studio checks this on publish; the stored content is not trusted.
      */
     private function assertTagsExist(PublishedReleaseView $view, mixed $node, string $path, GameSystemSnapshot $snapshot): void
@@ -273,7 +274,7 @@ final readonly class GameSystemReleaseTranslator
         $kind = $node['kind'] ?? null;
         $count = $node['count'] ?? null;
         $tagsPath = $tags = null;
-        if (\in_array($kind, ['pick', 'createNpc', 'createThread'], true)) {
+        if (\in_array($kind, ['pick', 'createNpc', 'createThread', 'createPlace'], true)) {
             $tagsPath = $path.'.tags';
             $tags = $node['tags'] ?? null;
         } elseif ('condition' === $kind && \is_array($count)) {
@@ -289,6 +290,10 @@ final readonly class GameSystemReleaseTranslator
 
         if ('fillFact' === $kind) {
             $this->assertFactSlotFilled($view, $node, $path, $snapshot);
+        }
+
+        if ('closeThread' === $kind && null !== ($node['fact'] ?? null)) {
+            $this->assertThreadSlotClosed($view, $node, $path, $snapshot);
         }
 
         if ('check' === $kind) {
@@ -517,6 +522,25 @@ final readonly class GameSystemReleaseTranslator
 
         if (null !== ($effect['text'] ?? null) && FactSlotType::Text !== $slot->type) {
             throw $this->invalid($view, $path.'.text', \sprintf('only a text slot takes a text, "%s" is %s %s slot.', $slot->key, FactSlotType::Npc === $slot->type ? 'an' : 'a', $slot->type->value));
+        }
+    }
+
+    /**
+     * A closeThread Effect with a "fact" names a Thread slot of the release. Studio checks this on
+     * publish; the stored content is not trusted.
+     *
+     * @param array<array-key, mixed> $effect
+     */
+    private function assertThreadSlotClosed(PublishedReleaseView $view, array $effect, string $path, GameSystemSnapshot $snapshot): void
+    {
+        $key = $effect['fact'] ?? null;
+        $slot = \is_string($key) ? $snapshot->factSlot($key) : null;
+        if (!$slot instanceof FactSlot) {
+            throw $this->invalid($view, $path.'.fact', \sprintf('unknown fact slot "%s".', \is_string($key) ? $key : ''));
+        }
+
+        if (FactSlotType::Thread !== $slot->type) {
+            throw $this->invalid($view, $path.'.fact', \sprintf('only a thread slot can be closed, "%s" is %s %s slot.', $slot->key, FactSlotType::Npc === $slot->type ? 'an' : 'a', $slot->type->value));
         }
     }
 
@@ -2162,7 +2186,11 @@ final readonly class GameSystemReleaseTranslator
                     $this->optionalString($view, $effect['name'] ?? null, $effectPath.'.name'),
                     $this->keys($view, $effect['tags'] ?? [], $effectPath.'.tags'),
                 ),
-                'closeThread' => new CloseThreadEffect(),
+                'createPlace' => new CreatePlaceEffect(
+                    $this->optionalString($view, $effect['name'] ?? null, $effectPath.'.name'),
+                    $this->keys($view, $effect['tags'] ?? [], $effectPath.'.tags'),
+                ),
+                'closeThread' => new CloseThreadEffect($this->optionalString($view, $effect['fact'] ?? null, $effectPath.'.fact')),
                 'fillFact' => new FillFactEffect(
                     $this->string($view, $effect['slot'] ?? null, $effectPath.'.slot'),
                     $this->optionalString($view, $effect['text'] ?? null, $effectPath.'.text'),

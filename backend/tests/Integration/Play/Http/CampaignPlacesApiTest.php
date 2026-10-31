@@ -25,7 +25,8 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
  * Campaign Places over the Play API, on the schema version 2 release "valid/v2-threads-npcs", whose
- * Tags are "leader", "ally" and "hostile"; none applies to Places yet.
+ * Tags are "leader", "ally" and "hostile", none limited to other kinds. Tags limited to other kinds are
+ * refused in CampaignTagScopeApiTest.
  */
 #[CoversClass(CampaignPlacesController::class)]
 #[CoversClass(CampaignController::class)]
@@ -129,17 +130,17 @@ final class CampaignPlacesApiTest extends WebTestCase
     }
 
     #[Test]
-    public function aReleaseTagIsRefusedAndAnUnknownOneIsToo(): void
+    public function aReleaseTagThatAppliesIsKeptAndAnUnknownOneIsRefused(): void
     {
         $this->signIn('ada@example.com', ['SOLO_PLAYER']);
         $id = $this->createCampaign();
         $placeId = $this->addPlace($id, ['name' => 'Saltmarsh']);
 
         foreach ([['POST', \sprintf('/api/campaigns/%s/places', $id)], ['PUT', \sprintf('/api/campaigns/%s/places/%s', $id, $placeId)]] as [$method, $uri]) {
-            // No release Tag applies to Places yet, so a Tag the release defines is refused...
+            // A Tag the release defines for every kind is kept...
             $this->client->jsonRequest($method, $uri, ['name' => 'Saltmarsh', 'tags' => ['ally']]);
-            self::assertResponseStatusCodeSame(422);
-            self::assertSame(['error' => 'Tag "ally" does not apply to Places.'], $this->json());
+            self::assertResponseIsSuccessful();
+            self::assertSame(['ally'], $this->json()['tags'] ?? null);
 
             // ...and one it does not define is unknown.
             $this->client->jsonRequest($method, $uri, ['name' => 'Saltmarsh', 'tags' => ['villain']]);
@@ -147,18 +148,8 @@ final class CampaignPlacesApiTest extends WebTestCase
             self::assertSame(['error' => 'Tag "villain" not found in the pinned release.'], $this->json());
         }
 
-        self::assertSame(['Saltmarsh'], array_column($this->campaignPlaces($id), 'name'));
-        self::assertSame([[]], array_column($this->campaignPlaces($id), 'tags'));
-    }
-
-    #[Test]
-    public function aLegacyCampaignWithoutPlacesReturnsAnEmptyList(): void
-    {
-        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
-        $id = $this->createCampaign();
-        $this->connection()->executeStatement("UPDATE play_campaign SET places = '[]' WHERE id = ?", [$id]);
-
-        self::assertSame([], $this->campaignPlaces($id));
+        self::assertSame(['Saltmarsh', 'Saltmarsh'], array_column($this->campaignPlaces($id), 'name'));
+        self::assertSame([['ally'], ['ally']], array_column($this->campaignPlaces($id), 'tags'));
     }
 
     /**
@@ -363,9 +354,12 @@ final class CampaignPlacesApiTest extends WebTestCase
         $placeId = $this->addPlace($id, ['name' => 'Saltmarsh']);
         $this->connection()->executeStatement($breakTheRelease);
 
+        // Close and reopen save, then cannot build the response: they answer like add and edit.
         foreach ([
             ['POST', \sprintf('/api/campaigns/%s/places', $id)],
             ['PUT', \sprintf('/api/campaigns/%s/places/%s', $id, $placeId)],
+            ['POST', \sprintf('/api/campaigns/%s/places/%s/close', $id, $placeId)],
+            ['POST', \sprintf('/api/campaigns/%s/places/%s/reopen', $id, $placeId)],
         ] as [$method, $uri]) {
             $this->client->jsonRequest($method, $uri, ['name' => 'Dunmere']);
 

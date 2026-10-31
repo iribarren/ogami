@@ -65,7 +65,7 @@ final readonly class Fact
             }
 
             if (FactLinkKind::Fact === $subject?->kind) {
-                throw InvalidFact::because('A subject is an NPC or a Thread.');
+                throw InvalidFact::because('A subject is an NPC, a Thread or a Place.');
             }
 
             $text = null === $text ? null : self::bounded($text, 'text', self::MAX_TEXT_LENGTH);
@@ -154,7 +154,7 @@ final readonly class Fact
     }
 
     /**
-     * @return ?FactLink the NPC or Thread an `npc` / `thread` slot holds; null otherwise
+     * @return ?FactLink the NPC, Thread or Place an `npc` / `thread` / `place` slot holds; null otherwise
      */
     public function subject(): ?FactLink
     {

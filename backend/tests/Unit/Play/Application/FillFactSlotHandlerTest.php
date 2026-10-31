@@ -11,6 +11,7 @@ use App\Play\Application\FillFactSlot;
 use App\Play\Application\FillFactSlotHandler;
 use App\Play\Application\NpcIdGenerator;
 use App\Play\Application\OwnedCampaigns;
+use App\Play\Application\PlaceIdGenerator;
 use App\Play\Application\ThreadIdGenerator;
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
@@ -20,10 +21,13 @@ use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\Facts\InvalidFact;
 use App\Play\Domain\Campaign\Facts\UnknownFactSlot;
 use App\Play\Domain\Campaign\Lists\InvalidNpc;
+use App\Play\Domain\Campaign\Lists\InvalidPlace;
 use App\Play\Domain\Campaign\Lists\InvalidThread;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\PlaceId;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
+use App\Play\Domain\Campaign\Lists\UnknownPlace;
 use App\Play\Domain\Campaign\Lists\UnknownThread;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\FactSlot;
@@ -50,6 +54,7 @@ final class FillFactSlotHandlerTest extends TestCase
             new FactSlot('city', 'City', FactSlotType::Text),
             new FactSlot('prince', 'Prince', FactSlotType::Npc),
             new FactSlot('goal', 'Goal', FactSlotType::Thread),
+            new FactSlot('site', 'Site', FactSlotType::Place),
         ]);
         $releases = new InMemoryPublishedGameSystemReleases();
         $releases->add($this->release);
@@ -57,9 +62,10 @@ final class FillFactSlotHandlerTest extends TestCase
         $campaign = Campaign::create(CampaignId::fromString('campaign-1'), 'user-1', 'The job', PinnedRelease::of('heist', 1, 'Heist'), new \DateTimeImmutable('2026-10-12T09:00:00+00:00'));
         $campaign->addNpc(NpcId::fromString('npc-1'), 'Mira', null, [], [], 1, $this->release);
         $campaign->addThread(ThreadId::fromString('thread-1'), 'Vault', [], [], 1, $this->release);
+        $campaign->addPlace(PlaceId::fromString('place-1'), 'Saltmarsh', null, [], [], 1, $this->release);
         $this->campaigns->add($campaign);
         $owned = new OwnedCampaigns($this->campaigns);
-        $this->fill = new FillFactSlotHandler($owned, $this->campaigns, $releases, $this->factIds(), $this->npcIds(), $this->threadIds());
+        $this->fill = new FillFactSlotHandler($owned, $this->campaigns, $releases, $this->factIds(), $this->npcIds(), $this->threadIds(), $this->placeIds());
         $this->edit = new EditFactHandler($owned, $this->campaigns, $releases);
     }
 
@@ -73,19 +79,26 @@ final class FillFactSlotHandlerTest extends TestCase
     }
 
     #[Test]
-    public function itFillsAnNpcOrThreadSlotWithAnExistingItem(): void
+    public function itFillsAnNpcThreadOrPlaceSlotWithAnExistingItem(): void
     {
         ($this->fill)(new FillFactSlot('campaign-1', 'user-1', 'prince', null, 'npc-1', null));
         ($this->fill)(new FillFactSlot('campaign-1', 'user-1', 'goal', null, 'thread-1', null));
+        ($this->fill)(new FillFactSlot('campaign-1', 'user-1', 'site', null, 'place-1', null));
 
-        self::assertSame(['npc:npc-1', 'thread:thread-1'], [$this->subjectOf($this->slotFact('prince')), $this->subjectOf($this->slotFact('goal'))]);
+        self::assertSame(['npc:npc-1', 'thread:thread-1', 'place:place-1'], [$this->subjectOf($this->slotFact('prince')), $this->subjectOf($this->slotFact('goal')), $this->subjectOf($this->slotFact('site'))]);
         self::assertCount(1, $this->campaign()->npcs());
         self::assertCount(1, $this->campaign()->threads());
+        self::assertCount(1, $this->campaign()->places());
     }
 
     #[Test]
-    public function itCreatesAnOpenNpcOrThreadByNameAndFillsTheSlotWithIt(): void
+    public function itCreatesAnOpenNpcThreadOrPlaceByNameAndFillsTheSlotWithIt(): void
     {
+        ($this->fill)(new FillFactSlot('campaign-1', 'user-1', 'site', null, null, ' Dunmere '));
+        $place = $this->campaign()->place(PlaceId::fromString('place-2'));
+        self::assertNotNull($place);
+        self::assertSame(['place:place-2', 'Dunmere', 1, true, null], [$this->subjectOf($this->slotFact('site')), $place->name(), $place->weight(), $place->isOpen(), $place->notes()]);
+
         ($this->fill)(new FillFactSlot('campaign-1', 'user-1', 'prince', null, null, ' Valen '));
         ($this->fill)(new FillFactSlot('campaign-1', 'user-1', 'goal', null, null, 'Find the ledger'));
 
@@ -127,6 +140,9 @@ final class FillFactSlotHandlerTest extends TestCase
             [new FillFactSlot('campaign-1', 'user-1', 'city', null, null, 'Valen'), InvalidFact::class],
             [new FillFactSlot('campaign-1', 'user-1', 'prince', null, 'missing', null), UnknownNpc::class],
             [new FillFactSlot('campaign-1', 'user-1', 'goal', null, 'missing', null), UnknownThread::class],
+            [new FillFactSlot('campaign-1', 'user-1', 'site', null, 'missing', null), UnknownPlace::class],
+            [new FillFactSlot('campaign-1', 'user-1', 'site', null, null, str_repeat('a', 201)), InvalidPlace::class],
+            [new FillFactSlot('campaign-1', 'user-1', 'site', 'Text', null, null), InvalidFact::class],
             [new FillFactSlot('campaign-1', 'user-1', 'prince', null, null, ' '), InvalidNpc::class],
             [new FillFactSlot('campaign-1', 'user-1', 'goal', null, null, str_repeat('a', 201)), InvalidThread::class],
         ] as [$command, $error]) {
@@ -217,6 +233,18 @@ final class FillFactSlotHandlerTest extends TestCase
             public function generate(): NpcId
             {
                 return NpcId::fromString('npc-'.++$this->count);
+            }
+        };
+    }
+
+    private function placeIds(): PlaceIdGenerator
+    {
+        return new class implements PlaceIdGenerator {
+            private int $count = 1;
+
+            public function generate(): PlaceId
+            {
+                return PlaceId::fromString('place-'.++$this->count);
             }
         };
     }

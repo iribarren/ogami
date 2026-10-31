@@ -23,7 +23,7 @@ final readonly class Catalog
      * @param array<string, array<string, true>>                     $likelihoodLevels likelihood oracle key => its level keys
      * @param array<string, true>                                    $sceneTypes
      * @param array<string, true>                                    $tags             the tag keys of the release
-     * @param array<string, string>                                  $factSlots        the fact slot types by key (text, npc or thread)
+     * @param array<string, string>                                  $factSlots        the fact slot types by key (text, npc, thread or place)
      * @param array<string, CheckShape>                              $checks           what steps may name of each check, by check key
      * @param array<string, list<string>>                            $tagScopes        the entity kinds of each tag limited to some (a tag with no entry applies to all)
      * @param array<string, array<string, true>>                     $conditionOptions the option keys of each conditions field, by field key
@@ -125,7 +125,7 @@ final readonly class Catalog
     }
 
     /**
-     * Whether the tag may be carried by an entity of this kind (npc, thread or character).
+     * Whether the tag may be carried by an entity of this kind (npc, thread, place or character).
      */
     public function tagAppliesTo(string $key, string $kind): bool
     {

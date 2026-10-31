@@ -12,19 +12,12 @@ use App\Play\Domain\GameSystem\Flow\ItemKind;
  */
 final class TagNotApplicable extends \DomainException
 {
-    /**
-     * No release Tag applies to Places yet (ADR 0047), so every Tag of the release is refused.
-     */
-    public static function forPlaces(string $key): self
-    {
-        return new self(\sprintf('Tag "%s" does not apply to Places.', $key));
-    }
-
     public static function forKind(string $key, ItemKind $kind): self
     {
         return new self(\sprintf('Tag "%s" does not apply to %s.', $key, match ($kind) {
             ItemKind::Npc => 'NPCs',
             ItemKind::Thread => 'Threads',
+            ItemKind::Place => 'Places',
             ItemKind::Character => 'Characters',
         }));
     }

@@ -73,7 +73,7 @@ final readonly class PickContent implements JournalEntryContent
      */
     public static function fromArray(array $data): self
     {
-        $of = ItemKind::tryFrom(ContentData::string($data, 'of')) ?? throw InvalidJournalEntryContent::malformed('of', 'one of "npc", "thread", "character"');
+        $of = ItemKind::tryFrom(ContentData::string($data, 'of')) ?? throw InvalidJournalEntryContent::malformed('of', 'one of "npc", "thread", "place", "character"');
         $listed = $data['tags'] ?? null;
         if (!\is_array($listed) || !array_is_list($listed)) {
             throw InvalidJournalEntryContent::malformed('tags', 'a list of strings');

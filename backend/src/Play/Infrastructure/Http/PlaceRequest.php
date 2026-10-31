@@ -23,7 +23,7 @@ final readonly class PlaceRequest
         public string $name,
         #[OA\Property(description: 'Free text about the Place, at most 2,000 characters once trimmed; none when omitted, null or blank.', example: 'A fishing town on the marsh', nullable: true)]
         public ?string $notes,
-        #[OA\Property(description: 'Keys of Tags of the campaign\'s pinned release, at most 10, each once. No Tag applies to Places yet, so any Tag is refused; none when omitted or null.', type: 'array', items: new OA\Items(type: 'string'), example: [], nullable: true)]
+        #[OA\Property(description: 'Keys of Tags of the campaign\'s pinned release, at most 10, each once. Each must apply to Places; none when omitted or null.', type: 'array', items: new OA\Items(type: 'string'), example: [], nullable: true)]
         public ?array $tags,
         #[OA\Property(description: 'The player\'s own labels, at most 10 of 1 to 50 characters, unique ignoring case; none when omitted or null.', type: 'array', items: new OA\Items(type: 'string'), example: ['Town'], nullable: true)]
         public ?array $freeTags,

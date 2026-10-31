@@ -117,26 +117,6 @@ final class ItemRules
     }
 
     /**
-     * Release Tags of a Place: none applies to Places yet (ADR 0047), so a Tag the release defines
-     * is not applicable and one it does not define is unknown.
-     *
-     * @param list<string> $tags
-     *
-     * @throws UnknownReleaseTag when the release defines none of a key
-     * @throws TagNotApplicable  when the release defines it (no Tag applies to Places yet)
-     */
-    public static function assertPlaceTags(array $tags, GameSystemSnapshot $release): void
-    {
-        foreach ($tags as $key) {
-            if (!$release->tag($key) instanceof Tag) {
-                throw UnknownReleaseTag::withKey($key);
-            }
-
-            throw TagNotApplicable::forPlaces($key);
-        }
-    }
-
-    /**
      * @param list<string> $tags
      *
      * @throws UnknownReleaseTag when the release defines none of a key

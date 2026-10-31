@@ -268,7 +268,7 @@ final class GameSystemReleaseTranslatorVersion2Test extends TestCase
     {
         yield 'tracker kind' => ['trackers.0.kind', 'gauge', 'trackers[0].kind: unknown tracker kind "gauge".'];
         yield 'counter bound' => ['trackers.1.max', '3', 'trackers[1].max: must be an integer.'];
-        yield 'fact slot type' => ['factSlots', [['key' => 'who', 'label' => 'Who', 'type' => 'place']], 'factSlots[0].type: unknown fact slot type "place".'];
+        yield 'fact slot type' => ['factSlots', [['key' => 'who', 'label' => 'Who', 'type' => 'region']], 'factSlots[0].type: unknown fact slot type "region".'];
         yield 'step kind' => ['sceneTypes.0.setup.0.kind', 'dance', 'sceneTypes[0].setup[0].kind: unknown step kind "dance".'];
         yield 'duplicate step key' => ['sceneTypes.3.setup.1.key', 'how', 'sceneTypes[3].setup[1].key: duplicate key "how".'];
         yield 'effect kind' => ['sceneTypes.2.setup.0.effects.1.kind', 'teleport', 'sceneTypes[2].setup[0].effects[1].kind: unknown effect kind "teleport".'];

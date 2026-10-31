@@ -39,7 +39,7 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
  * The Places of a solo player's campaigns: add, edit, close and reopen (security.yaml restricts these
  * routes to ROLE_SOLO_PLAYER). A campaign of another player is not found, exactly like an unknown
  * one (the campaign is checked first), and so is a Place id the campaign does not hold, such as one
- * that is not a UUID. No release Tag applies to Places yet, so a Tag is always refused.
+ * that is not a UUID.
  */
 #[AsController]
 #[OA\Tag(name: 'Play')]
@@ -66,7 +66,7 @@ final readonly class CampaignPlacesController
     #[OA\Response(response: 404, description: 'No campaign of the player has this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'The campaign already holds 500 Places, or another request changed it meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'A value breaks a rule (blank or too long name, too long notes, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is given: it is not in the pinned release, or no Tag applies to Places yet.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A value breaks a rule (blank or too long name, too long notes, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is refused: it is not in the pinned release, or it does not apply to Places.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function add(string $campaignId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $fields = $this->fields($request);
@@ -100,7 +100,7 @@ final readonly class CampaignPlacesController
     #[OA\Response(response: 404, description: 'No campaign of the player has this id, or it holds no Place with this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 409, description: 'Another request changed the campaign meanwhile.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'The body is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 422, description: 'A value breaks a rule (blank or too long name, too long notes, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is given: it is not in the pinned release, or no Tag applies to Places yet.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 422, description: 'A value breaks a rule (blank or too long name, too long notes, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is refused: it is not in the pinned release, or it does not apply to Places.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function edit(string $campaignId, string $placeId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
     {
         $fields = $this->fields($request);
@@ -205,11 +205,19 @@ final readonly class CampaignPlacesController
     }
 
     /**
-     * @throws CampaignNotFound
+     * The command has already saved when the answer is built, so a release that can no longer be read
+     * is the same server error the commands answer with, never an unmapped exception.
      */
     private function place(string $campaignId, string $placeId, AuthenticatedUser $user, int $status): JsonResponse
     {
-        $places = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->places;
+        try {
+            $places = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->places;
+        } catch (CampaignNotFound $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
+        } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
+            return $this->unreadableRelease();
+        }
+
         $place = array_find($places, static fn (PlaceView $place): bool => $place->id === $placeId) ?? throw new \LogicException('The Place was just saved.');
 
         return new JsonResponse(PlaceResponse::fromView($place), $status);

@@ -11,7 +11,7 @@ use App\Formula\Domain\ReferenceKind;
 /**
  * Walks the parts of canonical schema version 2 steps, with their paths: the outcomes that may
  * carry "next" and "effects" (the step itself, its bands, branches, "otherwise", options and check outcomes), the
- * effects, tracker references (a condition counting NPCs or Threads has none), placeholder texts
+ * effects, tracker references (a condition counting NPCs, Threads or Places has none), placeholder texts
  * and rolled tables.
  *
  * @internal
@@ -191,7 +191,7 @@ final class StepParts
             yield $path.'.title' => [self::string($effect['title'] ?? null), true];
         }
 
-        if (\in_array($effect['kind'] ?? null, ['createNpc', 'createThread'], true)) {
+        if (\in_array($effect['kind'] ?? null, ['createNpc', 'createThread', 'createPlace'], true)) {
             foreach (['name', 'agenda'] as $name) {
                 if (isset($effect[$name]) && \is_string($effect[$name])) {
                     yield $path.'.'.$name => [$effect[$name], true];

@@ -84,7 +84,7 @@ final class GameSystemReleaseTranslatorThreadsNpcsTest extends TestCase
 
         self::assertEquals(new Tag('hostile', 'Hostile', 'Works against the player.', [ItemKind::Npc, ItemKind::Thread]), $tags[2]);
         self::assertSame([ItemKind::Npc, ItemKind::Thread], $tags[2]->appliesTo);
-        self::assertSame([[], [true, true, true], [true, true, false]], [
+        self::assertSame([[], [true, true, true, true], [true, true, false, false]], [
             $tags[0]->appliesTo,
             array_map($tags[1]->isFor(...), ItemKind::cases()),
             array_map($tags[2]->isFor(...), ItemKind::cases()),

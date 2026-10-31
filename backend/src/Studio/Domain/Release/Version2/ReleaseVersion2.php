@@ -77,7 +77,7 @@ final class ReleaseVersion2
     private const array TAG = ['key' => true, 'label' => true, 'hint' => false, 'appliesTo' => false];
 
     /** The entity kinds a tag may be limited to; absent, it applies to all of them. */
-    public const array TAG_KINDS = ['character', 'npc', 'thread'];
+    public const array TAG_KINDS = ['character', 'npc', 'thread', 'place'];
     private const array SCENE_TYPE = ['key' => true, 'name' => true, 'purpose' => true, 'tips' => false, 'oracles' => true, 'setup' => true, 'play' => true, 'closing' => true];
     private const array FLOW = [
         'key' => true, 'name' => true, 'description' => false, 'introduction' => false, 'default' => false, 'defaultView' => true,
@@ -392,7 +392,7 @@ final class ReleaseVersion2
             }
 
             ReleaseFields::text($slot['label'], $path.'.label', 1, self::MAX_NAME_LENGTH);
-            $types[$key] = ReleaseFields::oneOf($slot['type'], $path.'.type', ['text', 'npc', 'thread']);
+            $types[$key] = ReleaseFields::oneOf($slot['type'], $path.'.type', ['text', 'npc', 'thread', 'place']);
             if (isset($slot['hint'])) {
                 ReleaseFields::text($slot['hint'], $path.'.hint', 0, self::MAX_HINT_LENGTH);
             }

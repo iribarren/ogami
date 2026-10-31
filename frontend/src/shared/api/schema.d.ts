@@ -3197,7 +3197,7 @@ export interface components {
              */
             notes?: string | null;
             /**
-             * @description Keys of Tags of the campaign's pinned release, at most 10, each once. No Tag applies to Places yet, so any Tag is refused; none when omitted or null.
+             * @description Keys of Tags of the campaign's pinned release, at most 10, each once. Each must apply to Places; none when omitted or null.
              * @example []
              */
             tags?: string[] | null;
@@ -8077,7 +8077,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description No campaign of the player has this id, or a link names an NPC, Thread or fact it does not hold. */
+            /** @description No campaign of the player has this id, or a link names an NPC, Thread, Place or fact it does not hold. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -8167,7 +8167,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description No campaign of the player has this id, it holds no fact with this id, or a link names an NPC, Thread or fact it does not hold. */
+            /** @description No campaign of the player has this id, it holds no fact with this id, or a link names an NPC, Thread, Place or fact it does not hold. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -8257,7 +8257,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description No campaign of the player has this id, or the subject is an NPC or Thread it does not hold. */
+            /** @description No campaign of the player has this id, or the subject is an NPC, Thread or Place it does not hold. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -8266,7 +8266,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign already holds 500 facts, NPCs or Threads and the fill would add one, or another request changed it meanwhile. */
+            /** @description The campaign already holds 500 facts, NPCs, Threads or Places and the fill would add one, or another request changed it meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8284,7 +8284,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The release declares no slot with this key, not exactly one of text, subject and name is sent, the value does not fit the slot's type (a text on an NPC or Thread slot, a subject or name on a text slot), or it breaks a rule (blank or too long text or name). */
+            /** @description The release declares no slot with this key, not exactly one of text, subject and name is sent, the value does not fit the slot's type (a text on an NPC, Thread or Place slot, a subject or name on a text slot), or it breaks a rule (blank or too long text or name). */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8738,7 +8738,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description A value breaks a rule (blank or too long name, too long notes, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is given: it is not in the pinned release, or no Tag applies to Places yet. */
+            /** @description A value breaks a rule (blank or too long name, too long notes, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is refused: it is not in the pinned release, or it does not apply to Places. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -8828,7 +8828,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description A value breaks a rule (blank or too long name, too long notes, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is given: it is not in the pinned release, or no Tag applies to Places yet. */
+            /** @description A value breaks a rule (blank or too long name, too long notes, too many or repeated Tags or free tags, weight out of 1 to 3) or a Tag is refused: it is not in the pinned release, or it does not apply to Places. */
             422: {
                 headers: {
                     [name: string]: unknown;

@@ -178,7 +178,7 @@ final class ReleaseContentThreadsNpcsTest extends TestCase
         yield 'condition with neither' => [ReleaseArrays::without(self::release(), 'sceneTypes.0.play.2.count'), 'sceneTypes[0].play[2]: requires tracker or count'];
         yield 'condition with both' => [self::release('sceneTypes.0.play.2.tracker', 'alarm'), 'sceneTypes[0].play[2]: give either tracker or count, not both'];
         yield 'condition count is a string' => [self::release('sceneTypes.0.play.2.count', 'npc'), 'sceneTypes[0].play[2].count: must be an object'];
-        yield 'condition count of is unknown' => [self::release('sceneTypes.0.play.2.count.of', 'faction'), 'sceneTypes[0].play[2].count.of: must be one of "npc", "thread", "character", \'faction\' given'];
+        yield 'condition count of is unknown' => [self::release('sceneTypes.0.play.2.count.of', 'faction'), 'sceneTypes[0].play[2].count.of: must be one of "npc", "thread", "place", "character", \'faction\' given'];
         yield 'condition count tags is an object' => [self::release('sceneTypes.0.play.3.count.tags', ['leader' => true]), 'sceneTypes[0].play[3].count.tags: must be a list'];
         yield 'condition count unknown tag' => [self::release('sceneTypes.0.play.3.count.tags.0', 'ghost'), 'sceneTypes[0].play[3].count.tags[0]: unknown tag "ghost"'];
         yield 'condition count too many tags' => [self::release('sceneTypes.0.play.3.count.tags', ['leader', 'ally', 'hostile', 'a', 'b', 'c']), 'sceneTypes[0].play[3].count.tags: at most 5 tags, 6 given'];

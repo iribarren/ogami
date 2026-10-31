@@ -8,6 +8,7 @@ use App\Identity\Application\CreateUser;
 use App\Identity\Application\UserIdGenerator;
 use App\Play\Infrastructure\Http\CampaignCharactersController;
 use App\Play\Infrastructure\Http\CampaignNpcsController;
+use App\Play\Infrastructure\Http\CampaignPlacesController;
 use App\Play\Infrastructure\Http\CampaignThreadsController;
 use App\Play\Infrastructure\Http\TagResponse;
 use App\Shared\Application\Bus\CommandBus;
@@ -22,12 +23,13 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
  * Tags limited to some entity kinds over the Play API (ADR 0018, addendum of 2026-10-24), on
- * valid/v2-threads-npcs plus the Tags "villain" (NPCs only), "goal" (Threads only) and "hero"
- * (Characters only): the campaign shows each Tag's scope, and a Tag on another kind is a 422 like an
+ * valid/v2-threads-npcs plus the Tags "villain" (NPCs only), "goal" (Threads only), "hero"
+ * (Characters only) and "site" (Places only): the campaign shows each Tag's scope, and a Tag on another kind is a 422 like an
  * unknown one.
  */
 #[CoversClass(CampaignNpcsController::class)]
 #[CoversClass(CampaignThreadsController::class)]
+#[CoversClass(CampaignPlacesController::class)]
 #[CoversClass(CampaignCharactersController::class)]
 #[CoversClass(TagResponse::class)]
 final class CampaignTagScopeApiTest extends WebTestCase
@@ -41,10 +43,11 @@ final class CampaignTagScopeApiTest extends WebTestCase
         $this->client = self::createClient();
         $this->client->disableReboot();
         $content = ReleaseViews::fixtureContent('valid/v2-threads-npcs');
-        // Three more Tags that no flow step names, each for one kind.
+        // Four more Tags that no flow step names, each for one kind.
         $content = ReleaseArrays::with($content, 'tags.3', ['key' => 'villain', 'label' => 'Villain', 'appliesTo' => ['npc']]);
         $content = ReleaseArrays::with($content, 'tags.4', ['key' => 'goal', 'label' => 'Goal', 'appliesTo' => ['thread']]);
         $content = ReleaseArrays::with($content, 'tags.5', ['key' => 'hero', 'label' => 'Hero', 'appliesTo' => ['character']]);
+        $content = ReleaseArrays::with($content, 'tags.6', ['key' => 'site', 'label' => 'Site', 'appliesTo' => ['place']]);
         self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9001', $content, false));
         $this->signIn('ada@example.com', ['SOLO_PLAYER']);
     }
@@ -54,7 +57,7 @@ final class CampaignTagScopeApiTest extends WebTestCase
     {
         $id = $this->createCampaign();
 
-        self::assertSame([['leader', null], ['ally', null], ['hostile', null], ['villain', ['npc']], ['goal', ['thread']], ['hero', ['character']]], array_map(static fn (array $tag): array => [$tag['key'], $tag['appliesTo']], $this->campaignList($id, 'tags')));
+        self::assertSame([['leader', null], ['ally', null], ['hostile', null], ['villain', ['npc']], ['goal', ['thread']], ['hero', ['character']], ['site', ['place']]], array_map(static fn (array $tag): array => [$tag['key'], $tag['appliesTo']], $this->campaignList($id, 'tags')));
     }
 
     /**
@@ -65,6 +68,8 @@ final class CampaignTagScopeApiTest extends WebTestCase
         yield 'an NPC with a Character tag' => ['npcs', 'hero'];
         yield 'a Thread with an NPC tag' => ['threads', 'villain'];
         yield 'a Character with a Thread tag' => ['characters', 'goal'];
+        yield 'a Place with an NPC tag' => ['places', 'villain'];
+        yield 'a Thread with a Place tag' => ['threads', 'site'];
     }
 
     #[Test]
@@ -72,8 +77,8 @@ final class CampaignTagScopeApiTest extends WebTestCase
     public function aTagOnAnotherKindIsUnprocessableAndNothingChanges(string $list, string $tag): void
     {
         $id = $this->createCampaign();
-        $kind = ['npcs' => 'NPCs', 'threads' => 'Threads', 'characters' => 'Characters'][$list];
-        $own = ['npcs' => 'villain', 'threads' => 'goal', 'characters' => 'hero'][$list];
+        $kind = ['npcs' => 'NPCs', 'threads' => 'Threads', 'characters' => 'Characters', 'places' => 'Places'][$list];
+        $own = ['npcs' => 'villain', 'threads' => 'goal', 'characters' => 'hero', 'places' => 'site'][$list];
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/%s', $id, $list), ['name' => 'First', 'tags' => [$own]]);
         self::assertResponseStatusCodeSame(201);
         $item = $this->json()['id'];
@@ -103,7 +108,7 @@ final class CampaignTagScopeApiTest extends WebTestCase
     }
 
     /**
-     * @return list<array<string, mixed>> a list of GET /api/campaigns/{id}: tags, npcs, threads or characters
+     * @return list<array<string, mixed>> a list of GET /api/campaigns/{id}: tags, npcs, threads, places or characters
      */
     private function campaignList(string $id, string $name): array
     {

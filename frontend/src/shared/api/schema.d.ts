@@ -1907,7 +1907,7 @@ export interface components {
              */
             freeTags?: string[] | null;
             /**
-             * @description The values of the pinned release's sheet fields: field key to value. A number field takes an integer, a text field a string, a list field an array of strings, a conditions field an array of the keys of its marked options (declared options only, each once; stored in the declared order of the options), an inventory field an array of stacks (a catalog stack {gear, quantity} naming gear the field accepts, at most once per field, or a free stack {name, quantity, slots}; quantity 1 to 9999, slots 0 to 100, used slots within the capacity, at most maxStacks stacks; ADR 0045) and a track field {current, max} (max is fixed by the field when it sets one, else required). A field not given takes its default (a number its default or 0, a text "", a list [], conditions [] or inventory [], a track full). An unknown key, a value of the wrong type or out of its bounds is refused.
+             * @description The values of the pinned release's sheet fields: field key to value. A number field takes an integer, a text field a string, a list field an array of strings, a select field the key of its chosen option or null, a conditions field an array of the keys of its marked options (declared options only, each once; stored in the declared order of the options), an inventory field an array of stacks (a catalog stack {gear, quantity} naming gear the field accepts, at most once per field, or a free stack {name, quantity, slots}; quantity 1 to 9999, slots 0 to 100, used slots within the capacity, at most maxStacks stacks; ADR 0045) and a track field {current, max} (max is fixed by the field when it sets one, else required). A field not given takes its default (a number its default or 0, a text "", a list [], conditions [] or inventory [], a track full). An unknown key, a value of the wrong type or out of its bounds is refused.
              * @example {
              *       "role": "Solo",
              *       "reflexes": 7,
@@ -1921,7 +1921,7 @@ export interface components {
              *     }
              */
             values?: {
-                [key: string]: number | string | string[] | ({
+                [key: string]: (number | string | string[] | ({
                     gear: string;
                     quantity: number;
                 } | {
@@ -1931,7 +1931,7 @@ export interface components {
                 })[] | {
                     current: number;
                     max: number;
-                };
+                }) | null;
             } | null;
             /**
              * @description How to create the Character when adding it (ADR 0040): "roll" has the server roll the sheet's dice defaults, "points" spends the sheet's point budget (a value for each budget field). Required when the sheet's budget covers a field with a dice default; refused when the sheet cannot create that way. Ignored when editing.
@@ -1959,7 +1959,7 @@ export interface components {
              */
             freeTags: string[];
             /**
-             * @description One value per field of the pinned release's sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list), an array of the marked option keys in declared order (conditions), an array of stacks (inventory, ADR 0045) or {current, max} (track). Empty when the release has no sheet.
+             * @description One value per field of the pinned release's sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list), an array of the marked option keys in declared order (conditions), the chosen option key or null (select), an array of stacks (inventory, ADR 0045) or {current, max} (track). Empty when the release has no sheet.
              * @example {
              *       "role": "Solo",
              *       "reflexes": 7,
@@ -1973,7 +1973,7 @@ export interface components {
              *     }
              */
             values: {
-                [key: string]: number | string | string[] | ({
+                [key: string]: (number | string | string[] | ({
                     gear: string;
                     quantity: number;
                 } | {
@@ -1983,7 +1983,7 @@ export interface components {
                 })[] | {
                     current: number;
                     max: number;
-                };
+                }) | null;
             };
             /**
              * @description The DerivedValue of each derived field of the pinned release's sheet, named by the field key, in field order: an integer, or null when its formula cannot be evaluated (division by zero, overflow) or reads such a value. Computed from the Character's values and the Campaign's Tracker values as they are now. Empty when the sheet has no derived field.
@@ -2091,11 +2091,11 @@ export interface components {
              */
             group: string | null;
             /**
-             * @description A number is an integer, a text a string, a list an array of strings, a conditions field an array of the keys of its marked options, an inventory field an array of stacks (ADR 0045) and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.
+             * @description A number is an integer, a text a string, a list an array of strings, a conditions field an array of the keys of its marked options, a select field the key of its chosen option or null, an inventory field an array of stacks (ADR 0045) and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.
              * @example number
              * @enum {string}
              */
-            type: "number" | "text" | "list" | "track" | "conditions" | "inventory" | "derived";
+            type: "number" | "text" | "list" | "track" | "conditions" | "select" | "inventory" | "derived";
             /**
              * @description Number: the lowest value (-1000000 when the field sets none). Null for other types.
              * @example 1
@@ -2145,7 +2145,7 @@ export interface components {
              * @example 2
              */
             span: number;
-            /** @description Conditions: the options a Character can be marked with, in declared order; the value is the list of marked option keys, in this order, each once, and a formula reads their count. Null for other types. */
+            /** @description Conditions: the options a Character can be marked with, in declared order; the value is the list of marked option keys, in this order, each once, and a formula reads their count. Select: the options a Character picks one of, in declared order. Null for other types. */
             options: components["schemas"]["ConditionOptionResponse"][] | null;
             /**
              * @description Inventory: the most slots its stacks use together (a stack takes quantity times the slots of one unit); null when it has no slot limit. Null for other types.
@@ -2165,6 +2165,11 @@ export interface components {
              *     ]
              */
             categories: string[] | null;
+            /**
+             * @description Select: the key of the option a Character starts with; null when none is chosen at first. Null for other types.
+             * @example guarded
+             */
+            defaultOption: string | null;
         };
         SheetGroupResponse: {
             /**

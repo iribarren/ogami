@@ -50,6 +50,10 @@ function FieldValue({
       </>
     )
   }
+  if (field.type === 'select') {
+    const chosen = (field.options ?? []).find(({ key }) => key === value)
+    return chosen?.label ?? (typeof value === 'string' ? value : 'None')
+  }
   if (field.type === 'conditions' && Array.isArray(value)) {
     const labels = markedLabels(
       field,
@@ -68,7 +72,7 @@ function FieldValue({
       </ul>
     )
   }
-  if (typeof value === 'object') {
+  if (typeof value === 'object' && value !== null) {
     return `${String(value.current)} / ${String(value.max)}`
   }
   return withUnit(field, String(value), economy)

@@ -11731,7 +11731,7 @@
                         "nullable": true
                     },
                     "values": {
-                        "description": "The values of the pinned release's sheet fields: field key to value. A number field takes an integer, a text field a string, a list field an array of strings, a conditions field an array of the keys of its marked options (declared options only, each once; stored in the declared order of the options), an inventory field an array of stacks (a catalog stack {gear, quantity} naming gear the field accepts, at most once per field, or a free stack {name, quantity, slots}; quantity 1 to 9999, slots 0 to 100, used slots within the capacity, at most maxStacks stacks; ADR 0045) and a track field {current, max} (max is fixed by the field when it sets one, else required). A field not given takes its default (a number its default or 0, a text \"\", a list [], conditions [] or inventory [], a track full). An unknown key, a value of the wrong type or out of its bounds is refused.",
+                        "description": "The values of the pinned release's sheet fields: field key to value. A number field takes an integer, a text field a string, a list field an array of strings, a select field the key of its chosen option or null, a conditions field an array of the keys of its marked options (declared options only, each once; stored in the declared order of the options), an inventory field an array of stacks (a catalog stack {gear, quantity} naming gear the field accepts, at most once per field, or a free stack {name, quantity, slots}; quantity 1 to 9999, slots 0 to 100, used slots within the capacity, at most maxStacks stacks; ADR 0045) and a track field {current, max} (max is fixed by the field when it sets one, else required). A field not given takes its default (a number its default or 0, a text \"\", a list [], conditions [] or inventory [], a track full). An unknown key, a value of the wrong type or out of its bounds is refused.",
                         "type": "object",
                         "example": {
                             "role": "Solo",
@@ -11746,6 +11746,7 @@
                         },
                         "nullable": true,
                         "additionalProperties": {
+                            "nullable": true,
                             "oneOf": [
                                 {
                                     "type": "integer"
@@ -11870,7 +11871,7 @@
                         ]
                     },
                     "values": {
-                        "description": "One value per field of the pinned release's sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list), an array of the marked option keys in declared order (conditions), an array of stacks (inventory, ADR 0045) or {current, max} (track). Empty when the release has no sheet.",
+                        "description": "One value per field of the pinned release's sheet, in field order, named by the field key: an integer (number), a string (text), an array of strings (list), an array of the marked option keys in declared order (conditions), the chosen option key or null (select), an array of stacks (inventory, ADR 0045) or {current, max} (track). Empty when the release has no sheet.",
                         "type": "object",
                         "example": {
                             "role": "Solo",
@@ -11884,6 +11885,7 @@
                             ]
                         },
                         "additionalProperties": {
+                            "nullable": true,
                             "oneOf": [
                                 {
                                     "type": "integer"
@@ -12148,7 +12150,8 @@
                     "options",
                     "capacity",
                     "maxStacks",
-                    "categories"
+                    "categories",
+                    "defaultOption"
                 ],
                 "properties": {
                     "key": {
@@ -12172,7 +12175,7 @@
                         "nullable": true
                     },
                     "type": {
-                        "description": "A number is an integer, a text a string, a list an array of strings, a conditions field an array of the keys of its marked options, an inventory field an array of stacks (ADR 0045) and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.",
+                        "description": "A number is an integer, a text a string, a list an array of strings, a conditions field an array of the keys of its marked options, a select field the key of its chosen option or null, an inventory field an array of stacks (ADR 0045) and a track {current, max}. A derived field holds no value: it is computed from its formula and shown read-only.",
                         "type": "string",
                         "example": "number",
                         "enum": [
@@ -12181,6 +12184,7 @@
                             "list",
                             "track",
                             "conditions",
+                            "select",
                             "inventory",
                             "derived"
                         ]
@@ -12250,7 +12254,7 @@
                         "minimum": 1
                     },
                     "options": {
-                        "description": "Conditions: the options a Character can be marked with, in declared order; the value is the list of marked option keys, in this order, each once, and a formula reads their count. Null for other types.",
+                        "description": "Conditions: the options a Character can be marked with, in declared order; the value is the list of marked option keys, in this order, each once, and a formula reads their count. Select: the options a Character picks one of, in declared order. Null for other types.",
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/ConditionOptionResponse"
@@ -12279,6 +12283,12 @@
                             "Gear",
                             "Food"
                         ],
+                        "nullable": true
+                    },
+                    "defaultOption": {
+                        "description": "Select: the key of the option a Character starts with; null when none is chosen at first. Null for other types.",
+                        "type": "string",
+                        "example": "guarded",
                         "nullable": true
                     }
                 },

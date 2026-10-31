@@ -157,7 +157,7 @@ final class DraftReferences
     }
 
     /**
-     * The places that name this tag: createNpc and createThread effects, condition counts and pick steps.
+     * The places that name this tag: createNpc, createThread and createPlace effects, condition counts and pick steps.
      *
      * @param array<string, mixed> $document
      *
@@ -169,7 +169,7 @@ final class DraftReferences
     }
 
     /**
-     * The places that name this fact slot: fillFact effects and {fact:key} placeholders.
+     * The places that name this fact slot: fillFact and closeThread effects and {fact:key} placeholders.
      *
      * @param array<string, mixed> $document
      *
@@ -547,12 +547,16 @@ final class DraftReferences
                 yield [self::SCENE_TYPE, $effect['sceneType'], $effectPath];
             }
 
-            foreach (\in_array($kind, ['createNpc', 'createThread'], true) ? self::strings($effect['tags'] ?? null) : [] as $tag) {
+            foreach (\in_array($kind, ['createNpc', 'createThread', 'createPlace'], true) ? self::strings($effect['tags'] ?? null) : [] as $tag) {
                 yield [self::TAG, $tag, $effectPath];
             }
 
             if ('fillFact' === $kind && \is_string($effect['slot'] ?? null)) {
                 yield [self::FACT_SLOT, $effect['slot'], $effectPath];
+            }
+
+            if ('closeThread' === $kind && \is_string($effect['fact'] ?? null)) {
+                yield [self::FACT_SLOT, $effect['fact'], $effectPath];
             }
 
             foreach (self::EFFECT_TEXTS as $field) {

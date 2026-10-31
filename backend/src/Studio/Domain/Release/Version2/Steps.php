@@ -36,7 +36,7 @@ final class Steps
     public const string END = 'end';
 
     /** What a pick or a condition count ranges over. */
-    public const array ITEM_KINDS = ['npc', 'thread', 'character'];
+    public const array ITEM_KINDS = ['npc', 'thread', 'place', 'character'];
 
     private const array COMMON = ['key' => true, 'kind' => true, 'title' => true, 'prompt' => false, 'tip' => false, 'mandatory' => false, 'next' => false, 'effects' => false];
 

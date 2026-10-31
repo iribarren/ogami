@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {"tables": [], "likelihood": []},
+  "trackers": [],
+  "factSlots": [{"key": "expedition", "label": "Expedition", "type": "thread"}],
+  "sceneTypes": [
+    {"key": "scene", "name": "Scene", "purpose": "Play a scene.", "oracles": [], "setup": [], "play": [{"key": "begin", "kind": "prompt", "title": "Begin", "effects": [{"kind": "closeThread", "fact": "Expedition!"}]}], "closing": []}
+  ],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

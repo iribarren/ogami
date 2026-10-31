@@ -9,7 +9,7 @@ namespace App\Studio\Domain\Release\Version2;
  * consequence must lower its tracker, or it fires on every turn. In one step list, when a
  * "condition" on tracker T decides a nextScene S effect (some of its bands reach a nextScene S,
  * not all of them), and Scene Type S has no effect lowering T ("set", or "add" with a negative
- * literal), the release publishes with a warning. A condition counting NPCs or Threads has no
+ * literal), the release publishes with a warning. A condition counting NPCs, Threads or Places has no
  * tracker and never warns. Warnings are computed, never stored.
  *
  * @internal

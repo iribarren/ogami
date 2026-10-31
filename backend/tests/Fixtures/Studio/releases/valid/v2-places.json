@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "places", "name": "Places", "description": "The place fact slot type, the createPlace effect, picking and counting Places, tags that apply to Places and closeThread by fact slot."},
+  "oracles": {
+    "tables": [
+      {"key": "rumors", "name": "Rumors", "entries": [{"text": "A site is whispered about", "key": "site", "effects": [{"kind": "createPlace", "name": "The sunken chapel", "tags": ["deep"]}, {"kind": "fillFact", "slot": "site"}]}, {"text": "The expedition ends", "key": "end", "effects": [{"kind": "closeThread", "fact": "expedition"}]}]}
+    ],
+    "likelihood": []
+  },
+  "tags": [
+    {"key": "near", "label": "Near", "appliesTo": ["place"]},
+    {"key": "deep", "label": "Deep", "hint": "Far from town.", "appliesTo": ["place", "thread"]},
+    {"key": "ally", "label": "Ally", "appliesTo": ["character", "npc", "thread", "place"]}
+  ],
+  "trackers": [],
+  "factSlots": [
+    {"key": "site", "label": "Current site", "type": "place"},
+    {"key": "expedition", "label": "Expedition", "type": "thread"}
+  ],
+  "sceneTypes": [
+    {
+      "key": "scene", "name": "Scene", "purpose": "Explore the sites.", "oracles": [],
+      "setup": [],
+      "play": [
+        {"key": "pick-site", "kind": "pick", "title": "Where to?", "of": "place", "tags": ["near"], "mode": "choose", "branches": {"found": {"effects": [{"kind": "fillFact", "slot": "site"}]}, "none": {"next": "count"}}},
+        {"key": "count", "kind": "condition", "title": "How many deep sites?", "count": {"of": "place", "tags": ["deep"]}, "bands": [{"upTo": 0, "next": "meet"}, {}]},
+        {"key": "meet", "kind": "prompt", "title": "A new site", "prompt": "Describe {picked}.", "effects": [{"kind": "createPlace"}, {"kind": "createPlace", "name": "Camp near {picked}", "tags": ["near", "ally"]}, {"kind": "closeThread"}, {"kind": "closeThread", "fact": "expedition"}]}
+      ],
+      "closing": []
+    }
+  ],
+  "flows": [],
+  "sheet": {},
+  "checks": []
+}

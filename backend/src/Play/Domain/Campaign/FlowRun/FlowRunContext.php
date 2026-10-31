@@ -16,6 +16,7 @@ use App\Play\Domain\Campaign\InvalidSceneTitle;
 use App\Play\Domain\Campaign\InventoryFull;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\Place;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\NoCurrentSession;
@@ -167,8 +168,8 @@ final readonly class FlowRunContext
     }
 
     /**
-     * Adds the NPCs or Characters among the items to the current scene's cast; Threads have no
-     * cast. Characters also join the current session's party when $toParty (in a hook).
+     * Adds the NPCs or Characters among the items to the current scene's cast; Threads and Places have
+     * no cast. Characters also join the current session's party when $toParty (in a hook).
      *
      * @throws NoCurrentScene
      */
@@ -177,7 +178,7 @@ final readonly class FlowRunContext
         match ($items->kind) {
             ItemKind::Npc => $this->campaign->addToCurrentSceneCast(array_map(NpcId::fromString(...), $items->ids)),
             ItemKind::Character => $this->campaign->addToCurrentSceneCharacters(array_map(CharacterId::fromString(...), $items->ids), $toParty),
-            ItemKind::Thread => null,
+            ItemKind::Thread, ItemKind::Place => null,
         };
     }
 
@@ -210,6 +211,20 @@ final readonly class FlowRunContext
     }
 
     /**
+     * Creates an open Place (a createPlace Effect, its name already rendered).
+     *
+     * @param list<string> $tags release Tag keys
+     *
+     * @return ?PickedItems the new Place; null when the campaign holds the most Places it can
+     */
+    public function createPlace(string $name, array $tags): ?PickedItems
+    {
+        $place = $this->campaign->createPlaceByEffect($name, $tags, $this->release);
+
+        return $place instanceof Place ? new PickedItems(ItemKind::Place, [$place->id()->toString()]) : null;
+    }
+
+    /**
      * Fills a Fact slot (a fillFact Effect, its text already rendered, or the item picked).
      *
      * @return ?Fact the slot fact; null when a new one would pass the campaign's 500 facts
@@ -236,6 +251,15 @@ final readonly class FlowRunContext
         if ($picked instanceof PickedItems && ItemKind::Thread === $picked->kind) {
             $this->campaign->closeThreadsById($picked->ids);
         }
+    }
+
+    /**
+     * Closes the open Thread that fills a Fact slot (a closeThread Effect with a fact); nothing
+     * happens when the slot holds no Thread.
+     */
+    public function closeThreadOfFactSlot(string $slot): void
+    {
+        $this->campaign->closeThreadOfFactSlot($slot);
     }
 
     /**

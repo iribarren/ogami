@@ -108,7 +108,7 @@ The domain is the source of truth at runtime; the schema file documents the stru
 
 Schema version 2 carries the NarrativeFlow model of [ADR 0017](../adr/0017-narrativeflow-model.md) as amended by [ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md): trackers, fact slots, Scene Types and flows. It replaces the provisional `flow` of version 1. Version 1 releases stay valid and publishable; Play reads them as a GameSystem with no flows.
 
-> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, tags, `pick` steps, `condition` counts, the NPC, Thread and Place effects, `fillFact`, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, the `sheet` with its five field types, including `derived` fields, the formulas of derived fields, band `upTo` and tracker effect `value` ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)), the `character` step and `of: character` in `pick` and `condition` ([ADR 0022](../adr/0022-character-sheets-in-schema-version-2.md)), the `checks` and the `check` step ([ADR 0024](../adr/0024-structured-checks-without-scripting.md)), and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads all of version 2: trackers, fact slots and their hints, tags, table entry metadata, the chaos tracker, Scene Types with their steps, flows with their phases, Scene selections and hooks, `pick` steps, `condition` counts, the NPC and Thread effects and `{picked}`, and the `sheet`'s fields of the four stored types. It fails closed on the `check` step (and ignores `checks`) until slice 3 of `play-checks`, on the `character` step and on `of: character` until slice 4 of `play-characters`, and on `derived` fields until slice 4 of `rules-derived-values`. It reads `{formula}` band `upTo`s and tracker effect `value`s (trackers only) and evaluates them when the band or effect runs; a formula that fails then refuses the action with a 422 and changes nothing. It also applies `fillFact` and renders `{fact:key}` (see [Play behaviour of the fact parts](#play-behaviour-of-the-fact-parts)).
+> **Status:** Studio validates all of schema version 2: the envelope, trackers, fact slots, tags, `pick` steps, `condition` counts, the NPC, Thread and Place effects, `fillFact`, table entries, the chaos tracker, Scene Types with their steps, bands and effects, flows with their phases and selections, the references inside each flow and placeholders, the `sheet` with its five field types, including `derived` fields, the formulas of derived fields, band `upTo` and tracker effect `value` ([ADR 0023](../adr/0023-formula-kernel-and-derived-values.md)), the `character` step and `of: character` in `pick` and `condition` ([ADR 0022](../adr/0022-character-sheets-in-schema-version-2.md)), the `checks` and the `check` step ([ADR 0024](../adr/0024-structured-checks-without-scripting.md)), and it prints the [authoring warnings](#authoring-warning) when publishing. Play reads all of version 2: trackers, fact slots and their hints, tags, table entry metadata, the chaos tracker, Scene Types with their steps, flows with their phases, Scene selections and hooks, `pick` steps, `condition` counts, the NPC, Thread and Place effects and `{picked}`, and the `sheet`'s fields of the four stored types. It fails closed on the `check` step (and ignores `checks`) until slice 3 of `play-checks`, on the `character` step and on `of: character` until slice 4 of `play-characters`, and on `derived` fields until slice 4 of `rules-derived-values`. It reads `{formula}` band `upTo`s and tracker effect `value`s (trackers only) and evaluates them when the band or effect runs; a formula that fails then refuses the action with a 422 and changes nothing. It also applies `fillFact` and renders `{fact:key}` (see [Play behaviour of the fact parts](#play-behaviour-of-the-fact-parts)).
 
 Everything not listed here works as in version 1: the key rule, `gameSystem`, the oracle tables and likelihood oracles with their rules, the oracle key namespace, the `sheet` (version 2 extends it, see [Sheet](#sheet-additive-in-schema-version-2)), optional fields, unknown properties and errors.
 
@@ -205,9 +205,9 @@ A `{step:key}` in a run-once list must name an earlier step. The run-once lists 
 
 **Pattern: an NPC whose agenda comes from a later answer.** A `createNpc` effect renders its `name` and `agenda` once, when it fires, so a later answer cannot reach it. Create the NPC in the step that has every answer it needs, and refer to the earlier answers with `{step:key}`: for example, ask "Who do they serve?" and "What do they want?" first, then a last step whose effect is `createNpc` with `agenda: "{step:wants}, for {step:master}"`.
 
-### Play behaviour of the NPC and Thread parts
+### Play behaviour of the NPC, Thread and Place parts
 
-Play ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) plays them against the campaign's NPCs and Threads, which the player also edits at any time. The candidates of a `pick` and the items a `count` counts are the **open** items of the kind carrying **all** the listed tags; the player's free tags never match.
+Play ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md), [ADR 0047](../adr/0047-places.md)) plays them against the campaign's NPCs, Threads and Places, which the player also edits at any time. The candidates of a `pick` and the items a `count` counts are the **open** items of the kind carrying **all** the listed tags; the player's free tags never match.
 
 | Part | In Play |
 |---|---|
@@ -216,8 +216,8 @@ Play ([ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md)) plays them
 | `pick` outcome | `found` or `none`. Fewer candidates than `min` is `none` (the step shows "No match"). The outcome's `branches` apply after the step's own `effects`. The step writes a journal entry of kind `pick` with the names picked; a skipped `pick` changes nothing |
 | `{picked}` | The names of the items most recently picked or created in the current Scene, joined with ", ", read when rendered; in the text a step shows, "—" before any pick in that Scene or after a skipped one (an Effect's name or text gets nothing). `{answer}` after a `pick` is the same list |
 | `condition` `count` | The number of such open items, compared to the bands like a tracker value |
-| `createNpc` / `createThread` | Creates an open item of weight 1 with the effect's tags and the rendered `name` (`agenda` for an NPC); an omitted or empty name becomes `New <label of the first tag>`, `New NPC` or `New Thread`. The item becomes `{picked}`; a created NPC joins the current Scene's cast. With 500 items of the kind already held nothing is created |
-| `closeThread` | Closes the open Threads in `{picked}`; nothing happens when it holds none |
+| `createNpc` / `createThread` / `createPlace` | Creates an open item of weight 1 with the effect's tags and the rendered `name` (`agenda` for an NPC); an omitted or empty name becomes `New <label of the first tag>`, `New NPC`, `New Thread` or `New Place`. The item becomes `{picked}`; a created NPC joins the current Scene's cast, a Thread or a Place joins none. With 500 items of the kind already held nothing is created |
+| `closeThread` | Without `fact`, closes the open Threads in `{picked}`; nothing happens when it holds none. With `fact`, closes the Thread that fills that `thread` slot, whatever `{picked}` holds (a later scene's picks do not matter); nothing happens when the slot is empty or its Thread is already closed |
 
 Picked and created NPCs join the current Scene's cast, which the player can edit. Scenes stored before schema version 2 gained these parts read with an empty cast.
 
@@ -463,12 +463,12 @@ Slot `hint`s are read and kept in the GameSystem snapshot, shown in the Facts pa
 | Part | In Play |
 |---|---|
 | `fillFact` on a `text` slot | Fills the slot with `text` (default `{answer}`), trimmed and cut to 2000; empty changes nothing |
-| `fillFact` on an `npc` / `thread` slot | Fills it with the first item of that kind in `{picked}`; none changes nothing |
+| `fillFact` on an `npc` / `thread` / `place` slot | Fills it with the first item of that kind in `{picked}`; none changes nothing |
 | `{fact:key}` | The slot's value (the text, or the subject's current name), read when rendered; empty when unfilled |
 
 A filled slot is replaced (its links stay). `fillFact` writes no journal entry of its own. A text slot without `text` and without an answer changes nothing. At 500 facts no slot fact is added, though a filled slot is still replaced. A `{fact:key}` naming a slot the release does not declare fails closed.
 
-The player fills or refills a slot by hand too (a text, an existing NPC or Thread, or a new one by name); a refill keeps the fact's links.
+The player fills or refills a slot by hand too (a text, an existing NPC, Thread or Place, or a new one by name); a refill keeps the fact's links.
 
 ### Authoring warning
 

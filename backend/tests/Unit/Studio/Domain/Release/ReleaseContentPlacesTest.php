@@ -48,6 +48,7 @@ final class ReleaseContentPlacesTest extends TestCase
     public function itAcceptsEveryPlacePartAndKeepsItsCanonicalForm(): void
     {
         $content = ReleaseContent::fromArray(self::release());
+        /** @var array{factSlots: list<array{type: string}>, tags: list<array{appliesTo: list<string>}>} $canonical */
         $canonical = $content->toArray();
 
         self::assertSame([], $content->warnings());

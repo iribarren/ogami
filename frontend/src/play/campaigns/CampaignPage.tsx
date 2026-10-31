@@ -28,6 +28,7 @@ import type { ListKind } from '../lists/useLists'
 import { OraclePanel } from '../oracles/OraclePanel'
 import { TrackersPanel } from '../trackers/TrackersPanel'
 import { visibleTrackers } from '../trackers/useTrackers'
+import { CampaignTransferAction } from './CampaignTransferDialog'
 import { CreditsNotice } from './CreditsNotice'
 import { openPlayPanel } from './openPlayPanel'
 import { PlayPanel } from './PlayPanel'
@@ -121,6 +122,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
             {releaseLabel(campaign.pinnedRelease.gameSystemName, campaign.pinnedRelease.version)}
           </p>
           <ReleaseUpgradeAction campaign={campaign} />
+          <CampaignTransferAction campaign={campaign} />
         </div>
         <CreditsNotice credits={campaign.pinnedRelease.credits} />
       </header>

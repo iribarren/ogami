@@ -105,7 +105,7 @@ final class FactHandlersTest extends TestCase
                 $command();
                 self::fail('The unknown link kind was accepted.');
             } catch (InvalidFact $exception) {
-                self::assertSame('A link is to an "npc", "thread" or "fact", not "scene".', $exception->getMessage());
+                self::assertSame('A link is to an "npc", "thread", "place" or "fact", not "scene".', $exception->getMessage());
             }
         }
 

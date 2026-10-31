@@ -289,6 +289,7 @@ final class Campaign
      * @throws InvalidFact            when two facts fill one slot, or a fact links to itself
      * @throws UnknownNpc             when a link or subject names an NPC the campaign does not hold
      * @throws UnknownThread          when a link or subject names a Thread the campaign does not hold
+     * @throws UnknownPlace           when a link or subject names a Place the campaign does not hold
      * @throws UnknownFact            when a link names a fact the campaign does not hold
      * @throws InvalidPromotion       when a promotion is named by one side only
      */
@@ -1027,12 +1028,34 @@ final class Campaign
     }
 
     /**
+     * Adds an open Place with weight 1 and no free tags, as a createPlace Effect of the FlowRun
+     * does, under a generated id (see GeneratedItemId).
+     *
+     * @param list<string> $tags release Tag keys of the pinned release
+     *
+     * @return ?Place the new Place; null (nothing added) when the campaign already holds 500 Places
+     *
+     * @throws InvalidPlace       when a value breaks a rule
+     * @throws UnknownReleaseTag  when a Tag key is not in the pinned release
+     * @throws TagNotApplicable   when a Tag is limited to other kinds than Places
+     * @throws PlaceAlreadyExists when a Place already holds the generated id
+     */
+    public function createPlaceByEffect(string $name, array $tags, GameSystemSnapshot $release): ?Place
+    {
+        if (\count($this->places) >= self::MAX_PLACES) {
+            return null;
+        }
+
+        return $this->addPlace(GeneratedItemId::place($this->id, \count($this->places)), $name, null, $tags, [], ItemRules::DEFAULT_WEIGHT, $release);
+    }
+
+    /**
      * Fills a Fact slot of the pinned release as a fillFact Effect of the FlowRun does: a filled
      * slot takes the new value (its fact id and links stay); an unfilled one gets a new slot fact
      * under a generated id (see GeneratedItemId).
      *
      * @param ?string   $text    the value of a text slot
-     * @param ?FactLink $subject the value of an NPC or Thread slot
+     * @param ?FactLink $subject the value of an NPC, Thread or Place slot
      *
      * @return ?Fact the slot fact; null (nothing added) when a new one would pass 500 facts
      *
@@ -1040,6 +1063,7 @@ final class Campaign
      * @throws InvalidFact       when the value breaks a rule
      * @throws UnknownNpc        when the subject is an NPC the campaign does not hold
      * @throws UnknownThread     when the subject is a Thread the campaign does not hold
+     * @throws UnknownPlace      when the subject is a Place the campaign does not hold
      * @throws FactAlreadyExists when a new fact's generated id is already held
      */
     public function fillFactByEffect(string $slot, ?string $text, ?FactLink $subject, GameSystemSnapshot $release): ?Fact
@@ -1083,7 +1107,12 @@ final class Campaign
             $fact = $this->facts[$this->factIndexOfSlot($slot->key) ?? -1] ?? null;
             $subject = $fact?->subject();
             $values[$slot->key] = $subject instanceof FactLink
-                ? ($this->itemNames(FactLinkKind::Npc === $subject->kind ? ItemKind::Npc : ItemKind::Thread, [$subject->id])[0] ?? '')
+                ? ($this->itemNames(match ($subject->kind) {
+                    FactLinkKind::Npc => ItemKind::Npc,
+                    FactLinkKind::Thread => ItemKind::Thread,
+                    FactLinkKind::Place => ItemKind::Place,
+                    FactLinkKind::Fact => throw new \LogicException('A slot fact is never filled with another fact.'),
+                }, [$subject->id])[0] ?? '')
                 : ($fact?->text() ?? '');
         }
 
@@ -1103,6 +1132,20 @@ final class Campaign
             if ($thread instanceof Thread) {
                 $this->closeThread($thread->id());
             }
+        }
+    }
+
+    /**
+     * Closes the open Thread that fills a Fact slot (a closeThread Effect of the FlowRun naming a
+     * fact slot); nothing happens when the slot is unfilled, holds no Thread or its Thread is
+     * already closed.
+     */
+    public function closeThreadOfFactSlot(string $slot): void
+    {
+        $subject = $this->facts[$this->factIndexOfSlot($slot) ?? -1] ?? null;
+        $link = $subject?->subject();
+        if ($link instanceof FactLink && FactLinkKind::Thread === $link->kind) {
+            $this->closeThreadsById([$link->id]);
         }
     }
 
@@ -1198,15 +1241,14 @@ final class Campaign
     }
 
     /**
-     * Adds an open Place at the end of the list. No release Tag applies to Places yet (ADR 0047),
-     * so release Tags are refused.
+     * Adds an open Place at the end of the list; its release Tags must apply to Places (ADR 0047).
      *
      * @param list<string> $tags     release Tag keys of the pinned release
      * @param list<string> $freeTags
      *
      * @throws InvalidPlace         when a value breaks a rule
      * @throws UnknownReleaseTag    when a Tag key is not in the pinned release
-     * @throws TagNotApplicable     when a Tag is given (none applies to Places yet)
+     * @throws TagNotApplicable     when a Tag is limited to other kinds than Places
      * @throws PlaceAlreadyExists   when the campaign holds a Place with this id
      * @throws CampaignLimitReached when the campaign already holds 500 Places
      */
@@ -1222,7 +1264,7 @@ final class Campaign
         }
 
         $place = Place::of($id, $name, $notes, $tags, $freeTags, $weight);
-        ItemRules::assertPlaceTags($place->tags(), $release);
+        ItemRules::assertInRelease($place->tags(), $release, ItemKind::Place);
         $this->places = [...$this->places, $place];
 
         return $place;
@@ -1237,14 +1279,14 @@ final class Campaign
      * @throws UnknownPlace      when the campaign holds no Place with this id
      * @throws InvalidPlace      when a value breaks a rule
      * @throws UnknownReleaseTag when a Tag key is not in the pinned release
-     * @throws TagNotApplicable  when a Tag is given (none applies to Places yet)
+     * @throws TagNotApplicable  when a Tag is limited to other kinds than Places
      */
     public function editPlace(PlaceId $id, string $name, ?string $notes, array $tags, array $freeTags, int $weight, GameSystemSnapshot $release): Place
     {
         $this->assertPinned($release);
         $index = $this->placeIndex($id);
         $edited = $this->places[$index]->edited($name, $notes, $tags, $freeTags, $weight);
-        ItemRules::assertPlaceTags($edited->tags(), $release);
+        ItemRules::assertInRelease($edited->tags(), $release, ItemKind::Place);
         $this->places = $this->replaced($this->places, $index, $edited);
 
         return $edited;
@@ -1297,6 +1339,7 @@ final class Campaign
      * @throws InvalidFact          when a value breaks a rule
      * @throws UnknownNpc           when a link names an NPC the campaign does not hold
      * @throws UnknownThread        when a link names a Thread the campaign does not hold
+     * @throws UnknownPlace         when a link names a Place the campaign does not hold
      * @throws UnknownFact          when a link names a fact the campaign does not hold
      * @throws FactAlreadyExists    when the campaign holds a fact with this id
      * @throws CampaignLimitReached when the campaign already holds 500 facts
@@ -1312,7 +1355,7 @@ final class Campaign
 
     /**
      * Fills a Fact slot of the pinned release by hand: a text, an existing NPC or Thread (closed
-     * ones too), or a new NPC or Thread by name, created in the same call (open, weight 1, no
+     * ones too), or a new NPC, Thread or Place by name, created in the same call (open, weight 1, no
      * tags). An unfilled slot gets a new fact under the given id; a filled one keeps its id and
      * links and takes the new value. All or nothing: a refusal creates nothing, not even the NPC.
      *
@@ -1320,6 +1363,7 @@ final class Campaign
      * @throws InvalidFact          when the value does not fit the slot's type, or breaks a rule
      * @throws UnknownNpc           when the subject is an NPC the campaign does not hold
      * @throws UnknownThread        when the subject is a Thread the campaign does not hold
+     * @throws UnknownPlace         when the subject is a Place the campaign does not hold
      * @throws FactAlreadyExists    when a new fact's id is already held
      * @throws CampaignLimitReached when a new fact or NPC or Thread would pass its 500 limit
      * @throws InvalidNpc           when a new NPC's name breaks a rule
@@ -1338,8 +1382,10 @@ final class Campaign
         if (null !== $fill->newName && $subject instanceof FactLink) {
             if (FactLinkKind::Npc === $subject->kind) {
                 $draft->addNpc(NpcId::fromString($subject->id), $fill->newName, null, [], [], ItemRules::DEFAULT_WEIGHT, $release);
-            } else {
+            } elseif (FactLinkKind::Thread === $subject->kind) {
                 $draft->addThread(ThreadId::fromString($subject->id), $fill->newName, [], [], ItemRules::DEFAULT_WEIGHT, $release);
+            } else {
+                $draft->addPlace(PlaceId::fromString($subject->id), $fill->newName, null, [], [], ItemRules::DEFAULT_WEIGHT, $release);
             }
         }
 
@@ -1372,6 +1418,7 @@ final class Campaign
      * @throws InvalidFact   when a value breaks a rule
      * @throws UnknownNpc    when a link names an NPC the campaign does not hold
      * @throws UnknownThread when a link names a Thread the campaign does not hold
+     * @throws UnknownPlace  when a link names a Place the campaign does not hold
      */
     public function editFact(FactId $id, ?string $label, ?string $text, array $links, GameSystemSnapshot $release): Fact
     {
@@ -1405,7 +1452,7 @@ final class Campaign
     }
 
     /**
-     * The number of open NPCs or Threads, or of Characters (which are never closed), carrying all
+     * The number of open NPCs, Threads or Places, or of Characters (which are never closed), carrying all
      * the given release Tag keys (any, when none); free tags never match. What a count condition counts.
      *
      * @param list<string> $tags
@@ -1415,14 +1462,15 @@ final class Campaign
         $items = match ($of) {
             ItemKind::Npc => $this->npcs,
             ItemKind::Thread => $this->threads,
+            ItemKind::Place => $this->places,
             ItemKind::Character => $this->characters,
         };
 
-        return \count(array_filter($items, static fn (Npc|Thread|Character $item): bool => ($item instanceof Character || $item->isOpen()) && $item->carries($tags)));
+        return \count(array_filter($items, static fn (Npc|Thread|Place|Character $item): bool => ($item instanceof Character || $item->isOpen()) && $item->carries($tags)));
     }
 
     /**
-     * The candidates of a pick step: the open NPCs or Threads, or every Character, carrying all
+     * The candidates of a pick step: the open NPCs, Threads or Places, or every Character, carrying all
      * the given release Tag keys (any, when none), in list order; free tags never match.
      *
      * @param list<string> $tags
@@ -1432,17 +1480,18 @@ final class Campaign
         $items = match ($of) {
             ItemKind::Npc => $this->npcs,
             ItemKind::Thread => $this->threads,
+            ItemKind::Place => $this->places,
             ItemKind::Character => $this->characters,
         };
 
         return new PickCandidates(array_values(array_map(
-            static fn (Npc|Thread|Character $item): PickCandidate => new PickCandidate($item->id()->toString(), $item->name(), $item instanceof Character ? 1 : $item->weight()),
-            array_filter($items, static fn (Npc|Thread|Character $item): bool => ($item instanceof Character || $item->isOpen()) && $item->carries($tags)),
+            static fn (Npc|Thread|Place|Character $item): PickCandidate => new PickCandidate($item->id()->toString(), $item->name(), $item instanceof Character ? 1 : $item->weight()),
+            array_filter($items, static fn (Npc|Thread|Place|Character $item): bool => ($item instanceof Character || $item->isOpen()) && $item->carries($tags)),
         )));
     }
 
     /**
-     * The current names of NPCs, Threads or Characters by id, in the order of the ids; an id the campaign does
+     * The current names of NPCs, Threads, Places or Characters by id, in the order of the ids; an id the campaign does
      * not hold has none.
      *
      * @param list<string> $ids
@@ -1454,11 +1503,12 @@ final class Campaign
         $items = match ($of) {
             ItemKind::Npc => $this->npcs,
             ItemKind::Thread => $this->threads,
+            ItemKind::Place => $this->places,
             ItemKind::Character => $this->characters,
         };
         $names = [];
         foreach ($ids as $id) {
-            $item = array_find($items, static fn (Npc|Thread|Character $held): bool => $held->id()->toString() === $id);
+            $item = array_find($items, static fn (Npc|Thread|Place|Character $held): bool => $held->id()->toString() === $id);
             if (null !== $item) {
                 $names[] = $item->name();
             }
@@ -1860,7 +1910,7 @@ final class Campaign
      */
     private function adopt(self $draft): void
     {
-        [$this->sessions, $this->trackerValues, $this->flowRun, $this->npcs, $this->threads, $this->facts, $this->characters, $this->flowNotes] = [$draft->sessions, $draft->trackerValues, $draft->flowRun, $draft->npcs, $draft->threads, $draft->facts, $draft->characters, $draft->flowNotes];
+        [$this->sessions, $this->trackerValues, $this->flowRun, $this->npcs, $this->threads, $this->places, $this->facts, $this->characters, $this->flowNotes] = [$draft->sessions, $draft->trackerValues, $draft->flowRun, $draft->npcs, $draft->threads, $draft->places, $draft->facts, $draft->characters, $draft->flowNotes];
     }
 
     /**
@@ -1981,6 +2031,7 @@ final class Campaign
      * @throws CampaignLimitReached when the campaign already holds 500 facts
      * @throws UnknownNpc           when a link names an NPC the campaign does not hold
      * @throws UnknownThread        when a link names a Thread the campaign does not hold
+     * @throws UnknownPlace         when a link names a Place the campaign does not hold
      * @throws UnknownFact          when a link names a fact the campaign does not hold
      */
     private function newFact(FactId $id, Fact $fact): Fact
@@ -2012,6 +2063,7 @@ final class Campaign
      * @throws InvalidFact          when two facts fill one slot
      * @throws UnknownNpc           when a link or subject names an NPC the campaign does not hold
      * @throws UnknownThread        when a link or subject names a Thread the campaign does not hold
+     * @throws UnknownPlace         when a link or subject names a Place the campaign does not hold
      * @throws UnknownFact          when a link names a fact the campaign does not hold
      * @throws InvalidPromotion     when a promotion is named by one side only
      * @throws InvalidSessionParty  when a session's party names a Character the campaign does not hold
@@ -2103,6 +2155,7 @@ final class Campaign
     /**
      * @throws UnknownNpc
      * @throws UnknownThread
+     * @throws UnknownPlace
      * @throws UnknownFact
      */
     private function assertLinkResolves(FactLink $link): void
@@ -2110,6 +2163,7 @@ final class Campaign
         match ($link->kind) {
             FactLinkKind::Npc => $this->npcIndex(NpcId::fromString($link->id)),
             FactLinkKind::Thread => $this->threadIndex(ThreadId::fromString($link->id)),
+            FactLinkKind::Place => $this->placeIndex(PlaceId::fromString($link->id)),
             FactLinkKind::Fact => $this->factIndex(FactId::fromString($link->id)),
         };
     }

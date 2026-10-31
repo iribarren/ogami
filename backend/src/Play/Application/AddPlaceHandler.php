@@ -30,7 +30,7 @@ final readonly class AddPlaceHandler implements CommandHandler
      * @throws CampaignNotFound
      * @throws InvalidPlace                    when a value breaks a rule, or the id is blank
      * @throws UnknownReleaseTag               when a Tag is not in the pinned release
-     * @throws TagNotApplicable                when a Tag is given (none applies to Places yet)
+     * @throws TagNotApplicable                when a Tag is limited to other kinds than Places
      * @throws PlaceAlreadyExists              when the campaign holds a Place with this id
      * @throws CampaignLimitReached            when the campaign already holds 500 Places
      * @throws CampaignModifiedConcurrently    when another request saved the campaign meanwhile

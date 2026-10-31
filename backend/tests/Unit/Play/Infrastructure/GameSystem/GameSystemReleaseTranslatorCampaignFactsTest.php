@@ -110,7 +110,7 @@ final class GameSystemReleaseTranslatorCampaignFactsTest extends TestCase
         $fill = 'sceneTypes.0.play.1.effects.0';
         $fillPath = 'sceneTypes[0].play[1].effects[0]';
         yield 'slot hint' => ['factSlots.0.hint', 5, 'factSlots[0].hint: must be a string.'];
-        yield 'slot type' => ['factSlots.0.type', 'place', 'factSlots[0].type: unknown fact slot type "place".'];
+        yield 'slot type' => ['factSlots.0.type', 'region', 'factSlots[0].type: unknown fact slot type "region".'];
         yield 'fillFact without slot' => [$fill.'.slot', null, $fillPath.'.slot: must be a string.'];
         yield 'fillFact slot type' => [$fill.'.slot', 5, $fillPath.'.slot: must be a string.'];
         yield 'fillFact unknown slot' => [$fill.'.slot', 'ghost', $fillPath.'.slot: unknown fact slot "ghost".'];

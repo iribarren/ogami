@@ -7,11 +7,10 @@ namespace App\Play\Domain\Campaign\Lists;
 /**
  * A site of a campaign (a town, a dungeon, a camp), with optional notes, free tags only the player
  * reads, and a weight (1 to 3) that will make a random pick favour it. Open while in play, closed
- * once cleared or lost. It may carry release Tags in its shape, but no release Tag applies to
- * Places yet (ADR 0047), so the Campaign refuses them.
+ * once cleared or lost. It carries release Tags that apply to Places (ADR 0047).
  *
  * The rules are checked here, so a stored Place read back is checked too; whether the release Tags
- * exist in the pinned release is the Campaign's check (ItemRules::assertPlaceTags()).
+ * exist in the pinned release is the Campaign's check (ItemRules::assertInRelease()).
  */
 final readonly class Place
 {
@@ -131,5 +130,15 @@ final readonly class Place
     public function isOpen(): bool
     {
         return ItemStatus::Open === $this->status;
+    }
+
+    /**
+     * @param list<string> $tags release Tag keys
+     *
+     * @return bool whether it carries all of them (any, when none are given)
+     */
+    public function carries(array $tags): bool
+    {
+        return [] === array_diff($tags, $this->tags);
     }
 }

@@ -31,6 +31,8 @@ use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\SceneKind;
+use App\Play\Domain\GameSystem\FactSlot;
+use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Infrastructure\GameSystem\GameSystemReleaseTranslator;
 use PHPUnit\Framework\Attributes\Test;
@@ -302,11 +304,17 @@ trait CampaignRepositoryContract
             Place::of(PlaceId::fromString('place-1'), 'Saltmarsh', 'A fishing town', [], ['Town', 'Harbour'], 3),
             Place::of(PlaceId::fromString('place-2'), 'Dunmere', null, [], [], 1, ItemStatus::Closed),
         ];
-        $campaign = Campaign::reconstitute(CampaignId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6003'), self::OWNER, 'The marches', PinnedRelease::of('free-journal', 1, 'Free journal'), new \DateTimeImmutable('2026-10-31T09:00:00+00:00'), [], places: $places);
+        // A slot fact whose subject is a Place, and a free fact linking one.
+        $facts = [
+            Fact::of(FactId::fromString('fact-1'), 'site', null, null, FactLink::place(PlaceId::fromString('place-1')), []),
+            Fact::of(FactId::fromString('fact-2'), null, 'Guild', 'Meets here', null, [FactLink::place(PlaceId::fromString('place-2'))]),
+        ];
+        $campaign = Campaign::reconstitute(CampaignId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6003'), self::OWNER, 'The marches', PinnedRelease::of('free-journal', 1, 'Free journal'), new \DateTimeImmutable('2026-10-31T09:00:00+00:00'), [], facts: $facts, places: $places);
         $this->campaigns()->add($campaign);
 
         $loaded = $this->reloaded($campaign);
         self::assertEquals($places, $loaded->places());
+        self::assertEquals($facts, $loaded->facts(new GameSystemSnapshot('free-journal', 'Free journal', 1, null, [], [], factSlots: [new FactSlot('site', 'Site', FactSlotType::Place)])));
 
         $loaded->closePlace(PlaceId::fromString('place-1'));
         $loaded->editPlace(PlaceId::fromString('place-2'), 'Dunmere Keep', 'Ruined', [], ['Ruin'], 2, new GameSystemSnapshot('free-journal', 'Free journal', 1, null, [], []));

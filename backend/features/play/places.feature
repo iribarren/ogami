@@ -13,11 +13,11 @@ Feature: Keep a campaign's Places
       | name      | notes          | free tags | weight | status |
       | Saltmarsh | A fishing town | Town      | 1      | open   |
 
-  Scenario: A Place takes no Tag of the release yet
+  Scenario: A Place takes a Tag of the release
     When I try to add the Place "Saltmarsh" with the Tag "rival"
-    Then I am told that no Tag applies to Places
-    And my Places are:
-      | name | notes | free tags | weight | status |
+    Then my Places are:
+      | name      | notes | free tags | weight | status |
+      | Saltmarsh |       |           | 1      | open   |
 
   Scenario: I edit a Place, close it and reopen it
     Given I added the Place "Saltmarsh" with the notes "A fishing town" and the free tag "Town"

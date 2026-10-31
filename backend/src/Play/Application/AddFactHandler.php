@@ -61,6 +61,6 @@ final readonly class AddFactHandler implements CommandHandler
      */
     public static function links(array $links): array
     {
-        return array_map(static fn (array $link): FactLink => FactLink::of(FactLinkKind::tryFrom($link['kind']) ?? throw InvalidFact::because(\sprintf('A link is to an "npc", "thread" or "fact", not "%s".', $link['kind'])), $link['id']), $links);
+        return array_map(static fn (array $link): FactLink => FactLink::of(FactLinkKind::tryFrom($link['kind']) ?? throw InvalidFact::because(\sprintf('A link is to an "npc", "thread", "place" or "fact", not "%s".', $link['kind'])), $link['id']), $links);
     }
 }

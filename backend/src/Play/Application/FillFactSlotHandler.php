@@ -12,12 +12,16 @@ use App\Play\Domain\Campaign\Facts\FactFill;
 use App\Play\Domain\Campaign\Facts\InvalidFact;
 use App\Play\Domain\Campaign\Facts\UnknownFactSlot;
 use App\Play\Domain\Campaign\Lists\InvalidNpc;
+use App\Play\Domain\Campaign\Lists\InvalidPlace;
 use App\Play\Domain\Campaign\Lists\InvalidThread;
 use App\Play\Domain\Campaign\Lists\NpcAlreadyExists;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\PlaceAlreadyExists;
+use App\Play\Domain\Campaign\Lists\PlaceId;
 use App\Play\Domain\Campaign\Lists\ThreadAlreadyExists;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
+use App\Play\Domain\Campaign\Lists\UnknownPlace;
 use App\Play\Domain\Campaign\Lists\UnknownThread;
 use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -34,6 +38,7 @@ final readonly class FillFactSlotHandler implements CommandHandler
         private FactIdGenerator $factIds,
         private NpcIdGenerator $npcIds,
         private ThreadIdGenerator $threadIds,
+        private PlaceIdGenerator $placeIds,
     ) {
     }
 
@@ -43,12 +48,15 @@ final readonly class FillFactSlotHandler implements CommandHandler
      * @throws InvalidFact                     when not exactly one value is sent, or it does not fit the slot's type or breaks a rule
      * @throws UnknownNpc                      when the subject is an NPC the campaign does not hold
      * @throws UnknownThread                   when the subject is a Thread the campaign does not hold
+     * @throws UnknownPlace                    when the subject is a Place the campaign does not hold
      * @throws InvalidNpc                      when a new NPC's name breaks a rule
      * @throws InvalidThread                   when a new Thread's name breaks a rule
+     * @throws InvalidPlace                    when a new Place's name breaks a rule
      * @throws FactAlreadyExists               when a new fact's id is already held
      * @throws NpcAlreadyExists                when a new NPC's id is already held
      * @throws ThreadAlreadyExists             when a new Thread's id is already held
-     * @throws CampaignLimitReached            when a new fact, NPC or Thread would pass its 500 limit
+     * @throws PlaceAlreadyExists              when a new Place's id is already held
+     * @throws CampaignLimitReached            when a new fact, NPC, Thread or Place would pass its 500 limit
      * @throws CampaignModifiedConcurrently    when another request saved the campaign meanwhile
      * @throws GameSystemReleaseNotFound       when the pinned release can no longer be read
      * @throws UnsupportedReleaseSchemaVersion
@@ -82,6 +90,7 @@ final readonly class FillFactSlotHandler implements CommandHandler
         return match ($type) {
             FactSlotType::Npc => null === $command->subject ? FactFill::newNpc($this->npcIds->generate(), (string) $command->name) : FactFill::existingNpc(NpcId::fromString($command->subject)),
             FactSlotType::Thread => null === $command->subject ? FactFill::newThread($this->threadIds->generate(), (string) $command->name) : FactFill::existingThread(ThreadId::fromString($command->subject)),
+            FactSlotType::Place => null === $command->subject ? FactFill::newPlace($this->placeIds->generate(), (string) $command->name) : FactFill::existingPlace(PlaceId::fromString($command->subject)),
             FactSlotType::Text => throw InvalidFact::because('A "text" slot takes a text.'),
         };
     }

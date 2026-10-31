@@ -31,7 +31,7 @@ final readonly class EditPlaceHandler implements CommandHandler
      * @throws UnknownPlace                    when the campaign holds no Place with this id
      * @throws InvalidPlace                    when a value breaks a rule
      * @throws UnknownReleaseTag               when a Tag is not in the pinned release
-     * @throws TagNotApplicable                when a Tag is given (none applies to Places yet)
+     * @throws TagNotApplicable                when a Tag is limited to other kinds than Places
      * @throws CampaignModifiedConcurrently    when another request saved the campaign meanwhile
      * @throws GameSystemReleaseNotFound       when the pinned release can no longer be read
      * @throws UnsupportedReleaseSchemaVersion

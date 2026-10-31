@@ -46,9 +46,9 @@ final class CampaignFactsApiTest extends WebTestCase
 {
     private const string PASSWORD = 'secret123';
     private const string UNKNOWN_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f6999';
-    private const string MALFORMED_ADD = 'Send a JSON object with string "label" and "text" and, optionally, a list or null "links" of {"kind": "npc" | "thread" | "fact", "id": "<uuid>"}, such as {"label": "The guild", "text": "Owes a debt.", "links": [{"kind": "npc", "id": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"}]}.';
-    private const string MALFORMED_EDIT = 'Send a JSON object with a list "links" of {"kind": "npc" | "thread" | "fact", "id": "<uuid>"} and string or null "label" and "text", such as {"label": "The guild", "text": "Owes a debt.", "links": []}.';
-    private const string MALFORMED_FILL = 'Send a JSON object with exactly one of a string "text", a "subject" (the UUID of an NPC or Thread) and a string "name" (a new NPC or Thread), such as {"text": "Ashford"}.';
+    private const string MALFORMED_ADD = 'Send a JSON object with string "label" and "text" and, optionally, a list or null "links" of {"kind": "npc" | "thread" | "place" | "fact", "id": "<uuid>"}, such as {"label": "The guild", "text": "Owes a debt.", "links": [{"kind": "npc", "id": "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"}]}.';
+    private const string MALFORMED_EDIT = 'Send a JSON object with a list "links" of {"kind": "npc" | "thread" | "place" | "fact", "id": "<uuid>"} and string or null "label" and "text", such as {"label": "The guild", "text": "Owes a debt.", "links": []}.';
+    private const string MALFORMED_FILL = 'Send a JSON object with exactly one of a string "text", a "subject" (the UUID of an NPC, Thread or Place) and a string "name" (a new NPC, Thread or Place), such as {"text": "Ashford"}.';
 
     private KernelBrowser $client;
 
@@ -412,7 +412,7 @@ final class CampaignFactsApiTest extends WebTestCase
         $factId = $this->addFact($id, ['label' => 'Guild', 'text' => 'Owes a debt']);
         $before = $this->campaignFacts($id);
 
-        foreach (['npc', 'thread', 'fact'] as $kind) {
+        foreach (['npc', 'thread', 'place', 'fact'] as $kind) {
             $body = ['label' => 'L', 'text' => 'T', 'links' => [['kind' => $kind, 'id' => self::UNKNOWN_ID]]];
 
             $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/facts', $id), $body);
@@ -423,6 +423,53 @@ final class CampaignFactsApiTest extends WebTestCase
         }
 
         self::assertSame($before, $this->campaignFacts($id));
+    }
+
+    #[Test]
+    public function aFreeFactLinksAPlaceAndAPlaceSlotIsFilledByIdOrByName(): void
+    {
+        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
+        self::getContainer()->get(CommandBus::class)->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9002', ReleaseViews::fixtureContent('valid/v2-places'), false));
+        $this->client->jsonRequest('POST', '/api/campaigns', ['name' => 'The job', 'gameSystemKey' => 'places']);
+        $id = $this->idOfResponse();
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/places', $id), ['name' => 'Saltmarsh']);
+        self::assertResponseStatusCodeSame(201);
+        $placeId = $this->idOfResponse();
+
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/facts', $id), ['label' => 'Guild', 'text' => 'Meets here', 'links' => [['kind' => 'place', 'id' => $placeId]]]);
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame([['kind' => 'place', 'id' => $placeId, 'name' => 'Saltmarsh']], $this->json()['links'] ?? null);
+
+        $this->client->jsonRequest('PUT', \sprintf('/api/campaigns/%s/fact-slots/site', $id), ['subject' => $placeId]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['subject' => ['kind' => 'place', 'id' => $placeId, 'name' => 'Saltmarsh'], 'value' => 'Saltmarsh'], array_intersect_key($this->json(), ['subject' => 1, 'value' => 1]));
+
+        $this->client->jsonRequest('PUT', \sprintf('/api/campaigns/%s/fact-slots/site', $id), ['name' => '  Dunmere ']);
+        self::assertResponseIsSuccessful();
+        self::assertSame('Dunmere', $this->json()['value'] ?? null);
+        self::assertSame(['Saltmarsh', 'Dunmere'], array_column($this->campaignPlaces($id), 'name'));
+
+        foreach ([[['subject' => self::UNKNOWN_ID], 404], [['name' => ' '], 422], [['name' => str_repeat('a', 201)], 422], [['text' => 'Saltmarsh'], 422]] as [$body, $status]) {
+            $this->client->jsonRequest('PUT', \sprintf('/api/campaigns/%s/fact-slots/site', $id), $body);
+            self::assertResponseStatusCodeSame($status);
+        }
+
+        self::assertSame(['Saltmarsh', 'Dunmere'], array_column($this->campaignPlaces($id), 'name'));
+    }
+
+    /**
+     * @return list<array<string, mixed>> the Places of the campaign as GET /api/campaigns/{id} shows them
+     */
+    private function campaignPlaces(string $id): array
+    {
+        $this->client->request('GET', '/api/campaigns/'.$id);
+        $places = $this->json()['places'] ?? null;
+        self::assertIsArray($places);
+
+        /** @var list<array<string, mixed>> $list */
+        $list = array_values($places);
+
+        return $list;
     }
 
     #[Test]

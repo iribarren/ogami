@@ -17,6 +17,7 @@ use App\Play\Domain\Campaign\Lists\TagNotApplicable;
 use App\Play\Domain\Campaign\Lists\UnknownPlace;
 use App\Play\Domain\Campaign\Lists\UnknownReleaseTag;
 use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\Tag;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -26,7 +27,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * A campaign keeps the player's Places: every rule fails closed, every command is all or nothing,
- * and open Places list first. No release Tag applies to Places yet, so they take free Tags only.
+ * and open Places list first. Release Tags must apply to Places (ADR 0047).
  */
 #[CoversClass(Campaign::class)]
 #[CoversClass(Place::class)]
@@ -40,7 +41,7 @@ final class CampaignPlacesTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->release = new GameSystemSnapshot('heist', 'Heist', 1, null, [], [], tags: [new Tag('ally', 'Ally'), new Tag('rival', 'Rival')]);
+        $this->release = new GameSystemSnapshot('heist', 'Heist', 1, null, [], [], tags: [new Tag('ally', 'Ally'), new Tag('rival', 'Rival', appliesTo: [ItemKind::Npc]), new Tag('near', 'Near', appliesTo: [ItemKind::Place])]);
     }
 
     #[Test]
@@ -75,6 +76,17 @@ final class CampaignPlacesTest extends TestCase
         self::assertSame([null, null], [$place->notes(), $none->notes()]);
     }
 
+    #[Test]
+    public function aPlaceCarriesTheReleaseTagsThatApplyToPlaces(): void
+    {
+        $campaign = $this->campaign();
+
+        $place = $campaign->addPlace(PlaceId::fromString('place-1'), 'Saltmarsh', null, ['ally', 'near'], [], 1, $this->release);
+        $edited = $campaign->editPlace(PlaceId::fromString('place-1'), 'Saltmarsh', null, ['near'], [], 1, $this->release);
+
+        self::assertSame([['ally', 'near'], ['near']], [$place->tags(), $edited->tags()]);
+    }
+
     /**
      * @return iterable<string, array{array<string, mixed>, class-string<\Throwable>, string}>
      */
@@ -85,7 +97,7 @@ final class CampaignPlacesTest extends TestCase
         yield 'notes over 2000 characters' => [['notes' => str_repeat('a', 2001)], InvalidPlace::class, 'The notes must be at most 2000 characters, got 2001.'];
         yield 'weight out of range' => [['weight' => 4], InvalidPlace::class, 'The weight must be 1 to 3, got 4.'];
         yield 'repeated free tag' => [['freeTags' => ['Town', 'town']], InvalidPlace::class, 'Free tag "town" is listed twice.'];
-        yield 'release Tag of the pinned release' => [['tags' => ['rival']], TagNotApplicable::class, 'Tag "rival" does not apply to Places.'];
+        yield 'release Tag limited to other kinds' => [['tags' => ['rival']], TagNotApplicable::class, 'Tag "rival" does not apply to Places.'];
         yield 'release Tag the release does not define' => [['tags' => ['boss']], UnknownReleaseTag::class, 'Tag "boss" not found in the pinned release.'];
     }
 

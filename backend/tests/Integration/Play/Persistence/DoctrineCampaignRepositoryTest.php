@@ -210,8 +210,8 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'scene number not an integer' => [['sceneNumber' => '1'], 'Stored campaign FlowRun: "sceneNumber" must be an integer.'];
         yield 'answer not a string' => [['answers' => ['plan' => 3]], 'Stored campaign FlowRun: "answers" must be an object of strings.'];
         yield 'unknown phase ending' => [['phaseEnding' => 'later'], 'Stored campaign FlowRun: "phaseEnding" must be one of "endPhase", "moveOn", "finished".'];
-        yield 'picked not an object' => [['picked' => 'Ana'], 'Stored campaign FlowRun: "kind" must be one of "npc", "thread", "character".'];
-        yield 'picked of an unknown kind' => [['picked' => ['kind' => 'faction', 'ids' => ['a']]], 'Stored campaign FlowRun: "kind" must be one of "npc", "thread", "character".'];
+        yield 'picked not an object' => [['picked' => 'Ana'], 'Stored campaign FlowRun: "kind" must be one of "npc", "thread", "place", "character".'];
+        yield 'picked of an unknown kind' => [['picked' => ['kind' => 'faction', 'ids' => ['a']]], 'Stored campaign FlowRun: "kind" must be one of "npc", "thread", "place", "character".'];
         yield 'picked ids not a list' => [['picked' => ['kind' => 'npc', 'ids' => 'a']], 'Stored campaign FlowRun: "picked" must be a list.'];
         yield 'a picked id not a string' => [['picked' => ['kind' => 'npc', 'ids' => [1]]], 'Stored campaign FlowRun: "picked" must be a list of id strings.'];
         yield 'picked without ids' => [['picked' => ['kind' => 'npc', 'ids' => []]], 'Stored campaign FlowRun: "picked" is invalid: Picked items hold 1 to 10 ids, got 0.'];
@@ -1401,11 +1401,11 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'free fact with a subject' => ['facts', $fact(['subject' => ['kind' => 'npc', 'id' => 'npc-1']]), 'A free fact has no subject.'];
         yield 'slot fact with a label' => ['facts', $fact(['slot' => 'city']), 'A slot fact has no label; the slot has one.'];
         yield 'slot fact with a text and a subject' => ['facts', $fact(['slot' => 'city', 'label' => null, 'subject' => ['kind' => 'npc', 'id' => 'npc-1']]), 'A slot fact holds a text or a subject, not both and not neither.'];
-        yield 'slot fact with a fact as subject' => ['facts', $fact(['slot' => 'city', 'label' => null, 'text' => null, 'subject' => ['kind' => 'fact', 'id' => 'fact-2']]), 'A subject is an NPC or a Thread.'];
-        yield 'subject with an unknown kind' => ['facts', $fact(['slot' => 'city', 'label' => null, 'text' => null, 'subject' => ['kind' => 'place', 'id' => 'p']]), 'Stored campaign facts: "subject" must be a link with kind "npc", "thread" or "fact".'];
+        yield 'slot fact with a fact as subject' => ['facts', $fact(['slot' => 'city', 'label' => null, 'text' => null, 'subject' => ['kind' => 'fact', 'id' => 'fact-2']]), 'A subject is an NPC, a Thread or a Place.'];
+        yield 'subject with an unknown kind' => ['facts', $fact(['slot' => 'city', 'label' => null, 'text' => null, 'subject' => ['kind' => 'region', 'id' => 'p']]), 'Stored campaign facts: "subject" must be a link with kind "npc", "thread", "place" or "fact".'];
         yield 'subject without an id' => ['facts', $fact(['slot' => 'city', 'label' => null, 'text' => null, 'subject' => ['kind' => 'npc']]), 'Stored campaign facts: "id" must be a string.'];
         yield 'links not a list' => ['facts', $fact(['links' => 'npc-1']), 'Stored campaign facts: "links" must be a list of links.'];
-        yield 'link with an unknown kind' => ['facts', $fact(['links' => [['kind' => 'place', 'id' => 'p']]]), 'Stored campaign facts: "links" must be a link with kind "npc", "thread" or "fact".'];
+        yield 'link with an unknown kind' => ['facts', $fact(['links' => [['kind' => 'region', 'id' => 'p']]]), 'Stored campaign facts: "links" must be a link with kind "npc", "thread", "place" or "fact".'];
         yield 'link without an id' => ['facts', $fact(['links' => [['kind' => 'npc', 'id' => 4]]]), 'Stored campaign facts: "id" must be a string.'];
         yield 'link listed twice' => ['facts', $fact(['links' => [['kind' => 'npc', 'id' => 'npc-1'], ['kind' => 'npc', 'id' => 'npc-1']]]), 'The npc "npc-1" is linked twice.'];
         yield 'link to itself' => ['facts', $fact(['links' => [['kind' => 'fact', 'id' => 'fact-1']]]), 'A fact cannot link to itself.'];

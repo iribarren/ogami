@@ -12,6 +12,7 @@ use App\Play\Domain\Campaign\Facts\FactId;
 use App\Play\Domain\Campaign\Facts\FactLink;
 use App\Play\Domain\Campaign\Facts\FactLinkKind;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\PlaceId;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Scene;
 use App\Play\Domain\Campaign\Session;
@@ -113,6 +114,7 @@ final readonly class GetCampaignHandler implements QueryHandler
         $name = match ($link->kind) {
             FactLinkKind::Npc => $campaign->npc(NpcId::fromString($link->id))?->name(),
             FactLinkKind::Thread => $campaign->thread(ThreadId::fromString($link->id))?->name(),
+            FactLinkKind::Place => $campaign->place(PlaceId::fromString($link->id))?->name(),
             FactLinkKind::Fact => ($target = $campaign->fact(FactId::fromString($link->id))) instanceof Fact ? self::factLabel($target, $snapshot) : null,
         };
 

@@ -17,12 +17,16 @@ use App\Play\Domain\Campaign\Facts\InvalidFact;
 use App\Play\Domain\Campaign\Facts\UnknownFact;
 use App\Play\Domain\Campaign\Facts\UnknownFactSlot;
 use App\Play\Domain\Campaign\Lists\InvalidNpc;
+use App\Play\Domain\Campaign\Lists\InvalidPlace;
 use App\Play\Domain\Campaign\Lists\ItemStatus;
 use App\Play\Domain\Campaign\Lists\Npc;
 use App\Play\Domain\Campaign\Lists\NpcAlreadyExists;
 use App\Play\Domain\Campaign\Lists\NpcId;
+use App\Play\Domain\Campaign\Lists\PlaceAlreadyExists;
+use App\Play\Domain\Campaign\Lists\PlaceId;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Lists\UnknownNpc;
+use App\Play\Domain\Campaign\Lists\UnknownPlace;
 use App\Play\Domain\Campaign\Lists\UnknownThread;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\FactSlot;
@@ -53,6 +57,7 @@ final class CampaignFactsTest extends TestCase
             new FactSlot('city', 'City', FactSlotType::Text),
             new FactSlot('prince', 'The Prince', FactSlotType::Npc, 'Who rules?'),
             new FactSlot('goal', 'Goal', FactSlotType::Thread),
+            new FactSlot('site', 'Site', FactSlotType::Place),
         ]);
     }
 
@@ -245,6 +250,84 @@ final class CampaignFactsTest extends TestCase
         $fact = $campaign->fillFactSlot($this->id('fact-1'), 'goal', FactFill::existingThread(ThreadId::fromString('thread-1')), $this->release);
 
         self::assertSame([FactLinkKind::Thread, 'thread-1'], [$fact->subject()?->kind, $fact->subject()?->id]);
+    }
+
+    #[Test]
+    public function aPlaceSlotTakesAnExistingOrANewPlaceAndTheValueIsItsCurrentName(): void
+    {
+        $campaign = $this->campaign();
+        $campaign->addPlace(PlaceId::fromString('place-1'), 'Saltmarsh', null, [], [], 1, $this->release);
+
+        $fact = $campaign->fillFactSlot($this->id('fact-1'), 'site', FactFill::existingPlace(PlaceId::fromString('place-1')), $this->release);
+        self::assertSame([FactLinkKind::Place, 'place-1', 'Saltmarsh'], [$fact->subject()?->kind, $fact->subject()?->id, $campaign->factValues($this->release)['site']]);
+
+        $campaign->editPlace(PlaceId::fromString('place-1'), 'Saltmarsh Bay', null, [], [], 1, $this->release);
+        self::assertSame('Saltmarsh Bay', $campaign->factValues($this->release)['site']);
+
+        $refilled = $campaign->fillFactSlot($this->id('ignored'), 'site', FactFill::newPlace(PlaceId::fromString('place-2'), '  Dunmere '), $this->release);
+        $place = $campaign->place(PlaceId::fromString('place-2'));
+        self::assertSame(['fact-1', 'place-2', 'Dunmere', 1, ItemStatus::Open, null], [$refilled->id()->toString(), $refilled->subject()?->id, $place?->name(), $place?->weight(), $place?->status(), $place?->notes()]);
+    }
+
+    #[Test]
+    public function aRefusedFillThatWouldCreateAPlaceCreatesNothing(): void
+    {
+        $campaign = $this->campaign();
+        $campaign->addPlace(PlaceId::fromString('place-1'), 'Saltmarsh', null, [], [], 1, $this->release);
+
+        foreach ([
+            ['site', FactFill::newPlace(PlaceId::fromString('place-2'), ' '), InvalidPlace::class],
+            ['site', FactFill::newPlace(PlaceId::fromString('place-1'), 'Twin'), PlaceAlreadyExists::class],
+            ['goal', FactFill::newPlace(PlaceId::fromString('place-2'), 'Dunmere'), InvalidFact::class],
+            ['site', FactFill::existingPlace(PlaceId::fromString('ghost')), UnknownPlace::class],
+            ['site', FactFill::text('Saltmarsh'), InvalidFact::class],
+            ['site', FactFill::existingThread(ThreadId::fromString('thread-1')), InvalidFact::class],
+        ] as [$slot, $fill, $exception]) {
+            try {
+                $campaign->fillFactSlot($this->id('fact-1'), $slot, $fill, $this->release);
+                self::fail('Expected '.$exception);
+            } catch (\DomainException $caught) {
+                self::assertInstanceOf($exception, $caught);
+            }
+        }
+
+        self::assertSame(['place-1'], array_map(static fn (\App\Play\Domain\Campaign\Lists\Place $place): string => $place->id()->toString(), $campaign->places()));
+        self::assertSame([], $campaign->facts($this->release));
+    }
+
+    #[Test]
+    public function aFreeFactLinksAPlaceAndAGhostPlaceIsRefused(): void
+    {
+        $campaign = $this->campaign();
+        $campaign->addPlace(PlaceId::fromString('place-1'), 'Saltmarsh', null, [], [], 1, $this->release);
+
+        $fact = $campaign->addFreeFact($this->id('fact-1'), 'Guild', 'Meets here', [FactLink::place(PlaceId::fromString('place-1'))], $this->release);
+
+        self::assertSame(['place:place-1'], array_map(static fn (FactLink $link): string => $link->kind->value.':'.$link->id, $fact->links()));
+        $this->expectException(UnknownPlace::class);
+        $campaign->addFreeFact($this->id('fact-2'), 'Ghost', 'Text', [FactLink::place(PlaceId::fromString('ghost'))], $this->release);
+    }
+
+    #[Test]
+    public function closingTheThreadOfAFactSlotClosesOnlyThatThreadAndNothingForOtherSlots(): void
+    {
+        $campaign = $this->campaign();
+        $campaign->addThread(ThreadId::fromString('thread-1'), 'Vault', [], [], 1, $this->release);
+        $campaign->addThread(ThreadId::fromString('thread-2'), 'Ledger', [], [], 1, $this->release);
+        $campaign->addPlace(PlaceId::fromString('place-1'), 'Saltmarsh', null, [], [], 1, $this->release);
+        $campaign->fillFactSlot($this->id('fact-1'), 'goal', FactFill::existingThread(ThreadId::fromString('thread-1')), $this->release);
+        $campaign->fillFactSlot($this->id('fact-2'), 'site', FactFill::existingPlace(PlaceId::fromString('place-1')), $this->release);
+
+        foreach (['city', 'prince', 'site', 'nowhere'] as $slot) {
+            $campaign->closeThreadOfFactSlot($slot);
+        }
+
+        self::assertSame([true, true], [$campaign->thread(ThreadId::fromString('thread-1'))?->isOpen(), $campaign->place(PlaceId::fromString('place-1'))?->isOpen()]);
+
+        $campaign->closeThreadOfFactSlot('goal');
+        $campaign->closeThreadOfFactSlot('goal');
+
+        self::assertSame([false, true], [$campaign->thread(ThreadId::fromString('thread-1'))?->isOpen(), $campaign->thread(ThreadId::fromString('thread-2'))?->isOpen()]);
     }
 
     #[Test]
@@ -489,9 +572,11 @@ final class CampaignFactsTest extends TestCase
         yield 'two facts for one slot' => [InvalidFact::class, [Fact::of($id('fact-1'), 'city', null, 'A', null, []), Fact::of($id('fact-2'), 'city', null, 'B', null, [])]];
         yield 'link to an unknown NPC' => [UnknownNpc::class, [$free('fact-1', [FactLink::npc(NpcId::fromString('ghost'))])]];
         yield 'link to an unknown Thread' => [UnknownThread::class, [$free('fact-1', [FactLink::thread(ThreadId::fromString('ghost'))])]];
+        yield 'link to an unknown Place' => [UnknownPlace::class, [$free('fact-1', [FactLink::place(PlaceId::fromString('ghost'))])]];
         yield 'link to an unknown fact' => [UnknownFact::class, [$free('fact-1', [FactLink::fact($id('ghost'))])]];
         yield 'subject that is an unknown NPC' => [UnknownNpc::class, [Fact::of($id('fact-1'), 'prince', null, null, FactLink::npc(NpcId::fromString('ghost')), [])]];
         yield 'subject that is an unknown Thread' => [UnknownThread::class, [Fact::of($id('fact-1'), 'goal', null, null, FactLink::thread(ThreadId::fromString('ghost')), [])]];
+        yield 'subject that is an unknown Place' => [UnknownPlace::class, [Fact::of($id('fact-1'), 'site', null, null, FactLink::place(PlaceId::fromString('ghost')), [])]];
         yield 'over the limit' => [CampaignLimitReached::class, array_map(static fn (int $i): Fact => $free('fact-'.$i), range(1, Campaign::MAX_FACTS + 1))];
     }
 

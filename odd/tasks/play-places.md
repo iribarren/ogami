@@ -1,7 +1,7 @@
 # Feature: play-places
 
 - **Locator:** `odd/tasks/play-places.md` · Engram topic `odd/play-places/tasks`
-- **Issue:** [#330](https://github.com/iribarren/ogami/issues/330) · **Branch:** `feat/play-places-2-places-api` (slice 2) · **Status:** in progress
+- **Issue:** [#330](https://github.com/iribarren/ogami/issues/330) · **Branch:** `feat/play-places-3-flow` (slice 3) · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-campaign-transfer` (PRs #327–#329)
@@ -85,9 +85,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; ADR 0047 "Places" (+ ADR index); glossary row "Place"; `docs/vision.md` row answered; example 5 note and roadmap B15 prompt point to ADR 0047 | delegated writer (slice 1) | [x] | `cbaae86c` |
 | T2 | 1 | Domain `Place` list on `Campaign` and application commands (add, edit, close, reopen), `CampaignView.places`, with unit tests | delegated writer (slice 1) | [x] | `cbc32634` |
-| T3 | 2 | HTTP only (persistence already landed in T2): `/api/campaigns/{id}/places` endpoints, `CampaignResponse.places`, API tests (201, 404, 409 concurrent, 422), Behat `places.feature`, `make api` | delegated writer (slice 2) | [x] | |
-| T4 | 2 | Slice 1 review fixes: `CampaignPlacesType` limit reads `MAX_PLACES`; repository contract asserts the reloaded Places after close and edit (the doc naming was fixed by the parent) | delegated writer (slice 2) | [x] | |
-| T15 | 3 | Slice 2 review fixes | | [ ] | |
+| T3 | 2 | HTTP only (persistence already landed in T2): `/api/campaigns/{id}/places` endpoints, `CampaignResponse.places`, API tests (201, 404, 409 concurrent, 422), Behat `places.feature`, `make api` | delegated writer (slice 2) | [x] | `1dae1c5e`, `11c7887f`, `08cdb655` |
+| T4 | 2 | Slice 1 review fixes: `CampaignPlacesType` limit reads `MAX_PLACES`; repository contract asserts the reloaded Places after close and edit (the doc naming was fixed by the parent) | delegated writer (slice 2) | [x] | `5c04084b` |
+| T15 | 3 | Slice 2 review fixes: close and reopen map the unreadable-release errors raised while building the response (`CampaignPlacesController.php:148`), with an API test; rename or drop `aLegacyCampaignWithoutPlacesReturnsAnEmptyList` (`CampaignPlacesApiTest.php:155-162`, only an empty campaign) | delegated writer (slice 3) | [x] | |
 | T5 | 3 | Contract: `place` slots and links, `createPlace`, `pick`/`count` of `place`, `appliesTo: place`, `closeThread.fact`; Studio validation, contract doc, fixtures | | [ ] | |
 | T6 | 3 | ACL and Play flow: createPlace, place slots, pick and count of places, closeThread by slot | | [ ] | |
 | T7 | 3 | Transfer carries places; upgrade planner dropped Tags for places | | [ ] | |
@@ -107,13 +107,15 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-31: Plan becomes 5 slices: T3 (HTTP) moved to slice 2 to keep slice 1 under the size ceiling; T15 added for slice 2's review fixes.
 - 2026-10-31 T4: `CampaignPlacesType` limit check and message read `Campaign::MAX_PLACES`; `aCampaignWithPlacesIsKeptWhole` asserts the reloaded Places equal the saved aggregate's after close and edit. The over-limit persistence case already exists (501 Places); both limits are 500 so it cannot tell them apart (a test cannot without changing a constant). Persistence suite run before commit.
 - 2026-10-31 T3: `CampaignPlacesController`, `PlaceRequest`, `PlaceResponse`, `CampaignResponse.places` (required). RED observed: `CampaignPlacesApiTest` ran with 38 failures and 1 error (no route, no controller) before the code; GREEN after: `CampaignPlacesApiTest` and `PlayRequestSchemasTest` 59 tests pass. Behat `places.feature` (4 scenarios) was written with its steps and run only once both existed (not observed RED). A release Tag on a Place is a 422 (`TagNotApplicable`), tested in `CampaignPlacesApiTest`; `CampaignTagScopeApiTest` untouched (its cases need a Tag that applies to the kind). Generated client (`frontend/src/shared/api/openapi.json`, `schema.d.ts`) and frontend fixtures in the next commits. `make verify` first run failed on 3 `CampaignApiTest` cases (full-body key lists lacked `places`) and `tsc -b` on two `campaigns/fixtures.ts` objects; both fixed in a follow-up commit.
+- 2026-10-31 T15: `CampaignPlacesController::place()` now maps `CampaignNotFound` (404) and the unreadable-release errors (500, same body as the commands) raised while building the response, which covers add, edit, close and reopen (the Threads controller maps none of these there; Facts does in `fact()`, which this mirrors). `aPinnedReleaseThatCannotBeReadIsAServerErrorWithoutInternals` now also posts close and reopen: RED observed (2 failures), GREEN after (`CampaignPlacesApiTest` 38 tests). `aLegacyCampaignWithoutPlacesReturnsAnEmptyList` dropped: `aRowStoredBeforePlacesExistedReadsWithNoPlaces` in the repository test covers a legacy row.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-7219a3078966f655` | `cbaae86c`, `cbc32634` | Approved. Findings fixed in slice 2 (T4): `CampaignPlacesType` reads `MAX_THREADS` instead of `MAX_PLACES` (warning); the repository contract should assert the reloaded Places after close and edit; this doc named `assertInRelease` instead of `assertPlaceTags` (fixed by the parent) | [#331](https://github.com/iribarren/ogami/pull/331) |
+| 2 | `review-9de8e8311f0c7a72` | `5c04084b`, `1dae1c5e` (reviewed, `main..1dae1c5e`); `11c7887f`, `08cdb655` (generated client and fixtures, not reviewed: user decision) | Approved. Findings fixed in slice 3 (T15): close and reopen don't map the unreadable-release errors raised while building the response (warning); `aLegacyCampaignWithoutPlacesReturnsAnEmptyList` only exercises an empty campaign (suggestion). Size +1,943/−33, exception accepted (generated client ~932) | [#332](https://github.com/iribarren/ogami/pull/332) |
 
 ## Next step
 
-Slice 2: writer builds T4, T3 on `feat/play-places-2-places-api`.
+Slice 3: writer builds T15, T5, T6, T7 on `feat/play-places-3-flow`. If the running size passes ~1,500 before T7, T7 moves to slice 4 (plan renumbered).

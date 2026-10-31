@@ -151,16 +151,6 @@ final class CampaignPlacesApiTest extends WebTestCase
         self::assertSame([[]], array_column($this->campaignPlaces($id), 'tags'));
     }
 
-    #[Test]
-    public function aLegacyCampaignWithoutPlacesReturnsAnEmptyList(): void
-    {
-        $this->signIn('ada@example.com', ['SOLO_PLAYER']);
-        $id = $this->createCampaign();
-        $this->connection()->executeStatement("UPDATE play_campaign SET places = '[]' WHERE id = ?", [$id]);
-
-        self::assertSame([], $this->campaignPlaces($id));
-    }
-
     /**
      * @return iterable<string, array{string}>
      */
@@ -363,9 +353,12 @@ final class CampaignPlacesApiTest extends WebTestCase
         $placeId = $this->addPlace($id, ['name' => 'Saltmarsh']);
         $this->connection()->executeStatement($breakTheRelease);
 
+        // Close and reopen save, then cannot build the response: they answer like add and edit.
         foreach ([
             ['POST', \sprintf('/api/campaigns/%s/places', $id)],
             ['PUT', \sprintf('/api/campaigns/%s/places/%s', $id, $placeId)],
+            ['POST', \sprintf('/api/campaigns/%s/places/%s/close', $id, $placeId)],
+            ['POST', \sprintf('/api/campaigns/%s/places/%s/reopen', $id, $placeId)],
         ] as [$method, $uri]) {
             $this->client->jsonRequest($method, $uri, ['name' => 'Dunmere']);
 

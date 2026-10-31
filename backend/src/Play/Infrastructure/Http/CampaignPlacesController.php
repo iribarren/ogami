@@ -205,11 +205,19 @@ final readonly class CampaignPlacesController
     }
 
     /**
-     * @throws CampaignNotFound
+     * The command has already saved when the answer is built, so a release that can no longer be read
+     * is the same server error the commands answer with, never an unmapped exception.
      */
     private function place(string $campaignId, string $placeId, AuthenticatedUser $user, int $status): JsonResponse
     {
-        $places = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->places;
+        try {
+            $places = $this->queryBus->ask(new GetCampaign($campaignId, $user->id()))->places;
+        } catch (CampaignNotFound $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
+        } catch (GameSystemReleaseNotFound|UnsupportedReleaseSchemaVersion|InvalidGameSystemRelease) {
+            return $this->unreadableRelease();
+        }
+
         $place = array_find($places, static fn (PlaceView $place): bool => $place->id === $placeId) ?? throw new \LogicException('The Place was just saved.');
 
         return new JsonResponse(PlaceResponse::fromView($place), $status);

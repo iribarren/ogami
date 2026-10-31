@@ -1,7 +1,7 @@
 # Feature: play-campaign-transfer
 
 - **Locator:** `odd/tasks/play-campaign-transfer.md` · Engram topic `odd/play-campaign-transfer/tasks`
-- **Issue:** [#326](https://github.com/iribarren/ogami/issues/326) · **Branch:** `feat/play-campaign-transfer-2-ui` (slice 1 merged, PR #327) · **Status:** in progress
+- **Issue:** [#326](https://github.com/iribarren/ogami/issues/326) · **Branches:** slices 1–2 merged to `main` (PRs #327–#328, last merge `b55efbca`) · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-cpr-campaign` (PRs #323–#324)
@@ -69,12 +69,12 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T1 | 1 | Docs: this feature doc; ADR 0046 "Campaign transfer" (+ ADR index); glossary row; ADR 0017 §7 and `docs/vision.md` row point to it | delegated writer (slice 1) | [x] | `ead65c20` |
 | T2 | 1 | Domain `Campaign::transfer` and application `TransferCampaign` handler, with unit tests (carried lists and ids, tracker reset, FlowRun start or free play, Character subset and promotion clearing, outdated release, unknown flow, unknown or duplicate Character, source unchanged) | delegated writer (slice 1) | [x] | `13525e30` |
 | T3 | 1 | `POST /api/campaigns/{id}/transfer`: request DTO, controller action, error mapping, `PlayRequestSchemasTest`, API tests (201 + Location, 404 other player's, 409 outdated, 422 cases, malformed body), Behat scenario in `backend/features/play/`, `make api` | delegated writer (slice 1) | [x] | `1823ba5c`, `08bea9b7` |
-| T4 | 2 | Slice 1 review fixes: test a fact whose subject is an NPC promoted to a left-out Character | delegated writer (slice 2) | [x] | |
-| T5 | 2 | "Continue in a new campaign" dialog on `CampaignPage`, hook, vitest | delegated writer (slice 2) | [x] | |
-| T6 | 2 | e2e heist → "Making a Name" with a carried Character | delegated writer (slice 2) | [x] | |
-| T7 | 2 | Chrome pass; fixes | parent Chrome pass + delegated writer (slice 2) | [ ] | |
-| T8 | 2 | Closing: Reviews, roadmap `Done:` line under B13 | parent (slice 2) | [ ] | |
-| T9 | 2 | Slice 2 review fix: the dialog closes itself after a successful transfer, and the success test asserts it | parent inline (one mechanical file + one test line) | [x] | |
+| T4 | 2 | Slice 1 review fixes: test a fact whose subject is an NPC promoted to a left-out Character | delegated writer (slice 2) | [x] | `2f9448ab` |
+| T5 | 2 | "Continue in a new campaign" dialog on `CampaignPage`, hook, vitest | delegated writer (slice 2) | [x] | `72c3039b` |
+| T6 | 2 | e2e heist → "Making a Name" with a carried Character | delegated writer (slice 2) | [x] | `bda3b7f2` |
+| T7 | 2 | Chrome pass; fixes | skipped by the user (Claude in Chrome not connected); the e2e covers the flow | [-] | |
+| T8 | 2 | Closing: Reviews, roadmap `Done:` line under B13 | parent (closing commit after merge) | [x] | this commit |
+| T9 | 2 | Slice 2 review fix: the dialog closes itself after a successful transfer, and the success test asserts it | parent inline (one mechanical file + one test line) | [x] | `20f2cecf` |
 
 ## Progress
 
@@ -86,13 +86,15 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-10-29 T5: `CampaignTransfer.test.tsx` (12 tests) written after the dialog; RED shown by removing the `CampaignPage` action (12/12 failed), GREEN with it (12/12). `PLAY_FREELY` and `MAX_NAME_LENGTH` moved to `useCampaigns.ts` to share them with `NewCampaignForm`. The dialog reads Flows and Characters from the campaign itself (source is on the latest release), and the outdated check reuses `useGameSystems` as `ReleaseUpgradeAction` does.
 - 2026-10-29 T6: `play-campaign-transfer.spec.ts` failed twice while written (street zero's step picks a Character with a radio and "Choose", and the cast is shown in Focus mode, not the Party group), then passed (1/1, `make e2e ARGS=play-campaign-transfer`).
 - 2026-10-29 T9: review `review-152f3916ef40a5f1` suggestion. The new assertion (no dialog after success) passed at once, since the campaign route remounts on a new id, so no RED; `TransferForm` now takes `onTransferred` and closes the dialog in `mutate`'s `onSuccess`, as `ReleaseUpgradeDialog` does. Vitest 12/12, tsc clean.
+- 2026-10-31 T7: skipped by the user. T8: PR #328 merged (`b55efbca`) with CI green (backend, frontend, full stack with Playwright); feature closed. The closing doc commit landed after the merge, so it rides its own doc-only PR.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-b8398ff26eaaca74` | `ead65c20`..`08bea9b7` (+1,637/−3) | approved; one warning: a fact subject naming a left-out Character would fail the consistency check. Not reachable (subjects are NPC or Thread, `Fact.php:39,67`, NPCs always carry); test added in T4 | [#327](https://github.com/iribarren/ogami/pull/327) |
+| 2 | `review-152f3916ef40a5f1` | `2f9448ab`..`bda3b7f2` (+573/−17) | approved; one suggestion: assert the dialog closes after a successful transfer, fixed in T9 (`20f2cecf`, review declined by the user, 37 lines) | [#328](https://github.com/iribarren/ogami/pull/328) |
 
 ## Next step
 
-Slice 2: T4–T6 on `feat/play-campaign-transfer-2-ui` (writer), then T7 Chrome pass and T8 closing (parent).
+None. Every review finding is fixed (T4, T9).

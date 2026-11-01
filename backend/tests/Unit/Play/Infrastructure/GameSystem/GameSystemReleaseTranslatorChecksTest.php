@@ -406,7 +406,7 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
     {
         $effect = static fn (array $change): array => ['effects' => [array_replace(['kind' => 'sheet', 'field' => 'hands', 'op' => 'add', 'value' => 1], $change)]];
 
-        yield 'a push without a pool' => [self::skill(['push' => ['label' => 'Push']]), 'checks[0].push: only a pool check can be pushed.'];
+        yield 'a push without a pool' => [self::skill(['push' => ['label' => 'Push']]), 'checks[0].push: only a pool check or a challenge check with a momentum can be pushed.'];
         yield 'a push that is a list' => [array_replace(self::grit(), ['push' => ['Push']]), 'checks[0].push: must be an object.'];
         yield 'an unknown property' => [self::grit(['cost' => 1]), 'checks[0].push.cost: unknown property.'];
         yield 'no label' => [self::grit(['label' => null]), 'checks[0].push.label: must be a string.'];

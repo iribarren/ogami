@@ -206,14 +206,14 @@ final readonly class JournalController
     }
 
     #[Route('/api/campaigns/{campaignId}/journal/{entryId}/push', name: 'api_campaigns_journal_checks_push', methods: ['POST'])]
-    #[OA\Post(operationId: 'pushCheck', summary: 'Push the latest pool check of one of my campaigns: re-roll the dice that failed, pay the cost of the push and complete the entry')]
+    #[OA\Post(operationId: 'pushCheck', summary: 'Push the latest pool check of one of my campaigns (re-roll the dice that failed), or burn the momentum of its challenge check (the score becomes the momentum), pay the cost and complete the entry')]
     #[OA\RequestBody(required: false, content: new OA\JsonContent(ref: new Model(type: PushCheckRequest::class)))]
     #[OA\Response(response: 200, description: 'The entry, completed with the push.', content: new OA\JsonContent(ref: new Model(type: JournalEntryResponse::class)))]
     #[OA\Response(response: 400, description: 'The body is not valid JSON or not an object, or its "picks" is not a list of strings.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a solo player.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'No campaign of the player has this id, or it has no journal entry with this id.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'The entry cannot be pushed: it is not the latest entry of the journal, not the roll of a pool check, recorded by a Flow step, already pushed (also when two pushes arrive at once), or without a failed die; the pinned release no longer declares that pool check with a push, or the Character is gone; or the campaign was changed at the same time.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 409, description: 'The entry cannot be pushed: it is not the latest entry of the journal, neither the roll of a pool check nor of a challenge check, recorded by a Flow step, already pushed or burned (also when two arrive at once), without a failed die (a pool) or with a momentum on the sheet that beats no more challenge dice than the score (a burn); the pinned release no longer declares that check with a push, or the Character is gone; or the campaign was changed at the same time.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 415, description: 'A body is sent and it is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'A band of the check or a value of the cost cannot be evaluated for the Character, or the picks do not fit the cost: one is missing, unknown, already marked or not asked for. Nothing changes.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function pushCheck(string $campaignId, string $entryId, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse

@@ -10,7 +10,7 @@ use App\Play\Domain\GameSystem\Check\ReferenceLabels;
 
 /**
  * The challenge dice of a check as a player rolls it (ADR 0049): how many, their sides, the cap of the
- * score and the label of the momentum field that can cancel the action die.
+ * score, the label and the key of the momentum field that can cancel the action die and that a burn spends.
  */
 final readonly class CheckChallengeView
 {
@@ -19,6 +19,7 @@ final readonly class CheckChallengeView
         public int $sides,
         public ?int $scoreMax,
         public ?string $momentumLabel,
+        public ?string $momentum,
     ) {
     }
 
@@ -29,6 +30,7 @@ final readonly class CheckChallengeView
             $challenge->sides,
             $challenge->scoreMax,
             null === $challenge->momentum ? null : $labels->label(Reference::field($challenge->momentum)),
+            $challenge->momentum,
         );
     }
 }

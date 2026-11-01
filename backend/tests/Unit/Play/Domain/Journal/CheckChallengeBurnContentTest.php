@@ -169,6 +169,7 @@ final class CheckChallengeBurnContentTest extends TestCase
         yield 'a blank label' => [static fn (array $b): array => ['label' => ' '] + $b, '"label"'];
         yield 'a label that is too long' => [static fn (array $b): array => ['label' => str_repeat('x', 101)] + $b, '"label"'];
         yield 'a blank rolled band' => [static fn (array $b): array => ['rolledBandKey' => ''] + $b, 'rolled band key'];
+        yield 'a blank rolled band label' => [static fn (array $b): array => ['rolledBandLabel' => ' '] + $b, 'rolled band label'];
         yield 'a missing momentum' => [static fn (array $b): array => array_diff_key($b, ['momentum' => 1]), '"momentum"'];
         yield 'a momentum that is a string' => [static fn (array $b): array => ['momentum' => '10'] + $b, '"momentum"'];
         yield 'changes that are not a list' => [static fn (array $b): array => ['changes' => 'none'] + $b, '"changes"'];

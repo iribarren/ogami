@@ -934,7 +934,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Push the roll the current check step of the FlowRun of one of my campaigns waits on: re-roll the dice that failed, pay the cost and complete the step on the pushed band */
+        /** Push the roll the current check step of the FlowRun of one of my campaigns waits on (re-roll the dice that failed, or burn the momentum of a challenge roll), pay the cost and complete the step on the new band */
         post: operations["pushFlowCheck"];
         delete?: never;
         options?: never;
@@ -1036,7 +1036,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Push the latest pool check of one of my campaigns: re-roll the dice that failed, pay the cost of the push and complete the entry */
+        /** Push the latest pool check of one of my campaigns (re-roll the dice that failed), or burn the momentum of its challenge check (the score becomes the momentum), pay the cost and complete the entry */
         post: operations["pushCheck"];
         delete?: never;
         options?: never;
@@ -2851,6 +2851,11 @@ export interface components {
              * @example Momentum
              */
             momentumLabel: string | null;
+            /**
+             * @description The key of the momentum field in a Character's values: what the roll reads, and what a burn spends; null when the check names none.
+             * @example momentum
+             */
+            momentum: string | null;
         };
         CheckResponse: {
             /** @example skill */
@@ -3992,6 +3997,35 @@ export interface components {
             /** @description Whether the score beat the die: its face is below the score. A tie goes to the die. */
             beaten: boolean;
         };
+        CheckChallengeBurnContentResponse: {
+            /**
+             * @description The cost of the burn when it was burned.
+             * @example Burn momentum
+             */
+            label: string;
+            /**
+             * @description The value of the momentum field that was burned.
+             * @example 5
+             */
+            momentum: number;
+            /**
+             * @description The score the challenge dice were compared against after the burn: the momentum, at most the cap.
+             * @example 5
+             */
+            score: number;
+            /**
+             * @description The key of the Outcome band the roll had before the burn.
+             * @example weak
+             */
+            rolledBandKey: string;
+            /**
+             * @description The label of the Outcome band the roll had before the burn.
+             * @example Weak hit
+             */
+            rolledBandLabel: string;
+            /** @description What the cost changed on the sheet of the rolling Character, in apply order; Tracker changes are not listed. */
+            changes: components["schemas"]["SheetChangeResponse"][];
+        };
         CheckChallengeContentResponse: {
             /**
              * @description The faces of each challenge die.
@@ -4017,6 +4051,8 @@ export interface components {
             cancelled: boolean;
             /** @description Every challenge die, in roll order. */
             dice: components["schemas"]["JournalChallengeDieResponse"][];
+            /** @description The burn of the roll; null until the momentum is burned, and for entries recorded before burns. Once burned, the score and each die above stay those of the first roll, and the check's total and band are those after the burn. */
+            burn: components["schemas"]["CheckChallengeBurnContentResponse"] | null;
         };
         CheckContentResponse: {
             /**
@@ -10364,7 +10400,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The campaign plays freely, guidance is paused or the Flow is complete, no roll waits for Keep or Push or it waits at another step; the roll was pushed already (also when two pushes arrive at once), the pinned release no longer declares that pool check with a push, or the Character is gone; the next scene does not fit the session (200 scenes), an NPC, Thread or slot fact the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile. */
+            /** @description The campaign plays freely, guidance is paused or the Flow is complete, no roll waits for Keep or Push or it waits at another step; the roll was pushed or burned already (also when two arrive at once), the momentum on the sheet beats no more challenge dice than the score of the roll (a burn), the pinned release no longer declares that check with a push, or the Character is gone; the next scene does not fit the session (200 scenes), an NPC, Thread or slot fact the step creates would take an id the campaign already holds, or another request changed the campaign meanwhile. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -10808,7 +10844,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The entry cannot be pushed: it is not the latest entry of the journal, not the roll of a pool check, recorded by a Flow step, already pushed (also when two pushes arrive at once), or without a failed die; the pinned release no longer declares that pool check with a push, or the Character is gone; or the campaign was changed at the same time. */
+            /** @description The entry cannot be pushed: it is not the latest entry of the journal, neither the roll of a pool check nor of a challenge check, recorded by a Flow step, already pushed or burned (also when two arrive at once), without a failed die (a pool) or with a momentum on the sheet that beats no more challenge dice than the score (a burn); the pinned release no longer declares that check with a push, or the Character is gone; or the campaign was changed at the same time. */
             409: {
                 headers: {
                     [name: string]: unknown;

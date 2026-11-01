@@ -19,8 +19,8 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Play's anti-corruption layer plays challenge dice (ADR 0049) and still refuses their push until the
- * slice of preset-ironsworn that plays a burn (slice 3). Run against valid/v2-challenge-dice.
+ * Play's anti-corruption layer plays challenge dice and the burn of their momentum, which is a challenge check's push
+ * (ADR 0049). Run against valid/v2-challenge-dice.
  */
 #[CoversClass(GameSystemReleaseTranslator::class)]
 final class GameSystemReleaseTranslatorChallengeDiceTest extends TestCase
@@ -37,7 +37,7 @@ final class GameSystemReleaseTranslatorChallengeDiceTest extends TestCase
     }
 
     /**
-     * valid/v2-challenge-dice without the burn, which Play does not play yet.
+     * valid/v2-challenge-dice without the burn.
      *
      * @return array<mixed>
      */
@@ -73,12 +73,36 @@ final class GameSystemReleaseTranslatorChallengeDiceTest extends TestCase
     }
 
     #[Test]
-    public function theBurnOfAChallengeCheckIsNotPlayedYet(): void
+    public function theBurnOfAChallengeCheckIsTranslatedAsItsPush(): void
+    {
+        $edge = $this->translate(ReleaseViews::fixtureContent('valid/v2-challenge-dice'))->check('edge');
+
+        self::assertInstanceOf(Check::class, $edge);
+        self::assertSame('Burn momentum', $edge->push?->label);
+        self::assertNull($edge->push->maxDice);
+        self::assertCount(1, $edge->push->effects);
+    }
+
+    /**
+     * @return iterable<string, array{string, mixed, string}> the path set on the fixture with its burn, its value and the refusal
+     */
+    public static function refusedBurns(): iterable
+    {
+        yield 'a burn on a check naming no momentum' => ['checks.0.challenge.momentum', null, 'checks[0].push: a challenge push burns momentum'];
+        yield 'a burn with a maxDice' => ['checks.0.push.maxDice', 2, 'checks[0].push.maxDice'];
+        yield 'a burn on a progress roll' => ['checks.1.push', ['label' => 'Burn'], 'checks[1].push: a challenge push burns momentum'];
+        yield 'a burn whose cost reads a ghost field' => ['checks.0.push.effects.0.field', 'ghost', 'checks[0].push.effects[0]'];
+        yield 'a burn cost that is not an object' => ['checks.0.push', 'burn', 'checks[0].push'];
+    }
+
+    #[Test]
+    #[DataProvider('refusedBurns')]
+    public function itFailsClosedOnABurnThatBreaksTheShapeWithItsPath(string $path, mixed $value, string $at): void
     {
         $this->expectException(InvalidGameSystemRelease::class);
-        $this->expectExceptionMessageIsOrContains('checks[0].push: a challenge push is not played yet (ADR 0049).');
+        $this->expectExceptionMessageIsOrContains($at);
 
-        $this->translate(ReleaseViews::fixtureContent('valid/v2-challenge-dice'));
+        $this->translate(ReleaseArrays::with(ReleaseViews::fixtureContent('valid/v2-challenge-dice'), $path, $value));
     }
 
     #[Test]

@@ -405,7 +405,7 @@ export const fulfillCheck: CampaignCheck = {
   pool: null,
   push: null,
   difficulty: null,
-  challenge: { count: 2, sides: 10, scoreMax: null, momentumLabel: null },
+  challenge: { count: 2, sides: 10, scoreMax: null, momentumLabel: null, momentum: null },
 }
 
 /**

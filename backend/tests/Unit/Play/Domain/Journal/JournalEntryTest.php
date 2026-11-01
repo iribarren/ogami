@@ -6,12 +6,21 @@ namespace App\Tests\Unit\Play\Domain\Journal;
 
 use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\CampaignId;
+use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\NoCurrentScene;
 use App\Play\Domain\Campaign\PinnedRelease;
+use App\Play\Domain\GameSystem\Check\Check;
+use App\Play\Domain\GameSystem\Check\CheckBand;
+use App\Play\Domain\GameSystem\Check\ReferenceLabels;
+use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
+use App\Play\Domain\Journal\CheckAlreadyPushed;
+use App\Play\Domain\Journal\CheckContent;
 use App\Play\Domain\Journal\FlowStepSnapshot;
 use App\Play\Domain\Journal\JournalEntry;
 use App\Play\Domain\Journal\JournalEntryId;
 use App\Play\Domain\Journal\NoteContent;
+use App\Randomness\Domain\DiceExpression;
+use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -116,6 +125,54 @@ final class JournalEntryTest extends TestCase
         self::assertSame($recordedAt, $entry->recordedAt());
         self::assertSame($content, $entry->content());
         self::assertEquals(FlowStepSnapshot::of('plan', 'The plan', null), $entry->flowStep());
+    }
+
+    #[Test]
+    public function anEntryWhoseChallengeWasBurnedCannotBePushedAgain(): void
+    {
+        $entry = $this->entryOf(CheckChallengeBurnContentTest::burnedEdge());
+
+        $this->expectException(CheckAlreadyPushed::class);
+
+        $entry->pushedWith(CheckChallengeBurnContentTest::burnedEdge());
+    }
+
+    #[Test]
+    public function aChallengeEntryIsNotPushedWithContentThatIsNotBurned(): void
+    {
+        $entry = $this->entryOf(CheckChallengeBurnContentTest::edge());
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageIsOrContains('not the pushed content');
+
+        $entry->pushedWith(CheckChallengeBurnContentTest::edge());
+    }
+
+    #[Test]
+    public function aPlainDiceEntryCanNotBePushed(): void
+    {
+        $check = new Check('skill', 'Skill', null, DiceExpression::fromString('1d10'), null, null, [new CheckBand('all', 'All')]);
+        $template = new SheetTemplate([]);
+        $result = $check->perform(new ScriptedRandomNumberGenerator(7), SheetValues::of($template, [], []), null, 0);
+        $dice = CheckContent::fromResult('c1', 'Ada', $check, $result, new ReferenceLabels($template));
+        $entry = $this->entryOf($dice);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageIsOrContains('not a pool or challenge check');
+
+        $entry->pushedWith(CheckChallengeBurnContentTest::burnedEdge());
+    }
+
+    private function entryOf(CheckContent $content): JournalEntry
+    {
+        return JournalEntry::reconstitute(
+            JournalEntryId::fromString(self::ENTRY_ID),
+            CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057'),
+            1,
+            1,
+            new \DateTimeImmutable('2026-10-06 10:00:00'),
+            $content,
+        );
     }
 
     private function campaign(): Campaign

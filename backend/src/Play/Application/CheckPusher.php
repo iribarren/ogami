@@ -12,7 +12,9 @@ use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\FlowRun\FlowFormulaFailed;
 use App\Play\Domain\Campaign\FlowRun\SheetChange;
+use App\Play\Domain\GameSystem\Check\BurnResult;
 use App\Play\Domain\GameSystem\Check\Check;
+use App\Play\Domain\GameSystem\Check\CheckChallenge;
 use App\Play\Domain\GameSystem\Check\CheckEvaluationFailed;
 use App\Play\Domain\GameSystem\Check\CheckNotPushable;
 use App\Play\Domain\GameSystem\Check\CheckPool;
@@ -23,6 +25,8 @@ use App\Play\Domain\GameSystem\Flow\SheetOperation;
 use App\Play\Domain\GameSystem\Flow\TrackerEffect;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\Journal\CheckAlreadyPushed;
+use App\Play\Domain\Journal\CheckChallengeBurnContent;
+use App\Play\Domain\Journal\CheckChallengeContent;
 use App\Play\Domain\Journal\CheckContent;
 use App\Play\Domain\Journal\CheckPoolContent;
 use App\Play\Domain\Journal\CheckPushContent;
@@ -33,7 +37,8 @@ use App\Play\Domain\Journal\JournalEntryRepository;
 use App\Randomness\Domain\RandomNumberGenerator;
 
 /**
- * Pushes the pool roll of a journal entry (ADR 0041, ADR 0044: failed regular dice only, capped by the push), for the sheet (PushCheckHandler) and for a
+ * Pushes the pool roll of a journal entry (ADR 0041, ADR 0044: failed regular dice only, capped by the push), or
+ * burns the momentum of its challenge roll (ADR 0049: no dice are rolled, the score becomes the momentum), for the sheet (PushCheckHandler) and for a
  * check step whose roll pends (ResolvePendingFlowCheckHandler). push() checks and computes
  * everything and applies the cost to the Campaign in memory; keep() saves the Campaign and the
  * completed entry, in the command bus transaction. A failure on the way keeps nothing, so a push is
@@ -55,11 +60,12 @@ final readonly class CheckPusher
      * @param list<string> $picks the option the player picks for each mark without an option of the cost
      *                            that has an unmarked option left, in cost order
      *
-     * @return array{JournalEntry, PushResult} the completed entry, still to keep, and the pushed roll with its band
+     * @return array{JournalEntry, PushResult|BurnResult} the completed entry, still to keep, and the pushed roll or the burn with its band
      *
-     * @throws CheckCannotBePushed   when the entry is not a pool check, (from the sheet) not the latest or recorded by a Flow step,
-     *                               has no failed die, or the pinned check is gone, changed or has no push, or the Character is gone
-     * @throws CheckAlreadyPushed    when the roll was pushed already
+     * @throws CheckCannotBePushed   when the entry is neither a pool nor a challenge check, (from the sheet) not the latest or recorded by a Flow step,
+     *                               has no failed die (a pool) or a momentum that beats no more dice (a challenge), or the pinned check is gone, changed or has no push,
+     *                               or the Character is gone
+     * @throws CheckAlreadyPushed    when the roll was pushed or burned already
      * @throws CheckEvaluationFailed when a band of the check cannot be evaluated for the Character
      * @throws FlowFormulaFailed     when a value of the cost cannot be evaluated
      * @throws InvalidCheckPicks     when the picks do not fit the cost
@@ -68,18 +74,29 @@ final readonly class CheckPusher
     {
         $content = $entry->content();
         $pool = $content instanceof CheckContent ? $content->pool() : null;
-        if (!$content instanceof CheckContent || !$pool instanceof CheckPoolContent) {
-            throw CheckCannotBePushed::notAPoolCheck();
+        $challenge = $content instanceof CheckContent ? $content->challenge() : null;
+        if (!$content instanceof CheckContent || (!$pool instanceof CheckPoolContent && !$challenge instanceof CheckChallengeContent)) {
+            throw CheckCannotBePushed::notAPushableCheck();
         }
 
         if ($fromTheSheet) {
             $this->assertPushableFromTheSheet($entry, $campaign);
         }
 
-        if ($pool->push instanceof CheckPushContent) {
+        if ($pool?->push instanceof CheckPushContent || $challenge?->burn instanceof CheckChallengeBurnContent) {
             throw CheckAlreadyPushed::entry($entry->id());
         }
 
+        return $pool instanceof CheckPoolContent ? $this->pushPool($campaign, $release, $entry, $content, $pool, $picks) : $this->burn($campaign, $release, $entry, $content, $challenge, $picks);
+    }
+
+    /**
+     * @param list<string> $picks
+     *
+     * @return array{JournalEntry, PushResult}
+     */
+    private function pushPool(Campaign $campaign, GameSystemSnapshot $release, JournalEntry $entry, CheckContent $content, CheckPoolContent $pool, array $picks): array
+    {
         $roll = $pool->roll();
         if (!$roll->isPushable()) {
             throw CheckCannotBePushed::noFailedDie();
@@ -100,6 +117,34 @@ final readonly class CheckPusher
         $changes = $this->applyCost($check->push, new CampaignEffects($campaign, $release, $this->random), $content->characterId(), $picks);
 
         return [$entry->pushedWith($content->pushed($check->push->label, $result, $changes)), $result];
+    }
+
+    /**
+     * Burns the momentum of a challenge roll (ADR 0049): the momentum is read from the sheet now, before
+     * the cost changes it, so the journal keeps the burned value.
+     *
+     * @param list<string> $picks
+     *
+     * @return array{JournalEntry, BurnResult}
+     */
+    private function burn(Campaign $campaign, GameSystemSnapshot $release, JournalEntry $entry, CheckContent $content, CheckChallengeContent $challenge, array $picks): array
+    {
+        $check = $release->check($content->checkKey());
+        if (!$check instanceof Check || !$check->challenge instanceof CheckChallenge || !$check->push instanceof CheckPush || null === $check->challenge->momentum || null === $challenge->momentum
+            || $check->challenge->count !== \count($challenge->dice) || $check->challenge->sides !== $challenge->sides || $check->challenge->scoreMax !== $challenge->scoreMax) {
+            throw CheckCannotBePushed::challengeCheckChanged($content->checkKey());
+        }
+
+        $character = $campaign->character(CharacterId::fromString($content->characterId())) ?? throw CheckCannotBePushed::characterGone($content->characterId());
+        try {
+            $result = $check->burn(SheetValues::of($release->sheet(), $character->values(), $campaign->trackerValuesOf($release)), $challenge->roll(), $challenge->score);
+        } catch (CheckNotPushable) {
+            throw CheckCannotBePushed::burnDoesNotImprove();
+        }
+
+        $changes = $this->applyCost($check->push, new CampaignEffects($campaign, $release, $this->random), $content->characterId(), $picks);
+
+        return [$entry->pushedWith($content->burned($check->push->label, $result, $changes)), $result];
     }
 
     /**

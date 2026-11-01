@@ -428,7 +428,7 @@ A check may compare a score against **challenge dice**, as Ironsworn does. Addit
 - **Action roll** (`dice` and `challenge`): score = `dice + modifier + situational modifier`, capped at `scoreMax`. The total is the number of challenge dice showing a face strictly below the score (ties go to the dice).
 - **Progress roll** (`challenge` alone): `modifier` is required and is the score, capped at `scoreMax` as an action roll's is. It refuses `challenge.momentum`.
 - **Negative momentum**: when the field's value is below 0 and its absolute value equals the action die, that die counts 0.
-- **Burn**: `push` on a challenge check burns momentum. No dice are rolled; the score becomes the momentum value (capped at `scoreMax`), and the push cost is applied after it. Offered only when momentum beats more challenge dice than the score.
+- **Burn**: `push` on a challenge check burns momentum. No dice are rolled; the score becomes the momentum value (capped at `scoreMax`), and the push cost is applied after it. Offered only when momentum, capped at `scoreMax`, beats more challenge dice than the score; zero or negative momentum never is.
 - **Match**: when every challenge die shows the same face the roll has the special result `match`. It is shown only: a step `outcomes` entry cannot name it, and the band's outcome still applies.
 
 Domain checks, each failing with its path, such as `checks[0].challenge.momentum`:
@@ -445,7 +445,7 @@ Domain checks, each failing with its path, such as `checks[0].challenge.momentum
 "push": {"label": "Burn momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "{momentum-reset}"}}]}
 ```
 
-The fixture `valid/v2-challenge-dice.json` has the whole release. Play's translator refuses `challenge` with the path and a message naming the ADR until it plays them (`preset-ironsworn` slices 2 and 3).
+The fixture `valid/v2-challenge-dice.json` has the whole release. Play plays every part: the dice, the score cap, negative momentum, the match and the burn (`preset-ironsworn` slices 2 to 5). Its translator fails closed with the entry's path on a challenge `push` without `challenge.momentum` and on a `push.maxDice` there. The burn is checked again when it arrives, against the momentum on the sheet then, so a momentum edited by hand in between fails closed; it can be done once, from the sheet (the latest entry) or on the pending roll of a check step.
 
 ### Gear and shops (ADR 0045)
 

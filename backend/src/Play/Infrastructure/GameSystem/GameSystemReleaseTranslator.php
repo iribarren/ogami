@@ -1511,14 +1511,10 @@ final readonly class GameSystemReleaseTranslator
             $pool = null === ($check['pool'] ?? null) ? null : $this->checkPool($view, $check, $path, $fields, $trackerKeys);
             // A null challenge or push is "not set" (the schema and Studio accept both), so only a real value counts.
             $challenged = null !== ($check['challenge'] ?? null);
-            if ($challenged && null !== ($check['push'] ?? null)) {
-                $this->refuseUnplayed($view, $check, $path, 'push', 'a challenge push is');
-            }
-
-            $push = null === ($check['push'] ?? null) ? null : $this->checkPush($view, $check, $path, $fields, $trackerKeys, $pool instanceof CheckPool);
             // A progress roll (challenge dice and no dice) has no action die.
             $dice = $pool instanceof CheckPool || ($challenged && null === ($check['dice'] ?? null)) ? null : $this->dice($view, $check['dice'] ?? null, $path.'.dice');
             $challenge = $challenged ? $this->checkChallenge($view, $check, $path, $fields, $pool instanceof CheckPool, $dice, $modifier instanceof Formula) : null;
+            $push = null === ($check['push'] ?? null) ? null : $this->checkPush($view, $check, $path, $fields, $trackerKeys, $pool instanceof CheckPool, $challenge);
             $bands = $this->checkBands($view, $check['bands'] ?? null, $path.'.bands', $fields, $trackerKeys, $difficulty instanceof CheckDifficulty);
             try {
                 $checks[$key] = new Check($key, $label, $hint, $dice, $modifier, $difficulty, $bands, $pool, $push, $challenge);
@@ -1646,8 +1642,8 @@ final readonly class GameSystemReleaseTranslator
     }
 
     /**
-     * The push of a pool check (ADR 0041): the label of its cost and the sheet and Tracker effects
-     * the cost applies. A mark without an option is a pick the player makes, allowed only here. The
+     * The push of a pool check (ADR 0041) or the burn of a challenge check that names a momentum (ADR 0049):
+     * the label of its cost and the sheet and Tracker effects the cost applies. A mark without an option is a pick the player makes, allowed only here. The
      * effects are checked against the sheet and the Trackers here, since the check of a release is
      * not walked with the Flow's.
      *
@@ -1655,11 +1651,15 @@ final readonly class GameSystemReleaseTranslator
      * @param array<string, Field> $fields
      * @param list<string>         $trackerKeys
      */
-    private function checkPush(PublishedReleaseView $view, array $check, string $path, array $fields, array $trackerKeys, bool $pool): CheckPush
+    private function checkPush(PublishedReleaseView $view, array $check, string $path, array $fields, array $trackerKeys, bool $pool, ?CheckChallenge $challenge = null): CheckPush
     {
         $path .= '.push';
-        if (!$pool) {
-            throw $this->invalid($view, $path, 'only a pool check can be pushed.');
+        if (!$pool && !$challenge instanceof CheckChallenge) {
+            throw $this->invalid($view, $path, 'only a pool check or a challenge check with a momentum can be pushed.');
+        }
+
+        if ($challenge instanceof CheckChallenge && null === $challenge->momentum) {
+            throw $this->invalid($view, $path, 'a challenge push burns momentum: the check needs a challenge.momentum.');
         }
 
         $push = $this->object($view, $check['push'], $path);
@@ -1682,6 +1682,10 @@ final readonly class GameSystemReleaseTranslator
             \assert($effect instanceof SheetEffect || $effect instanceof TrackerEffect);
             $this->assertPushEffectReadsTheRelease($view, $effect, \sprintf('%s.effects[%d]', $path, $index), $fields, $trackerKeys);
             $effects[] = $effect;
+        }
+
+        if ($challenge instanceof CheckChallenge && null !== ($push['maxDice'] ?? null)) {
+            throw $this->invalid($view, $path.'.maxDice', 'a burn rolls no dice, so it has no maxDice.');
         }
 
         $maxDice = $this->optionalInt($view, $push['maxDice'] ?? null, $path.'.maxDice', 1, CheckPush::MAX_DICE);
@@ -1855,19 +1859,6 @@ final readonly class GameSystemReleaseTranslator
         }
 
         return $formula;
-    }
-
-    /**
-     * Refuses a part of ADR 0049 Studio publishes but Play does not play yet (preset-ironsworn slices
-     * 2 and 3), present even as null, so a release using it fails closed instead of playing without it.
-     *
-     * @param array<array-key, mixed> $object
-     */
-    private function refuseUnplayed(PublishedReleaseView $view, array $object, string $path, string $name, string $what): void
-    {
-        if (\array_key_exists($name, $object)) {
-            throw $this->invalid($view, $path.'.'.$name, $what.' not played yet (ADR 0049).');
-        }
     }
 
     /**

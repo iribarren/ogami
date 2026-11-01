@@ -1,7 +1,7 @@
 # Feature: preset-west-marches
 
 - **Locator:** `odd/tasks/preset-west-marches.md` · Engram topic `odd/preset-west-marches/tasks`
-- **Issue:** [#337](https://github.com/iribarren/ogami/issues/337) · **Branch:** `feat/preset-west-marches-2-play-pass` · **Status:** in progress
+- **Issue:** [#337](https://github.com/iribarren/ogami/issues/337) · **Branch:** `feat/preset-west-marches-2-play-pass` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `play-places` (PRs #331–#336)
@@ -91,8 +91,8 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 | T2 | 1 | `backend/presets/west-marches.json` base: credits, tags, facts, trackers, sheet, checks, gear; `PresetsTest` (publishes once, credits verbatim, select options, conditions, currency, shops' categories, checks) | delegated writer (slice 1) | [x] | 4cdafa6c |
 | T3 | 1 | Flow, Scene Types and tables; `WestMarchesPresetFlowTest` playing founding, a session opening with no open Thread, travel with a world turn encounter by distance, a combat to victory, the `foe` guard, a trap with a condition, a rest chain, a shop purchase, a stranded closing and `closeThread` | delegated writer (slice 1) | [x] | c89f9df2 |
 | T4 | 2 | Slice 1 review fixes; e2e `frontend/e2e/play-west-marches.spec.ts`: founding, session opening, a town purchase | delegated writer (slice 2) | [x] | 5e3a1b0b, 85da4f0c |
-| T5 | 2 | Chrome play pass: founding, one full expedition, a fight, a rest; fixes | parent Chrome pass + delegated writer (slice 2) | [x] | |
-| T6 | 2 | Closing: Reviews, roadmap `Done:` line under B15, follow-ups if any | parent (slice 2) | [ ] | |
+| T5 | 2 | Chrome play pass: founding, one full expedition, a fight, a rest; fixes | parent Chrome pass + delegated writer (slice 2) | [x] | 654cf22d |
+| T6 | 2 | Closing: Reviews, roadmap `Done:` line under B15, follow-ups if any | parent (slice 2) | [x] | closing doc commit |
 
 ## Progress
 
@@ -103,13 +103,15 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 - 2026-11-01: T4 done: slice 1 review fixes in the release (additive party, `expeditions` tracker, mandatory fallback rumor, stranded rations, short rest tip) with 21 new flow cases; a surviving forced `combat-round` plays to its end and a short rest at 0 hit dice still heals (documented gap); e2e `play-west-marches.spec.ts` added.
 
 - 2026-11-01: T5 done: the Chrome pass covered founding, three sessions, town, shops, inn, travel, explore site, a lair, two fights, victory, flee, death save, potion, slot, rests, stranded closing and closeThread, with no console errors; the findings are fixed in this commit.
+- 2026-11-01: T6 done: PR #339 opened, native review skipped by the user's choice, Play issues filed as #340 (roadmap B18). The T5 fixes were not replayed in Chrome; tests and the e2e cover them.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | review-a6c9f4b5b061fb36 | b9d41bcf, 4cdafa6c, c89f9df2 | Approved, acknowledged. Six warnings and two suggestions, fixed in slice 2 (T4): additive party pick, first session closing with no expedition, skippable fallback rumor, stranded "one more day out" reset by the next opening, short rest with no hit dice, surviving forced scene unproved; untested death save, potion, slot spend, "Does it come to blows?" and modifier flooring | [#338](https://github.com/iribarren/ogami/pull/338) |
+| 2 | none | 5e3a1b0b, 85da4f0c, 654cf22d | Native review skipped by the user at the consent prompt (medium risk), so there is no review record. Chrome pass findings in the release fixed in T5; Play issues in [#340](https://github.com/iribarren/ogami/issues/340) | [#339](https://github.com/iribarren/ogami/pull/339) |
 
 ## Next step
 
-Slice 2 writer: T4 on `feat/preset-west-marches-2-play-pass`; then the parent's Chrome play pass (T5).
+None. Every finding is fixed or tracked in [#340](https://github.com/iribarren/ogami/issues/340).

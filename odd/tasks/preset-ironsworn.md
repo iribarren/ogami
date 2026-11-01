@@ -1,7 +1,7 @@
 # Feature: preset-ironsworn
 
 - **Locator:** `odd/tasks/preset-ironsworn.md` · Engram topic `odd/preset-ironsworn/tasks`
-- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-10-release` · **Status:** in progress
+- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-11-play-pass` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-west-marches` (PRs #338–#339)
@@ -36,7 +36,7 @@ Out of scope: asset cards as data (a `list` field holds their names; the player 
 | Question | Decision |
 |---|---|
 | Vows (user) | Fixed slots: five counters of 40 ticks, with the score as ticks/4. No contract change for vows. Limits accepted: five open vows, shown as 12/40 rather than boxes. Revisit only if play shows the limit hurts |
-| Licence (Claude; page read 2026-11-01) | `tomkinpress.com/pages/licensing`: the SRD, and the text of the asset cards and oracle tables, are CC BY 4.0; the full rulebook is CC BY-NC-SA. "These licenses are limited to textual content": no images, icons, trade dress or other design elements. "You cannot state or imply that your work is an official Tomkin Press or Ironsworn product". Mechanics are free to repurpose. So the preset uses the SRD's moves and oracle tables: tables as written, moves summarized in its own words. The linked `/pages/policies` answered HTTP 429 twice, so it is unread; the licensing page itself has no separate rule on the name |
+| Licence (Claude; page read 2026-11-01) | `tomkinpress.com/pages/licensing`: the SRD, and the text of the asset cards and oracle tables, are CC BY 4.0; the full rulebook is CC BY-NC-SA. "These licenses are limited to textual content": no images, icons, trade dress or other design elements. "You cannot state or imply that your work is an official Tomkin Press or Ironsworn product". Mechanics are free to repurpose. So the preset uses the SRD's moves and oracle tables: tables as written, moves summarized in its own words. The linked `/pages/policies` (read 2026-11-02 after two 429s) covers only purchases and returns, so it adds no rule on the name; the licensing page itself has no separate rule on the name |
 | Credits (Claude, from the licensing page) | `notice` opens with the page's wording: "This work is based on Ironsworn, created by Shawn Tomkin, and licensed for our use under the Creative Commons Attribution 4.0 International License (https://creativecommons.org/licenses/by/4.0/)." It goes on: "Unofficial: not an official Tomkin Press or Ironsworn product. Rules summarized and adapted for guided solo play." `license`: "CC BY 4.0"; `url`: `https://creativecommons.org/licenses/by/4.0/`. No badge: no images, icons or trade dress |
 | Vow ranks (Claude, T11) | A rank counter per slot replaces the sketch's ticks-per-milestone counter. `vow-N-rank` 0–5 has `levels` (Free, Troublesome … Epic), so the panel names the rank and experience is the rank itself. Ticks per milestone come from one flow formula, `min(1,r)*max(4*(4-r),6-r)`: 12, 8, 4, 2, 1, and 0 on a free slot. Journeys and fights use the same formula |
 | Moves in the flow (Claude, T11) | Twenty moves or groups as Scene Types the player picks (the selection's limit), suffer moves through `nextScene`. Rare moves stay hints, rolled from the sheet: Draw the Circle, Aid Your Ally, Turn the Tide, Companion Endure Harm, Out of Supply, Face a Setback |
@@ -50,6 +50,7 @@ Out of scope: asset cards as data (a `list` field holds their names; the player 
 | When a burn is offered (Claude) | Only when momentum beats more challenge dice than the score. So a roll that cannot improve completes at once, as a roll with no failed die does. Checked again when the burn arrives, so a momentum edited by hand in between fails closed. The SRD's "cancel any die below momentum" is the same as using the larger of score and momentum: if the score beats die A and momentum beats die B, and neither beats the other's die, then S > A ≥ M > B ≥ S, a contradiction |
 | Match (Claude) | A new special result `match`, when every challenge die shows the same face. Shown in the roll dialog, journal and sandbox. **Not** offered in step `outcomes`: a special entry replaces the band entry (ADR 0044), and a match must keep the band's effects. A flow tip points at the Major Plot Twist oracle. A burn cannot change it |
 | Rollout (Claude) | Additive in schema version 2, so every release keeps its hash. Play's translator refuses `challenge` until slice 2 and a challenge `push` until slice 5, with the path and a message naming the ADR (precedent ADR 0044) |
+| Overwriting a vow slot (Claude, slice 11) | The slot choice closes the slot's Thread before it creates the new one, so a vow overwritten by hand leaves no open Thread that nothing can close and that counts toward the five. Picking a slot in use forsakes that vow at no cost; the prompt says to pick a slot with rank 0, since a tracker placeholder renders its number, not its level label |
 | Authoring route (Claude) | The writer authors the JSON by hand. A Chrome play pass in slice 11 replaces a separate playtest |
 
 ## Design
@@ -201,7 +202,7 @@ epilogue       setup: prompts for what you hope and what you fear; roll: check b
 
 As built (T13): the Scene Types follow the list above, with these differences. `resupply`'s roll has `next: end`, so a strong hit does not fall into `scavenge`. The table entries that force `face-death`, `face-desolation` and `forsake-vow` were added with the Scene Types, since a table cannot name a scene before it exists. The sheet has field groups (Stats, Meters, Debilities, Progress) but no declared layout. `epilogue`'s bonds roll has no outcomes. `closeThread` on a slot with no Thread, or one whose Thread is already closed, changes nothing and is not refused, so forsaking a free or fulfilled slot costs no spirit (its rank is 0) and still goes to `endure-stress`. Publishing prints three authoring warnings on `fight-round` (its guard on `fight-rank` sits beside `nextScene` effects that no scene lowers it for); the consequences come from rolls, not from the rank, so they are accepted and `PresetsTest` pins their number.
 
-Accepted limits: a slot can be overwritten by hand while it is in use (the prompt lists the slots, and a sixth vow is refused); a fulfilled slot's Fact keeps the old name until a new vow fills it, while its rank reads Free; the wounded block on health gains is a tip; `{health}` at 0 cannot branch, since a condition reads trackers only, so the step asks.
+Accepted limits: a slot can be overwritten by hand while it is in use, which closes its old Thread at no cost (the prompt lists the slots, and a sixth vow is refused); a fulfilled slot's Fact keeps the old name until a new vow fills it, while its rank reads Free; the wounded block on health gains is a tip; `{health}` at 0 cannot branch, since a condition reads trackers only, so the step asks.
 
 ## Constraints
 
@@ -225,7 +226,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 8 | `feat/preset-ironsworn-8-sandbox` | `feat(studio): preset-ironsworn 8/11 sandbox API` | T9 | ~1,680 (API ~230) |
 | 9 | `feat/preset-ironsworn-9-sandbox-ui` | `feat(studio): preset-ironsworn 9/11 sandbox UI` | T19 | ~700 |
 | 10 | `feat/preset-ironsworn-10-release` | `feat(presets): preset-ironsworn 10/11 release` | T11, T12, T13 | ~1,680 (preset JSON ~800, tests ~660, docs and feature doc ~215) |
-| 11 | `feat/preset-ironsworn-11-play-pass` | `feat(presets): preset-ironsworn 11/11 play pass` | T14, T15, T16 | ~600 |
+| 11 | `feat/preset-ironsworn-11-play-pass` | `feat(presets): preset-ironsworn 11/11 play pass` | T14, T15, T16 | ~950 (flow tests ~550, e2e ~130, preset ~20, docs ~50, Chrome fixes ~200) |
 
 ## Tasks
 
@@ -241,10 +242,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T8 | 7 | Studio check editor: challenge mode, action or progress, momentum select, burn | delegated writer (slice 7) | [x] | `429b0518` |
 | T9 | 8 | Studio sandbox backend and API: challenge roll, match, burn, `challenge` on the test-roll response | delegated writer (slice 8) | [x] | `624a250c` |
 | T10 | 1 | Studio references: `challenge.momentum` blocks a rename or deletion (`DraftReferences`) | delegated writer (slice 1) | [x] | `5df5b214` |
-| T11 | 10 | Read the official licensing page; design the flow in this doc (parent, done before the writer); flow example in `docs/domain/flow-examples.md` | parent design, delegated writer (slice 10) | [x] | |
-| T12 | 10 | `backend/presets/ironsworn.json` base: credits, sheet, trackers, checks; `PresetsTest` | delegated writer (slice 10) | [x] | |
-| T13 | 10 | Flow, Scene Types and tables; `IronswornPresetFlowTest` | delegated writer (slice 10) | [x] | |
-| T14 | 11 | Slice 10 review fixes; e2e `frontend/e2e/play-ironsworn.spec.ts` | | [ ] | |
+| T11 | 10 | Read the official licensing page; design the flow in this doc (parent, done before the writer); flow example in `docs/domain/flow-examples.md` | parent design, delegated writer (slice 10) | [x] | `cd2044a3` |
+| T12 | 10 | `backend/presets/ironsworn.json` base: credits, sheet, trackers, checks; `PresetsTest` | delegated writer (slice 10) | [x] | `6825d384` |
+| T13 | 10 | Flow, Scene Types and tables; `IronswornPresetFlowTest` | delegated writer (slice 10) | [x] | `8ba0d1a4` |
+| T14 | 11 | Slice 10 review fixes (flow tests, `pay-the-price` M-2, the vow slot closes its Thread); e2e `frontend/e2e/play-ironsworn.spec.ts` | | [ ] | |
 | T15 | 11 | Chrome play pass: swear a vow, a move with a burn, a match, a negative momentum, fulfilling a vow; test roll and burn in the Studio sandbox; fixes | | [ ] | |
 | T16 | 11 | Closing: Reviews, roadmap `Done:` line under B16, follow-ups if any | | [ ] | |
 | T17 | 3 | Play API: `challenge` on the check and on its journal content, API tests, `make api`. Drafted on local branch `draft/preset-ironsworn-3-play-api` (`74ec85a8`, `7384cee9`), brought onto the latest `main` | delegated writer (slice 3) | [x] | `3a51fbb1` |
@@ -280,6 +281,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: T12 done: `backend/presets/ironsworn.json` with the exact credits, the eight SRD tables as written, `ask-the-oracle`, tags, trackers, fact slots, sheet (point budget 9) and 19 checks; no Scene Type or flow yet. The three table entries that force a scene (face-death, face-desolation, forsake-vow) are added with the Scene Types in T13, since a table cannot name a scene that does not exist. RED: the publish test failed on the missing file; GREEN once the file published (245 assertions).
 - 2026-11-01: T13 done: 27 Scene Types and the `ironsworn` flow (prologue, adventure loop of twenty moves, epilogue), the three table entries that force a scene, `IronswornPresetFlowTest` (32 tests: prologue, milestones by rank, sixth vow, fulfilling by rank, recommit, forsaking, Face Danger, momentum cap, burn on a pending step, journey, fight, Endure Harm, tables) and a `PresetsTest` flow test. No RED against the preset: it was generated from the design before the tests, and every first failure was a test mistake (cast, scene offers, step keys). Proved by mutation instead: dropping the momentum cap, the free-slot guard of the ticks formula and a `closeThread` each failed the suite (1, 1 and 6 tests), then restored.
 - 2026-11-02: T11 done: section 6 of `docs/domain/flow-examples.md` (release, flow, condensed steps, what it shows, notes on the rules gaps and accepted limits) and the example count. Docs only: no RED; no fixture added (no test asks for one).
+- 2026-11-02: Slice 10 review fixes (preset and `IronswornPresetFlowTest`, 58 tests): the `slot` choice closes the slot's Thread first; `pay-the-price` gains `momentum-2`; the slot prompt now says "Pick a slot with rank 0" (found by the new prompt test: a tracker renders as `0`, so "reads Free" never appeared). RED: the overwrite test (old Thread stayed open), the prompt test and the M-2 test failed before the preset change; GREEN after. The other new tests passed at once (no RED); proved by mutation, then restored: a floored progress score (`+3` on the modifier), the oath's weak `+1`, the stress table's forced entry and `momentum-max` counting only conditions each failed 1 to 2 tests.
 
 ## Reviews
 
@@ -294,7 +296,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 7 | `review-b98fdd8ece7c9b1b` | `f02ac2c3`, `429b0518` | Approved. A warning and two suggestions, fixed in slice 8: the sandbox guard reads the draft, so it reappears when a saved challenge check is switched to dice or pool unsaved (a dirty draft is saved before rolling, so no wrong roll; T9 removes the guard); stored nulls are not always written back (a null `challenge` on a pool check, a null `scoreMax` or `momentum`, a null `push` cleared by an unrelated edit while the momentum is empty); `readCheck` accepts shapes the form cannot hold (a stored difficulty, a push without momentum, a push with `maxDice`) | [#348](https://github.com/iribarren/ogami/pull/348) |
 | 8 | `review-6e3b0d283d0c32e6` | `589f48ce`, `c1de4ff2`, `624a250c` | Approved. Two suggestions, fixed in slice 9: the burn reads the action die's sides by casting the notation after its first two characters, so a percentile die refuses every face and a suffix is ignored, with no test of another die than a d6; the situational range guard on the burn path has no test, as the existing case sends a difficulty and stops there | [#349](https://github.com/iribarren/ogami/pull/349) |
 | 9 | `review-4e36ea088a14d1fc` | `64588e87`, `71a56efd` | Approved. A suggestion, fixed in slice 10: the burned branch of the cap note in `CheckSandbox.tsx` has no component test (the only burned fixture has momentum 9 under a cap of 10), and no test asserts the burn offer's text on what the score becomes and from what | [#350](https://github.com/iribarren/ogami/pull/350) |
+| 10 | `review-d9aeedbdeb23a8e5` | `ec8f8630`, `6825d384`, `8ba0d1a4`, `cd2044a3` | Approved. Findings fixed in slice 11: no test swears again after a close, nor refills `destination` and `foe`; no progress roll from ticks not divisible by 4; `enter-the-fray` never played, and the `fight-on` and `weak-strike` chains into `fight-round` never asserted; the vow's heart roll, its momentum gains, the obstacle and a forced `forsake-vow` during the once prologue unproved; the stress table's forced entries, debility marks and one debility per field group lowering `momentum-max` unproved; overwriting a slot leaves its Thread open and unclosable; `pay-the-price` lacks the M-2 of the design | [#351](https://github.com/iribarren/ogami/pull/351) |
 
 ## Next step
 
-Slice 10: slice 9 fix, then the release (T11, T12, T13), its native review and PR. Then slice 11: review fixes, e2e and the Chrome play pass (T14, T15, T16).
+Slice 11: slice 10 fixes and the e2e (T14), the Chrome play pass and its fixes (T15), native review, PR, closing commit (T16).

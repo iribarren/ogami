@@ -366,6 +366,337 @@ final class IronswornPresetFlowTest extends FlowRunTestCase
         }
     }
 
+    #[Test]
+    public function swearingAgainAfterACloseCountsOnlyOpenVowsReplacesTheSlotFactAndClosesTheNewThread(): void
+    {
+        $campaign = $this->prologue();
+        foreach ([3, 4, 5] as $slot) {
+            $this->swear($campaign, $slot, 1, 'Vow '.$slot);
+        }
+        $campaign = $this->withTrackers($campaign, ['vow-3' => 40]);
+        $this->scene($campaign, 'fulfill-vow');
+        $this->step($campaign, 'which', StepResult::choice('vow-3'));
+        $this->rollCheck($campaign, 'check-3', 'fulfill-3', null, 3, 7);
+        $this->end($campaign);
+        self::assertSame(['Vow 1', 'Vow 2', 'Vow 4', 'Vow 5'], $this->openVows($campaign));
+
+        // The closed Thread does not count toward the five.
+        $this->swear($campaign, 3, 2, 'Second vow');
+
+        self::assertCount(6, $campaign->threads());
+        self::assertSame(['Second vow', 'Vow 1', 'Vow 2', 'Vow 4', 'Vow 5'], $this->openVows($campaign));
+        self::assertSame('Second vow', $campaign->factValues($this->release)['vow-3']);
+        self::assertSame(2, $this->trackers($campaign, ['vow-3-rank'])['vow-3-rank']);
+        $this->scene($campaign, 'swear-vow');
+        self::assertSame(['play', 'full'], self::position($campaign));
+        $this->skip($campaign, 'full');
+        $this->end($campaign);
+
+        // Forsaking the slot closes the new Thread; the old one stays closed.
+        $this->scene($campaign, 'forsake-vow');
+        $this->step($campaign, 'which', StepResult::choice('vow-3', 'hero'));
+        self::assertSame(['Vow 1', 'Vow 2', 'Vow 4', 'Vow 5'], $this->openVows($campaign));
+    }
+
+    #[Test]
+    public function aSecondJourneyAndASecondFightRefillTheDestinationAndTheFoe(): void
+    {
+        $campaign = $this->prologue();
+        $this->scene($campaign, 'journey');
+        $this->step($campaign, 'where', self::prompt('Ashfall'));
+        $this->step($campaign, 'rank', StepResult::choice('r1'));
+        self::assertSame('Ashfall', $campaign->factValues($this->release)['destination']);
+        $this->rollCheck($campaign, 'leg', 'wits', null, 2, 2, 9);
+        $this->step($campaign, 'arrived', StepResult::choice('yes'));
+        $this->rollCheck($campaign, 'reach', 'journey', null, 1, 2);
+        $this->step($campaign, 'boon', StepResult::choice('momentum', 'hero'));
+        $this->end($campaign);
+
+        $this->scene($campaign, 'journey');
+        self::assertSame(['play', 'where'], self::position($campaign));
+        $this->step($campaign, 'where', self::prompt('Dunmere'));
+        self::assertSame('Dunmere', $campaign->factValues($this->release)['destination']);
+        $this->step($campaign, 'rank', StepResult::choice('r1'));
+        $this->rollCheck($campaign, 'leg', 'wits', null, 2, 2, 9);
+        $this->skip($campaign, 'arrived');
+        $this->end($campaign);
+
+        foreach (['Wolf', 'Bear'] as $foe) {
+            $campaign = $this->enter($campaign, $foe);
+            self::assertSame($foe, $campaign->factValues($this->release)['foe']);
+        }
+    }
+
+    #[Test]
+    public function aProgressRollFromTicksNotDivisibleByFourScoresTheFloorOfTheFilledBoxes(): void
+    {
+        // 14 ticks fill 3 boxes: a 2 is beaten and a 3 ties the score, so only a floor of 3 splits them.
+        $weak = $this->fulfilling(2, 14);
+        $this->rollCheck($weak, 'check-1', 'fulfill-1', null, 2, 9);
+        self::assertSame(1, $this->hero($weak)['experience']);
+
+        $miss = $this->fulfilling(2, 14);
+        $this->rollCheck($miss, 'check-1', 'fulfill-1', null, 3, 9);
+        self::assertSame(['play', 'undone-1'], self::position($miss));
+    }
+
+    #[Test]
+    public function enterTheFrayFightOnAndAWeakStrikeEachChainIntoAFightRound(): void
+    {
+        $campaign = $this->prologue();
+        $this->scene($campaign, 'enter-the-fray');
+        $this->step($campaign, 'foe', self::prompt('Wolf'));
+        $this->step($campaign, 'rank', StepResult::choice('r2'));
+        // Heart 2 and a 3 make 5 against 2 and 9: a weak hit, so the player picks an edge.
+        $this->rollCheck($campaign, 'roll', 'heart', 'heart', 3, 2, 9);
+        self::assertSame(['play', 'edge'], self::position($campaign));
+        $this->step($campaign, 'edge', StepResult::choice('act'));
+        $this->end($campaign);
+
+        self::assertSame(['fight-rank' => 2, 'fight' => 0, 'initiative' => 1], $this->trackers($campaign, ['fight-rank', 'fight', 'initiative']));
+        self::assertSame(['fight-round'], $this->offered($campaign));
+        $this->scene($campaign, 'fight-round');
+        self::assertSame(['play', 'strike'], self::position($campaign));
+        // A weak strike marks progress, hands over the initiative and chains into the next round.
+        $this->rollCheck($campaign, 'strike', 'iron', 'iron', 2, 1, 9);
+        $this->end($campaign);
+        self::assertSame(['fight' => 8, 'initiative' => 0], $this->trackers($campaign, ['fight', 'initiative']));
+        self::assertSame(['fight-round'], $this->offered($campaign));
+
+        // A strong strike, then fighting on, chains too.
+        $campaign = $this->withTrackers($campaign, ['initiative' => 1]);
+        $this->scene($campaign, 'fight-round');
+        $this->rollCheck($campaign, 'strike', 'iron', 'iron', 4, 1, 2);
+        $this->step($campaign, 'decisive', StepResult::choice('on'));
+        $this->end($campaign);
+        self::assertSame(['fight-round'], $this->offered($campaign));
+    }
+
+    /**
+     * @return iterable<string, array{int, list<string>, list<int>, int}> the momentum, the conditions marked, the dice and the momentum after
+     */
+    public static function oaths(): iterable
+    {
+        yield 'strong hit adds 2' => [2, [], [5, 1, 2], 4];
+        yield 'weak hit adds 1' => [2, [], [5, 1, 9], 3];
+        yield 'strong hit stops at 10' => [9, [], [5, 1, 2], 10];
+        yield 'weak hit stops at 10' => [10, [], [5, 1, 10], 10];
+        yield 'strong hit stops at the lowered maximum' => [7, ['wounded', 'shaken'], [5, 1, 2], 8];
+        yield 'weak hit stops at the lowered maximum' => [8, ['wounded', 'shaken'], [5, 1, 10], 8];
+    }
+
+    /**
+     * @param list<string> $conditions
+     * @param list<int>    $faces
+     */
+    #[Test]
+    #[DataProvider('oaths')]
+    public function theHeartRollOfSwearingAVowPaysMomentumCappedByTheMaximum(int $momentum, array $conditions, array $faces, int $expected): void
+    {
+        $campaign = $this->prologue(['momentum' => $momentum, 'conditions' => $conditions]);
+        $this->swearUntilRoll($campaign, 3);
+
+        // Heart 2 and a 5 make 7: both dice 1 and 2 are beaten (strong), or only the 1 (weak).
+        $this->rollCheck($campaign, 'roll', 'heart', null, ...$faces);
+
+        self::assertSame($expected, $this->momentum($campaign));
+        self::assertSame(['open', null], self::position($campaign));
+    }
+
+    #[Test]
+    public function aMissedOathPressesOnForTwoMomentumOrGivesUpAndForsakesTheVow(): void
+    {
+        $press = $this->prologue();
+        $this->swearUntilRoll($press, 3);
+        $this->rollCheck($press, 'roll', 'heart', null, 1, 9, 10);
+        self::assertSame(['play', 'obstacle'], self::position($press));
+        $this->step($press, 'obstacle', StepResult::choice('press', 'hero'));
+        self::assertSame(0, $this->momentum($press));
+        self::assertSame(['Vow 1', 'Vow 2', 'Vow 3'], $this->openVows($press));
+
+        $giveUp = $this->prologue();
+        $this->swearUntilRoll($giveUp, 3);
+        $this->rollCheck($giveUp, 'roll', 'heart', null, 1, 9, 10);
+        $this->step($giveUp, 'obstacle', StepResult::choice('give-up'));
+        $this->end($giveUp);
+        self::assertSame(['forsake-vow'], $this->offered($giveUp));
+    }
+
+    #[Test]
+    public function givingUpAMissedOathDuringThePrologueForsakesTheVowAndThePrologueGoesOn(): void
+    {
+        $campaign = $this->begin();
+        $this->scene($campaign, 'the-ironlands');
+        $this->step($campaign, 'place', self::prompt('Hearth'));
+        $this->skip($campaign, 'land');
+        $this->skip($campaign, 'trouble');
+        $this->end($campaign);
+        $this->scene($campaign, 'ironsworn');
+        $this->step($campaign, 'hero', StepResult::character('hero'));
+        $this->skip($campaign, 'bond-1');
+        $this->skip($campaign, 'bond-2');
+        $this->skip($campaign, 'bond-3');
+        $this->end($campaign);
+        $this->swearUntilRoll($campaign, 1);
+        $this->rollCheck($campaign, 'roll', 'heart', null, 1, 9, 10);
+        $this->step($campaign, 'obstacle', StepResult::choice('give-up'));
+        $this->end($campaign);
+        self::assertSame(['forsake-vow'], $this->offered($campaign));
+
+        $this->scene($campaign, 'forsake-vow');
+        $this->step($campaign, 'which', StepResult::choice('vow-1', 'hero'));
+        self::assertSame([], $this->openVows($campaign));
+        $this->end($campaign);
+        $this->scene($campaign, 'endure-stress');
+        $this->skip($campaign, 'harm');
+        $this->skip($campaign, 'roll');
+        $this->end($campaign);
+
+        // The inciting vow is still to be sworn.
+        self::assertSame('prologue', $campaign->flowRunView($this->release)?->progress?->phaseKey);
+        self::assertSame(['swear-vow'], $this->offered($campaign));
+    }
+
+    /**
+     * @return iterable<string, array{string, int, string}> the table, the roll and the Scene Type it forces
+     */
+    public static function forcedEntries(): iterable
+    {
+        yield 'harm 1' => ['harm', 1, 'face-death'];
+        yield 'harm 10' => ['harm', 10, 'face-death'];
+        yield 'stress 1' => ['stress', 1, 'face-desolation'];
+        yield 'stress 10' => ['stress', 10, 'face-desolation'];
+        yield 'stress 11' => ['stress', 11, 'forsake-vow'];
+        yield 'stress 25' => ['stress', 25, 'forsake-vow'];
+    }
+
+    #[Test]
+    #[DataProvider('forcedEntries')]
+    public function theTablesForceTheDeadlierSceneTypes(string $kind, int $roll, string $scene): void
+    {
+        self::assertSame([$scene], $this->offered($this->atTable($kind, $roll)));
+    }
+
+    #[Test]
+    public function aTableEntryAboveTheForcedRangesForcesNothing(): void
+    {
+        foreach ([['harm', 11], ['stress', 26]] as [$kind, $roll]) {
+            self::assertContains('face-danger', $this->offered($this->atTable($kind, $roll)), $kind);
+        }
+    }
+
+    #[Test]
+    public function theZeroStepsMarkTheirDebilityAndTheBrinkScenesMarkABurden(): void
+    {
+        $marks = [
+            ['harm', 'mark', 'conditions', 'wounded'],
+            ['harm', 'bane', 'banes', 'maimed'],
+            ['stress', 'mark', 'conditions', 'shaken'],
+            ['stress', 'bane', 'banes', 'corrupted'],
+        ];
+        foreach ($marks as [$kind, $option, $field, $debility]) {
+            $campaign = $this->endure($kind);
+            $this->rollCheck($campaign, 'roll', 'endure-'.$kind, null, 1, 9, 9);
+            $this->step($campaign, 'zero', StepResult::choice($option, 'hero'));
+            self::assertSame([$debility], $this->hero($campaign)[$field], $kind.' '.$option);
+        }
+
+        foreach ([['harm', 'face-death', 7, 'cursed'], ['stress', 'face-desolation', 5, 'tormented']] as [$kind, $scene, $roll, $burden]) {
+            $campaign = $this->atTable($kind, $roll);
+            $this->scene($campaign, $scene);
+            $this->rollCheck($campaign, 'roll', 'heart', null, 3, 2, 9);
+            $this->step($campaign, 'fate', StepResult::choice('price', 'hero'));
+            self::assertSame([$burden], $this->hero($campaign)['burdens'], $scene);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{string, string}> the field group and a debility in it
+     */
+    public static function debilityGroups(): iterable
+    {
+        yield 'a condition' => ['conditions', 'wounded'];
+        yield 'a bane' => ['banes', 'maimed'];
+        yield 'a burden' => ['burdens', 'cursed'];
+    }
+
+    #[Test]
+    #[DataProvider('debilityGroups')]
+    public function oneDebilityInAnyGroupLowersTheMomentumMaximumAndReset(string $group, string $debility): void
+    {
+        $campaign = $this->danger(['momentum' => 10, $group => [$debility]]);
+
+        // A strong hit stops at the maximum of 9.
+        $this->rollCheck($campaign, 'roll', 'edge', 'edge', 5, 1, 2);
+        self::assertSame(9, $this->momentum($campaign));
+
+        // The burn's cost sets the momentum to the reset of 1.
+        $check = $this->release->check('edge') ?? self::fail('No edge.');
+        foreach ($check->push->effects ?? [] as $effect) {
+            self::assertInstanceOf(SheetEffect::class, $effect);
+            new CampaignEffects($campaign, $this->release)->applySheetEffect($effect, 'hero');
+        }
+        self::assertSame(1, $this->momentum($campaign));
+    }
+
+    #[Test]
+    public function overwritingASlotInUseClosesItsOldThreadAtNoCostAndFreesTheCount(): void
+    {
+        $campaign = $this->prologue();
+        $this->swear($campaign, 1, 1, 'Replacement');
+
+        // The old Thread is closed, not left open behind the new one.
+        self::assertSame(['Replacement', 'Vow 2'], $this->openVows($campaign));
+        self::assertSame(['vow-1' => 0, 'vow-1-rank' => 1], $this->trackers($campaign, ['vow-1', 'vow-1-rank']));
+        $this->swear($campaign, 3, 1, 'Vow 3');
+        $this->swear($campaign, 4, 1, 'Vow 4');
+
+        // Four are open, so a fifth may still be sworn although five Threads were opened in all.
+        self::assertCount(5, $campaign->threads());
+        $this->scene($campaign, 'swear-vow');
+        self::assertSame(['play', 'vow'], self::position($campaign));
+    }
+
+    #[Test]
+    public function theSlotPromptReadsFreeForSlotsNothingFilledYet(): void
+    {
+        $campaign = $this->begin();
+        $this->scene($campaign, 'the-ironlands');
+        $this->step($campaign, 'place', self::prompt('Hearth'));
+        $this->skip($campaign, 'land');
+        $this->skip($campaign, 'trouble');
+        $this->end($campaign);
+        $this->scene($campaign, 'ironsworn');
+        $this->step($campaign, 'hero', StepResult::character('hero'));
+        foreach (['bond-1', 'bond-2', 'bond-3'] as $bond) {
+            $this->skip($campaign, $bond);
+        }
+        $this->end($campaign);
+        $this->scene($campaign, 'swear-vow');
+        $this->step($campaign, 'vow', self::prompt('Find the lost bell'));
+        $this->step($campaign, 'rank', StepResult::choice('r1'));
+
+        $prompt = $campaign->flowRunView($this->release)?->step->prompt ?? self::fail('No prompt.');
+
+        // A tracker renders as its number, so the prompt names the rank to look for, not a level label.
+        self::assertStringStartsWith("Vow 1:  (0, 0 of 40 ticks)\nVow 2:  (0, 0 of 40 ticks)", $prompt);
+        self::assertStringEndsWith('Pick a slot with rank 0, which holds no vow.', $prompt);
+    }
+
+    #[Test]
+    public function payThePriceOffersLosingTwoMomentum(): void
+    {
+        $campaign = $this->danger();
+        $this->rollCheck($campaign, 'roll', 'edge', 'edge', 1, 9, 8);
+        $this->end($campaign);
+        $this->scene($campaign, 'pay-the-price');
+        $this->skip($campaign, 'table');
+
+        $this->step($campaign, 'cost', StepResult::choice('momentum-2', 'hero'));
+
+        self::assertSame(0, $this->momentum($campaign));
+    }
+
     /**
      * @param array<string, mixed> $values
      */
@@ -544,6 +875,75 @@ final class IronswornPresetFlowTest extends FlowRunTestCase
     private function offered(Campaign $campaign): array
     {
         return array_map(static fn ($type): string => $type->key, $campaign->flowRunView($this->release)?->pick->cards ?? []);
+    }
+
+    /**
+     * @return array<string, mixed> the hero's sheet values
+     */
+    private function hero(Campaign $campaign): array
+    {
+        return $campaign->character(CharacterId::fromString('hero'))?->values() ?? self::fail('No hero.');
+    }
+
+    /**
+     * The swear-vow scene at its heart roll, the vow named and ranked and the slot picked.
+     */
+    private function swearUntilRoll(Campaign $campaign, int $slot): void
+    {
+        $this->scene($campaign, 'swear-vow');
+        $this->step($campaign, 'vow', self::prompt('Vow '.$slot));
+        $this->step($campaign, 'rank', StepResult::choice('r1'));
+        $this->step($campaign, 'slot', StepResult::choice('s'.$slot));
+        self::assertSame(['play', 'roll'], self::position($campaign));
+    }
+
+    /**
+     * Enter the Fray against the foe: a weak hit and the edge that chains into the first round, which is
+     * ended with the fight over (the rank at 0) so that the next scene may be picked.
+     */
+    private function enter(Campaign $campaign, string $foe): Campaign
+    {
+        $this->scene($campaign, 'enter-the-fray');
+        $this->step($campaign, 'foe', self::prompt($foe));
+        $this->step($campaign, 'rank', StepResult::choice('r1'));
+        $this->rollCheck($campaign, 'roll', 'heart', 'heart', 3, 2, 9);
+        $this->step($campaign, 'edge', StepResult::choice('act'));
+        $this->end($campaign);
+        $campaign = $this->withTrackers($campaign, ['fight-rank' => 0]);
+        $this->scene($campaign, 'fight-round');
+        $this->skip($campaign, 'none');
+        $this->end($campaign);
+
+        return $campaign;
+    }
+
+    /**
+     * Face Danger's weak hit sends you to the Endure scene of the kind ("harm" or "stress"), at its first step.
+     */
+    private function endure(string $kind): Campaign
+    {
+        $campaign = $this->danger();
+        $this->rollCheck($campaign, 'roll', 'edge', 'edge', 3, 2, 9);
+        $this->step($campaign, 'cost', StepResult::choice($kind));
+        $this->end($campaign);
+        $this->scene($campaign, 'endure-'.$kind);
+        $this->skip($campaign, 'harm');
+
+        return $campaign;
+    }
+
+    /**
+     * An Endure scene taken to its table with the table roll scripted, and ended: what the table forces is offered.
+     */
+    private function atTable(string $kind, int $roll): Campaign
+    {
+        $campaign = $this->endure($kind);
+        $this->rollCheck($campaign, 'roll', 'endure-'.$kind, null, 1, 9, 9);
+        $this->step($campaign, 'zero', StepResult::choice('table'));
+        $this->step($campaign, 'table', StepResult::table($this->release->resolveOracleTable('endure-'.$kind.'-table', new ScriptedRandomNumberGenerator($roll))));
+        $this->end($campaign);
+
+        return $campaign;
     }
 
     /**

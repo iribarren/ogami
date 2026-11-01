@@ -59,7 +59,7 @@ final class InMemoryJournalEntryRepository implements JournalEntryRepository
         }
 
         $content = $kept->content();
-        if ($content instanceof CheckContent && $content->pool()?->push instanceof \App\Play\Domain\Journal\CheckPushContent) {
+        if ($content instanceof CheckContent && ($content->pool()?->push instanceof \App\Play\Domain\Journal\CheckPushContent || $content->challenge()?->burn instanceof \App\Play\Domain\Journal\CheckChallengeBurnContent)) {
             throw CheckAlreadyPushed::entry($pushed->id());
         }
 

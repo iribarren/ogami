@@ -13,8 +13,8 @@ use App\Play\Domain\Campaign\NoCurrentScene;
  * recorded in the campaign's current session and scene. An entry recorded by a Flow step keeps a
  * snapshot of that step.
  *
- * An entry is immutable but for one change: the push of a pool check completes its content once
- * (ADR 0041, see pushedWith()). Nothing else about an entry ever changes.
+ * An entry is immutable but for one change: the push of a pool check, or the burn of a challenge check, completes its content once
+ * (ADR 0041, ADR 0049, see pushedWith()). Nothing else about an entry ever changes.
  *
  * Ids are kept as strings (like Campaign), so an adapter can map them as plain columns.
  */
@@ -59,26 +59,27 @@ final readonly class JournalEntry
     }
 
     /**
-     * The same entry once its pool check was pushed: the only change an entry's content can take.
-     * It is a copy; the repository keeps it with JournalEntryRepository::savePush().
+     * The same entry once its pool check was pushed, or its challenge check burned: the only change an
+     * entry's content can take. It is a copy; the repository keeps it with JournalEntryRepository::savePush().
      *
-     * @param CheckContent $pushed the content of this entry as CheckContent::pushed() returned it
+     * @param CheckContent $pushed the content of this entry as CheckContent::pushed() or burned() returned it
      *
-     * @throws CheckAlreadyPushed when this entry's check was pushed already
-     * @throws \LogicException    when this entry is not a pool check, or the content is not its pushed content
+     * @throws CheckAlreadyPushed when this entry's check was pushed or burned already
+     * @throws \LogicException    when this entry is neither a pool nor a challenge check, or the content is not its pushed content
      */
     public function pushedWith(CheckContent $pushed): self
     {
         $current = $this->content;
-        if (!$current instanceof CheckContent || !$current->pool() instanceof CheckPoolContent) {
-            throw new \LogicException(\sprintf('Journal entry "%s" is not a pool check, only that can be pushed.', $this->id));
+        if (!$current instanceof CheckContent || !$current->pool() instanceof CheckPoolContent && !$current->challenge() instanceof CheckChallengeContent) {
+            throw new \LogicException(\sprintf('Journal entry "%s" is not a pool or challenge check, only that can be pushed.', $this->id));
         }
 
-        if ($current->pool()->push instanceof CheckPushContent) {
+        if ($current->pool()?->push instanceof CheckPushContent || $current->challenge()?->burn instanceof CheckChallengeBurnContent) {
             throw CheckAlreadyPushed::entry($this->id());
         }
 
-        if (!$pushed->pool()?->push instanceof CheckPushContent || $pushed->checkKey() !== $current->checkKey() || $pushed->characterId() !== $current->characterId()) {
+        $isPushed = $current->pool() instanceof CheckPoolContent ? $pushed->pool()?->push instanceof CheckPushContent : $pushed->challenge()?->burn instanceof CheckChallengeBurnContent;
+        if (!$isPushed || $pushed->checkKey() !== $current->checkKey() || $pushed->characterId() !== $current->characterId()) {
             throw new \LogicException(\sprintf('The content is not the pushed content of journal entry "%s".', $this->id));
         }
 

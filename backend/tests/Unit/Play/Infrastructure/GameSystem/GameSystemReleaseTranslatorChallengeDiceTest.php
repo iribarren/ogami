@@ -86,7 +86,11 @@ final class GameSystemReleaseTranslatorChallengeDiceTest extends TestCase
     {
         $content = ReleaseArrays::with($this->playable(), 'checks.0.push', null);
 
-        self::assertNull($this->translate($content)->check('edge')?->push);
+        $check = $this->translate($content)->check('edge');
+
+        self::assertInstanceOf(Check::class, $check);
+        self::assertNotNull($check->challenge);
+        self::assertNull($check->push);
     }
 
     #[Test]

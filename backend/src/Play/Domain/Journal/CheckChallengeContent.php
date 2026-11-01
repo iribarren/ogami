@@ -16,8 +16,14 @@ use App\Randomness\Domain\InvalidChallengeDice;
  * whether it cancelled the action die. A match is not stored: it is derived from the faces. Entries
  * of other checks, and those stored before challenge dice, have no challenge part.
  *
+ * Burning momentum (ADR 0049) adds the burn part and changes nothing else: the score and each die's
+ * beaten flag stay those of the first roll, and the dice the burn score beats are the check's total.
+ * Entries stored before burning have no burn part.
+ *
+ * @phpstan-import-type BurnData from CheckChallengeBurnContent
+ *
  * @phpstan-type ChallengeDieData array{face: int, beaten: bool}
- * @phpstan-type ChallengeData array{sides: int, scoreMax: ?int, score: int, momentum: ?int, cancelled: bool, dice: list<ChallengeDieData>}
+ * @phpstan-type ChallengeData array{sides: int, scoreMax: ?int, score: int, momentum: ?int, cancelled: bool, dice: list<ChallengeDieData>, burn?: BurnData}
  */
 final readonly class CheckChallengeContent
 {
@@ -31,6 +37,7 @@ final readonly class CheckChallengeContent
         public ?int $momentum,
         public bool $cancelled,
         public array $dice,
+        public ?CheckChallengeBurnContent $burn = null,
     ) {
     }
 
@@ -63,7 +70,19 @@ final readonly class CheckChallengeContent
                 'face' => ContentData::int($die, 'face'),
                 'beaten' => ContentData::bool($die, 'beaten'),
             ], ContentData::listOfArrays($data, 'dice')),
+            null === ($burn = ContentData::optionalArray($data, 'burn')) ? null : CheckChallengeBurnContent::fromArray($burn),
         );
+    }
+
+    /**
+     * This part once the momentum was burned.
+     *
+     * @throws CheckAlreadyPushed         when it was burned already
+     * @throws InvalidJournalEntryContent when the burn contradicts the roll
+     */
+    public function burned(CheckChallengeBurnContent $burn): self
+    {
+        return $this->burn instanceof CheckChallengeBurnContent ? throw CheckAlreadyPushed::roll() : self::of($this->sides, $this->scoreMax, $this->score, $this->momentum, $this->cancelled, $this->dice, $burn);
     }
 
     /**
@@ -71,9 +90,10 @@ final readonly class CheckChallengeContent
      *
      * @throws InvalidJournalEntryContent when the part contradicts itself: the sides or the number of dice are out of
      *                                    bounds, a face is outside its sides, a die's beaten flag disagrees with its face and the score,
-     *                                    the cap is out of 1..1000 or below the score, or the die is cancelled without a negative momentum
+     *                                    the cap is out of 1..1000 or below the score, or the die is cancelled without a negative momentum,
+     *                                    or a burn has no momentum on the roll, a score that is not its momentum at most the cap, or beats no more dice than the score
      */
-    private static function of(int $sides, ?int $scoreMax, int $score, ?int $momentum, bool $cancelled, array $dice): self
+    private static function of(int $sides, ?int $scoreMax, int $score, ?int $momentum, bool $cancelled, array $dice, ?CheckChallengeBurnContent $burn = null): self
     {
         if ($sides < ChallengeDice::MIN_SIDES || $sides > ChallengeDice::MAX_SIDES) {
             throw InvalidJournalEntryContent::malformed('sides', \sprintf('between %d and %d', ChallengeDice::MIN_SIDES, ChallengeDice::MAX_SIDES));
@@ -107,15 +127,53 @@ final readonly class CheckChallengeContent
             throw InvalidJournalEntryContent::malformed('cancelled', 'false unless the momentum is below 0');
         }
 
-        return new self($sides, $scoreMax, $score, $momentum, $cancelled, $dice);
+        if ($burn instanceof CheckChallengeBurnContent) {
+            if (null === $momentum) {
+                throw InvalidJournalEntryContent::malformed('burn', 'absent: the roll has no momentum to burn');
+            }
+
+            if ($burn->score !== (null === $scoreMax ? $burn->momentum : min($burn->momentum, $scoreMax))) {
+                throw InvalidJournalEntryContent::malformed('burn', 'a score that is the momentum burned, at most the score cap');
+            }
+
+            if (self::beatenBy($dice, $burn->score) <= self::beatenBy($dice, $score)) {
+                throw InvalidJournalEntryContent::malformed('burn', 'a score that beats more dice than the score of the roll');
+            }
+        }
+
+        return new self($sides, $scoreMax, $score, $momentum, $cancelled, $dice, $burn);
     }
 
     /**
-     * How many challenge dice the score beat: the total of the check.
+     * @param list<ChallengeDieData> $dice
+     */
+    private static function beatenBy(array $dice, int $score): int
+    {
+        return \count(array_filter($dice, static fn (array $die): bool => $die['face'] < $score));
+    }
+
+    /**
+     * How many challenge dice the score of the first roll beat.
      */
     public function beaten(): int
     {
         return \count(array_filter($this->dice, static fn (array $die): bool => $die['beaten']));
+    }
+
+    /**
+     * How many challenge dice the roll beats as it stands, after a burn: the total of the check.
+     */
+    public function total(): int
+    {
+        return $this->burn instanceof CheckChallengeBurnContent ? self::beatenBy($this->dice, $this->burn->score) : $this->beaten();
+    }
+
+    /**
+     * The challenge dice as they were rolled.
+     */
+    public function roll(): ChallengeRoll
+    {
+        return ChallengeRoll::ofFaces(new ChallengeDice(\count($this->dice), $this->sides), array_column($this->dice, 'face'));
     }
 
     /**
@@ -138,6 +196,6 @@ final readonly class CheckChallengeContent
             'momentum' => $this->momentum,
             'cancelled' => $this->cancelled,
             'dice' => $this->dice,
-        ];
+        ] + ($this->burn instanceof CheckChallengeBurnContent ? ['burn' => $this->burn->toArray()] : []);
     }
 }

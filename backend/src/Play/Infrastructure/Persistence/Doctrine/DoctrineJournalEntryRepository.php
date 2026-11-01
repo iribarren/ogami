@@ -74,7 +74,7 @@ final readonly class DoctrineJournalEntryRepository implements JournalEntryRepos
 
     /**
      * Updates the stored content in one conditional statement: it matches only while the stored
-     * check has no push part (absent or a JSON null, which reads the same) and, with $asLatest, while
+     * check has no push part and no burn part (absent or a JSON null, which reads the same) and, with $asLatest, while
      * no entry of the campaign comes after it in recording order (recordedAt, then id, as
      * latestOfCampaign()), so a concurrent push or record that got there first makes this one fail
      * instead of overwriting it. With $asLatest the campaign row is locked first (FOR UPDATE): a
@@ -97,7 +97,7 @@ final readonly class DoctrineJournalEntryRepository implements JournalEntryRepos
         }
 
         $updated = $connection->executeStatement(
-            "UPDATE play_journal_entry e SET content = CAST(:content AS jsonb) WHERE e.id = :id AND COALESCE(e.content->'pool'->'push', 'null'::jsonb) = 'null'::jsonb"
+            "UPDATE play_journal_entry e SET content = CAST(:content AS jsonb) WHERE e.id = :id AND COALESCE(e.content->'pool'->'push', 'null'::jsonb) = 'null'::jsonb AND COALESCE(e.content->'challenge'->'burn', 'null'::jsonb) = 'null'::jsonb"
             .($asLatest ? ' AND NOT EXISTS ('.self::LATER_ENTRY.')' : ''),
             ['content' => json_encode($pushed->content()->toArray(), \JSON_THROW_ON_ERROR), 'id' => $pushed->id()->toString()],
         );

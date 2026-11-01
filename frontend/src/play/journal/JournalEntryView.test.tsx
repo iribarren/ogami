@@ -482,6 +482,60 @@ describe('JournalEntryView icon tile', () => {
       expect(screen.getByText('Score').nextElementSibling).toHaveTextContent('10 · capped at 10')
     })
 
+    it('says that the score was capped when the situational modifier alone decides it', () => {
+      const content = edgeRollEntry.content
+      if (content.kind !== 'check' || content.challenge === null) {
+        throw new Error('The fixture is no challenge roll.')
+      }
+      // 4 + 4 = 8 is below the cap of 10; the situational modifier of +3 takes it to 11.
+      const { challenge } = content
+      const capped = (situational: number) => (
+        <JournalEntryView
+          entry={{
+            ...edgeRollEntry,
+            content: {
+              ...content,
+              modifier: 4,
+              situational,
+              challenge: { ...challenge, score: Math.min(10, 8 + situational) },
+            },
+          }}
+        />
+      )
+      const { unmount } = render(capped(0))
+      expect(screen.getByText('Score').nextElementSibling).toHaveTextContent('8')
+      expect(screen.queryByText(/capped at/)).not.toBeInTheDocument()
+      unmount()
+
+      render(capped(3))
+
+      expect(screen.getByText('Score').nextElementSibling).toHaveTextContent('10 · capped at 10')
+    })
+
+    it('does not say capped when a penalty keeps the score under the cap', () => {
+      const content = edgeRollEntry.content
+      if (content.kind !== 'check' || content.challenge === null) {
+        throw new Error('The fixture is no challenge roll.')
+      }
+      // 4 + 8 = 12 would be capped; the situational -3 makes it 9, under the cap.
+      render(
+        <JournalEntryView
+          entry={{
+            ...edgeRollEntry,
+            content: {
+              ...content,
+              modifier: 8,
+              situational: -3,
+              challenge: { ...content.challenge, score: 9 },
+            },
+          }}
+        />,
+      )
+
+      expect(screen.getByText('Score').nextElementSibling).toHaveTextContent('9')
+      expect(screen.queryByText(/capped at/)).not.toBeInTheDocument()
+    })
+
     it('renders a progress roll with no Dice row, whose score is the modifier', () => {
       render(<JournalEntryView entry={vowProgressEntry} />)
 

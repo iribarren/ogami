@@ -313,6 +313,60 @@ final class FlowRunPendingCheckTest extends FlowRunTestCase
         self::assertSame(2, $campaign->pinnedRelease()->releaseVersion());
     }
 
+    /**
+     * @return iterable<string, array{string, int, list<int>, bool}> the check, the momentum on the sheet, the action die and the challenge dice, and whether the roll pends
+     */
+    public static function challengeRolls(): iterable
+    {
+        yield 'momentum beats more dice than the score' => ['move', 10, [1, 6, 8], true];
+        yield 'momentum that beats one die more' => ['move', 7, [2, 6, 8], true];
+        yield 'momentum equal to the score' => ['move', 6, [2, 6, 8], false];
+        yield 'momentum that beats the same dice' => ['move', 8, [2, 5, 8], false];
+        yield 'momentum equal to the die' => ['move', 8, [2, 3, 8], false];
+        yield 'zero momentum' => ['move', 0, [2, 6, 8], false];
+        yield 'negative momentum' => ['move', -3, [2, 6, 8], false];
+        yield 'a score that beats every die' => ['move', 10, [6, 3, 4], false];
+        yield 'a check without a burn' => ['strike', 10, [2, 6, 8], false];
+    }
+
+    /**
+     * @param list<int> $faces
+     */
+    #[Test]
+    #[DataProvider('challengeRolls')]
+    public function aChallengeRollPendsOnlyWhileItsMomentumBeatsMoreDiceThanTheScore(string $check, int $momentum, array $faces, bool $pends): void
+    {
+        $release = CheckStepReleases::release(CheckStepReleases::step($check));
+        $campaign = $this->inScene($release);
+
+        $campaign->completeFlowStep('sneak', $this->rolledWithMomentum($release, $check, $momentum, ...$faces), $release, self::at(), entryId: self::ENTRY);
+
+        self::assertSame($pends, self::flowRunOf($campaign)->pendingCheck() instanceof PendingCheck);
+        self::assertSame($pends ? [] : ['sneak'], array_keys(self::flowRunOf($campaign)->answers()));
+    }
+
+    #[Test]
+    public function aMatchPendsWithTheRollAndKeepAndBurnBothTakeTheOutcomeOfTheBand(): void
+    {
+        // Action die 1 and Hands 4 make a score of 5; the dice 5 and 5 are a match that the score does not beat.
+        $heat = static fn (int $by): TrackerEffect => new TrackerEffect('heat', TrackerOperation::Add, $by);
+        $step = CheckStepReleases::step('move', outcomes: ['miss' => new Outcome('fumble', [$heat(5)]), 'strong' => new Outcome('pass', [$heat(2)])], effects: [$heat(1)]);
+        $release = CheckStepReleases::release($step);
+        $pending = new PendingCheck('sneak', self::ENTRY, 'ada', null, 'miss', special: SpecialResult::Match);
+
+        $keep = $this->inScene($release);
+        $keep->completeFlowStep('sneak', $this->rolledWithMomentum($release, 'move', 10, 1, 5, 5), $release, self::at(), entryId: self::ENTRY);
+        self::assertEquals($pending, self::flowRunOf($keep)->pendingCheck());
+        $keep->resolvePendingFlowCheck('sneak', null, $release, self::at());
+
+        $burn = $this->inScene($release);
+        $burn->completeFlowStep('sneak', $this->rolledWithMomentum($release, 'move', 10, 1, 5, 5), $release, self::at(), entryId: self::ENTRY);
+        $burn->resolvePendingFlowCheck('sneak', 'strong', $release, self::at(), null, SpecialResult::Match);
+
+        self::assertSame([['setup', 'fumble'], ['sneak' => 'Miss'], 16], [self::position($keep), self::flowRunOf($keep)->answers(), $this->heat($keep, $release)]);
+        self::assertSame([['setup', 'pass'], ['sneak' => 'Strong'], 13], [self::position($burn), self::flowRunOf($burn)->answers(), $this->heat($burn, $release)]);
+    }
+
     #[Test]
     public function aRebuiltFlowRunHoldsAPendingCheckOnlyAtItsStepWhileActive(): void
     {
@@ -346,6 +400,13 @@ final class FlowRunPendingCheckTest extends FlowRunTestCase
     private function rolled(GameSystemSnapshot $release, string $check, int ...$faces): StepResult
     {
         $result = ($release->check($check) ?? self::fail('No such check.'))->perform(new ScriptedRandomNumberGenerator(...$faces), SheetValues::of($release->sheet(), [], ['heat' => 10]), null, 0);
+
+        return StepResult::check('ada', $result);
+    }
+
+    private function rolledWithMomentum(GameSystemSnapshot $release, string $check, int $momentum, int ...$faces): StepResult
+    {
+        $result = ($release->check($check) ?? self::fail('No such check.'))->perform(new ScriptedRandomNumberGenerator(...$faces), SheetValues::of($release->sheet(), ['momentum' => $momentum], ['heat' => 10]), null, 0);
 
         return StepResult::check('ada', $result);
     }

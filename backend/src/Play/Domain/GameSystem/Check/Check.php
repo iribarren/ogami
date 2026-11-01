@@ -24,12 +24,13 @@ use App\Randomness\Domain\Roll;
  * is at least the total is the outcome, and the last band catches the rest.
  *
  * A check rolls a dice expression or a pool, never both (ADR 0041). A pool check has no modifier:
- * the situational modifier adds or removes dice, and the total is the number of successes. Only a
- * pool check can declare a push, which re-rolls the dice that failed for a cost.
+ * the situational modifier adds or removes dice, and the total is the number of successes. A pool
+ * check can declare a push, which re-rolls the dice that failed for a cost.
  *
  * A challenge check (ADR 0049) compares a score against the challenge dice: with a dice expression it is
  * an action roll (the dice, the modifier and the situational modifier), without one a progress roll
  * (the modifier alone, which it requires). The total is the number of challenge dice the score beats.
+ * An action roll that names a momentum can declare a push, which burns it (no dice are rolled).
  */
 final readonly class Check
 {
@@ -39,8 +40,8 @@ final readonly class Check
     /**
      * @param list<CheckBand> $bands in band order, unique keys, only the last without an upper bound
      *
-     * @throws \InvalidArgumentException when there is neither dice nor a pool nor a challenge or dice and a pool, a pool check has a modifier or a challenge, a challenge check has a difficulty or a push,
-     *                                   a progress roll has no modifier or a momentum, a momentum needs dice that are not exactly one die, a check without a pool declares a push, there is no band,
+     * @throws \InvalidArgumentException when there is neither dice nor a pool nor a challenge or dice and a pool, a pool check has a modifier or a challenge, a challenge check has a difficulty, a push without a momentum or with a maxDice,
+     *                                   a progress roll has no modifier or a momentum, a momentum needs dice that are not exactly one die, a check with neither a pool nor a challenge declares a push, there is no band,
      *                                   two bands share a key, a band but the last has no upper bound, the last has one,
      *                                   or literal upper bounds do not strictly increase
      */
@@ -72,8 +73,8 @@ final readonly class Check
             throw new \InvalidArgumentException(\sprintf('Check "%s" rolls a pool and has no modifier.', $key));
         }
 
-        if ($push instanceof CheckPush && !$pool instanceof CheckPool) {
-            throw new \InvalidArgumentException(\sprintf('Check "%s" declares a push without rolling a pool.', $key));
+        if ($push instanceof CheckPush && !$pool instanceof CheckPool && !$challenge instanceof CheckChallenge) {
+            throw new \InvalidArgumentException(\sprintf('Check "%s" declares a push without rolling a pool or challenge dice.', $key));
         }
 
         if ([] === $bands) {
@@ -204,7 +205,13 @@ final readonly class Check
         }
 
         if ($this->push instanceof CheckPush) {
-            throw new \InvalidArgumentException(\sprintf('Check "%s" rolls challenge dice and cannot declare a push yet.', $this->key));
+            if (null === $challenge->momentum) {
+                throw new \InvalidArgumentException(\sprintf('Check "%s" rolls challenge dice and declares a push, which burns momentum: it needs a momentum.', $this->key));
+            }
+
+            if (null !== $this->push->maxDice) {
+                throw new \InvalidArgumentException(\sprintf('Check "%s" burns momentum and rolls no dice: its push has no maxDice.', $this->key));
+            }
         }
 
         if (!$this->dice instanceof DiceExpression) {
@@ -255,6 +262,60 @@ final readonly class Check
         $band = $this->bandFor($bounds, $pushed->total());
 
         return new PushResult($pushed, $pushed->total(), $band, $this->specialOf($pushed, $pushed->total(), $difficulty, $band));
+    }
+
+    /**
+     * Burns momentum on a challenge roll (ADR 0049): no dice are rolled, the challenge dice stay as they
+     * were, and the score becomes the momentum value now on the sheet (capped), which is the larger of the
+     * two scores. Every band bound is evaluated first, so a check that cannot be evaluated burns nothing.
+     * The cost is not applied here.
+     *
+     * @param ChallengeRoll $roll       the challenge dice as they were recorded
+     * @param int           $firstScore the score of the roll as it was recorded
+     *
+     * @throws CheckNotPushable      when the check declares no burn, or the momentum now beats no more dice than the first score
+     * @throws CheckEvaluationFailed when the momentum or a band bound cannot be evaluated
+     */
+    public function burn(ValueResolver $sheet, ChallengeRoll $roll, int $firstScore): BurnResult
+    {
+        $momentumKey = $this->challenge?->momentum;
+        if (!$this->push instanceof CheckPush || null === $momentumKey) {
+            throw CheckNotPushable::noPush($this->key);
+        }
+
+        try {
+            $values = new CheckValues($sheet, null);
+            $momentum = $values->value(Reference::field($momentumKey));
+            $bounds = array_map(static fn (CheckBand $band): ?int => $band->upTo instanceof Formula ? $band->upTo->evaluate($values) : $band->upTo, $this->bands);
+        } catch (FormulaEvaluationFailed $failed) {
+            throw CheckEvaluationFailed::of($this->key, $failed);
+        }
+
+        if (!$this->burnImproves($roll, $firstScore, $momentum)) {
+            throw CheckNotPushable::noBetterBurn($this->key);
+        }
+
+        $score = $this->burnScore($momentum);
+        $total = $roll->beatenBy($score);
+
+        return new BurnResult($momentum, $score, $total, $this->bandFor($bounds, $total), $roll->isMatch() ? SpecialResult::Match : null);
+    }
+
+    /**
+     * The one rule for offering a burn (ADR 0049): the momentum, capped at the score cap, beats more
+     * challenge dice than the score the roll had. A zero or negative momentum beats nothing.
+     */
+    public function burnImproves(ChallengeRoll $roll, int $score, int $momentum): bool
+    {
+        return $this->push instanceof CheckPush && $this->challenge instanceof CheckChallenge && null !== $this->challenge->momentum
+            && $roll->beatenBy($this->burnScore($momentum)) > $roll->beatenBy($score);
+    }
+
+    private function burnScore(int $momentum): int
+    {
+        $max = $this->challenge?->scoreMax;
+
+        return null === $max ? $momentum : min($momentum, $max);
     }
 
     /**

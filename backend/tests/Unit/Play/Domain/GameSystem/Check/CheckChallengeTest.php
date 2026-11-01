@@ -188,6 +188,8 @@ final class CheckChallengeTest extends TestCase
     {
         self::assertSame(2, $this->action()->challenge?->count);
         self::assertNull($this->progress()->dice);
+        $burnable = new Check('move', 'Move', null, DiceExpression::fromString('1d6'), null, null, $this->bands(), null, new CheckPush('Burn', []), new CheckChallenge(2, 10, 10, 'momentum'));
+        self::assertSame('Burn', $burnable->push?->label);
     }
 
     /**
@@ -208,7 +210,10 @@ final class CheckChallengeTest extends TestCase
         yield 'a progress roll with a momentum' => [static fn (): Check => new Check('c', 'C', null, null, $modifier, null, $bands, null, null, new CheckChallenge(2, 10, null, 'momentum'))];
         yield 'a momentum with two dice' => [static fn (): Check => new Check('c', 'C', null, DiceExpression::fromString('2d6'), null, null, $bands, null, null, new CheckChallenge(2, 10, null, 'momentum'))];
         yield 'a momentum with arithmetic' => [static fn (): Check => new Check('c', 'C', null, DiceExpression::fromString('1d6+1'), null, null, $bands, null, null, new CheckChallenge(2, 10, null, 'momentum'))];
-        yield 'a push' => [static fn (): Check => new Check('c', 'C', null, $dice, null, null, $bands, null, new CheckPush('Burn', []), $challenge)];
+        yield 'a push without a momentum' => [static fn (): Check => new Check('c', 'C', null, $dice, null, null, $bands, null, new CheckPush('Burn', []), $challenge)];
+        yield 'a push on a progress roll' => [static fn (): Check => new Check('c', 'C', null, null, $modifier, null, $bands, null, new CheckPush('Burn', []), $challenge)];
+        yield 'a push with a maxDice' => [static fn (): Check => new Check('c', 'C', null, $dice, null, null, $bands, null, new CheckPush('Burn', [], 2), new CheckChallenge(2, 10, null, 'momentum'))];
+        yield 'a push on a plain dice check' => [static fn (): Check => new Check('c', 'C', null, $dice, null, null, $bands, null, new CheckPush('Burn', []))];
     }
 
     /**

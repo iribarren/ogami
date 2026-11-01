@@ -1509,8 +1509,9 @@ final readonly class GameSystemReleaseTranslator
             $label = $this->boundedString($view, $check['label'] ?? null, $path.'.label', self::MAX_CHECK_LABEL_LENGTH);
             $hint = null === ($check['hint'] ?? null) ? null : $this->boundedString($view, $check['hint'], $path.'.hint', self::MAX_CHECK_HINT_LENGTH, false);
             $pool = null === ($check['pool'] ?? null) ? null : $this->checkPool($view, $check, $path, $fields, $trackerKeys);
-            $challenged = \array_key_exists('challenge', $check);
-            if ($challenged) {
+            // A null challenge or push is "not set" (the schema and Studio accept both), so only a real value counts.
+            $challenged = null !== ($check['challenge'] ?? null);
+            if ($challenged && null !== ($check['push'] ?? null)) {
                 $this->refuseUnplayed($view, $check, $path, 'push', 'a challenge push is');
             }
 

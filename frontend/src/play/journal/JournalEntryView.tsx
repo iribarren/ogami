@@ -272,6 +272,9 @@ function flowNoteLine(note: FlowOutcomeContent['notes'][number]) {
 /** A check: who rolled which check, the band it landed in, then the dice and how the total adds up. */
 function CheckView({ content, sheet }: { content: CheckContent; sheet: FieldLabels }) {
   const push = content.pool?.push ?? null
+  const { challenge } = content
+  // A progress roll (ADR 0049) has no action die: its expression is the challenge dice, with no groups.
+  const hasActionDie = challenge === null || content.groups.length > 0
   return (
     <>
       <p className="font-medium">
@@ -302,13 +305,25 @@ function CheckView({ content, sheet }: { content: CheckContent; sheet: FieldLabe
         </div>
       )}
       {content.pool !== null && <PoolDice pool={content.pool} />}
+      {challenge !== null && <ChallengeDice challenge={challenge} />}
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-        {content.pool === null ? (
-          <Detail term="Dice">
-            <span className="font-mono">{content.expression}</span> = {content.diceTotal}
-          </Detail>
-        ) : (
+        {content.pool !== null ? (
           <Detail term="Pool">{poolSize(content.pool, content.situational)}</Detail>
+        ) : (
+          hasActionDie && (
+            <Detail term="Dice">
+              <span className="font-mono">{content.expression}</span> = {content.diceTotal}
+            </Detail>
+          )
+        )}
+        {challenge?.cancelled === true && (
+          <Detail term="Momentum">
+            {signed(challenge.momentum ?? 0)}
+            <span className="text-muted-foreground">
+              {' · '}
+              cancelled the action die, which counts 0
+            </span>
+          </Detail>
         )}
         {(content.modifier !== 0 || content.modifierFormula !== null) && (
           <Detail term="Modifier">
@@ -325,9 +340,18 @@ function CheckView({ content, sheet }: { content: CheckContent; sheet: FieldLabe
         {content.pool === null && content.situational !== 0 && (
           <Detail term="Situational">{signed(content.situational)}</Detail>
         )}
-        <Detail term={content.pool === null ? 'Total' : 'Successes'}>
+        {challenge !== null && (
+          <Detail term="Score">
+            <strong>{challenge.score}</strong>
+            {scoreWasCapped(content, challenge) && (
+              <span className="text-muted-foreground"> · capped at {challenge.scoreMax}</span>
+            )}
+          </Detail>
+        )}
+        <Detail term={detailTerm(content)}>
           <strong>{content.total}</strong>
           {content.pool !== null && <> {content.total === 1 ? 'success' : 'successes'}</>}
+          {challenge !== null && <> of {challenge.dice.length}</>}
           {content.difficulty !== null && <> vs {content.difficulty}</>}
         </Detail>
       </dl>
@@ -339,6 +363,55 @@ function CheckView({ content, sheet }: { content: CheckContent; sheet: FieldLabe
 }
 
 type CheckPool = NonNullable<CheckContent['pool']>
+type CheckChallenge = NonNullable<CheckContent['challenge']>
+
+/** What the total counts: successes of a pool, challenge dice beaten, otherwise the plain total. */
+function detailTerm(content: CheckContent) {
+  if (content.pool !== null) {
+    return 'Successes'
+  }
+  return content.challenge === null ? 'Total' : 'Beaten'
+}
+
+/**
+ * Whether the score was cut down to `scoreMax`: the uncapped score is the action die (0 when momentum
+ * cancelled it) plus the modifiers, and a progress roll has no action die.
+ */
+function scoreWasCapped(content: CheckContent, challenge: CheckChallenge) {
+  const actionDie = challenge.cancelled || content.groups.length === 0 ? 0 : content.diceTotal
+  return (
+    challenge.scoreMax !== null &&
+    actionDie + content.modifier + content.situational > challenge.scoreMax
+  )
+}
+
+/**
+ * Every challenge die of a challenge roll (ADR 0049) and whether the score beat it. A beaten die is
+ * told by text for assistive tech and by weight and a ring, as a pool success is, not by colour alone.
+ */
+function ChallengeDice({ challenge }: { challenge: CheckChallenge }) {
+  return (
+    <div className="rounded-md bg-well p-2 shadow-well">
+      <ul aria-label="Challenge dice" className="flex flex-wrap gap-1.5">
+        {challenge.dice.map((die, index) => (
+          <li
+            // Two challenge dice can show the same face; the position is the identity.
+            key={index}
+            className={cn(
+              'min-w-8 rounded-md px-1.5 py-0.5 text-center',
+              die.beaten
+                ? 'border-2 border-foreground font-bold'
+                : 'border border-dashed border-muted-foreground text-muted-foreground',
+            )}
+          >
+            {die.face}
+            <span className="sr-only">{die.beaten ? ' (beaten)' : ' (not beaten)'}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
 
 /** The first roll of a pushed check: its band, with its special result when it had one. */
 function rolledAs(content: CheckContent, bandLabel: string) {

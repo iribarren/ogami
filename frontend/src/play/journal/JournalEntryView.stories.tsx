@@ -3,11 +3,14 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { onTheme } from '@/shared/theme/themeStories'
 import {
   bestialFailureEntry,
+  cancelledDieEntry,
+  edgeRollEntry,
   flowOutcomeEntry,
   gateNote,
   keepThreeRoll,
   lockedDoorAnswer,
   luckCheckEntry,
+  matchEntry,
   messyCriticalEntry,
   pickedNothing,
   pickedTwo,
@@ -16,6 +19,7 @@ import {
   shopEntry,
   skillCheckEntry,
   stormyWeather,
+  vowProgressEntry,
 } from './fixtures'
 import { JournalEntryView } from './JournalEntryView'
 
@@ -61,6 +65,15 @@ export const HungerBestialFailure: Story = { args: { entry: bestialFailureEntry 
 export const HungerMessyCritical: Story = { args: { entry: messyCriticalEntry } }
 
 export const HungerPushedToACritical: Story = { args: { entry: pushedBestialEntry } }
+
+/** Challenge dice (ADR 0049): each die with whether the score beat it. */
+export const ChallengeActionRoll: Story = { args: { entry: edgeRollEntry } }
+
+export const ChallengeProgressRoll: Story = { args: { entry: vowProgressEntry } }
+
+export const ChallengeCancelledDie: Story = { args: { entry: cancelledDieEntry } }
+
+export const ChallengeMatch: Story = { args: { entry: matchEntry } }
 
 export const FlowOutcome: Story = { args: { entry: flowOutcomeEntry } }
 

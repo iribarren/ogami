@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Infrastructure\Http;
 
+use App\Play\Domain\Journal\CheckChallengeContent;
 use App\Play\Domain\Journal\CheckContent;
 use App\Play\Domain\Journal\CheckPoolContent;
 use Nelmio\ApiDocBundle\Attribute\Model;
@@ -13,8 +14,9 @@ use OpenApi\Attributes as OA;
  * A Check performed for a Character on the server: the dice, the modifier from the sheet, the
  * Situational modifier, the Check difficulty, the total and the Outcome band. A pool check has a
  * pool part instead of dice groups and a modifier, and its total is the successes plus the bonus of critical pairs.
+ * A challenge check has a challenge part, and its total is the number of challenge dice the score beat.
  */
-#[OA\Schema(required: ['kind', 'characterId', 'characterName', 'checkKey', 'checkLabel', 'expression', 'groups', 'diceTotal', 'modifier', 'situational', 'difficulty', 'total', 'bandKey', 'bandLabel', 'hint', 'modifierFormula', 'modifierTerms', 'pool', 'special'])]
+#[OA\Schema(required: ['kind', 'characterId', 'characterName', 'checkKey', 'checkLabel', 'expression', 'groups', 'diceTotal', 'modifier', 'situational', 'difficulty', 'total', 'bandKey', 'bandLabel', 'hint', 'modifierFormula', 'modifierTerms', 'pool', 'challenge', 'special'])]
 final readonly class CheckContentResponse
 {
     /**
@@ -66,7 +68,9 @@ final readonly class CheckContentResponse
         public array $modifierTerms,
         #[OA\Property(ref: new Model(type: CheckPoolContentResponse::class), description: 'The pool rolled, with its dice and successes; null for a check that rolls dice, and for entries recorded before pools.', nullable: true)]
         public ?CheckPoolContentResponse $pool,
-        #[OA\Property(description: 'The special result of the roll as it stands, after a push the push\'s: critical, messy critical or bestial failure. Null for none, for a check that rolls dice and for entries recorded before special results.', nullable: true, enum: ['critical', 'messyCritical', 'bestialFailure'])]
+        #[OA\Property(ref: new Model(type: CheckChallengeContentResponse::class), description: 'The challenge dice, the score and each die beaten or not; null for a check that rolls none, and for entries recorded before them. A progress roll has no action die: its expression is the challenge dice, with no groups.', nullable: true)]
+        public ?CheckChallengeContentResponse $challenge,
+        #[OA\Property(description: 'The special result of the roll as it stands, after a push the push\'s: critical, messy critical or bestial failure, or a match of the challenge dice. Null for none, for a check that rolls dice and for entries recorded before special results.', nullable: true, enum: ['critical', 'messyCritical', 'bestialFailure', 'match'])]
         public ?string $special,
     ) {
     }
@@ -92,6 +96,7 @@ final readonly class CheckContentResponse
             $content->modifierFormula(),
             array_map(CheckModifierTermResponse::of(...), $content->modifierTerms()),
             $content->pool() instanceof CheckPoolContent ? CheckPoolContentResponse::of($content->pool()) : null,
+            $content->challenge() instanceof CheckChallengeContent ? CheckChallengeContentResponse::of($content->challenge()) : null,
             $content->special(),
         );
     }

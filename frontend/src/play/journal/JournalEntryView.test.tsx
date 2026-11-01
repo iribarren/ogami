@@ -1,13 +1,16 @@
 import { render, screen, within } from '@testing-library/react'
 
 import {
+  cancelledDieEntry,
   chosenWay,
+  edgeRollEntry,
   flowOutcomeEntry,
   fateDouble,
   gateNote,
   keepThreeRoll,
   lockedDoorAnswer,
   luckCheckEntry,
+  matchEntry,
   pickedNothing,
   pickedPlace,
   pickedTwo,
@@ -20,6 +23,7 @@ import {
   pushedGritEntry,
   sneakCheckEntry,
   stormyWeather,
+  vowProgressEntry,
   bestialFailureEntry,
   hungerOnlyFailedEntry,
   messyCriticalEntry,
@@ -433,6 +437,89 @@ describe('JournalEntryView icon tile', () => {
     )
     expect(screen.queryByText('Dice')).not.toBeInTheDocument()
     expect(screen.queryByText('Modifier')).not.toBeInTheDocument()
+  })
+
+  describe('challenge dice (ADR 0049)', () => {
+    const dice = () =>
+      within(screen.getByRole('list', { name: 'Challenge dice' }))
+        .getAllByRole('listitem')
+        .map((die) => die.textContent)
+
+    it('renders an action roll with each challenge die, the score and the dice beaten', () => {
+      render(<JournalEntryView entry={edgeRollEntry} />)
+
+      expect(dice()).toEqual(['3 (beaten)', '9 (not beaten)'])
+      expect(screen.getByText('Dice').nextElementSibling).toHaveTextContent('1d6 = 4')
+      expect(screen.getByText('Modifier').nextElementSibling).toHaveTextContent('+2')
+      expect(screen.getByText('Score').nextElementSibling).toHaveTextContent('6')
+      expect(screen.queryByText(/capped at/)).not.toBeInTheDocument()
+      expect(screen.getByText('Beaten').nextElementSibling).toHaveTextContent('1 of 2')
+      expect(screen.getByText('Weak')).toBeInTheDocument()
+      expect(screen.queryByText('Special result:')).not.toBeInTheDocument()
+      expect(screen.queryByText('Successes')).not.toBeInTheDocument()
+    })
+
+    it('shows the same face twice as two dice, by position', () => {
+      render(<JournalEntryView entry={matchEntry} />)
+
+      expect(dice()).toEqual(['5 (beaten)', '5 (beaten)'])
+    })
+
+    it('says that the score was capped, only when it was', () => {
+      const content = edgeRollEntry.content
+      if (content.kind !== 'check' || content.challenge === null) {
+        throw new Error('The fixture is no challenge roll.')
+      }
+      render(
+        <JournalEntryView
+          entry={{
+            ...edgeRollEntry,
+            content: { ...content, modifier: 8, challenge: { ...content.challenge, score: 10 } },
+          }}
+        />,
+      )
+
+      expect(screen.getByText('Score').nextElementSibling).toHaveTextContent('10 · capped at 10')
+    })
+
+    it('renders a progress roll with no Dice row, whose score is the modifier', () => {
+      render(<JournalEntryView entry={vowProgressEntry} />)
+
+      expect(dice()).toEqual(['6 (beaten)', '9 (not beaten)'])
+      expect(screen.queryByText('Dice')).not.toBeInTheDocument()
+      expect(screen.queryByText(/2d10/)).not.toBeInTheDocument()
+      expect(screen.queryByText('Difficulty')).not.toBeInTheDocument()
+      expect(screen.getByText('Modifier').nextElementSibling).toHaveTextContent('+7')
+      expect(screen.getByText('Score').nextElementSibling).toHaveTextContent('7')
+      expect(screen.getByText('Beaten').nextElementSibling).toHaveTextContent('1 of 2')
+    })
+
+    it('says that momentum cancelled the action die', () => {
+      render(<JournalEntryView entry={cancelledDieEntry} />)
+
+      expect(screen.getByText('Momentum').nextElementSibling).toHaveTextContent(
+        '-4 · cancelled the action die, which counts 0',
+      )
+      expect(screen.getByText('Score').nextElementSibling).toHaveTextContent('2')
+      expect(screen.getByText('Miss')).toBeInTheDocument()
+    })
+
+    it('shows a match as a special result', () => {
+      render(<JournalEntryView entry={matchEntry} />)
+
+      expect(screen.getByText('Special result:').parentElement).toHaveTextContent(
+        'Special result: Match',
+      )
+      expect(screen.queryByText('Momentum')).not.toBeInTheDocument()
+    })
+
+    it('reads a row recorded without the part as before', () => {
+      render(<JournalEntryView entry={skillCheckEntry} />)
+
+      expect(screen.queryByRole('list', { name: 'Challenge dice' })).not.toBeInTheDocument()
+      expect(screen.queryByText('Score')).not.toBeInTheDocument()
+      expect(screen.getByText('Total').nextElementSibling).toHaveTextContent('15 vs 13')
+    })
   })
 
   it('shows the situational modifier of a pool check once, in the size explanation', () => {

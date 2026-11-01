@@ -13674,6 +13674,39 @@
                 },
                 "type": "object"
             },
+            "CheckChallengeResponse": {
+                "required": [
+                    "count",
+                    "sides",
+                    "scoreMax",
+                    "momentumLabel"
+                ],
+                "properties": {
+                    "count": {
+                        "description": "How many challenge dice are rolled.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "sides": {
+                        "description": "The faces of each challenge die.",
+                        "type": "integer",
+                        "example": 10
+                    },
+                    "scoreMax": {
+                        "description": "The highest score; null when the score is not capped.",
+                        "type": "integer",
+                        "example": 10,
+                        "nullable": true
+                    },
+                    "momentumLabel": {
+                        "description": "The label of the momentum field whose negative value can cancel the action die; null when the check names none.",
+                        "type": "string",
+                        "example": "Momentum",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "CheckResponse": {
                 "required": [
                     "key",
@@ -13682,7 +13715,8 @@
                     "dice",
                     "pool",
                     "push",
-                    "difficulty"
+                    "difficulty",
+                    "challenge"
                 ],
                 "properties": {
                     "key": {
@@ -13701,7 +13735,7 @@
                         "nullable": true
                     },
                     "dice": {
-                        "description": "The dice rolled, in dice notation; null for a pool check.",
+                        "description": "The dice rolled, in dice notation; null for a pool check and for a progress roll, which has no action die.",
                         "type": "string",
                         "example": "1d10",
                         "nullable": true
@@ -13732,6 +13766,15 @@
                         ],
                         "nullable": true,
                         "description": "The difficulty the player sets when rolling; null when the check declares none."
+                    },
+                    "challenge": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckChallengeResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The challenge dice the score is compared against; null for a check that does not roll them."
                     }
                 },
                 "type": "object"
@@ -16004,6 +16047,70 @@
                 },
                 "type": "object"
             },
+            "JournalChallengeDieResponse": {
+                "required": [
+                    "face",
+                    "beaten"
+                ],
+                "properties": {
+                    "face": {
+                        "description": "The face the die landed on.",
+                        "type": "integer",
+                        "example": 7
+                    },
+                    "beaten": {
+                        "description": "Whether the score beat the die: its face is below the score. A tie goes to the die.",
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "CheckChallengeContentResponse": {
+                "required": [
+                    "sides",
+                    "scoreMax",
+                    "score",
+                    "momentum",
+                    "cancelled",
+                    "dice"
+                ],
+                "properties": {
+                    "sides": {
+                        "description": "The faces of each challenge die.",
+                        "type": "integer",
+                        "example": 10
+                    },
+                    "scoreMax": {
+                        "description": "The highest score the check allowed; null when it was not capped.",
+                        "type": "integer",
+                        "example": 10,
+                        "nullable": true
+                    },
+                    "score": {
+                        "description": "The score the challenge dice were compared against, after the cap.",
+                        "type": "integer",
+                        "example": 6
+                    },
+                    "momentum": {
+                        "description": "The value of the momentum field when the roll was made; null when the check names none.",
+                        "type": "integer",
+                        "example": -2,
+                        "nullable": true
+                    },
+                    "cancelled": {
+                        "description": "Whether a negative momentum equal to the action die made it count 0.",
+                        "type": "boolean"
+                    },
+                    "dice": {
+                        "description": "Every challenge die, in roll order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/JournalChallengeDieResponse"
+                        }
+                    }
+                },
+                "type": "object"
+            },
             "CheckContentResponse": {
                 "required": [
                     "kind",
@@ -16024,6 +16131,7 @@
                     "modifierFormula",
                     "modifierTerms",
                     "pool",
+                    "challenge",
                     "special"
                 ],
                 "properties": {
@@ -16128,14 +16236,24 @@
                         "nullable": true,
                         "description": "The pool rolled, with its dice and successes; null for a check that rolls dice, and for entries recorded before pools."
                     },
+                    "challenge": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckChallengeContentResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The challenge dice, the score and each die beaten or not; null for a check that rolls none, and for entries recorded before them. A progress roll has no action die: its expression is the challenge dice, with no groups."
+                    },
                     "special": {
-                        "description": "The special result of the roll as it stands, after a push the push's: critical, messy critical or bestial failure. Null for none, for a check that rolls dice and for entries recorded before special results.",
+                        "description": "The special result of the roll as it stands, after a push the push's: critical, messy critical or bestial failure, or a match of the challenge dice. Null for none, for a check that rolls dice and for entries recorded before special results.",
                         "type": "string",
                         "nullable": true,
                         "enum": [
                             "critical",
                             "messyCritical",
-                            "bestialFailure"
+                            "bestialFailure",
+                            "match"
                         ]
                     }
                 },

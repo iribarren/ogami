@@ -2830,6 +2830,28 @@ export interface components {
              */
             max: number | null;
         };
+        CheckChallengeResponse: {
+            /**
+             * @description How many challenge dice are rolled.
+             * @example 2
+             */
+            count: number;
+            /**
+             * @description The faces of each challenge die.
+             * @example 10
+             */
+            sides: number;
+            /**
+             * @description The highest score; null when the score is not capped.
+             * @example 10
+             */
+            scoreMax: number | null;
+            /**
+             * @description The label of the momentum field whose negative value can cancel the action die; null when the check names none.
+             * @example Momentum
+             */
+            momentumLabel: string | null;
+        };
         CheckResponse: {
             /** @example skill */
             key: string;
@@ -2844,7 +2866,7 @@ export interface components {
              */
             hint: string | null;
             /**
-             * @description The dice rolled, in dice notation; null for a pool check.
+             * @description The dice rolled, in dice notation; null for a pool check and for a progress roll, which has no action die.
              * @example 1d10
              */
             dice: string | null;
@@ -2854,6 +2876,8 @@ export interface components {
             push: components["schemas"]["CheckPushResponse"] | null;
             /** @description The difficulty the player sets when rolling; null when the check declares none. */
             difficulty: components["schemas"]["CheckDifficultyResponse"] | null;
+            /** @description The challenge dice the score is compared against; null for a check that does not roll them. */
+            challenge: components["schemas"]["CheckChallengeResponse"] | null;
         };
         NpcResponse: {
             /** Format: uuid */
@@ -3959,6 +3983,41 @@ export interface components {
             /** @description The push of the roll; null until the roll is pushed, and for entries recorded before pushes. Once pushed, the dice and successes above stay the first roll. */
             push: components["schemas"]["CheckPushContentResponse"] | null;
         };
+        JournalChallengeDieResponse: {
+            /**
+             * @description The face the die landed on.
+             * @example 7
+             */
+            face: number;
+            /** @description Whether the score beat the die: its face is below the score. A tie goes to the die. */
+            beaten: boolean;
+        };
+        CheckChallengeContentResponse: {
+            /**
+             * @description The faces of each challenge die.
+             * @example 10
+             */
+            sides: number;
+            /**
+             * @description The highest score the check allowed; null when it was not capped.
+             * @example 10
+             */
+            scoreMax: number | null;
+            /**
+             * @description The score the challenge dice were compared against, after the cap.
+             * @example 6
+             */
+            score: number;
+            /**
+             * @description The value of the momentum field when the roll was made; null when the check names none.
+             * @example -2
+             */
+            momentum: number | null;
+            /** @description Whether a negative momentum equal to the action die made it count 0. */
+            cancelled: boolean;
+            /** @description Every challenge die, in roll order. */
+            dice: components["schemas"]["JournalChallengeDieResponse"][];
+        };
         CheckContentResponse: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -4038,11 +4097,13 @@ export interface components {
             modifierTerms: components["schemas"]["CheckModifierTermResponse"][];
             /** @description The pool rolled, with its dice and successes; null for a check that rolls dice, and for entries recorded before pools. */
             pool: components["schemas"]["CheckPoolContentResponse"] | null;
+            /** @description The challenge dice, the score and each die beaten or not; null for a check that rolls none, and for entries recorded before them. A progress roll has no action die: its expression is the challenge dice, with no groups. */
+            challenge: components["schemas"]["CheckChallengeContentResponse"] | null;
             /**
-             * @description The special result of the roll as it stands, after a push the push's: critical, messy critical or bestial failure. Null for none, for a check that rolls dice and for entries recorded before special results.
+             * @description The special result of the roll as it stands, after a push the push's: critical, messy critical or bestial failure, or a match of the challenge dice. Null for none, for a check that rolls dice and for entries recorded before special results.
              * @enum {string|null}
              */
-            special: "critical" | "messyCritical" | "bestialFailure" | null;
+            special: "critical" | "messyCritical" | "bestialFailure" | "match" | null;
         };
         SheetChangeContentResponse: {
             /**

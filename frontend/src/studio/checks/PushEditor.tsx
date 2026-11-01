@@ -15,8 +15,11 @@ const costKinds = ['sheet', 'tracker'] as const
 /**
  * The push of a pool check: a toggle, the cost in words and the effects of the cost, edited with
  * the shared effects editor. A mark may leave the option to the player here and nowhere else.
+ * With `burn` it is the burn of a challenge check (ADR 0049): worded as one, with no dice cap, as
+ * no dice are re-rolled.
  */
 export function PushEditor({
+  burn = false,
   push,
   context,
   labelError,
@@ -25,6 +28,7 @@ export function PushEditor({
   onChange,
   onRestructure,
 }: {
+  burn?: boolean
   push: PushDraft | null
   context: StepContext
   labelError?: string
@@ -36,7 +40,7 @@ export function PushEditor({
   const toggleId = useId()
   return (
     <fieldset className="space-y-3">
-      <legend className="text-sm font-medium">Push</legend>
+      <legend className="text-sm font-medium">{burn ? 'Burn' : 'Push'}</legend>
       <div className="flex items-center gap-2">
         <input
           id={toggleId}
@@ -46,11 +50,12 @@ export function PushEditor({
             onChange(event.target.checked ? { label: '', effects: [] } : null)
           }}
         />
-        <Label htmlFor={toggleId}>Can be pushed</Label>
+        <Label htmlFor={toggleId}>{burn ? 'Can be burned' : 'Can be pushed'}</Label>
       </div>
       <p className="hint">
-        A player may push a roll with a failed die once: the failed dice are re-rolled, then the
-        cost applies.
+        {burn
+          ? 'A player may burn the momentum of a roll once: the score becomes the momentum, then the cost applies. It is offered only when it beats more dice.'
+          : 'A player may push a roll with a failed die once: the failed dice are re-rolled, then the cost applies.'}
       </p>
       {push !== null && (
         <div className="space-y-3">
@@ -63,15 +68,17 @@ export function PushEditor({
               onChange({ ...push, label })
             }}
           />
-          <TextField
-            label="Dice cap"
-            value={push.maxDice ?? ''}
-            error={maxDiceError}
-            help="Optional, 1 to 100: the most failed dice a push re-rolls, such as 3. Empty re-rolls every failed die. Hunger dice are never re-rolled."
-            onChange={(maxDice) => {
-              onChange({ ...push, maxDice })
-            }}
-          />
+          {!burn && (
+            <TextField
+              label="Dice cap"
+              value={push.maxDice ?? ''}
+              error={maxDiceError}
+              help="Optional, 1 to 100: the most failed dice a push re-rolls, such as 3. Empty re-rolls every failed die. Hunger dice are never re-rolled."
+              onChange={(maxDice) => {
+                onChange({ ...push, maxDice })
+              }}
+            />
+          )}
           <EffectsEditor
             label="Cost effects"
             effects={push.effects}

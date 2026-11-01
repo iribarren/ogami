@@ -65,27 +65,55 @@ export interface PushDraft {
   maxDice?: string
 }
 
-/** How a check rolls: its dice notation and modifier, or a pool of dice counted for successes. */
-export type CheckMode = 'dice' | 'pool'
+/**
+ * The form state of challenge dice (ADR 0049): every input is text. An action roll keeps the dice
+ * and the modifier of the check; a progress roll has no dice, needs the modifier, and has no
+ * momentum and no burn. An empty cap or momentum is not sent.
+ */
+export interface ChallengeDraft {
+  count: string
+  sides: string
+  /** Empty for a score with no cap. */
+  scoreMax: string
+  /** The key of a `number` field of the sheet, or empty. Action rolls only. */
+  momentum: string
+  kind: 'action' | 'progress'
+}
+
+/**
+ * How a check rolls: its dice notation and modifier, a pool of dice counted for successes, or its
+ * score compared against challenge dice (ADR 0049).
+ */
+export type CheckMode = 'dice' | 'pool' | 'challenge'
 
 /** The pool's limits, as the publisher. */
 const poolLimits = { count: 100, formula: 200, sides: 1000, bonus: 10 }
+
+/** The challenge dice's limits, as the publisher. */
+const challengeLimits = { minCount: 2, maxCount: 10, minSides: 2, maxSides: 1000, maxScore: 1000 }
 
 /** The form state of one check. */
 export interface CheckDraft {
   key: string
   label: string
   hint: string
-  /** Empty for a pool check, which has no dice. */
+  /** Empty for a pool check, which has no dice, and for a progress roll. */
   dice: string
   /** Not sent for a pool check, which refuses a modifier. */
   modifier: string
   /** Null for a dice check. */
   pool: PoolDraft | null
-  /** Null while the check cannot be pushed; only a pool check has one. */
+  /** Null unless the check rolls challenge dice. */
+  challenge: ChallengeDraft | null
+  /**
+   * Null while the check cannot be pushed; only a pool check has one, or a challenge action roll
+   * with a momentum, where it is a burn.
+   */
   push: PushDraft | null
   /** The stored check had `push: null`, which a save writes back as it was while there is no push. */
   storedNullPush?: boolean
+  /** The stored check had `challenge: null`, which a save writes back as it was while there is none. */
+  storedNullChallenge?: boolean
   /** Null while the check has no difficulty. */
   difficulty: DifficultyDraft | null
   bands: BandDraft[]
@@ -139,6 +167,10 @@ export type CheckErrors = Partial<
     | 'poolSuccessAt'
     | 'poolCriticalsBonus'
     | 'poolHunger'
+    | 'challengeCount'
+    | 'challengeSides'
+    | 'challengeScoreMax'
+    | 'challengeMomentum'
     | 'pushMaxDice'
     | 'pushLabel'
     | 'difficulty'
@@ -234,6 +266,7 @@ export function blankCheck(): CheckDraft {
     dice: '',
     modifier: '',
     pool: null,
+    challenge: null,
     push: null,
     difficulty: null,
     bands: [{ key: 'outcome', label: 'Outcome', upTo: { kind: 'none' } }],
@@ -241,11 +274,18 @@ export function blankCheck(): CheckDraft {
 }
 
 /** The mode a draft is in. */
-export const modeOf = (draft: CheckDraft): CheckMode => (draft.pool === null ? 'dice' : 'pool')
+export function modeOf(draft: CheckDraft): CheckMode {
+  if (draft.pool !== null) {
+    return 'pool'
+  }
+  return draft.challenge === null ? 'dice' : 'challenge'
+}
 
 /**
- * The draft in another mode. Dice drops the pool and its push, which go together; a pool starts
- * empty and with no push. Choosing the mode the draft is in changes nothing.
+ * The draft in another mode. Dice drops the pool or the challenge and the push, which go with
+ * them; a pool or a challenge starts empty (a challenge as an action roll) and with no push, and a
+ * challenge drops the difficulty, which the contract refuses. Choosing the mode the draft is in
+ * changes nothing.
  */
 export function switchMode(draft: CheckDraft, mode: CheckMode): CheckDraft {
   if (modeOf(draft) === mode) {
@@ -254,8 +294,35 @@ export function switchMode(draft: CheckDraft, mode: CheckMode): CheckDraft {
   return {
     ...draft,
     pool: mode === 'pool' ? { count: '', sides: '', successAt: '' } : null,
+    challenge:
+      mode === 'challenge'
+        ? { count: '', sides: '', scoreMax: '', momentum: '', kind: 'action' }
+        : null,
+    difficulty: mode === 'challenge' ? null : draft.difficulty,
     push: null,
     storedNullPush: false,
+  }
+}
+
+/**
+ * The draft with the challenge changed. A progress roll has no dice, no momentum and no burn, so
+ * choosing it clears them; a burn spends the momentum, so clearing the momentum drops the burn.
+ * A draft with no challenge is left as it is.
+ */
+export function editChallenge(draft: CheckDraft, changes: Partial<ChallengeDraft>): CheckDraft {
+  if (draft.challenge === null) {
+    return draft
+  }
+  const challenge = { ...draft.challenge, ...changes }
+  const progress = challenge.kind === 'progress'
+  if (progress) {
+    challenge.momentum = ''
+  }
+  return {
+    ...draft,
+    challenge,
+    dice: progress ? '' : draft.dice,
+    ...(challenge.momentum === '' ? { push: null, storedNullPush: false } : {}),
   }
 }
 
@@ -275,6 +342,7 @@ export function duplicateCheck(source: CheckDraft, existingKeys: string[]): Chec
     key,
     label: `${source.label} (copy)`,
     pool: source.pool === null ? null : { ...source.pool },
+    challenge: source.challenge === null ? null : { ...source.challenge },
     push: source.push === null ? null : { ...source.push, effects: [...source.push.effects] },
     difficulty: source.difficulty === null ? null : { ...source.difficulty },
     bands: source.bands.map((band) => ({ ...band, upTo: { ...band.upTo } })),
@@ -368,6 +436,36 @@ function readCount(count: unknown): string | null {
   return null
 }
 
+/** The stored challenge as form state, or null when it is not a count and sides with an optional cap and momentum only. */
+function readChallenge(challenge: unknown, action: boolean): ChallengeDraft | null {
+  if (
+    !isObject(challenge) ||
+    Object.keys(challenge).some(
+      (name) => !['count', 'sides', 'scoreMax', 'momentum'].includes(name),
+    )
+  ) {
+    return null
+  }
+  const { count, sides, scoreMax, momentum } = challenge
+  const optionalInteger = (value: unknown) =>
+    value === undefined || value === null || Number.isInteger(value)
+  if (
+    !Number.isInteger(count) ||
+    !Number.isInteger(sides) ||
+    !optionalInteger(scoreMax) ||
+    (momentum !== undefined && momentum !== null && typeof momentum !== 'string')
+  ) {
+    return null
+  }
+  return {
+    count: String(count),
+    sides: String(sides),
+    scoreMax: typeof scoreMax === 'number' ? String(scoreMax) : '',
+    momentum: typeof momentum === 'string' ? momentum : '',
+    kind: action ? 'action' : 'progress',
+  }
+}
+
 /** The stored push as form state, or null when it is not exactly a label and a list of effects. */
 function readPush(push: unknown): PushDraft | null {
   if (
@@ -395,21 +493,31 @@ function readPush(push: unknown): PushDraft | null {
 
 /** The stored check as form state, or null when a property has a shape the form cannot hold. */
 export function readCheck(stored: StoredCheck): CheckDraft | null {
-  const { key, label, hint, dice, modifier, difficulty, bands, pool, push } = stored
+  const { key, label, hint, dice, modifier, difficulty, bands, pool, push, challenge } = stored
   if (typeof key !== 'string' || typeof label !== 'string') {
     return null
   }
-  // Exactly one of dice and pool; a pool check has no modifier, and only it has a push.
+  // Exactly one of dice, pool and challenge (a challenge with or without dice); a pool check has
+  // no modifier, and only a pool or a challenge has a push.
   const pooled = pool !== undefined
+  const challenged = challenge !== undefined && challenge !== null
+  if (pooled && challenged) {
+    return null
+  }
   const read = pooled ? readPool(pool) : null
-  if (
+  const readChallenged = challenged ? readChallenge(challenge, dice !== undefined) : null
+  if (challenged) {
+    if (readChallenged === null || (dice !== undefined && typeof dice !== 'string')) {
+      return null
+    }
+  } else if (
     pooled
       ? read === null || dice !== undefined || (modifier ?? null) !== null
       : typeof dice !== 'string'
   ) {
     return null
   }
-  if (push !== undefined && !pooled) {
+  if (push !== undefined && !pooled && !challenged) {
     return null
   }
   const readPushed = push === undefined || push === null ? null : readPush(push)
@@ -456,8 +564,10 @@ export function readCheck(stored: StoredCheck): CheckDraft | null {
     dice: typeof dice === 'string' ? dice : '',
     modifier: typeof modifier === 'string' ? modifier : '',
     pool: read,
+    challenge: readChallenged,
     push: readPushed,
     ...(push === null ? { storedNullPush: true } : {}),
+    ...(challenge === null ? { storedNullChallenge: true } : {}),
     difficulty: declared,
     bands: readBands as BandDraft[],
   }
@@ -502,13 +612,14 @@ export function writeCheck(draft: CheckDraft): { check: StoredCheck } | { errors
   const label = draft.label.trim()
   const dice = draft.dice.trim()
   const pooled = draft.pool !== null
+  const progress = draft.challenge?.kind === 'progress'
   if (key === '') {
     errors.key = 'Give the check a key.'
   }
   if (label === '') {
     errors.label = 'Give the check a label.'
   }
-  if (!pooled && dice === '') {
+  if (!pooled && !progress && dice === '') {
     errors.dice = 'Write the dice.'
   }
   check.key = key
@@ -518,27 +629,39 @@ export function writeCheck(draft: CheckDraft): { check: StoredCheck } | { errors
     check.hint = hint
   }
   if (draft.pool === null) {
-    check.dice = dice
+    if (!progress) {
+      check.dice = dice
+    }
     const modifier = draft.modifier.trim()
     if (modifier !== '') {
       check.modifier = modifier
+    } else if (progress) {
+      errors.modifier = 'Give the modifier: it is the score of a progress roll.'
+    }
+    if (draft.challenge !== null) {
+      const challenge = writeChallenge(draft.challenge, errors)
+      if (challenge !== null) {
+        check.challenge = challenge
+      }
+      // Only an action roll with a momentum can burn it.
+      if (draft.challenge.momentum.trim() !== '') {
+        writeBurn(draft.push, draft.storedNullPush === true, check, errors)
+      } else if (draft.storedNullPush === true) {
+        check.push = null
+      }
+    } else if (draft.storedNullChallenge === true) {
+      check.challenge = null
     }
   } else {
     const pool = writePool(draft.pool, errors)
     if (pool !== null) {
       check.pool = pool
     }
-    if (draft.push !== null) {
-      const push = writePush(draft.push, errors)
-      if (push !== null) {
-        check.push = push
-      }
-    } else if (draft.storedNullPush === true) {
-      check.push = null
-    }
+    writeBurn(draft.push, draft.storedNullPush === true, check, errors)
   }
 
-  if (draft.difficulty !== null) {
+  // A challenge check has no difficulty: the challenge dice are the difficulty.
+  if (draft.difficulty !== null && draft.challenge === null) {
     const difficulty: Record<string, unknown> = {}
     const name = draft.difficulty.label.trim()
     if (name === '') {
@@ -577,6 +700,75 @@ export function writeCheck(draft: CheckDraft): { check: StoredCheck } | { errors
   }
 
   return Object.keys(errors).length > 0 ? { errors } : { check }
+}
+
+/** The push of a pool or of a burn, set on the check; `storedNull` writes back a stored `push: null`. */
+function writeBurn(
+  push: PushDraft | null,
+  storedNull: boolean,
+  check: StoredCheck,
+  errors: CheckErrors,
+) {
+  if (push !== null) {
+    const written = writePush(push, errors)
+    if (written !== null) {
+      check.push = written
+    }
+  } else if (storedNull) {
+    check.push = null
+  }
+}
+
+/**
+ * The challenge to send, or null with the errors found, by the publisher's rules: a count 2..10,
+ * sides 2..1000, an optional cap 1..1000 and an optional momentum, which the publisher checks
+ * against the sheet and the dice.
+ */
+function writeChallenge(
+  challenge: ChallengeDraft,
+  errors: CheckErrors,
+): Record<string, unknown> | null {
+  const written: Record<string, unknown> = {}
+  const limits = challengeLimits
+
+  const count = challenge.count.trim()
+  const countValue = integerOf(count)
+  if (count === '') {
+    errors.challengeCount = 'Give the count of dice.'
+  } else if (countValue === null || countValue < limits.minCount || countValue > limits.maxCount) {
+    errors.challengeCount = `The count must be a whole number from ${String(limits.minCount)} to ${String(limits.maxCount)}.`
+  }
+  written.count = countValue
+
+  const sides = challenge.sides.trim()
+  const sidesValue = integerOf(sides)
+  if (sides === '') {
+    errors.challengeSides = 'Give the sides.'
+  } else if (sidesValue === null || sidesValue < limits.minSides || sidesValue > limits.maxSides) {
+    errors.challengeSides = `Must be a whole number from ${String(limits.minSides)} to ${String(limits.maxSides)}.`
+  }
+  written.sides = sidesValue
+
+  const cap = challenge.scoreMax.trim()
+  if (cap !== '') {
+    const value = integerOf(cap)
+    if (value === null || value < 1 || value > limits.maxScore) {
+      errors.challengeScoreMax = `The cap must be a whole number from 1 to ${String(limits.maxScore)}, or empty.`
+    } else {
+      written.scoreMax = value
+    }
+  }
+
+  const momentum = challenge.momentum.trim()
+  if (momentum !== '') {
+    written.momentum = momentum
+  }
+
+  return errors.challengeCount === undefined &&
+    errors.challengeSides === undefined &&
+    errors.challengeScoreMax === undefined
+    ? written
+    : null
 }
 
 /**

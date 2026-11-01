@@ -1,4 +1,11 @@
-import { screen, waitFor, within, type BoundFunctions, type queries } from '@testing-library/react'
+import {
+  cleanup,
+  screen,
+  waitFor,
+  within,
+  type BoundFunctions,
+  type queries,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
@@ -1561,5 +1568,265 @@ describe('the push of a pool check in the check editor', () => {
 
     expect(await form.findByText('must be at most 100, 101 given.')).toBeVisible()
     expect(form.getByLabelText('Hunger dice')).toBeInvalid()
+  })
+})
+
+/** An action roll with a momentum and a burn, and a progress roll, as the publisher stores them (ADR 0049). */
+const edge = {
+  key: 'edge',
+  label: 'Edge',
+  dice: '1d6',
+  modifier: '{pow}',
+  challenge: { count: 2, sides: 10, scoreMax: 10, momentum: 'momentum' },
+  push: {
+    label: 'Burn momentum',
+    effects: [{ kind: 'sheet', field: 'momentum', op: 'subtract', value: 8 }],
+  },
+  bands: [
+    { key: 'miss', label: 'Miss', upTo: 0 },
+    { key: 'weak', label: 'Weak hit', upTo: 1 },
+    { key: 'strong', label: 'Strong hit' },
+  ],
+}
+
+const fulfill = {
+  key: 'fulfill',
+  label: 'Fulfill a vow',
+  modifier: '{pow}',
+  challenge: { count: 2, sides: 10 },
+  bands: [
+    { key: 'miss', label: 'Miss', upTo: 0 },
+    { key: 'hit', label: 'Hit' },
+  ],
+}
+
+const withChallenges = {
+  ...checks,
+  checks: [...checks.checks, edge, fulfill],
+  fields: [...checks.fields, { key: 'momentum', label: 'Momentum', type: 'number', max: 10 }],
+}
+
+describe('the challenge mode of the check editor (ADR 0049)', () => {
+  async function editCheck(key: string, handlers: Record<string, FakeHandler> = {}) {
+    const opened = await openChecks({ [`GET ${base}/checks`]: json(withChallenges), ...handlers })
+    await opened.user.click(await screen.findByRole('button', { name: `Edit ${key}` }))
+    return { ...opened, form: within(screen.getByRole('form', { name: `Edit ${key}` })) }
+  }
+
+  it('lists a challenge check, with or without dice, as editable challenge dice', async () => {
+    await openChecks({ [`GET ${base}/checks`]: json(withChallenges) })
+
+    const progress = (await screen.findByRole('button', { name: 'Edit fulfill' })).closest('li')
+    expect(progress).toHaveTextContent('challenge dice')
+    expect(screen.getByRole('button', { name: 'Edit fulfill' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Edit edge' }).closest('li')).toHaveTextContent('1d6')
+  })
+
+  it('offers no test roll for a challenge check, as the sandbox cannot roll one yet', async () => {
+    await editCheck('edge')
+
+    expect(screen.queryByRole('region', { name: 'Test roll sandbox' })).not.toBeInTheDocument()
+    expect(screen.getByText('Test rolls of challenge dice are not available yet.')).toBeVisible()
+  })
+
+  it('opens an action roll with its challenge, momentum and burn, and no difficulty', async () => {
+    const { form } = await editCheck('edge')
+
+    expect(form.getByLabelText('Challenge count')).toHaveValue('2')
+    expect(form.getByLabelText('Challenge sides')).toHaveValue('10')
+    expect(form.getByLabelText('Score cap')).toHaveValue('10')
+    expect(form.getByLabelText('Action roll')).toBeChecked()
+    expect(form.getByLabelText('Dice')).toHaveValue('1d6')
+    expect(form.getByLabelText('Modifier')).toHaveValue('{pow}')
+    expect(form.getByRole('combobox', { name: 'Momentum' })).toHaveTextContent(
+      'Momentum (momentum)',
+    )
+    expect(form.getByLabelText('Can be burned')).toBeChecked()
+    expect(form.getByLabelText('Cost label')).toHaveValue('Burn momentum')
+    expect(form.queryByLabelText('Dice cap')).toBeNull()
+    expect(form.queryByLabelText('Difficulty')).toBeNull()
+  })
+
+  it('lists the number fields only as momentum, plus no momentum', async () => {
+    const { user, form } = await editCheck('edge')
+
+    expect(
+      (await listOptions(user, form.getByRole('combobox', { name: 'Momentum' }))).map(
+        (option) => option.label,
+      ),
+    ).toEqual(['No momentum', 'Power (pow)', 'Momentum (momentum)'])
+  })
+
+  it('saves an action roll with a burn, and a progress roll, exactly as stored', async () => {
+    for (const [key, stored] of [
+      ['edge', edge],
+      ['fulfill', fulfill],
+    ] as const) {
+      const { sent, handler } = recorder(Response.json({ ...withChallenges, version: 6 }))
+      const { user, form } = await editCheck(key, { [`PUT ${base}/checks/${key}`]: handler })
+
+      await replaceText(user, form.getByLabelText('Label'), 'Renamed')
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+
+      await waitFor(() => {
+        expect(sent).toHaveLength(1)
+      })
+      expect(sent[0]).toEqual({ expectedVersion: 5, check: { ...stored, label: 'Renamed' } })
+      cleanup()
+    }
+  })
+
+  it('opens a progress roll without dice, momentum or burn', async () => {
+    const { form } = await editCheck('fulfill')
+
+    expect(form.getByLabelText('Progress roll')).toBeChecked()
+    expect(form.queryByLabelText('Dice')).toBeNull()
+    expect(form.queryByRole('combobox', { name: 'Momentum' })).toBeNull()
+    expect(form.queryByLabelText('Can be burned')).toBeNull()
+    expect(form.getByLabelText('Modifier')).toHaveValue('{pow}')
+  })
+
+  it('creates a challenge check from the mode, with the difficulty dropped', async () => {
+    const { sent, handler } = recorder(Response.json(withChallenges, { status: 201 }))
+    const { user } = await openChecks({
+      [`GET ${base}/checks`]: json(withChallenges),
+      [`POST ${base}/checks`]: handler,
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'New check' }))
+    const form = within(screen.getByRole('form', { name: 'New check' }))
+    await typeText(user, form.getByLabelText('Key'), 'iron')
+    await typeText(user, form.getByLabelText('Label'), 'Iron')
+    await user.click(form.getByLabelText('Difficulty'))
+    await user.click(form.getByLabelText('Challenge dice'))
+    expect(form.queryByLabelText('Difficulty')).toBeNull()
+    await typeText(user, form.getByLabelText('Dice'), '1d6')
+    await typeText(user, form.getByLabelText('Challenge count'), '2')
+    await typeText(user, form.getByLabelText('Challenge sides'), '10')
+    await typeText(user, form.getByLabelText('Score cap'), '10')
+    await user.click(form.getByRole('button', { name: 'Create check' }))
+
+    expect(sent).toEqual([
+      {
+        expectedVersion: 5,
+        check: {
+          key: 'iron',
+          label: 'Iron',
+          dice: '1d6',
+          challenge: { count: 2, sides: 10, scoreMax: 10 },
+          bands: [{ key: 'outcome', label: 'Outcome' }],
+        },
+      },
+    ])
+  })
+
+  it('offers the burn only while a momentum is chosen, and drops it when the momentum is cleared', async () => {
+    const { sent, handler } = recorder(Response.json({ ...withChallenges, version: 6 }))
+    const { user, form } = await editCheck('edge', { [`PUT ${base}/checks/edge`]: handler })
+
+    await chooseOption(user, 'Momentum', 'No momentum', form)
+
+    expect(form.queryByLabelText('Can be burned')).toBeNull()
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+    await waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+    expect(sent[0]).toEqual({
+      expectedVersion: 5,
+      check: {
+        key: 'edge',
+        label: 'Edge',
+        dice: '1d6',
+        modifier: '{pow}',
+        challenge: { count: 2, sides: 10, scoreMax: 10 },
+        bands: edge.bands,
+      },
+    })
+  })
+
+  it('clears the dice, the momentum and the burn on a progress roll', async () => {
+    const { sent, handler } = recorder(Response.json({ ...withChallenges, version: 6 }))
+    const { user, form } = await editCheck('edge', { [`PUT ${base}/checks/edge`]: handler })
+
+    await user.click(form.getByLabelText('Progress roll'))
+
+    expect(form.queryByLabelText('Dice')).toBeNull()
+    expect(form.queryByRole('combobox', { name: 'Momentum' })).toBeNull()
+    expect(form.queryByLabelText('Can be burned')).toBeNull()
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+    await waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+    expect(sent[0]).toEqual({
+      expectedVersion: 5,
+      check: {
+        ...fulfill,
+        key: 'edge',
+        label: 'Edge',
+        challenge: { count: 2, sides: 10, scoreMax: 10 },
+        bands: edge.bands,
+      },
+    })
+  })
+
+  it('asks for the limits and the modifier of a progress roll without calling the API', async () => {
+    const { sent, handler } = recorder(Response.json(withChallenges))
+    const { user, form } = await editCheck('fulfill', { [`PUT ${base}/checks/fulfill`]: handler })
+
+    await replaceText(user, form.getByLabelText('Challenge count'), '11')
+    await replaceText(user, form.getByLabelText('Challenge sides'), '1')
+    await replaceText(user, form.getByLabelText('Score cap'), '0')
+    await user.clear(form.getByLabelText('Modifier'))
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    expect(await form.findByText(/The count must be a whole number from 2 to 10/)).toBeVisible()
+    expect(form.getByText('Must be a whole number from 2 to 1000.')).toBeVisible()
+    expect(form.getByText(/The cap must be a whole number from 1 to 1000/)).toBeVisible()
+    expect(form.getByText('Give the modifier: it is the score of a progress roll.')).toBeVisible()
+    expect(form.getByLabelText('Challenge count')).toBeInvalid()
+    expect(sent).toHaveLength(0)
+  })
+
+  it('shows the publisher refusals on the inputs of the challenge', async () => {
+    const { user, form } = await editCheck('edge', {
+      [`PUT ${base}/checks/edge`]: json(
+        {
+          error:
+            'checks[2].challenge.momentum: needs dice that rolls exactly one die, "2d6" given.',
+        },
+        422,
+      ),
+    })
+
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    expect(await form.findByText(/needs dice that rolls exactly one die/)).toBeVisible()
+    expect(form.getByRole('combobox', { name: 'Momentum' })).toBeInvalid()
+  })
+
+  it('does not edit a challenge of an unknown shape', async () => {
+    await openChecks({
+      [`GET ${base}/checks`]: json({
+        ...checks,
+        checks: [{ ...edge, challenge: { count: 2, sides: 10, extra: true } }],
+      }),
+    })
+
+    expect(await screen.findByText("Can't be edited here")).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Edit edge' })).toBeDisabled()
+  })
+
+  it('keeps a dice check as before, with its difficulty, and no challenge', async () => {
+    const { sent, handler } = recorder(Response.json({ ...withChallenges, version: 6 }))
+    const { user, form } = await editCheck('skill', { [`PUT ${base}/checks/skill`]: handler })
+
+    expect(form.getByLabelText('Dice roll')).toBeChecked()
+    expect(form.getByLabelText('Difficulty')).toBeChecked()
+    expect(form.queryByLabelText('Challenge sides')).toBeNull()
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+    await waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+    expect(sent[0]?.check).not.toHaveProperty('challenge')
   })
 })

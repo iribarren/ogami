@@ -17,6 +17,7 @@ use App\Play\Domain\Journal\JournalEntryRepository;
 use App\Play\Domain\Journal\NoteContent;
 use App\Play\Domain\Journal\OracleTableContent;
 use App\Play\Domain\Journal\RandomEventAlreadyRolled;
+use App\Tests\Unit\Play\Domain\Journal\CheckChallengeBurnContentTest;
 use App\Tests\Unit\Play\Domain\Journal\CheckPoolContentTest;
 use App\Tests\Unit\Play\Domain\Journal\CheckPushContentTest;
 use App\Tests\Unit\Play\Domain\Journal\OracleTableContentTest;
@@ -320,6 +321,45 @@ trait JournalEntryRepositoryContract
 
         $this->forgetLoaded();
         self::assertEquals($pushed, $this->entries()->ofId($entry->id()));
+    }
+
+    #[Test]
+    public function aBurnCompletesTheStoredChallengeEntryOnceAndAnotherBurnIsRefused(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        $entry = $this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00', CheckChallengeBurnContentTest::edge());
+        $this->entries()->add($entry);
+        $this->forgetLoaded();
+        $burned = ($this->entries()->ofId($entry->id()) ?? self::fail('The entry is kept.'))->pushedWith(CheckChallengeBurnContentTest::burnedEdge());
+
+        $this->entries()->savePush($burned);
+        $this->forgetLoaded();
+        self::assertEquals($burned, $this->entries()->ofId($entry->id()));
+
+        // Another request that loaded the entry before the first burn finished burns from the unburned copy.
+        try {
+            $this->entries()->savePush($entry->pushedWith(CheckChallengeBurnContentTest::burnedEdge()));
+            self::fail('A roll was burned twice.');
+        } catch (CheckAlreadyPushed $exception) {
+            self::assertSame('The check of journal entry "01890a5d-ac96-774b-bcce-b302099a9001" was pushed already, and a roll is pushed once.', $exception->getMessage());
+        }
+
+        $this->forgetLoaded();
+        self::assertEquals($burned, $this->entries()->ofId($entry->id()));
+    }
+
+    #[Test]
+    public function aBurnAsTheLatestEntryIsRefusedOnceALaterEntryIsKept(): void
+    {
+        $this->givenCampaign(self::CAMPAIGN);
+        $entry = $this->entry('01890a5d-ac96-774b-bcce-b302099a9001', self::CAMPAIGN, '2026-10-06 10:00:00', CheckChallengeBurnContentTest::edge());
+        $this->entries()->add($entry);
+        $this->entries()->add($this->entry('01890a5d-ac96-774b-bcce-b302099a9002', self::CAMPAIGN, '2026-10-06 10:01:00'));
+        $this->forgetLoaded();
+
+        $this->expectException(JournalEntryNotTheLatest::class);
+
+        $this->entries()->savePush($entry->pushedWith(CheckChallengeBurnContentTest::burnedEdge()), asLatest: true);
     }
 
     #[Test]

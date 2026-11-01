@@ -9,7 +9,7 @@ use App\Play\Domain\GameSystem\Flow\CheckStep;
 
 /**
  * The roll of the current check step waiting for the player's Keep or Push (ADR 0041): a pool roll
- * of a check that declares a push, with a die that failed. The journal entry holds the roll; the
+ * of a check that declares a push, with a die that failed, or a challenge roll whose momentum can be burned (ADR 0049). The journal entry holds the roll; the
  * FlowRun keeps what completing the step needs: the Character who rolled, the Check difficulty
  * that applied (a push bands the new successes at it) and the band the roll landed in (Keep). A roll
  * of a check set (ADR 0042) also keeps the check the player picked; a single-check step's roll keeps

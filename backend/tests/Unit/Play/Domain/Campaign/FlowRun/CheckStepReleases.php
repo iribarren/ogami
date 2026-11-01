@@ -7,6 +7,7 @@ namespace App\Tests\Unit\Play\Domain\Campaign\FlowRun;
 use App\Formula\Domain\Formula;
 use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Check\CheckBand;
+use App\Play\Domain\GameSystem\Check\CheckChallenge;
 use App\Play\Domain\GameSystem\Check\CheckDifficulty;
 use App\Play\Domain\GameSystem\Check\CheckPool;
 use App\Play\Domain\GameSystem\Check\CheckPush;
@@ -37,7 +38,9 @@ use App\Randomness\Domain\DiceExpression;
  * at no cost, ADR 0041), "steady" (the same pool without a push) and "thirst" (the pool with critical
  * pairs worth 2 and 2 Hunger dice, a push capped at 1 die, ADR 0044: the dice are 1 regular die,
  * then 2 Hunger dice), "craving" (4d6, critical pairs worth 2 and 1 Hunger die, the Hunger die last, no push) and
- * "dread" (the same with a push capped at 1 die). For check sets (ADR 0042) each
+ * "dread" (the same with a push capped at 1 die), and the challenge checks "move" (1d6 + hands against 2d10, capped at 10, with the
+ * momentum field "momentum" (-6 to 10, from 2) and a push that burns it, ADR 0049: the bands "miss", "weak" and "strong" count the dice
+ * beaten) and "strike" (the same without a push). For check sets (ADR 0042) each
  * shares its band keys with a sibling: "knack" (1d10 + hands, the bands of "skill") and "nerve" (the
  * pool of "grit" with a push, the bands of "grit").
  *
@@ -82,11 +85,13 @@ final class CheckStepReleases
             new Check('steady', 'Steady', null, null, null, null, $poolBands, new CheckPool(3, 6, 5)),
             new Check('craving', 'Craving', null, null, null, null, $poolBands, new CheckPool(4, 6, 5, 2, 1)),
             new Check('dread', 'Dread', null, null, null, null, $poolBands, new CheckPool(4, 6, 5, 2, 1), new CheckPush('Push it', [], 1)),
+            new Check('move', 'Move', null, DiceExpression::fromString('1d6'), Formula::fromString('{hands}'), null, $poolBands, null, new CheckPush('Burn momentum'), new CheckChallenge(2, 10, 10, 'momentum')),
+            new Check('strike', 'Strike', null, DiceExpression::fromString('1d6'), Formula::fromString('{hands}'), null, $poolBands, null, null, new CheckChallenge(2, 10, 10, 'momentum')),
             new Check('thirst', 'Thirst', null, null, null, null, $poolBands, new CheckPool(3, 6, 5, 2, 2), new CheckPush('Push it', [], 1)),
         ];
 
         return new GameSystemSnapshot('checking', 'Checking', $version, null, [], [], [Tracker::counter('heat', 'Heat', null, 0, 20, 10)], sceneTypes: [$sceneType], flows: [
             new Flow('play', 'Play', null, null, true, FlowView::Journal, [], ['heat'], [$phase]),
-        ], sheet: new SheetTemplate([new NumberField('hands', 'Hands', default: 4)]), checks: $checks);
+        ], sheet: new SheetTemplate([new NumberField('hands', 'Hands', default: 4), new NumberField('momentum', 'Momentum', min: -6, max: 10, default: 2)]), checks: $checks);
     }
 }

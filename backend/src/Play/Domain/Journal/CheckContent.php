@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Play\Domain\Journal;
 
 use App\Play\Domain\Campaign\FlowRun\SheetChange;
+use App\Play\Domain\GameSystem\Check\BurnResult;
 use App\Play\Domain\GameSystem\Check\ChallengeResult;
 use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Check\CheckChallenge;
@@ -37,6 +38,10 @@ use App\Play\Domain\GameSystem\Check\SpecialResult;
  * A pool check can be pushed once (ADR 0041): the push completes this content, the only change a
  * journal entry's content can take. The pool part keeps the first roll and gains the push part; the
  * dice total, the total and the band are those after the push.
+ *
+ * A challenge check that names a momentum can be burned once (ADR 0049), the same way: the challenge part gains the
+ * burn part and keeps the first roll's score and dice. The dice total (the action die) stays; the total, the band
+ * key and the band label are those after the burn.
  *
  * @phpstan-import-type DiceGroupData from RollContent
  * @phpstan-import-type PoolData from CheckPoolContent
@@ -292,8 +297,8 @@ final readonly class CheckContent implements JournalEntryContent
             throw InvalidJournalEntryContent::malformed('difficulty', 'null: a challenge check has no difficulty');
         }
 
-        if ($total !== $challenge->beaten()) {
-            throw InvalidJournalEntryContent::malformed('total', 'the number of challenge dice the score beat');
+        if ($total !== $challenge->total()) {
+            throw InvalidJournalEntryContent::malformed('total', $challenge->burn instanceof CheckChallengeBurnContent ? 'the number of challenge dice the burned score beat' : 'the number of challenge dice the score beat');
         }
 
         $progress = [] === $groups && \sprintf('%dd%d', \count($challenge->dice), $challenge->sides) === $expression;
@@ -330,6 +335,25 @@ final readonly class CheckContent implements JournalEntryContent
         $push = CheckPushContent::fromResult($label, $result, $this->bandKey, $this->bandLabel, $changes);
 
         return self::of($this->characterId, $this->characterName, $this->checkKey, $this->checkLabel, $this->expression, $this->groups, $result->total, $this->modifier, $this->situational, $this->difficulty, $result->total, $result->band->key, $result->band->label, $this->hint, $this->modifierFormula, $this->modifierTerms, $pool->pushed($push, $this->situational));
+    }
+
+    /**
+     * This check once the momentum of its challenge roll was burned (ADR 0049): the burn part is kept
+     * beside the first roll, and the total and the band are those after the burn. The cost's sheet
+     * changes are the ones the burn applied to the Character.
+     *
+     * @param list<SheetChange> $changes
+     *
+     * @throws CheckAlreadyPushed         when the roll was burned already
+     * @throws InvalidJournalEntryContent when the label is not 1 to 100 characters, or the burn contradicts the first roll
+     * @throws \LogicException            when the check rolled no challenge dice
+     */
+    public function burned(string $label, BurnResult $result, array $changes): self
+    {
+        $challenge = $this->challenge ?? throw new \LogicException(\sprintf('Check "%s" rolled no challenge dice, only a challenge roll can be burned.', $this->checkKey));
+        $burn = CheckChallengeBurnContent::fromResult($label, $result, $this->bandKey, $this->bandLabel, $changes);
+
+        return self::of($this->characterId, $this->characterName, $this->checkKey, $this->checkLabel, $this->expression, $this->groups, $this->diceTotal, $this->modifier, $this->situational, $this->difficulty, $result->total, $result->band->key, $result->band->label, $this->hint, $this->modifierFormula, $this->modifierTerms, null, $challenge->burned($burn));
     }
 
     public function kind(): string

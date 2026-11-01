@@ -410,6 +410,24 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         self::assertSame('bestialFailure', $stored['special'] ?? null);
     }
 
+    #[Test]
+    public function aPendingChallengeRollKeepsItsMatch(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $pending = new PendingCheck('case', '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f8001', 'ada', null, 'miss', special: SpecialResult::Match);
+        $campaign = $this->withPendingCheck($id, $pending);
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertEquals($pending, $loaded?->flowRun()?->pendingCheck());
+        $stored = $this->storedFlowRun($id->toString())['pendingCheck'];
+        self::assertIsArray($stored);
+        self::assertSame('match', $stored['special'] ?? null);
+    }
+
     /**
      * A pending roll stored before special results (ADR 0044) has no special: it reads without one.
      */

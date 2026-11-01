@@ -18,6 +18,7 @@ use App\Play\Domain\Campaign\Lists\PlaceId;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\Lists\ThreadId;
 use App\Play\Domain\Campaign\Scene;
+use App\Play\Domain\GameSystem\Check\ChallengeResult;
 use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Check\CheckBand;
 use App\Play\Domain\GameSystem\Check\CheckPush;
@@ -990,11 +991,21 @@ final class FlowRun
 
     /**
      * Whether a check step's roll waits for Keep or Push: a pool roll with a regular die that failed, of a
-     * check that declares a push.
+     * check that declares a push; or a challenge roll of a check that declares a push (a burn, ADR 0049)
+     * whose momentum, as rolled, beats more challenge dice than the score.
      */
     private function pushable(string $checkKey, CheckResult $result, FlowRunContext $context): bool
     {
-        return $context->release->check($checkKey)?->push instanceof CheckPush && $result->pool instanceof PoolResult && $result->pool->roll->isPushable();
+        $check = $context->release->check($checkKey);
+        if (!$check?->push instanceof CheckPush) {
+            return false;
+        }
+
+        if ($result->challenge instanceof ChallengeResult) {
+            return null !== $result->challenge->momentum && $check->burnImproves($result->challenge->roll, $result->challenge->score, $result->challenge->momentum);
+        }
+
+        return $result->pool instanceof PoolResult && $result->pool->roll->isPushable();
     }
 
     /**

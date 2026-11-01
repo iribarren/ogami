@@ -108,7 +108,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T14 | 7 | Slice 6 review fixes; e2e `frontend/e2e/play-ironsworn.spec.ts` | | [ ] | |
 | T15 | 7 | Chrome play pass: swear a vow, a move with a burn, a match, a negative momentum, fulfilling a vow; fixes | | [ ] | |
 | T16 | 7 | Closing: Reviews, roadmap `Done:` line under B16, follow-ups if any | | [ ] | |
-| T17 | 3 | Play API: `challenge` on the check and on its journal content, API tests, `make api`. Drafted on local branch `draft/preset-ironsworn-3-play-api` (`74ec85a8`, `7384cee9`), brought onto the latest `main` | | [ ] | |
+| T17 | 3 | Play API: `challenge` on the check and on its journal content, API tests, `make api`. Drafted on local branch `draft/preset-ironsworn-3-play-api` (`74ec85a8`, `7384cee9`), brought onto the latest `main` | delegated writer (slice 3) | [x] | |
 
 ## Progress
 
@@ -121,6 +121,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: T3 done: `ChallengeDice`/`ChallengeRoll`, `DiceExpression::rollsOneDie`, `CheckChallenge`, `ChallengeResult`, `Check::perform` for action and progress rolls, `SpecialResult::Match` (refused as a step outcome in `outcomeKey`, not offered by `canProduce`), translator `checkChallenge`, a challenge push refused. RED: classes not found (kernel, domain) and 23 translator failures (`not played yet`); GREEN after the implementation.
 - 2026-11-01: T4 done: `CheckChallengeContent` and its invariants in `CheckContent`; the match is derived from the faces. RED: class not found, GREEN after the implementation. Slice split: API and UI moved to slice 3.
 - 2026-11-01: Slice 2 review fixes: a null `push` or `challenge` reads as not set in the translator (Studio and the schema accept both; a real challenge push is still refused); the overflow test now reaches the overflow guard. RED: 2 errors and 1 failure (`not played yet`, `must be an object`); the overflow test was failing on the formula range, not the guard.
+- 2026-11-01: T17 done: `challenge` on `CheckResponse` and `CheckContentResponse`, `match` in the `special` enum, API tests (campaign read, action roll, progress roll, match with a cancelled die, a refused challenge push answers 409), `make api`, `challenge: null` on frontend fixtures, `match` label. Draft code and tests written before this session: no RED (they pass on the slice 2 domain).
 
 ## Reviews
 

@@ -339,6 +339,7 @@ export const skillCheck: CampaignCheck = {
   pool: null,
   push: null,
   difficulty: { label: 'Difficulty Value', default: 13, min: 9, max: 29 },
+  challenge: null,
 }
 
 /** A check that declares no difficulty. */
@@ -350,6 +351,7 @@ export const luckCheck: CampaignCheck = {
   pool: null,
   push: null,
   difficulty: null,
+  challenge: null,
 }
 
 /** A pool check whose dice come from the sheet: Agility + Stealth − Physical d6, a success on 5+. */
@@ -367,6 +369,7 @@ export const sneakCheck: CampaignCheck = {
   },
   push: null,
   difficulty: null,
+  challenge: null,
 }
 
 /** A pool check with a fixed count: 4d6, a success on 6+. */
@@ -378,6 +381,7 @@ export const gripCheck: CampaignCheck = {
   pool: { count: 4, countFormula: null, countText: null, sides: 6, successAt: 6 },
   push: null,
   difficulty: null,
+  challenge: null,
 }
 
 /** A pool check that can be pushed: 3d6, a success on 5+; the push costs a Condition of the field "wounds" the player picks. */
@@ -389,6 +393,7 @@ export const gritCheck: CampaignCheck = {
   pool: { count: 3, countFormula: null, countText: null, sides: 6, successAt: 5 },
   push: { label: 'Take a Condition', picks: ['wounds'], maxDice: null },
   difficulty: null,
+  challenge: null,
 }
 
 /**
@@ -403,6 +408,7 @@ export const persuadeCheck: CampaignCheck = {
   pool: { count: 5, countFormula: null, countText: null, sides: 10, successAt: 6 },
   push: { label: 'Spend Willpower', picks: [], maxDice: 3 },
   difficulty: { label: 'Difficulty', default: 3, min: 1, max: 10 },
+  challenge: null,
 }
 
 /** `freeJournal` as a release newer than the one `lostMineCampaign` is pinned to. */

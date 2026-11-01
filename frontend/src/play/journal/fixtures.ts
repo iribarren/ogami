@@ -202,6 +202,7 @@ export const skillCheckEntry: JournalEntry = {
       { reference: '{edge}', label: 'Edge', value: 2 },
     ],
     pool: null,
+    challenge: null,
     special: null,
   },
 }
@@ -230,6 +231,7 @@ export const luckCheckEntry: JournalEntry = {
     modifierFormula: null,
     modifierTerms: [],
     pool: null,
+    challenge: null,
     special: null,
   },
 }
@@ -278,6 +280,7 @@ export const sneakCheckEntry: JournalEntry = {
       special: null,
       push: null,
     },
+    challenge: null,
     special: null,
   },
 }
@@ -351,6 +354,7 @@ function gritContent({
       special: null,
       push,
     },
+    challenge: null,
     special: null,
     ...over,
   }
@@ -417,6 +421,7 @@ function hungerContent({
       special: poolSpecial,
       push,
     },
+    challenge: null,
     special: null,
     ...over,
   }

@@ -71,6 +71,7 @@ final class JournalChecksApiTest extends WebTestCase
                 'dice' => '1d10',
                 'modifier' => '{reflexes} + {luck}',
                 'difficulty' => ['label' => 'Difficulty Value', 'default' => 13, 'min' => 9, 'max' => 29],
+                'challenge' => null,
                 'bands' => [
                     ['key' => 'fail', 'label' => 'Fail', 'upTo' => ['formula' => '{check:difficulty} - 1']],
                     ['key' => 'success', 'label' => 'Success', 'upTo' => ['formula' => '{check:difficulty} + 4']],
@@ -107,12 +108,13 @@ final class JournalChecksApiTest extends WebTestCase
                 'pool' => null,
                 'push' => null,
                 'difficulty' => ['label' => 'Difficulty Value', 'default' => 13, 'min' => 9, 'max' => 29],
+                'challenge' => null,
             ],
-            ['key' => 'luck', 'label' => 'Luck', 'hint' => null, 'dice' => '1d100', 'pool' => null, 'push' => null, 'difficulty' => null],
-            ['key' => 'broken', 'label' => 'Broken', 'hint' => null, 'dice' => '1d6', 'pool' => null, 'push' => null, 'difficulty' => null],
-            ['key' => 'grit', 'label' => 'Grit', 'hint' => 'Count the sixes.', 'dice' => null, 'pool' => ['count' => null, 'countFormula' => '{reflexes} + {luck}', 'countText' => 'Reflexes + Luck', 'sides' => 6, 'successAt' => 5], 'push' => null, 'difficulty' => null],
-            ['key' => 'hands', 'label' => 'Hands', 'hint' => null, 'dice' => null, 'pool' => ['count' => 2, 'countFormula' => null, 'countText' => null, 'sides' => 10, 'successAt' => 8], 'push' => null, 'difficulty' => null],
-            ['key' => 'slip', 'label' => 'Slip', 'hint' => null, 'dice' => null, 'pool' => ['count' => null, 'countFormula' => '{reflexes} / {debt}', 'countText' => 'Reflexes / Debt', 'sides' => 6, 'successAt' => 6], 'push' => null, 'difficulty' => null],
+            ['key' => 'luck', 'label' => 'Luck', 'hint' => null, 'dice' => '1d100', 'pool' => null, 'push' => null, 'difficulty' => null, 'challenge' => null],
+            ['key' => 'broken', 'label' => 'Broken', 'hint' => null, 'dice' => '1d6', 'pool' => null, 'push' => null, 'difficulty' => null, 'challenge' => null],
+            ['key' => 'grit', 'label' => 'Grit', 'hint' => 'Count the sixes.', 'dice' => null, 'pool' => ['count' => null, 'countFormula' => '{reflexes} + {luck}', 'countText' => 'Reflexes + Luck', 'sides' => 6, 'successAt' => 5], 'push' => null, 'difficulty' => null, 'challenge' => null],
+            ['key' => 'hands', 'label' => 'Hands', 'hint' => null, 'dice' => null, 'pool' => ['count' => 2, 'countFormula' => null, 'countText' => null, 'sides' => 10, 'successAt' => 8], 'push' => null, 'difficulty' => null, 'challenge' => null],
+            ['key' => 'slip', 'label' => 'Slip', 'hint' => null, 'dice' => null, 'pool' => ['count' => null, 'countFormula' => '{reflexes} / {debt}', 'countText' => 'Reflexes / Debt', 'sides' => 6, 'successAt' => 6], 'push' => null, 'difficulty' => null, 'challenge' => null],
         ], $campaign['checks'] ?? null);
     }
 
@@ -162,6 +164,7 @@ final class JournalChecksApiTest extends WebTestCase
                     ['reference' => '{luck}', 'label' => 'Luck', 'value' => -2],
                 ],
                 'pool' => null,
+                'challenge' => null,
                 'special' => null,
             ],
         ];
@@ -223,6 +226,7 @@ final class JournalChecksApiTest extends WebTestCase
                     'special' => null,
                     'push' => null,
                 ],
+                'challenge' => null,
                 'special' => null,
             ],
         ];

@@ -4,10 +4,15 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { gritCheck, persuadeCheck } from '../campaigns/fixtures'
+import { edgeCheck, gritCheck, momentumField, persuadeCheck } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { conditionsField, nightJobCampaign, sheet, viCharacter } from '../characters/fixtures'
-import { bestialFailureEntry, gritEntry, hungerOnlyFailedEntry } from '../journal/fixtures'
+import {
+  bestialFailureEntry,
+  burnableRollEntry,
+  gritEntry,
+  hungerOnlyFailedEntry,
+} from '../journal/fixtures'
 import { atStep, guidedWithCharacters, promptStep, checkStep, pendingGritStep } from './fixtures'
 import type { FlowStep } from './useFlowRun'
 
@@ -36,15 +41,22 @@ function renderGrit(
     unpushable = false,
     check = gritCheck,
     hold,
+    campaign: read,
   }: {
     refuse?: Response
     journal?: FakeHandler
     unpushable?: boolean
     check?: Campaign['checks'][number]
     hold?: Promise<void>
+    /** Replaces the campaign the screen reads, for a sheet that changes between reads. */
+    campaign?: () => Campaign
   } = {},
 ) {
-  const sent: { keep: unknown[]; push: unknown[] } = { keep: [], push: [] }
+  const sent: { keep: unknown[]; push: unknown[]; reads: number } = {
+    keep: [],
+    push: [],
+    reads: 0,
+  }
   const afterStep = guidedOnGrit(promptStep)
   const answer =
     (into: unknown[]): FakeHandler =>
@@ -56,8 +68,15 @@ function renderGrit(
   const campaign = guidedOnGrit(step, check)
   renderAppAt(`/play/campaigns/${nightJobCampaign.id}`, {
     'GET /api/auth/me': signedInAs('SOLO_PLAYER'),
-    [`GET ${path}`]: () =>
-      Response.json(unpushable ? { ...campaign, checks: [{ ...check, push: null }] } : campaign),
+    [`GET ${path}`]: () => {
+      sent.reads += 1
+      if (read !== undefined) {
+        return Response.json(read())
+      }
+      return Response.json(
+        unpushable ? { ...campaign, checks: [{ ...check, push: null }] } : campaign,
+      )
+    },
     [`GET ${path}/journal`]: journal,
     [`POST ${path}/flow-run/keep`]: answer(sent.keep),
     [`POST ${path}/flow-run/push`]: answer(sent.push),
@@ -232,6 +251,124 @@ describe('a check step whose roll pends', () => {
     await waitFor(() => {
       expect(sent.keep).toEqual([{ stepKey: 'sneak' }])
     })
+  })
+})
+
+/** Vi's guided Night Job on the pending burnable "Edge" roll; her sheet holds `momentum` (none when null). */
+function guidedOnEdge(momentum: number | null, characterId = viCharacter.id): Campaign {
+  const values: Record<string, unknown> = { ...viCharacter.values }
+  if (momentum !== null) {
+    values.momentum = momentum
+  }
+  return {
+    ...guidedWithCharacters(atStep(pendingEdgeStep)),
+    checks: [edgeCheck],
+    pinnedRelease: { ...nightJobCampaign.pinnedRelease, sheet: [...sheet, momentumField] },
+    characters: [
+      {
+        ...viCharacter,
+        id: characterId,
+        values: values as Campaign['characters'][number]['values'],
+      },
+    ],
+  }
+}
+
+const pendingEdgeStep: FlowStep = {
+  ...pendingGritStep,
+  pending: { characterId: viCharacter.id, entryId: burnableRollEntry.id },
+}
+
+describe('a challenge roll that pends (ADR 0049)', () => {
+  const edgeJournal = () => Response.json([burnableRollEntry])
+
+  it('offers Burn and Keep with the momentum now and the dice it would beat', async () => {
+    renderGrit(pendingEdgeStep, { journal: edgeJournal, campaign: () => guidedOnEdge(8) })
+
+    const step = await card()
+    expect(await step.findByRole('button', { name: 'Burn' })).toBeEnabled()
+    expect(step.getByRole('button', { name: 'Keep' })).toBeEnabled()
+    expect(step.getByText(/Momentum now:/)).toHaveTextContent('Momentum now: 8 · score 8')
+    expect(
+      step.getByText('It would beat 2 of 2 challenge dice, against 1 with the roll.'),
+    ).toBeInTheDocument()
+    expect(step.queryByRole('button', { name: 'Push' })).not.toBeInTheDocument()
+  })
+
+  it('burns through the push command of the step', async () => {
+    const sent = renderGrit(pendingEdgeStep, {
+      journal: edgeJournal,
+      campaign: () => guidedOnEdge(8),
+    })
+    const user = userEvent.setup()
+
+    await user.click(await (await card()).findByRole('button', { name: 'Burn' }))
+
+    await waitFor(() => {
+      expect(sent.push).toEqual([{ stepKey: 'sneak', picks: [] }])
+    })
+  })
+
+  it('keeps only Keep, and says why, when the momentum no longer beats more dice', async () => {
+    const sent = renderGrit(pendingEdgeStep, {
+      journal: edgeJournal,
+      campaign: () => guidedOnEdge(5),
+    })
+    const user = userEvent.setup()
+
+    const step = await card()
+    expect(await step.findByText(/Momentum now:/)).toHaveTextContent('Momentum now: 5')
+    expect(
+      step.getByText(
+        'It would beat only 1 of 2 challenge dice, against 1 with the roll: burning it would not help.',
+      ),
+    ).toBeInTheDocument()
+    expect(step.queryByRole('button', { name: 'Burn' })).not.toBeInTheDocument()
+    await user.click(step.getByRole('button', { name: 'Keep' }))
+
+    await waitFor(() => {
+      expect(sent.keep).toEqual([{ stepKey: 'sneak' }])
+    })
+  })
+
+  it('keeps Keep when the Character who rolled is gone or the momentum cannot be read', async () => {
+    renderGrit(pendingEdgeStep, {
+      journal: edgeJournal,
+      campaign: () => guidedOnEdge(8, 'someone-else'),
+    })
+
+    const step = await card()
+    expect(await step.findByText(/cannot be read from the sheet/)).toBeInTheDocument()
+    expect(step.queryByRole('button', { name: 'Burn' })).not.toBeInTheDocument()
+    expect(step.getByRole('button', { name: 'Keep' })).toBeEnabled()
+  })
+
+  it('shows the refusal of a stale sheet, reads the campaign again and refreshes the offer', async () => {
+    let momentum = 8
+    const message = 'The momentum no longer beats more challenge dice than the roll.'
+    const sent = renderGrit(pendingEdgeStep, {
+      journal: edgeJournal,
+      campaign: () => guidedOnEdge(momentum),
+      refuse: Response.json({ error: message }, { status: 409 }),
+    })
+    const user = userEvent.setup()
+
+    const step = await card()
+    const burn = await step.findByRole('button', { name: 'Burn' })
+    // The sheet the server holds changed between the offer and the burn.
+    momentum = 5
+    const before = sent.reads
+    await user.click(burn)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    await waitFor(() => {
+      expect(sent.reads).toBeGreaterThan(before)
+    })
+    await waitFor(() => {
+      expect(step.queryByRole('button', { name: 'Burn' })).not.toBeInTheDocument()
+    })
+    expect(step.getByText(/Momentum now:/)).toHaveTextContent('Momentum now: 5')
+    expect(step.getByRole('button', { name: 'Keep' })).toBeEnabled()
   })
 })
 

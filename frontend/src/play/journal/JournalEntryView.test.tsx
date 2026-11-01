@@ -1,6 +1,8 @@
 import { render, screen, within } from '@testing-library/react'
 
 import {
+  burnableRollEntry,
+  burnedEntry,
   cancelledDieEntry,
   chosenWay,
   edgeRollEntry,
@@ -29,6 +31,8 @@ import {
   messyCriticalEntry,
   pushedBestialEntry,
 } from './fixtures'
+import { sheet as fixtureSheet } from '../characters/fixtures'
+import { momentumField } from '../campaigns/fixtures'
 import { JournalEntryView } from './JournalEntryView'
 
 describe('JournalEntryView', () => {
@@ -675,5 +679,131 @@ describe('JournalEntryView icon tile', () => {
 
     expect(screen.getByText('Successes').nextElementSibling).toHaveTextContent('1 success')
     expect(screen.getByText('Pool').nextElementSibling).toHaveTextContent('3 d6, success on 5+ · 3')
+  })
+})
+
+describe('a burned challenge roll (ADR 0049)', () => {
+  const challengeOf = (entry: typeof burnedEntry) => {
+    const { content } = entry
+    const challenge = content.kind === 'check' ? content.challenge : null
+    const burn = challenge?.burn ?? null
+    if (content.kind !== 'check' || challenge === null || burn === null) {
+      throw new Error('The fixture is no burned challenge roll.')
+    }
+    return { content, challenge, burn }
+  }
+  const dice = () =>
+    within(screen.getByRole('list', { name: 'Challenge dice' }))
+      .getAllByRole('listitem')
+      .map((die) => die.textContent)
+
+  it('says what was burned, the band before and after, the momentum and both scores', () => {
+    render(<JournalEntryView entry={burnedEntry} sheet={[...fixtureSheet, momentumField]} />)
+
+    expect(screen.getByText(/Burned: Burn momentum/).parentElement).toHaveTextContent(
+      'Burned: Burn momentum · Rolled Weak, burned to Strong',
+    )
+    expect(screen.getByText('Strong')).toBeInTheDocument()
+    expect(screen.getByText('Burned momentum').nextElementSibling).toHaveTextContent('8')
+    expect(screen.getByText('Score').nextElementSibling).toHaveTextContent('8 · first roll 6')
+    expect(screen.queryByText(/capped at/)).not.toBeInTheDocument()
+    expect(screen.getByText('Beaten').nextElementSibling).toHaveTextContent('2 of 2')
+  })
+
+  it('shows each challenge die against the new score, not the stored beaten', () => {
+    render(<JournalEntryView entry={burnedEntry} />)
+
+    // The roll stored the 7 as not beaten by the score of 6; the burn's 8 beats it.
+    expect(dice()).toEqual(['3 (beaten)', '7 (beaten)'])
+  })
+
+  it('lists the change of the cost', () => {
+    render(<JournalEntryView entry={burnedEntry} sheet={[...fixtureSheet, momentumField]} />)
+
+    expect(screen.getByText(/Vi: Momentum 8/)).toHaveTextContent('Vi: Momentum 8 → 2')
+  })
+
+  it('says the band stayed when the burn did not change it', () => {
+    const { content, challenge, burn } = challengeOf(burnedEntry)
+    render(
+      <JournalEntryView
+        entry={{
+          ...burnedEntry,
+          content: {
+            ...content,
+            challenge: {
+              ...challenge,
+              burn: { ...burn, rolledBandKey: 'strong', rolledBandLabel: 'Strong' },
+            },
+          },
+        }}
+      />,
+    )
+
+    expect(screen.getByText(/Burned: Burn momentum/).parentElement).toHaveTextContent(
+      'Burned: Burn momentum · Rolled Strong, still Strong',
+    )
+  })
+
+  it('says the score was capped when the momentum exceeds the cap', () => {
+    const { content, challenge, burn } = challengeOf(burnedEntry)
+    render(
+      <JournalEntryView
+        entry={{
+          ...burnedEntry,
+          content: {
+            ...content,
+            challenge: { ...challenge, burn: { ...burn, momentum: 12, score: 10 } },
+          },
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Burned momentum').nextElementSibling).toHaveTextContent('12')
+    expect(screen.getByText('Score').nextElementSibling).toHaveTextContent(
+      '10 · capped at 10 · first roll 6',
+    )
+  })
+
+  it('keeps the match and the cancelled die of the roll beside the burn', () => {
+    const { content, challenge, burn } = challengeOf(burnedEntry)
+    render(
+      <JournalEntryView
+        entry={{
+          ...burnedEntry,
+          content: {
+            ...content,
+            special: 'match',
+            challenge: {
+              ...challenge,
+              momentum: -4,
+              cancelled: true,
+              dice: [
+                { face: 5, beaten: false },
+                { face: 5, beaten: false },
+              ],
+              burn,
+            },
+          },
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Special result:').parentElement).toHaveTextContent('Match')
+    expect(screen.getByText('Momentum').nextElementSibling).toHaveTextContent(
+      '-4 · cancelled the action die, which counts 0',
+    )
+    expect(dice()).toEqual(['5 (beaten)', '5 (beaten)'])
+  })
+
+  it('renders an unburned challenge roll as before', () => {
+    render(<JournalEntryView entry={burnableRollEntry} />)
+
+    expect(screen.queryByText(/Burned:/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Burned momentum')).not.toBeInTheDocument()
+    expect(dice()).toEqual(['3 (beaten)', '7 (not beaten)'])
+    expect(screen.getByText('Score').nextElementSibling).toHaveTextContent('6')
+    expect(screen.queryByText(/first roll/)).not.toBeInTheDocument()
+    expect(screen.getByText('Beaten').nextElementSibling).toHaveTextContent('1 of 2')
   })
 })

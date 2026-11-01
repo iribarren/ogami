@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { onTheme } from '@/shared/theme/themeStories'
 import {
   bestialFailureEntry,
+  burnedEntry,
   cancelledDieEntry,
   edgeRollEntry,
   flowOutcomeEntry,
@@ -74,6 +75,9 @@ export const ChallengeProgressRoll: Story = { args: { entry: vowProgressEntry } 
 export const ChallengeCancelledDie: Story = { args: { entry: cancelledDieEntry } }
 
 export const ChallengeMatch: Story = { args: { entry: matchEntry } }
+
+/** A burn (ADR 0049): the momentum is the new score, each die is told against it. */
+export const ChallengeBurned: Story = { args: { entry: burnedEntry } }
 
 export const FlowOutcome: Story = { args: { entry: flowOutcomeEntry } }
 

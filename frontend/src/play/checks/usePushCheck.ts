@@ -12,7 +12,8 @@ export type PushCheckRequest = components['schemas']['PushCheckRequest']
  * `POST /api/campaigns/{campaignId}/journal/{entryId}/push`: pushes a pool check (ADR 0041): the
  * dice that failed are re-rolled, the cost changes the Character's sheet and the entry is completed
  * in the journal. A refusal (not the latest entry, already pushed, a pick that does not fit) is the
- * mutation's error, with the API's message. The cost changes sheet values, so the campaign is read again.
+ * mutation's error, with the API's message. The cost changes sheet values, so the campaign is read again,
+ * on a refusal too. The push of a challenge roll burns its momentum (ADR 0049) and sends the same request.
  */
 export function usePushCheck(campaignId: string) {
   const api = useApiClient()
@@ -34,6 +35,9 @@ export function usePushCheck(campaignId: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: journalKey(campaignId) })
+    },
+    // A refusal reads the campaign again too: a burn the sheet no longer allows (409) shows the offer as it is now.
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: campaignKey(campaignId) })
     },
   })

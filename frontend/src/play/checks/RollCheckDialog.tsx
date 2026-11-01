@@ -30,7 +30,8 @@ function hasSomethingToRead({ content }: JournalEntry) {
  * "Roll a check" for one Character of the sheet: a dialog with the check form. The result is
  * recorded in the journal, and the dialog closes on success; a refusal stays in the form. The roll
  * of a pool check that can be pushed, with a regular die that failed, keeps the dialog open on the result,
- * which offers Push (with its cost and the options the player picks) or Keep (ADR 0041). So does a
+ * which offers Push (with its cost and the options the player picks) or Keep (ADR 0041). A challenge
+ * roll whose momentum would beat more dice offers Burn or Keep (ADR 0049) in the same way. So does a
  * roll with a special result (ADR 0044, a match of the challenge dice too) and a challenge roll whose
  * action die momentum cancelled (ADR 0049), which the player reads before closing.
  */

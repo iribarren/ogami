@@ -4,11 +4,19 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { gritCheck, persuadeCheck, skillCheck } from '../campaigns/fixtures'
+import {
+  edgeCheck,
+  gritCheck,
+  momentumField,
+  persuadeCheck,
+  skillCheck,
+} from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { conditionsField, nightJobCampaign, sheet, viCharacter } from '../characters/fixtures'
 import {
   bestialFailureEntry,
+  burnableRollEntry,
+  burnedEntry,
   gritEntry,
   hungerOnlyFailedEntry,
   pushedGritEntry,
@@ -277,6 +285,176 @@ describe('pushing a pool check from the "Roll a check" dialog', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
+  })
+})
+
+/** Vi's campaign whose only check is the burnable "Edge"; the momentum on her sheet is `momentum`. */
+function burnable(momentum: number | string | null): Campaign {
+  const values: Record<string, unknown> = { ...viCharacter.values }
+  if (momentum !== null) {
+    values.momentum = momentum
+  }
+  return {
+    ...nightJobCampaign,
+    checks: [edgeCheck],
+    pinnedRelease: { ...nightJobCampaign.pinnedRelease, sheet: [...sheet, momentumField] },
+    characters: [{ ...viCharacter, values: values as Campaign['characters'][number]['values'] }],
+  }
+}
+
+/**
+ * Renders the Play screen on `campaign` (a function: the sheet can change between reads); `push`
+ * answers the burn and `sent` collects its bodies.
+ */
+function renderBurn(
+  campaign: () => Campaign,
+  push: FakeHandler = () => Response.json(burnedEntry),
+  roll: Response = Response.json(burnableRollEntry, { status: 201 }),
+) {
+  const sent: unknown[] = []
+  const reads = { campaign: 0 }
+  renderAppAt(`/play/campaigns/${nightJobCampaign.id}`, {
+    'GET /api/auth/me': signedInAs('SOLO_PLAYER'),
+    [`GET ${path}`]: () => {
+      reads.campaign += 1
+      return Response.json(campaign())
+    },
+    [`GET ${path}/journal`]: () => Response.json([]),
+    [`POST ${path}/journal/checks`]: () => roll.clone(),
+    [`POST ${path}/journal/${burnableRollEntry.id}/push`]: async (request: Request) => {
+      sent.push(await request.clone().json())
+      return push(request)
+    },
+  })
+  return { sent, reads }
+}
+
+describe('burning the momentum of a challenge roll from the "Roll a check" dialog (ADR 0049)', () => {
+  it('stays open on the roll and offers Burn with the momentum now and the dice it would beat', async () => {
+    const user = userEvent.setup()
+    renderBurn(() => burnable(8))
+
+    const dialog = await rollGrit(user)
+
+    expect(await dialog.findByText(/^Burn:/)).toBeInTheDocument()
+    expect(dialog.getByText(/^Burn:/)).toHaveTextContent('Burn: Burn momentum')
+    expect(dialog.getByText(/Momentum now:/)).toHaveTextContent('Momentum now: 8 · score 8')
+    expect(
+      dialog.getByText('It would beat 2 of 2 challenge dice, against 1 with the roll.'),
+    ).toBeInTheDocument()
+    expect(dialog.getByRole('button', { name: 'Burn' })).toBeEnabled()
+    expect(dialog.getByRole('button', { name: 'Keep' })).toBeEnabled()
+    expect(dialog.queryByRole('button', { name: 'Push' })).not.toBeInTheDocument()
+    expect(dialog.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(dialog.queryByText(/Re-roll/)).not.toBeInTheDocument()
+  })
+
+  it('burns, posts to the push endpoint, then shows the burned entry', async () => {
+    const user = userEvent.setup()
+    const { sent } = renderBurn(() => burnable(8))
+
+    const dialog = await rollGrit(user)
+    await user.click(await dialog.findByRole('button', { name: 'Burn' }))
+
+    expect(await dialog.findByText(/Burned: Burn momentum/)).toBeInTheDocument()
+    expect(sent).toEqual([{ picks: [] }])
+    expect(dialog.getByText(/Rolled Weak, burned to Strong/)).toBeInTheDocument()
+    expect(dialog.queryByRole('button', { name: 'Burn' })).not.toBeInTheDocument()
+    await user.click(dialog.getByRole('button', { name: 'Done' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
+  it('says the score is capped at scoreMax when the momentum exceeds it', async () => {
+    const user = userEvent.setup()
+    const { content } = burnableRollEntry
+    if (content.kind !== 'check' || content.challenge === null) {
+      throw new Error('The fixture is no challenge roll.')
+    }
+    const capped = recordedEntry({
+      ...content,
+      challenge: { ...content.challenge, scoreMax: 8, momentum: 8 },
+    })
+    renderBurn(() => burnable(10), undefined, Response.json(capped, { status: 201 }))
+
+    const dialog = await rollGrit(user)
+
+    expect(await dialog.findByText(/Momentum now:/)).toBeInTheDocument()
+    expect(dialog.getByText(/Momentum now:/)).toHaveTextContent(
+      'Momentum now: 10 · score 8 (capped at 8)',
+    )
+  })
+
+  it('offers no Burn when the momentum now no longer beats more dice, and Keep still closes', async () => {
+    const user = userEvent.setup()
+    const { sent } = renderBurn(() => burnable(6))
+
+    const dialog = await rollGrit(user)
+
+    expect(await dialog.findByText(/Momentum now:/)).toBeInTheDocument()
+    expect(dialog.getByText(/Momentum now:/)).toHaveTextContent('Momentum now: 6')
+    expect(
+      dialog.getByText(
+        'It would beat only 1 of 2 challenge dice, against 1 with the roll: burning it would not help.',
+      ),
+    ).toBeInTheDocument()
+    expect(dialog.queryByRole('button', { name: 'Burn' })).not.toBeInTheDocument()
+    expect(dialog.queryByRole('combobox')).not.toBeInTheDocument()
+    await user.click(dialog.getByRole('button', { name: 'Keep' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+    expect(sent).toEqual([])
+  })
+
+  it.each([
+    ['the sheet holds no momentum', null],
+    ['the momentum is not a number', 'high'],
+  ])('fails closed when %s: it cannot be read, and Keep stays', async (_name, momentum) => {
+    const user = userEvent.setup()
+    renderBurn(() => burnable(momentum))
+
+    const dialog = await rollGrit(user)
+
+    expect(
+      await dialog.findByText(
+        'Momentum cannot be read from the sheet of the Character, so it cannot be burned.',
+      ),
+    ).toBeInTheDocument()
+    expect(dialog.queryByRole('button', { name: 'Burn' })).not.toBeInTheDocument()
+    expect(dialog.getByRole('button', { name: 'Keep' })).toBeEnabled()
+  })
+
+  it('shows the refusal of a stale sheet, reads the campaign again and refreshes the offer', async () => {
+    const user = userEvent.setup()
+    let momentum = 8
+    const { reads } = renderBurn(
+      () => burnable(momentum),
+      () => {
+        momentum = 6
+        return Response.json(
+          { error: 'The momentum no longer beats more challenge dice than the roll.' },
+          { status: 409 },
+        )
+      },
+    )
+
+    const dialog = await rollGrit(user)
+    const before = reads.campaign
+    await user.click(await dialog.findByRole('button', { name: 'Burn' }))
+
+    expect(await dialog.findByRole('alert')).toHaveTextContent(
+      'The momentum no longer beats more challenge dice than the roll.',
+    )
+    await waitFor(() => {
+      expect(reads.campaign).toBeGreaterThan(before)
+    })
+    await waitFor(() => {
+      expect(dialog.queryByRole('button', { name: 'Burn' })).not.toBeInTheDocument()
+    })
+    expect(dialog.getByText(/Momentum now:/)).toHaveTextContent('Momentum now: 6')
+    expect(dialog.getByRole('button', { name: 'Keep' })).toBeEnabled()
   })
 })
 

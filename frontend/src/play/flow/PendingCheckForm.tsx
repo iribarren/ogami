@@ -10,8 +10,8 @@ import type { FlowStep } from './useFlowRun'
 type Pending = NonNullable<FlowStep['pending']>
 
 /**
- * The control of a `check` step whose pool roll pends (ADR 0041): the roll, as the journal
- * records it, and the push offer of the Character who rolled. The step completes on Keep or
+ * The control of a `check` step whose pool or challenge roll pends (ADR 0041, ADR 0049): the roll,
+ * as the journal records it, and the push or burn offer of the Character who rolled. The step completes on Keep or
  * Push; Keep is always offered, also when the journal does not hold the roll or the roll has no
  * push to offer, so the step never dead-ends. Nothing else (no new roll, no Skip) moves the Flow.
  */

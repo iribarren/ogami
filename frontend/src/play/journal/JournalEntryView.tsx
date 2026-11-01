@@ -273,6 +273,7 @@ function flowNoteLine(note: FlowOutcomeContent['notes'][number]) {
 function CheckView({ content, sheet }: { content: CheckContent; sheet: FieldLabels }) {
   const push = content.pool?.push ?? null
   const { challenge } = content
+  const burn = challenge?.burn ?? null
   // A progress roll (ADR 0049) has no action die: its expression is the challenge dice, with no groups.
   const hasActionDie = challenge === null || content.groups.length > 0
   return (
@@ -299,13 +300,22 @@ function CheckView({ content, sheet }: { content: CheckContent; sheet: FieldLabe
             : `Rolled ${rolledAs(content, push.rolledBandLabel)}, pushed to ${content.bandLabel}`}
         </p>
       )}
+      {burn !== null && (
+        <p className="text-sm">
+          <strong>Burned: {burn.label}</strong>
+          {' · '}
+          {burn.rolledBandKey === content.bandKey
+            ? `Rolled ${rolledAs(content, burn.rolledBandLabel)}, still ${content.bandLabel}`
+            : `Rolled ${rolledAs(content, burn.rolledBandLabel)}, burned to ${content.bandLabel}`}
+        </p>
+      )}
       {content.groups.length > 0 && (
         <div className="rounded-md bg-well p-2 shadow-well">
           <DiceGroups groups={content.groups} />
         </div>
       )}
       {content.pool !== null && <PoolDice pool={content.pool} />}
-      {challenge !== null && <ChallengeDice challenge={challenge} />}
+      {challenge !== null && <ChallengeDice challenge={challenge} score={burn?.score} />}
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
         {content.pool !== null ? (
           <Detail term="Pool">{poolSize(content.pool, content.situational)}</Detail>
@@ -340,12 +350,22 @@ function CheckView({ content, sheet }: { content: CheckContent; sheet: FieldLabe
         {content.pool === null && content.situational !== 0 && (
           <Detail term="Situational">{signed(content.situational)}</Detail>
         )}
-        {challenge !== null && (
+        {burn !== null && <Detail term="Burned momentum">{burn.momentum}</Detail>}
+        {challenge !== null && burn === null && (
           <Detail term="Score">
             <strong>{challenge.score}</strong>
             {scoreWasCapped(content, challenge) && (
               <span className="text-muted-foreground"> · capped at {challenge.scoreMax}</span>
             )}
+          </Detail>
+        )}
+        {challenge !== null && burn !== null && (
+          <Detail term="Score">
+            <strong>{burn.score}</strong>
+            {challenge.scoreMax !== null && burn.momentum > challenge.scoreMax && (
+              <span className="text-muted-foreground"> · capped at {challenge.scoreMax}</span>
+            )}
+            <span className="text-muted-foreground"> · first roll {challenge.score}</span>
           </Detail>
         )}
         <Detail term={detailTerm(content)}>
@@ -357,6 +377,9 @@ function CheckView({ content, sheet }: { content: CheckContent; sheet: FieldLabe
       </dl>
       {push !== null && push.changes.length > 0 && (
         <ChangeLines characterName={content.characterName} changes={push.changes} sheet={sheet} />
+      )}
+      {burn !== null && burn.changes.length > 0 && (
+        <ChangeLines characterName={content.characterName} changes={burn.changes} sheet={sheet} />
       )}
     </>
   )
@@ -388,32 +411,39 @@ function scoreWasCapped(content: CheckContent, challenge: CheckChallenge) {
 /**
  * Every challenge die of a challenge roll (ADR 0049) and whether the score beat it. A beaten die is
  * told by text for assistive tech and by weight and a ring, as a pool success is, not by colour alone.
+ * After a burn each die is told against the new score, not the stored `beaten` of the first roll.
  */
-function ChallengeDice({ challenge }: { challenge: CheckChallenge }) {
+function ChallengeDice({ challenge, score }: { challenge: CheckChallenge; score?: number }) {
   return (
     <div className="rounded-md bg-well p-2 shadow-well">
       <ul aria-label="Challenge dice" className="flex flex-wrap gap-1.5">
-        {challenge.dice.map((die, index) => (
-          <li
-            // Two challenge dice can show the same face; the position is the identity.
-            key={index}
-            className={cn(
-              'min-w-8 rounded-md px-1.5 py-0.5 text-center',
-              die.beaten
-                ? 'border-2 border-foreground font-bold'
-                : 'border border-dashed border-muted-foreground text-muted-foreground',
-            )}
-          >
-            {die.face}
-            <span className="sr-only">{die.beaten ? ' (beaten)' : ' (not beaten)'}</span>
-          </li>
-        ))}
+        {challenge.dice.map((stored, index) => {
+          const die = {
+            ...stored,
+            beaten: score === undefined ? stored.beaten : stored.face < score,
+          }
+          return (
+            <li
+              // Two challenge dice can show the same face; the position is the identity.
+              key={index}
+              className={cn(
+                'min-w-8 rounded-md px-1.5 py-0.5 text-center',
+                die.beaten
+                  ? 'border-2 border-foreground font-bold'
+                  : 'border border-dashed border-muted-foreground text-muted-foreground',
+              )}
+            >
+              {die.face}
+              <span className="sr-only">{die.beaten ? ' (beaten)' : ' (not beaten)'}</span>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
 }
 
-/** The first roll of a pushed check: its band, with its special result when it had one. */
+/** The first roll of a pushed or burned check: its band, with its special result when it had one. */
 function rolledAs(content: CheckContent, bandLabel: string) {
   const special = content.pool?.special ?? null
   return special === null

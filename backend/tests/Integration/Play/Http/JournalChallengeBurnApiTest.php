@@ -271,6 +271,7 @@ final class JournalChallengeBurnApiTest extends WebTestCase
     {
         yield 'a check the release dropped' => ["jsonb_set(content, '{checkKey}', '\"ghost\"')", 'ghost'];
         yield 'a check without a push' => ["jsonb_set(content, '{checkKey}', '\"fulfill\"')", 'fulfill'];
+        yield 'another number of challenge dice' => ["jsonb_set(content, '{challenge,dice}', (content->'challenge'->'dice') || '[{\"face\": 9, \"beaten\": false}]'::jsonb)", 'edge'];
         yield 'other challenge sides' => ["jsonb_set(content, '{challenge,sides}', '12')", 'edge'];
         yield 'another cap' => ["jsonb_set(content, '{challenge,scoreMax}', 'null')", 'edge'];
         yield 'a roll that named no momentum' => ["jsonb_set(content, '{challenge,momentum}', 'null')", 'edge'];

@@ -19,12 +19,20 @@ import { canPush } from './pushing'
 import { usePerformCheck } from './usePerformCheck'
 import { usePushCheck } from './usePushCheck'
 
+/** Whether the roll has a special result or a cancelled action die, which the player reads before closing. */
+function hasSomethingToRead({ content }: JournalEntry) {
+  return (
+    content.kind === 'check' && (content.special !== null || content.challenge?.cancelled === true)
+  )
+}
+
 /**
  * "Roll a check" for one Character of the sheet: a dialog with the check form. The result is
  * recorded in the journal, and the dialog closes on success; a refusal stays in the form. The roll
  * of a pool check that can be pushed, with a regular die that failed, keeps the dialog open on the result,
  * which offers Push (with its cost and the options the player picks) or Keep (ADR 0041). So does a
- * roll with a special result (ADR 0044), which the player reads before closing.
+ * roll with a special result (ADR 0044, a match of the challenge dice too) and a challenge roll whose
+ * action die momentum cancelled (ADR 0049), which the player reads before closing.
  */
 export function RollCheckDialog({
   campaign,
@@ -114,10 +122,7 @@ export function RollCheckDialog({
                 { check, character: character.id, difficulty, situational },
                 {
                   onSuccess: (entry) => {
-                    if (
-                      canPush(campaign, entry) ||
-                      (entry.content.kind === 'check' && entry.content.special !== null)
-                    ) {
+                    if (canPush(campaign, entry) || hasSomethingToRead(entry)) {
                       setResult(entry)
                     } else {
                       setOpen(false)

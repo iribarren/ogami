@@ -96,7 +96,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T2 | 1 | Schema `v2.schema.json`, Studio validation in `Checks.php`, Play translator refuses `challenge`, valid and invalid fixtures, contract tests | delegated writer (slice 1) | [x] | `4b493539` |
 | T3 | 2 | Randomness: challenge roll kernel. Play domain: action and progress rolls, score cap, hits, negative momentum, `match` | delegated writer (slice 2) | [x] | `5e375728` |
 | T4 | 2 | Journal content and legacy read | delegated writer (slice 2) | [x] | `7226d202` |
-| T5 | 3 | Play UI: roll dialog and journal show the score, each challenge die, the cancelled die and a match | | [ ] | |
+| T5 | 3 | Play UI: roll dialog and journal show the score, each challenge die, the cancelled die and a match | delegated writer (slice 3) | [x] | |
 | T6 | 4 | Burn: domain, `CheckPusher` from the sheet, pending step, journal, API | | [ ] | |
 | T7 | 4 | Play UI: burn offer on the sheet and the pending step | | [ ] | |
 | T8 | 5 | Studio check editor: challenge mode, action or progress, momentum select, burn | | [ ] | |
@@ -122,6 +122,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: T4 done: `CheckChallengeContent` and its invariants in `CheckContent`; the match is derived from the faces. RED: class not found, GREEN after the implementation. Slice split: API and UI moved to slice 3.
 - 2026-11-01: Slice 2 review fixes: a null `push` or `challenge` reads as not set in the translator (Studio and the schema accept both; a real challenge push is still refused); the overflow test now reaches the overflow guard. RED: 2 errors and 1 failure (`not played yet`, `must be an object`); the overflow test was failing on the formula range, not the guard.
 - 2026-11-01: T17 done: `challenge` on `CheckResponse` and `CheckContentResponse`, `match` in the `special` enum, API tests (campaign read, action roll, progress roll, match with a cancelled die, a refused challenge push answers 409), `make api`, `challenge: null` on frontend fixtures, `match` label. Draft code and tests written before this session: no RED (they pass on the slice 2 domain).
+- 2026-11-01: T5 done: `ChallengeDice`, `Score`/`Beaten`/`Momentum` details, no `Dice` row on a progress roll, the dialog stays open on a match or a cancelled die; the flow step renders `JournalEntryView`, so it needed no change; `canPush` needs a pool, so a challenge roll offers no push. RED: 7 Vitest failures (journal and dialog), GREEN after the view and the dialog.
 
 ## Reviews
 
@@ -132,4 +133,4 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 ## Next step
 
-Slice 3: slice 2 review fixes, Play API (T17), Play UI (T5). Then slice 4: burning momentum (T6, T7).
+Slice 3 in review. Then slice 4: burning momentum (T6, T7).

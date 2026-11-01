@@ -478,6 +478,118 @@ export const pushedBestialEntry: JournalEntry = recordedEntry(
   '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7104',
 )
 
+/** An action roll of "Edge" (ADR 0049): 1d6 + Edge 2 against two d10, capped at 10. Defaults to a 4 and a score of 6. */
+function edgeContent(over: Partial<CheckEntryContent> = {}): CheckEntryContent {
+  return {
+    kind: 'check',
+    characterId: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9001',
+    characterName: 'Vi',
+    checkKey: 'edge',
+    checkLabel: 'Edge',
+    expression: '1d6',
+    groups: [{ notation: '1d6', sides: 6, dice: [{ value: 4, kept: true }], subtotal: 4 }],
+    diceTotal: 4,
+    modifier: 2,
+    situational: 0,
+    difficulty: null,
+    total: 1,
+    bandKey: 'weak',
+    bandLabel: 'Weak',
+    hint: null,
+    modifierFormula: '{edge}',
+    modifierTerms: [{ reference: '{edge}', label: 'Edge', value: 2 }],
+    pool: null,
+    challenge: {
+      sides: 10,
+      scoreMax: 10,
+      score: 6,
+      momentum: 2,
+      cancelled: false,
+      dice: [
+        { face: 3, beaten: true },
+        { face: 9, beaten: false },
+      ],
+    },
+    special: null,
+    ...over,
+  }
+}
+
+/** The 4 and Edge 2 make a score of 6: it beats the 3, not the 9 (a weak hit). */
+export const edgeRollEntry: JournalEntry = recordedEntry(
+  edgeContent(),
+  '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7201',
+)
+
+/** A progress roll: no action die, the score is the 28 ticks of the vow / 4 = 7, against 6 and 9. */
+export const vowProgressEntry: JournalEntry = recordedEntry(
+  edgeContent({
+    checkKey: 'fulfill',
+    checkLabel: 'Fulfill your vow',
+    expression: '2d10',
+    groups: [],
+    diceTotal: 0,
+    modifier: 7,
+    modifierFormula: '{vow} / 4',
+    modifierTerms: [{ reference: '{vow}', label: 'Vow', value: 28 }],
+    challenge: {
+      sides: 10,
+      scoreMax: null,
+      score: 7,
+      momentum: null,
+      cancelled: false,
+      dice: [
+        { face: 6, beaten: true },
+        { face: 9, beaten: false },
+      ],
+    },
+  }),
+  '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7202',
+)
+
+/** Momentum -4 equals the action die: it counts 0, so the score is the Edge 2, below both dice (a miss). */
+export const cancelledDieEntry: JournalEntry = recordedEntry(
+  edgeContent({
+    total: 0,
+    bandKey: 'miss',
+    bandLabel: 'Miss',
+    challenge: {
+      sides: 10,
+      scoreMax: 10,
+      score: 2,
+      momentum: -4,
+      cancelled: true,
+      dice: [
+        { face: 8, beaten: false },
+        { face: 5, beaten: false },
+      ],
+    },
+  }),
+  '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7203',
+)
+
+/** Both challenge dice show a 5 and the score of 6 beats them: a strong hit with a match. */
+export const matchEntry: JournalEntry = recordedEntry(
+  edgeContent({
+    total: 2,
+    bandKey: 'strong',
+    bandLabel: 'Strong',
+    special: 'match',
+    challenge: {
+      sides: 10,
+      scoreMax: 10,
+      score: 6,
+      momentum: 2,
+      cancelled: false,
+      dice: [
+        { face: 5, beaten: true },
+        { face: 5, beaten: true },
+      ],
+    },
+  }),
+  '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7204',
+)
+
 /** The journal of `lostMineCampaign`: every kind, in recorded order. */
 export const lostMineJournal: JournalEntry[] = [
   gateNote,

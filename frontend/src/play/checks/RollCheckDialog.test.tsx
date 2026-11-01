@@ -7,7 +7,13 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 import { gripCheck, luckCheck, sneakCheck } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { nightJobCampaign, nightJobWithChecks, viCharacter } from '../characters/fixtures'
-import { recordedEntry, skillCheckEntry } from '../journal/fixtures'
+import {
+  cancelledDieEntry,
+  edgeRollEntry,
+  matchEntry,
+  recordedEntry,
+  skillCheckEntry,
+} from '../journal/fixtures'
 
 const path = `/api/campaigns/${nightJobCampaign.id}`
 
@@ -173,6 +179,40 @@ describe('the "Roll a check" dialog of the Characters panel', () => {
 
     await waitFor(() => {
       expect(sent).toEqual([{ check: 'grip', character: viCharacter.id, situational: -1 }])
+    })
+  })
+
+  describe('a challenge roll (ADR 0049)', () => {
+    const rollWith = async (entry: typeof edgeRollEntry) => {
+      const user = userEvent.setup()
+      renderCharacters(nightJobWithChecks, () => Response.json(entry, { status: 201 }))
+      const dialog = await openDialog(user)
+      await user.click(dialog.getByRole('button', { name: 'Roll' }))
+      return dialog
+    }
+
+    it('closes on a plain roll, as a dice roll does', async () => {
+      await rollWith(edgeRollEntry)
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      })
+    })
+
+    it('stays open on a match, for the player to read', async () => {
+      const dialog = await rollWith(matchEntry)
+
+      expect(await dialog.findByRole('list', { name: 'Challenge dice' })).toBeInTheDocument()
+      expect(dialog.getByText('Match')).toBeInTheDocument()
+      expect(dialog.getByRole('button', { name: 'Done' })).toBeInTheDocument()
+      expect(dialog.queryByRole('button', { name: /Push/ })).not.toBeInTheDocument()
+    })
+
+    it('stays open on a cancelled action die', async () => {
+      const dialog = await rollWith(cancelledDieEntry)
+
+      expect(await dialog.findByText(/cancelled the action die/)).toBeInTheDocument()
+      expect(dialog.getByRole('button', { name: 'Done' })).toBeInTheDocument()
     })
   })
 })

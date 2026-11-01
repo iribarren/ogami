@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { gripCheck, luckCheck, sneakCheck } from '../campaigns/fixtures'
+import { fulfillCheck, gripCheck, luckCheck, sneakCheck } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { nightJobCampaign, nightJobWithChecks, viCharacter } from '../characters/fixtures'
 import {
@@ -13,6 +13,7 @@ import {
   matchEntry,
   recordedEntry,
   skillCheckEntry,
+  vowProgressEntry,
 } from '../journal/fixtures'
 
 const path = `/api/campaigns/${nightJobCampaign.id}`
@@ -179,6 +180,30 @@ describe('the "Roll a check" dialog of the Characters panel', () => {
 
     await waitFor(() => {
       expect(sent).toEqual([{ check: 'grip', character: viCharacter.id, situational: -1 }])
+    })
+  })
+
+  it('rolls a progress roll, which has no dice and no pool, from the form', async () => {
+    const user = userEvent.setup()
+    const { sent } = renderCharacters({ ...nightJobCampaign, checks: [fulfillCheck] }, () =>
+      Response.json(vowProgressEntry, { status: 201 }),
+    )
+
+    const dialog = await openDialog(user)
+
+    expect(dialog.getByText('Fulfill your vow')).toBeInTheDocument()
+    expect(dialog.queryByText(/Pool:/)).not.toBeInTheDocument()
+    expect(dialog.queryByLabelText('Extra dice')).not.toBeInTheDocument()
+    expect(dialog.getByLabelText('Situational modifier')).toHaveValue(0)
+    await user.clear(dialog.getByLabelText('Situational modifier'))
+    await user.type(dialog.getByLabelText('Situational modifier'), '2')
+    await user.click(dialog.getByRole('button', { name: 'Roll' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([{ check: 'fulfill', character: viCharacter.id, situational: 2 }])
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
   })
 

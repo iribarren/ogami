@@ -396,6 +396,18 @@ export const gritCheck: CampaignCheck = {
   challenge: null,
 }
 
+/** A progress roll (ADR 0049): no action die and no pool, only challenge dice the score is compared against. */
+export const fulfillCheck: CampaignCheck = {
+  key: 'fulfill',
+  label: 'Fulfill your vow',
+  hint: null,
+  dice: null,
+  pool: null,
+  push: null,
+  difficulty: null,
+  challenge: { count: 2, sides: 10, scoreMax: null, momentumLabel: null },
+}
+
 /**
  * A Hunger pool check: 5d10, a success on 6+, against a difficulty of 3 by default; the push costs
  * nothing to pick and re-rolls at most 3 failed regular dice (ADR 0044).

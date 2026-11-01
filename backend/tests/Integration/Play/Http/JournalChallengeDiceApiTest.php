@@ -21,6 +21,7 @@ use App\Tests\Support\Play\RescriptableRandomNumberGenerator;
 use App\Tests\Support\Play\UuidSequenceJournalEntryIdGenerator;
 use App\Tests\Support\Studio\ReleaseArrays;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -94,6 +95,32 @@ final class JournalChallengeDiceApiTest extends WebTestCase
     }
 
     #[Test]
+    #[DataProvider('situationalModifiers')]
+    public function theSituationalModifierCountsInTheScoreThenTheCapApplies(int $situational, int $score): void
+    {
+        [$id, $ada] = $this->campaignInAScene();
+
+        // The 4 and Edge 2 make 6 before the situational modifier; the challenge dice are 9 and 10.
+        $entry = $this->roll($id, $ada, 'edge', [4, 9, 10], $situational);
+
+        self::assertSame([$score, 4, 2], [$entry['content']['challenge']['score'], $entry['content']['diceTotal'], $entry['content']['modifier']]);
+        self::assertSame($score > 9 ? 1 : 0, $entry['content']['total'], 'A score of 10 beats the 9, not the 10 (a tie goes to the dice).');
+        self::assertSame($entry, $this->journal($id)[0]);
+    }
+
+    /**
+     * @return iterable<string, array{int, int}> the situational modifier and the score after the cap of 10
+     */
+    public static function situationalModifiers(): iterable
+    {
+        yield 'a penalty' => [-3, 3];
+        yield 'below the cap' => [3, 9];
+        yield 'exactly at the cap' => [4, 10];
+        yield 'one above it' => [5, 10];
+        yield 'far above it' => [100, 10];
+    }
+
+    #[Test]
     public function aProgressRollHasNoActionDie(): void
     {
         [$id, $ada] = $this->campaignInAScene();
@@ -154,10 +181,10 @@ final class JournalChallengeDiceApiTest extends WebTestCase
      *
      * @return Entry
      */
-    private function roll(string $campaignId, string $character, string $check, array $faces): array
+    private function roll(string $campaignId, string $character, string $check, array $faces, int $situational = 0): array
     {
         $this->random->script(...$faces);
-        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/checks', $campaignId), ['check' => $check, 'character' => $character]);
+        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/checks', $campaignId), ['check' => $check, 'character' => $character] + (0 === $situational ? [] : ['situational' => $situational]));
         self::assertResponseStatusCodeSame(201);
 
         /** @var Entry $entry */

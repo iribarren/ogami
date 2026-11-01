@@ -1,7 +1,7 @@
 # Feature: preset-ironsworn
 
 - **Locator:** `odd/tasks/preset-ironsworn.md` · Engram topic `odd/preset-ironsworn/tasks`
-- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-9-sandbox-ui` · **Status:** in progress
+- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-10-release` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-west-marches` (PRs #338–#339)
@@ -36,8 +36,10 @@ Out of scope: asset cards as data (a `list` field holds their names; the player 
 | Question | Decision |
 |---|---|
 | Vows (user) | Fixed slots: five counters of 40 ticks, with the score as ticks/4. No contract change for vows. Limits accepted: five open vows, shown as 12/40 rather than boxes. Revisit only if play shows the limit hurts |
-| Licence (Claude) | Only the Ironsworn SRD, and later the text of assets, are CC BY 4.0. The full rulebook is CC BY-NC-SA. So the preset uses the SRD's rules and tables only, summarized in its own words. **The official licensing page (`tomkinpress.com/pages/licensing`) returned HTTP 429 during exploration, and its terms come from search snippets; T11 reads it before the release is written** |
-| Credits (Claude, from the SRD's licence section) | `notice` opens with: "This work is based on Ironsworn (found at www.ironswornrpg.com), created by Shawn Tomkin, and licensed for our use under the Creative Commons Attribution 4.0 International License (https://creativecommons.org/licenses/by/4.0/)." It goes on: "Unofficial: not an official Ironsworn product. Rules summarized and adapted for guided solo play." `license`: "CC BY 4.0"; `url`: `https://creativecommons.org/licenses/by/4.0/`. No badge: no images, icons or trade dress |
+| Licence (Claude; page read 2026-11-01) | `tomkinpress.com/pages/licensing`: the SRD, and the text of the asset cards and oracle tables, are CC BY 4.0; the full rulebook is CC BY-NC-SA. "These licenses are limited to textual content": no images, icons, trade dress or other design elements. "You cannot state or imply that your work is an official Tomkin Press or Ironsworn product". Mechanics are free to repurpose. So the preset uses the SRD's moves and oracle tables: tables as written, moves summarized in its own words. The linked `/pages/policies` answered HTTP 429 twice, so it is unread; the licensing page itself has no separate rule on the name |
+| Credits (Claude, from the licensing page) | `notice` opens with the page's wording: "This work is based on Ironsworn, created by Shawn Tomkin, and licensed for our use under the Creative Commons Attribution 4.0 International License (https://creativecommons.org/licenses/by/4.0/)." It goes on: "Unofficial: not an official Tomkin Press or Ironsworn product. Rules summarized and adapted for guided solo play." `license`: "CC BY 4.0"; `url`: `https://creativecommons.org/licenses/by/4.0/`. No badge: no images, icons or trade dress |
+| Vow ranks (Claude, T11) | A rank counter per slot replaces the sketch's ticks-per-milestone counter. `vow-N-rank` 0–5 has `levels` (Free, Troublesome … Epic), so the panel names the rank and experience is the rank itself. Ticks per milestone come from one flow formula, `min(1,r)*max(4*(4-r),6-r)`: 12, 8, 4, 2, 1, and 0 on a free slot. Journeys and fights use the same formula |
+| Moves in the flow (Claude, T11) | Twenty moves or groups as Scene Types the player picks (the selection's limit), suffer moves through `nextScene`. Rare moves stay hints, rolled from the sheet: Draw the Circle, Aid Your Ally, Turn the Tide, Companion Endure Harm, Out of Supply, Face a Setback |
 | Naming (Claude) | Key `ironsworn`, name "Ironsworn (unofficial)". The licence requires a reference to Ironsworn and forbids implying an official product |
 | Challenge shape (Claude) | `challenge { count, sides, scoreMax?, momentum? }`: `count` int 2..10, `sides` int 2..1000, `scoreMax` int 1..1000, `momentum` a `number` field's key. Same pattern as a pool: the total is a count, so bands, step outcomes and check sets work unchanged |
 | Action roll (Claude) | `dice` + `challenge`. Score = dice + modifier + situational, capped at `scoreMax`. Total = challenge dice strictly below the score: ties go to the dice. Ironsworn bands: `miss` up to 0, `weak` up to 1, `strong` |
@@ -78,12 +80,126 @@ Out of scope: asset cards as data (a `list` field holds their names; the player 
 - **Sandbox response:** `challenge` on `CheckTestRollResponse`: `actionDie` (null on a progress roll), `sides`, `scoreMax`, `score`, `momentum`, `momentumField`, `cancelled`, `dice [{face, beaten}]`, `burn { momentum, score } | null`. `match` joins the special results. `rolledSuccesses` holds the total before a burn, as it does before a push.
 - **API docs:** `challenge` on the `GameSystemCheck` model, which documents save bodies and reads.
 
-### Preset sketch (detailed before slice 10)
+### Preset (slice 10)
 
-- **Sheet:** `edge`, `heart`, `iron`, `shadow`, `wits` number 1–3 with a point budget of 9 (the 3, 2, 2, 1, 1 array fits); `momentum` number −6..10, start 2; `health`, `spirit`, `supply` tracks 0–5, start 5; conditions fields `conditions` (wounded, shaken, unprepared, encumbered), `banes` (maimed, corrupted), `burdens` (cursed, tormented); derived `debilities`, `momentum-reset`, `momentum-max`; `experience` number; `assets` list.
-- **Vow slots:** trackers `vow-1`…`vow-5` 0–40, `vow-1-step`…`vow-5-step` (ticks per milestone: Troublesome 12, Dangerous 8, Formidable 4, Extreme 2, Epic 1); Fact slots holding each vow's Thread. Journey, fight and bonds also as 0–40 trackers.
-- **Checks:** action rolls `edge`, `heart`, `iron`, `shadow`, `wits`, `health`, `spirit`, `supply`, `endure-harm`, `endure-stress`, with `scoreMax` 10, `momentum` and a burn. Progress rolls `fulfill-1`…`fulfill-5`, `journey`, `fight`, `bonds`, score `{tracker}/4`.
-- **Flow:** moves as Scene Types; the SRD's tables (Action, Theme, Combat Action, Major Plot Twist, Challenge Rank, Pay the Price) as oracles.
+Shorthand: `M+n` is sheet `momentum` set `{formula: "min({momentum}+n,{momentum-max})"}`. `M-n` is `momentum` subtract n. `TICKS(x)` is the flow formula `min(1,{tracker:x-rank})*max(4*(4-{tracker:x-rank}),6-{tracker:x-rank})`. `PAY` is the effect `nextScene pay-the-price` with `next: end`. `RESET(x)` sets `x` and `x-rank` to 0. A step without `mandatory` is suggested; a suggested choice names a `skip` option with no effects.
+
+- **Key and look:** key `ironsworn`, name "Ironsworn (unofficial)", theme `parchment`.
+- **Sheet:** `edge`, `heart`, `iron`, `shadow`, `wits` number 1–3, default 1, with a point budget of 9, min 1, max 3 (the 3, 2, 2, 1, 1 array fits); `momentum` number −6..10, default 2; `health`, `spirit`, `supply` tracks with `max` 5; conditions fields `conditions` (wounded, shaken, unprepared, encumbered), `banes` (maimed, corrupted), `burdens` (cursed, tormented); derived `debilities` `{conditions}+{banes}+{burdens}`, `momentum-reset` `max(0,2-{debilities})`, `momentum-max` `10-{debilities}`; `experience` number min 0; `assets` list.
+- **Trackers (flow's list):** `vow-1`…`vow-5` counters 0–40 (ticks); `vow-1-rank`…`vow-5-rank` counters 0–5 with `levels` Free, Troublesome, Dangerous, Formidable, Extreme, Epic; `new-rank` the same (the rank being sworn); `journey` 0–40, `journey-rank`; `fight` 0–40, `fight-rank`; `initiative` 0–1, `levels` Foe, You; `bonds` 0–40.
+- **Fact slots and tags:** thread slots `vow-1`…`vow-5`, text slot `destination`, npc slot `foe`. Tags `vow` (thread), `bond` and `foe` (npc), `home` (place).
+- **Action checks:** `edge`, `heart`, `iron`, `shadow`, `wits`, `health`, `spirit`, `supply` (modifier the field), `endure-harm` `max({health},{iron})`, `endure-stress` `max({spirit},{heart})`, `heal-self` `min({wits},{iron})`. All `dice` `1d6`, `challenge {count 2, sides 10, scoreMax 10, momentum}`, `push {label "Burn momentum", effects: set momentum {momentum-reset}}`.
+- **Progress checks:** `fulfill-1`…`fulfill-5`, `journey`, `fight`, `bonds`, modifier `{tracker:x}/4`, `challenge {count 2, sides 10, scoreMax 10}`. Every check: bands `miss` up to 0, `weak` up to 1, `strong`.
+- **Oracles:** the SRD's tables as written: `action`, `theme`, `combat-action`, `major-plot-twist`, `challenge-rank`, `pay-the-price`, `endure-harm-table` (entry 1–10 `nextScene face-death`), `endure-stress-table` (1–10 `nextScene face-desolation`, 11–25 `nextScene forsake-vow`), all `1d100` ranged. Likelihood `ask-the-oracle`: sides 100, Almost certain 90, Likely 75, 50/50 50, Unlikely 25, Small chance 10; no `exceptionalPercent`. A tip says two equal digits are a twist.
+
+**Flow `ironsworn`**
+
+| Phase | Mode | Selection |
+|---|---|---|
+| `prologue` | once | sequence: `the-ironlands`, `ironsworn`, `swear-vow` (background), `swear-vow` (inciting incident) |
+| `adventure` | loop | player: `face-danger`, `secure-advantage`, `gather-information`, `heal`, `resupply`, `make-camp`, `journey`, `compel`, `sojourn`, `forge-bond`, `test-bond`, `enter-the-fray`, `fight-round`, `battle`, `swear-vow`, `milestone`, `fulfill-vow`, `forsake-vow`, `advance`, `pay-the-price` |
+| `epilogue` | once | sequence: `epilogue` |
+
+Through `nextScene` only: `endure-harm`, `endure-stress`, `face-death`, `face-desolation`. `adventure` has a `sessionOpening` prompt that lists the vows. Each Scene Type's `oracles` are the ones its moves ask for, and every step below is in `play` unless it says `setup`, so a `next: end` skips what is left. A sheet effect is refused on a prompt or choice in `setup`.
+
+```
+the-ironlands  setup: prompt "Where does your story begin?" (mandatory) → createPlace [home];
+               prompt about the land; prompt "What trouble brings you?" inspiration [action, theme]
+ironsworn      setup: character (mandatory, tip: stats, three assets); prompts bond-1…3 (suggested)
+               → createNpc [bond], bonds +1
+swear-vow      condition count thread [vow]: upTo 4 → vow; rest → full
+               full: prompt "All five vows are sworn", next end
+               vow: prompt (mandatory) → sceneTitle
+               rank: choice (mandatory) → new-rank 1…5, inspiration via the tip on challenge-rank
+               slot: choice Vow 1…5 (mandatory; prompt lists each slot) → createThread "{step:vow}" [vow],
+                     fillFact vow-N, vow-N 0, vow-N-rank {tracker:new-rank}
+               roll: check heart, next end, tip "a background vow takes no roll: skip it";
+                     strong M+2; weak M+1; miss next obstacle
+               obstacle: choice (mandatory) press on M-2 | give up nextScene forsake-vow
+milestone      which: choice Vow 1…5 | none (skip) → vow-N + TICKS(vow-N)
+fulfill-vow    which: choice Vow 1…5 | none (skip) → next open-N
+               open-N: condition vow-N-rank upTo 0 → end; rest → check-N
+               check-N: check fulfill-N, next end;
+                 strong experience + {tracker:vow-N-rank}, closeThread, RESET(vow-N)
+                 weak experience + max(0,{tracker:vow-N-rank}-1), closeThread, RESET(vow-N)
+                 miss next undone-N
+               undone-N: choice (mandatory, next end) recommit vow-N min(vow-N,4), vow-N-rank +1
+                         | give up nextScene forsake-vow
+forsake-vow    which: choice Vow 1…5 | none (skip) → spirit − {tracker:vow-N-rank}, closeThread,
+               RESET(vow-N), nextScene endure-stress
+face-danger    setup: prompt (mandatory) → sceneTitle
+               roll: checks 5 stats, next end; strong M+1; weak next cost; miss PAY
+               cost: choice (mandatory) M-1 | supply −1 | nextScene endure-harm | nextScene endure-stress
+secure-advantage  roll: 5 stats; strong next edge; weak M+1; miss PAY
+               edge: choice (mandatory) M+2 | "take control" (next move +1, by hand)
+gather-information  roll: wits; strong M+2; weak M+1; miss PAY
+heal           roll: checks wits, heal-self; strong next treat; weak next cost; miss PAY
+               cost: choice (mandatory) supply −1 | M-1, next treat
+               treat: choice (mandatory) health +2 | clear wounded, health +2
+resupply       roll: wits; strong supply +2; weak next scavenge; miss PAY
+               scavenge: choice +1 supply and M-1 | +2 supply and M-2 | none (skip)
+make-camp      roll: supply; strong next first; weak next second; miss PAY
+               first, second: choice (mandatory) recuperate health +1 | partake supply −1, health +1
+                 | relax spirit +1 | focus M+1 | prepare (next journey +1, by hand)
+journey        setup: none. active: condition journey-rank upTo 0 → where; rest → leg
+               where: prompt (mandatory) → sceneTitle, fillFact destination
+               rank: choice (mandatory) → journey-rank 1…5, journey 0
+               leg: check wits; strong next speed; weak journey + TICKS, supply −1, next arrived; miss PAY
+               speed: choice (mandatory, next arrived) journey + TICKS | journey + TICKS, M+1, supply −1
+               arrived: choice not yet (skip, next end) | yes next reach
+               reach: check journey, next end; strong RESET(journey), next boon; weak RESET(journey);
+                      miss next astray
+               boon: choice (mandatory, next end) M+1 | "another move, +1" (by hand)
+               astray: choice (mandatory) journey min(journey,4), journey-rank +1 | lost: RESET(journey)
+compel         roll: checks heart, iron, shadow; strong M+1; weak M+1 (tip: they ask something); miss PAY
+sojourn        roll: heart; strong next first; weak next second; miss PAY
+               first, second: choice (mandatory) mend clear wounded, health +1 | hearten clear shaken,
+                 spirit +1 | equip clear unprepared, supply +1 | health +2 | spirit +2 | supply +2 | M+2
+                 | take a quest nextScene swear-vow
+forge-bond     who: prompt (mandatory) → sceneTitle
+               roll: heart, next end; strong createNpc "{step:who}" [bond], bonds +1, next gift;
+                     weak next ask; miss PAY
+               ask: prompt (mandatory, next end) → createNpc "{step:who}" [bond], bonds +1
+               gift: choice (mandatory) spirit +1 | M+2
+test-bond      who: pick npc [bond], choose
+               roll: heart, next end; strong next gift; weak next ask; miss PAY (tip: clear the bond)
+               ask: prompt, next end
+               gift: choice (mandatory) spirit +1 | M+2
+enter-the-fray foe: prompt (mandatory) → createNpc [foe], fillFact foe, sceneTitle
+               rank: choice (mandatory) → fight-rank 1…5, fight 0, initiative 0
+               roll: checks heart, shadow, wits, next end; strong M+2, initiative 1, nextScene fight-round;
+                     weak next edge; miss PAY
+               edge: choice (mandatory) M+2, nextScene fight-round | initiative 1, nextScene fight-round
+fight-round    any: condition fight-rank upTo 0 → none; rest → who
+               who: condition initiative upTo 0 → clash; rest → strike
+               strike: checks iron, edge, next end; strong fight + 2×TICKS, next decisive;
+                       weak fight + TICKS, initiative 0, nextScene fight-round; miss initiative 0, PAY
+               clash: checks iron, edge, next end; strong fight + TICKS, initiative 1, next opening;
+                      weak fight + TICKS, initiative 0, PAY; miss initiative 0, PAY
+               opening: choice (mandatory, next decisive) M+1 | fight + TICKS
+               decisive: choice (mandatory) fight on nextScene fight-round, next end | end it next end-fight
+               end-fight: check fight, next end; strong RESET(fight), initiative 0;
+                          weak RESET(fight), initiative 0, next toll; miss RESET(fight), initiative 0, PAY
+               toll: choice (mandatory, next end) nextScene endure-harm | nextScene endure-stress | something else
+               none: prompt "No fight is under way: start with Enter the Fray"
+battle         roll: 5 stats; strong M+2; weak PAY; miss PAY
+advance        spend: choice new asset experience −3 | upgrade experience −2 | none (skip)
+pay-the-price  table pay-the-price (suggested)
+               cost: choice M-1 | M-2 | supply −1 | nextScene endure-harm | nextScene endure-stress | story only (skip)
+endure-harm    harm: choice health −1…−5 | already suffered (skip)
+               roll: endure-harm, next end; strong next choose; miss M-1, next zero
+               choose: choice (mandatory, next end) M-1, health +1 | M+1
+               zero: choice (mandatory, next end) health above 0 | mark wounded | mark maimed | table next table
+               table: table endure-harm-table
+endure-stress  the same with spirit, endure-stress, shaken, corrupted, endure-stress-table
+face-death     roll: heart, next end; weak next fate; miss next dead
+               fate: choice (mandatory, next end) a noble sacrifice | a price: mark cursed, nextScene swear-vow
+               dead: prompt "You are dead"
+face-desolation  the same with tormented, and a lost prompt
+epilogue       setup: prompts for what you hope and what you fear; roll: check bonds
+```
+
+Accepted limits: a slot can be overwritten by hand while it is in use (the prompt lists the slots, and a sixth vow is refused); a fulfilled slot's Fact keeps the old name until a new vow fills it, while its rank reads Free; the wounded block on health gains is a tip; `{health}` at 0 cannot branch, since a condition reads trackers only, so the step asks.
 
 ## Constraints
 
@@ -123,7 +239,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T8 | 7 | Studio check editor: challenge mode, action or progress, momentum select, burn | delegated writer (slice 7) | [x] | `429b0518` |
 | T9 | 8 | Studio sandbox backend and API: challenge roll, match, burn, `challenge` on the test-roll response | delegated writer (slice 8) | [x] | `624a250c` |
 | T10 | 1 | Studio references: `challenge.momentum` blocks a rename or deletion (`DraftReferences`) | delegated writer (slice 1) | [x] | `5df5b214` |
-| T11 | 10 | Read the official licensing page; design the flow in this doc; flow example in `docs/domain/flow-examples.md` | | [ ] | |
+| T11 | 10 | Read the official licensing page; design the flow in this doc (parent, done before the writer); flow example in `docs/domain/flow-examples.md` | | [ ] | |
 | T12 | 10 | `backend/presets/ironsworn.json` base: credits, sheet, trackers, checks; `PresetsTest` | | [ ] | |
 | T13 | 10 | Flow, Scene Types and tables; `IronswornPresetFlowTest` | | [ ] | |
 | T14 | 11 | Slice 10 review fixes; e2e `frontend/e2e/play-ironsworn.spec.ts` | | [ ] | |
@@ -131,7 +247,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T16 | 11 | Closing: Reviews, roadmap `Done:` line under B16, follow-ups if any | | [ ] | |
 | T17 | 3 | Play API: `challenge` on the check and on its journal content, API tests, `make api`. Drafted on local branch `draft/preset-ironsworn-3-play-api` (`74ec85a8`, `7384cee9`), brought onto the latest `main` | delegated writer (slice 3) | [x] | `3a51fbb1` |
 | T18 | 5 | Burn through the application and the API: `CheckPusher`, the translator accepts a challenge push (needs a momentum, refuses `maxDice`), `burn` and `momentum` on the responses, API tests from the sheet and the pending step, contract doc, `make api`. Drafted on local branch `draft/preset-ironsworn-5-play-burn-api` (`69c73ff2`), whose tree is the end state of slices 4 and 5 | delegated writer (slice 5) | [x] | `ed3c1993` |
-| T19 | 9 | Studio sandbox UI: challenge result, match, cancelled die, burn offer and burned result; the guard in `ChecksTab` removed, so the sandbox shows for challenge checks | delegated writer (slice 9) | [x] | |
+| T19 | 9 | Studio sandbox UI: challenge result, match, cancelled die, burn offer and burned result; the guard in `ChecksTab` removed, so the sandbox shows for challenge checks | delegated writer (slice 9) | [x] | `71a56efd` |
 
 ## Progress
 
@@ -158,6 +274,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: T9 done (backend and API; the UI is T19): `CheckTestChallenge`, `CheckTestChallengeRoll`, `CheckTestBurn`, `CheckTestRoll` rolls action and progress challenge checks in Play's order and burns statelessly (no randomness used), `CheckTestSpecialResult::Match`, `challenge` on `CheckTestRollResponse`, `make api` (own commit), a `match` label so the frontend compiles. RED: 30 of 52 unit tests failed (class and property errors) and 7 API tests failed before the code; GREEN after: `tests/Unit/Studio` and `tests/Integration/Studio` pass (3,304 tests), PHPStan clean. The overflow test passed only after scripting the challenge dice (the guard runs after the dice, as in Play).
 - 2026-11-01: Slice 8 review fixes: `DiceExpression::sidesOfOneDie()` replaces the cast of the notation in `CheckTestRoll::actionDieOf`; burns with a d10 and a percentile die, and an out-of-range situational on a burn, are tested. All passed at once, no RED: the normalized notation already reads `1d%` as `1d100` and `rollsOneDie` excludes selectors, so the finding did not reproduce; the typed accessor removes the fragility.
 - 2026-11-01: T19 done: the guard in `ChecksTab` removed, `RollResult` shows challenge dice, action die, cancelled die, score with its cap and a match, `canBurnTestRoll`/`burnScoreOf` (Studio's copy of Play's rule), "Burn the momentum" through `/push` with the action die then the challenge dice, and the burned card; the momentum was already a sample input and `match` already read "Match" as in Play. Vitest written after the code, all passed at once: no RED.
+- 2026-11-01: Slice 9 review fix: sandbox tests for a burn above the cap (offer and burned card) and for the burn offer's text; passed at once, no RED. Proved by mutation: reading `burn.score` in the cap note failed the burned-cap test, then restored.
 
 ## Reviews
 
@@ -171,7 +288,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 6 | `review-dfb24acc6e74c150` | `972396ea`, `5957328f` | Approved. Two suggestions, fixed in slice 7: the burned view recomputes each die inline, with no test of a die that ties or stays above the burned score; `canBurn` offers a burn the API refuses when the stored roll's dice count, sides or cap differ from the pinned check | [#347](https://github.com/iribarren/ogami/pull/347) |
 | 7 | `review-b98fdd8ece7c9b1b` | `f02ac2c3`, `429b0518` | Approved. A warning and two suggestions, fixed in slice 8: the sandbox guard reads the draft, so it reappears when a saved challenge check is switched to dice or pool unsaved (a dirty draft is saved before rolling, so no wrong roll; T9 removes the guard); stored nulls are not always written back (a null `challenge` on a pool check, a null `scoreMax` or `momentum`, a null `push` cleared by an unrelated edit while the momentum is empty); `readCheck` accepts shapes the form cannot hold (a stored difficulty, a push without momentum, a push with `maxDice`) | [#348](https://github.com/iribarren/ogami/pull/348) |
 | 8 | `review-6e3b0d283d0c32e6` | `589f48ce`, `c1de4ff2`, `624a250c` | Approved. Two suggestions, fixed in slice 9: the burn reads the action die's sides by casting the notation after its first two characters, so a percentile die refuses every face and a suffix is ignored, with no test of another die than a d6; the situational range guard on the burn path has no test, as the existing case sends a difficulty and stops there | [#349](https://github.com/iribarren/ogami/pull/349) |
+| 9 | `review-4e36ea088a14d1fc` | `64588e87`, `71a56efd` | Approved. A suggestion, fixed in slice 10: the burned branch of the cap note in `CheckSandbox.tsx` has no component test (the only burned fixture has momentum 9 under a cap of 10), and no test asserts the burn offer's text on what the score becomes and from what | [#350](https://github.com/iribarren/ogami/pull/350) |
 
 ## Next step
 
-Slice 9: slice 8 fixes and the sandbox UI (T19), which also removes the guard of slice 7's first finding, then its native review and PR. Then slice 10: the release (T11, T12, T13).
+Slice 10: slice 9 fix, then the release (T11, T12, T13), its native review and PR. Then slice 11: review fixes, e2e and the Chrome play pass (T14, T15, T16).

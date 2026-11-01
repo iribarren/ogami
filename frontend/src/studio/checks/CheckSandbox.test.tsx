@@ -1103,6 +1103,45 @@ describe('the test roll sandbox of a challenge check (ADR 0049)', () => {
     expect(first).toHaveTextContent('1 die beaten')
   })
 
+  it('says what the score becomes, and from what, on the burn offer', async () => {
+    const { user, sandbox } = await editCheck(
+      'edge',
+      challengeHandlers({ [edgeRoll]: json(challengeRolled) }),
+    )
+
+    await user.click(roll(sandbox))
+
+    expect(await sandbox.findByText('The score becomes 9, from 6.')).toBeVisible()
+    expect(sandbox.getByText('Cost: Burn momentum')).toBeVisible()
+  })
+
+  it('offers a burn above the cap with the capped score, and shows the cap on the burned roll', async () => {
+    const { user, sandbox } = await editCheck(
+      'edge',
+      challengeHandlers({
+        [edgeRoll]: json({ ...challengeRolled, challenge: { ...challenge, momentum: 12 } }),
+        [burnPath]: json({
+          ...challengeBurned,
+          challenge: {
+            ...challengeBurned.challenge,
+            momentum: 12,
+            score: 10,
+            burn: { momentum: 12, score: 10 },
+          },
+        }),
+      }),
+    )
+    await user.click(roll(sandbox))
+
+    expect(await sandbox.findByText('The score becomes 10, from 6.')).toBeVisible()
+
+    await user.click(sandbox.getByRole('button', { name: 'Burn the momentum' }))
+
+    const [burned] = sandbox.getByRole('list', { name: 'Test roll results' }).children
+    expect(await within(burned as HTMLElement).findByText('Score 10 (capped at 10)')).toBeVisible()
+    expect(burned).toHaveTextContent('Burned 12 momentum for a score of 10.')
+  })
+
   it('keeps a match on the burned roll and says still when the burn keeps the band', async () => {
     const { user, sandbox } = await editCheck(
       'edge',

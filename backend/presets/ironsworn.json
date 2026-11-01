@@ -1,0 +1,803 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {
+    "key": "ironsworn",
+    "name": "Ironsworn (unofficial)",
+    "description": "An unofficial Ironsworn companion for solo play, built on the Ironsworn SRD: challenge dice, momentum that goes below zero and can be burned, and five vow tracks. Original content: the flow, the checks and the sheet; the oracle tables are the SRD's.",
+    "credits": {
+      "notice": "This work is based on Ironsworn, created by Shawn Tomkin, and licensed for our use under the Creative Commons Attribution 4.0 International License (https://creativecommons.org/licenses/by/4.0/). Unofficial: not an official Tomkin Press or Ironsworn product. Rules summarized and adapted for guided solo play.",
+      "license": "CC BY 4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/"
+    }
+  },
+  "theme": "parchment",
+  "oracles": {
+    "tables": [
+      {"key": "action", "name": "Action", "dice": "1d100", "entries": [
+        {"min": 1, "max": 1, "text": "Scheme"},
+        {"min": 2, "max": 2, "text": "Clash"},
+        {"min": 3, "max": 3, "text": "Weaken"},
+        {"min": 4, "max": 4, "text": "Initiate"},
+        {"min": 5, "max": 5, "text": "Create"},
+        {"min": 6, "max": 6, "text": "Swear"},
+        {"min": 7, "max": 7, "text": "Avenge"},
+        {"min": 8, "max": 8, "text": "Guard"},
+        {"min": 9, "max": 9, "text": "Defeat"},
+        {"min": 10, "max": 10, "text": "Control"},
+        {"min": 11, "max": 11, "text": "Break"},
+        {"min": 12, "max": 12, "text": "Risk"},
+        {"min": 13, "max": 13, "text": "Surrender"},
+        {"min": 14, "max": 14, "text": "Inspect"},
+        {"min": 15, "max": 15, "text": "Raid"},
+        {"min": 16, "max": 16, "text": "Evade"},
+        {"min": 17, "max": 17, "text": "Assault"},
+        {"min": 18, "max": 18, "text": "Deflect"},
+        {"min": 19, "max": 19, "text": "Threaten"},
+        {"min": 20, "max": 20, "text": "Attack"},
+        {"min": 21, "max": 21, "text": "Leave"},
+        {"min": 22, "max": 22, "text": "Preserve"},
+        {"min": 23, "max": 23, "text": "Manipulate"},
+        {"min": 24, "max": 24, "text": "Remove"},
+        {"min": 25, "max": 25, "text": "Eliminate"},
+        {"min": 26, "max": 26, "text": "Withdraw"},
+        {"min": 27, "max": 27, "text": "Abandon"},
+        {"min": 28, "max": 28, "text": "Investigate"},
+        {"min": 29, "max": 29, "text": "Hold"},
+        {"min": 30, "max": 30, "text": "Focus"},
+        {"min": 31, "max": 31, "text": "Uncover"},
+        {"min": 32, "max": 32, "text": "Breach"},
+        {"min": 33, "max": 33, "text": "Aid"},
+        {"min": 34, "max": 34, "text": "Uphold"},
+        {"min": 35, "max": 35, "text": "Falter"},
+        {"min": 36, "max": 36, "text": "Suppress"},
+        {"min": 37, "max": 37, "text": "Hunt"},
+        {"min": 38, "max": 38, "text": "Share"},
+        {"min": 39, "max": 39, "text": "Destroy"},
+        {"min": 40, "max": 40, "text": "Avoid"},
+        {"min": 41, "max": 41, "text": "Reject"},
+        {"min": 42, "max": 42, "text": "Demand"},
+        {"min": 43, "max": 43, "text": "Explore"},
+        {"min": 44, "max": 44, "text": "Bolster"},
+        {"min": 45, "max": 45, "text": "Seize"},
+        {"min": 46, "max": 46, "text": "Mourn"},
+        {"min": 47, "max": 47, "text": "Reveal"},
+        {"min": 48, "max": 48, "text": "Gather"},
+        {"min": 49, "max": 49, "text": "Defy"},
+        {"min": 50, "max": 50, "text": "Transform"},
+        {"min": 51, "max": 51, "text": "Persevere"},
+        {"min": 52, "max": 52, "text": "Serve"},
+        {"min": 53, "max": 53, "text": "Begin"},
+        {"min": 54, "max": 54, "text": "Move"},
+        {"min": 55, "max": 55, "text": "Coordinate"},
+        {"min": 56, "max": 56, "text": "Resist"},
+        {"min": 57, "max": 57, "text": "Await"},
+        {"min": 58, "max": 58, "text": "Impress"},
+        {"min": 59, "max": 59, "text": "Take"},
+        {"min": 60, "max": 60, "text": "Oppose"},
+        {"min": 61, "max": 61, "text": "Capture"},
+        {"min": 62, "max": 62, "text": "Overwhelm"},
+        {"min": 63, "max": 63, "text": "Challenge"},
+        {"min": 64, "max": 64, "text": "Acquire"},
+        {"min": 65, "max": 65, "text": "Protect"},
+        {"min": 66, "max": 66, "text": "Finish"},
+        {"min": 67, "max": 67, "text": "Strengthen"},
+        {"min": 68, "max": 68, "text": "Restore"},
+        {"min": 69, "max": 69, "text": "Advance"},
+        {"min": 70, "max": 70, "text": "Command"},
+        {"min": 71, "max": 71, "text": "Refuse"},
+        {"min": 72, "max": 72, "text": "Find"},
+        {"min": 73, "max": 73, "text": "Deliver"},
+        {"min": 74, "max": 74, "text": "Hide"},
+        {"min": 75, "max": 75, "text": "Fortify"},
+        {"min": 76, "max": 76, "text": "Betray"},
+        {"min": 77, "max": 77, "text": "Secure"},
+        {"min": 78, "max": 78, "text": "Arrive"},
+        {"min": 79, "max": 79, "text": "Affect"},
+        {"min": 80, "max": 80, "text": "Change"},
+        {"min": 81, "max": 81, "text": "Defend"},
+        {"min": 82, "max": 82, "text": "Debate"},
+        {"min": 83, "max": 83, "text": "Support"},
+        {"min": 84, "max": 84, "text": "Follow"},
+        {"min": 85, "max": 85, "text": "Construct"},
+        {"min": 86, "max": 86, "text": "Locate"},
+        {"min": 87, "max": 87, "text": "Endure"},
+        {"min": 88, "max": 88, "text": "Release"},
+        {"min": 89, "max": 89, "text": "Lose"},
+        {"min": 90, "max": 90, "text": "Reduce"},
+        {"min": 91, "max": 91, "text": "Escalate"},
+        {"min": 92, "max": 92, "text": "Distract"},
+        {"min": 93, "max": 93, "text": "Journey"},
+        {"min": 94, "max": 94, "text": "Escort"},
+        {"min": 95, "max": 95, "text": "Learn"},
+        {"min": 96, "max": 96, "text": "Communicate"},
+        {"min": 97, "max": 97, "text": "Depart"},
+        {"min": 98, "max": 98, "text": "Search"},
+        {"min": 99, "max": 99, "text": "Charge"},
+        {"min": 100, "max": 100, "text": "Summon"}
+      ]},
+      {"key": "theme", "name": "Theme", "dice": "1d100", "entries": [
+        {"min": 1, "max": 1, "text": "Risk"},
+        {"min": 2, "max": 2, "text": "Ability"},
+        {"min": 3, "max": 3, "text": "Price"},
+        {"min": 4, "max": 4, "text": "Ally"},
+        {"min": 5, "max": 5, "text": "Battle"},
+        {"min": 6, "max": 6, "text": "Safety"},
+        {"min": 7, "max": 7, "text": "Survival"},
+        {"min": 8, "max": 8, "text": "Weapon"},
+        {"min": 9, "max": 9, "text": "Wound"},
+        {"min": 10, "max": 10, "text": "Shelter"},
+        {"min": 11, "max": 11, "text": "Leader"},
+        {"min": 12, "max": 12, "text": "Fear"},
+        {"min": 13, "max": 13, "text": "Time"},
+        {"min": 14, "max": 14, "text": "Duty"},
+        {"min": 15, "max": 15, "text": "Secret"},
+        {"min": 16, "max": 16, "text": "Innocence"},
+        {"min": 17, "max": 17, "text": "Renown"},
+        {"min": 18, "max": 18, "text": "Direction"},
+        {"min": 19, "max": 19, "text": "Death"},
+        {"min": 20, "max": 20, "text": "Honor"},
+        {"min": 21, "max": 21, "text": "Labor"},
+        {"min": 22, "max": 22, "text": "Solution"},
+        {"min": 23, "max": 23, "text": "Tool"},
+        {"min": 24, "max": 24, "text": "Balance"},
+        {"min": 25, "max": 25, "text": "Love"},
+        {"min": 26, "max": 26, "text": "Barrier"},
+        {"min": 27, "max": 27, "text": "Creation"},
+        {"min": 28, "max": 28, "text": "Decay"},
+        {"min": 29, "max": 29, "text": "Trade"},
+        {"min": 30, "max": 30, "text": "Bond"},
+        {"min": 31, "max": 31, "text": "Hope"},
+        {"min": 32, "max": 32, "text": "Superstition"},
+        {"min": 33, "max": 33, "text": "Peace"},
+        {"min": 34, "max": 34, "text": "Deception"},
+        {"min": 35, "max": 35, "text": "History"},
+        {"min": 36, "max": 36, "text": "World"},
+        {"min": 37, "max": 37, "text": "Vow"},
+        {"min": 38, "max": 38, "text": "Protection"},
+        {"min": 39, "max": 39, "text": "Nature"},
+        {"min": 40, "max": 40, "text": "Opinion"},
+        {"min": 41, "max": 41, "text": "Burden"},
+        {"min": 42, "max": 42, "text": "Vengeance"},
+        {"min": 43, "max": 43, "text": "Opportunity"},
+        {"min": 44, "max": 44, "text": "Faction"},
+        {"min": 45, "max": 45, "text": "Danger"},
+        {"min": 46, "max": 46, "text": "Corruption"},
+        {"min": 47, "max": 47, "text": "Freedom"},
+        {"min": 48, "max": 48, "text": "Debt"},
+        {"min": 49, "max": 49, "text": "Hate"},
+        {"min": 50, "max": 50, "text": "Possession"},
+        {"min": 51, "max": 51, "text": "Stranger"},
+        {"min": 52, "max": 52, "text": "Passage"},
+        {"min": 53, "max": 53, "text": "Land"},
+        {"min": 54, "max": 54, "text": "Creature"},
+        {"min": 55, "max": 55, "text": "Disease"},
+        {"min": 56, "max": 56, "text": "Advantage"},
+        {"min": 57, "max": 57, "text": "Blood"},
+        {"min": 58, "max": 58, "text": "Language"},
+        {"min": 59, "max": 59, "text": "Rumor"},
+        {"min": 60, "max": 60, "text": "Weakness"},
+        {"min": 61, "max": 61, "text": "Greed"},
+        {"min": 62, "max": 62, "text": "Family"},
+        {"min": 63, "max": 63, "text": "Resource"},
+        {"min": 64, "max": 64, "text": "Structure"},
+        {"min": 65, "max": 65, "text": "Dream"},
+        {"min": 66, "max": 66, "text": "Community"},
+        {"min": 67, "max": 67, "text": "War"},
+        {"min": 68, "max": 68, "text": "Portent"},
+        {"min": 69, "max": 69, "text": "Prize"},
+        {"min": 70, "max": 70, "text": "Destiny"},
+        {"min": 71, "max": 71, "text": "Momentum"},
+        {"min": 72, "max": 72, "text": "Power"},
+        {"min": 73, "max": 73, "text": "Memory"},
+        {"min": 74, "max": 74, "text": "Ruin"},
+        {"min": 75, "max": 75, "text": "Mysticism"},
+        {"min": 76, "max": 76, "text": "Rival"},
+        {"min": 77, "max": 77, "text": "Problem"},
+        {"min": 78, "max": 78, "text": "Idea"},
+        {"min": 79, "max": 79, "text": "Revenge"},
+        {"min": 80, "max": 80, "text": "Health"},
+        {"min": 81, "max": 81, "text": "Fellowship"},
+        {"min": 82, "max": 82, "text": "Enemy"},
+        {"min": 83, "max": 83, "text": "Religion"},
+        {"min": 84, "max": 84, "text": "Spirit"},
+        {"min": 85, "max": 85, "text": "Fame"},
+        {"min": 86, "max": 86, "text": "Desolation"},
+        {"min": 87, "max": 87, "text": "Strength"},
+        {"min": 88, "max": 88, "text": "Knowledge"},
+        {"min": 89, "max": 89, "text": "Truth"},
+        {"min": 90, "max": 90, "text": "Quest"},
+        {"min": 91, "max": 91, "text": "Pride"},
+        {"min": 92, "max": 92, "text": "Loss"},
+        {"min": 93, "max": 93, "text": "Law"},
+        {"min": 94, "max": 94, "text": "Path"},
+        {"min": 95, "max": 95, "text": "Warning"},
+        {"min": 96, "max": 96, "text": "Relationship"},
+        {"min": 97, "max": 97, "text": "Wealth"},
+        {"min": 98, "max": 98, "text": "Home"},
+        {"min": 99, "max": 99, "text": "Strategy"},
+        {"min": 100, "max": 100, "text": "Supply"}
+      ]},
+      {"key": "combat-action", "name": "Combat Action", "dice": "1d100", "entries": [
+        {"min": 1, "max": 3, "text": "Compel a surrender."},
+        {"min": 4, "max": 6, "text": "Coordinate with allies."},
+        {"min": 7, "max": 9, "text": "Gather reinforcements."},
+        {"min": 10, "max": 13, "text": "Seize something or someone."},
+        {"min": 14, "max": 17, "text": "Provoke a reckless response."},
+        {"min": 18, "max": 21, "text": "Intimidate or frighten."},
+        {"min": 22, "max": 25, "text": "Reveal a surprising truth."},
+        {"min": 26, "max": 29, "text": "Shift focus to someone or something else."},
+        {"min": 30, "max": 33, "text": "Destroy something, or render it useless."},
+        {"min": 34, "max": 39, "text": "Take a decisive action."},
+        {"min": 40, "max": 45, "text": "Reinforce defenses."},
+        {"min": 46, "max": 52, "text": "Ready an action."},
+        {"min": 53, "max": 60, "text": "Use the terrain to gain advantage."},
+        {"min": 61, "max": 68, "text": "Leverage the advantage of a weapon or ability."},
+        {"min": 69, "max": 78, "text": "Create an opportunity."},
+        {"min": 79, "max": 89, "text": "Attack with precision."},
+        {"min": 90, "max": 99, "text": "Attack with power."},
+        {"min": 100, "max": 100, "text": "Take a completely unexpected action."}
+      ]},
+      {"key": "major-plot-twist", "name": "Major Plot Twist", "dice": "1d100", "entries": [
+        {"min": 1, "max": 5, "text": "It was all a diversion."},
+        {"min": 6, "max": 10, "text": "A dark secret is revealed."},
+        {"min": 11, "max": 15, "text": "A trap is sprung."},
+        {"min": 16, "max": 20, "text": "An assumption is revealed to be false."},
+        {"min": 21, "max": 25, "text": "A secret alliance is revealed."},
+        {"min": 26, "max": 30, "text": "Your actions benefit an enemy."},
+        {"min": 31, "max": 35, "text": "Someone returns unexpectedly."},
+        {"min": 36, "max": 40, "text": "A more dangerous foe is revealed."},
+        {"min": 41, "max": 45, "text": "You and an enemy share a common goal."},
+        {"min": 46, "max": 50, "text": "A true identity is revealed."},
+        {"min": 51, "max": 55, "text": "You are betrayed by someone who was trusted."},
+        {"min": 56, "max": 60, "text": "You are too late."},
+        {"min": 61, "max": 65, "text": "The true enemy is revealed."},
+        {"min": 66, "max": 70, "text": "The enemy gains new allies."},
+        {"min": 71, "max": 75, "text": "A new danger appears."},
+        {"min": 76, "max": 80, "text": "Someone or something goes missing."},
+        {"min": 81, "max": 85, "text": "The truth of a relationship is revealed."},
+        {"min": 86, "max": 90, "text": "Two seemingly unrelated situations are shown to be connected."},
+        {"min": 91, "max": 95, "text": "Unexpected powers or abilities are revealed."},
+        {"min": 96, "max": 100, "text": "Roll twice more on this table. Both results occur. If they are the same result, make it more dramatic."}
+      ]},
+      {"key": "challenge-rank", "name": "Challenge Rank", "dice": "1d100", "entries": [
+        {"min": 1, "max": 20, "text": "Troublesome"},
+        {"min": 21, "max": 55, "text": "Dangerous"},
+        {"min": 56, "max": 80, "text": "Formidable"},
+        {"min": 81, "max": 93, "text": "Extreme"},
+        {"min": 94, "max": 100, "text": "Epic"}
+      ]},
+      {"key": "pay-the-price", "name": "Pay the Price", "dice": "1d100", "entries": [
+        {"min": 1, "max": 2, "text": "Roll again and apply that result but make it worse. If you roll this result yet again, think of something dreadful that changes the course of your quest (Ask the Oracle if unsure) and make it happen."},
+        {"min": 3, "max": 5, "text": "A person or community you trusted loses faith in you, or acts against you."},
+        {"min": 6, "max": 9, "text": "A person or community you care about is exposed to danger."},
+        {"min": 10, "max": 16, "text": "You are separated from something or someone."},
+        {"min": 17, "max": 23, "text": "Your action has an unintended effect."},
+        {"min": 24, "max": 32, "text": "Something of value is lost or destroyed."},
+        {"min": 33, "max": 41, "text": "The current situation worsens."},
+        {"min": 42, "max": 50, "text": "A new danger or foe is revealed."},
+        {"min": 51, "max": 59, "text": "It causes a delay or puts you at a disadvantage."},
+        {"min": 60, "max": 68, "text": "It is harmful."},
+        {"min": 69, "max": 76, "text": "It is stressful."},
+        {"min": 77, "max": 85, "text": "A surprising development complicates your quest."},
+        {"min": 86, "max": 90, "text": "It wastes resources."},
+        {"min": 91, "max": 94, "text": "It forces you to act against your best intentions."},
+        {"min": 95, "max": 98, "text": "A friend, companion, or ally is put in harm’s way (or you are, if alone)."},
+        {"min": 99, "max": 100, "text": "Roll twice more on this table. Both results occur. If they are the same result, make it worse."}
+      ]},
+      {"key": "endure-harm-table", "name": "Endure Harm at 0 health", "dice": "1d100", "entries": [
+        {"min": 1, "max": 10, "text": "The harm is mortal. Face Death.", "effects": [{"kind": "nextScene", "sceneType": "face-death"}]},
+        {"min": 11, "max": 20, "text": "You are dying. You need to Heal within an hour or two, or Face Death."},
+        {"min": 21, "max": 35, "text": "You are unconscious and out of action. If left alone, you come back to your senses in an hour or two. If you are vulnerable to a foe not inclined to show mercy, Face Death."},
+        {"min": 36, "max": 50, "text": "You are reeling and fighting to stay conscious. If you engage in any vigorous activity (such as running or fighting) before taking a breather for a few minutes, roll on this table again (before resolving the other move)."},
+        {"min": 51, "max": 100, "text": "You are battered but still standing."}
+      ]},
+      {"key": "endure-stress-table", "name": "Endure Stress at 0 spirit", "dice": "1d100", "entries": [
+        {"min": 1, "max": 10, "text": "You are overwhelmed. Face Desolation.", "effects": [{"kind": "nextScene", "sceneType": "face-desolation"}]},
+        {"min": 11, "max": 25, "text": "You give up. Forsake Your Vow (if possible, one relevant to your current crisis).", "effects": [{"kind": "nextScene", "sceneType": "forsake-vow"}]},
+        {"min": 26, "max": 50, "text": "You give in to a fear or compulsion, and act against your better instincts."},
+        {"min": 51, "max": 100, "text": "You persevere."}
+      ]}
+    ],
+    "likelihood": [
+      {"key": "ask-the-oracle", "name": "Ask the Oracle", "sides": 100, "levels": [{"key": "almost-certain", "label": "Almost certain", "target": 90}, {"key": "likely", "label": "Likely", "target": 75}, {"key": "even", "label": "50/50", "target": 50}, {"key": "unlikely", "label": "Unlikely", "target": 25}, {"key": "small-chance", "label": "Small chance", "target": 10}]}
+    ]
+  },
+  "tags": [
+    {"key": "vow", "label": "Vow", "hint": "A sworn quest", "appliesTo": ["thread"]},
+    {"key": "bond", "label": "Bond", "hint": "Someone you share a bond with", "appliesTo": ["npc"]},
+    {"key": "foe", "label": "Foe", "hint": "An enemy you fight", "appliesTo": ["npc"]},
+    {"key": "home", "label": "Home", "hint": "Where your story begins", "appliesTo": ["place"]}
+  ],
+  "trackers": [
+    {"key": "vow-1", "name": "Vow 1 progress", "hint": "Ticks marked on vow 1: four ticks fill a box, ten boxes fill the track.", "kind": "counter", "min": 0, "max": 40, "initial": 0},
+    {"key": "vow-2", "name": "Vow 2 progress", "hint": "Ticks marked on vow 2: four ticks fill a box, ten boxes fill the track.", "kind": "counter", "min": 0, "max": 40, "initial": 0},
+    {"key": "vow-3", "name": "Vow 3 progress", "hint": "Ticks marked on vow 3: four ticks fill a box, ten boxes fill the track.", "kind": "counter", "min": 0, "max": 40, "initial": 0},
+    {"key": "vow-4", "name": "Vow 4 progress", "hint": "Ticks marked on vow 4: four ticks fill a box, ten boxes fill the track.", "kind": "counter", "min": 0, "max": 40, "initial": 0},
+    {"key": "vow-5", "name": "Vow 5 progress", "hint": "Ticks marked on vow 5: four ticks fill a box, ten boxes fill the track.", "kind": "counter", "min": 0, "max": 40, "initial": 0},
+    {"key": "vow-1-rank", "name": "Vow 1 rank", "hint": "Free means the slot holds no vow.", "kind": "counter", "min": 0, "max": 5, "initial": 0, "levels": [{"upTo": 0, "label": "Free"}, {"upTo": 1, "label": "Troublesome"}, {"upTo": 2, "label": "Dangerous"}, {"upTo": 3, "label": "Formidable"}, {"upTo": 4, "label": "Extreme"}, {"label": "Epic"}]},
+    {"key": "vow-2-rank", "name": "Vow 2 rank", "hint": "Free means the slot holds no vow.", "kind": "counter", "min": 0, "max": 5, "initial": 0, "levels": [{"upTo": 0, "label": "Free"}, {"upTo": 1, "label": "Troublesome"}, {"upTo": 2, "label": "Dangerous"}, {"upTo": 3, "label": "Formidable"}, {"upTo": 4, "label": "Extreme"}, {"label": "Epic"}]},
+    {"key": "vow-3-rank", "name": "Vow 3 rank", "hint": "Free means the slot holds no vow.", "kind": "counter", "min": 0, "max": 5, "initial": 0, "levels": [{"upTo": 0, "label": "Free"}, {"upTo": 1, "label": "Troublesome"}, {"upTo": 2, "label": "Dangerous"}, {"upTo": 3, "label": "Formidable"}, {"upTo": 4, "label": "Extreme"}, {"label": "Epic"}]},
+    {"key": "vow-4-rank", "name": "Vow 4 rank", "hint": "Free means the slot holds no vow.", "kind": "counter", "min": 0, "max": 5, "initial": 0, "levels": [{"upTo": 0, "label": "Free"}, {"upTo": 1, "label": "Troublesome"}, {"upTo": 2, "label": "Dangerous"}, {"upTo": 3, "label": "Formidable"}, {"upTo": 4, "label": "Extreme"}, {"label": "Epic"}]},
+    {"key": "vow-5-rank", "name": "Vow 5 rank", "hint": "Free means the slot holds no vow.", "kind": "counter", "min": 0, "max": 5, "initial": 0, "levels": [{"upTo": 0, "label": "Free"}, {"upTo": 1, "label": "Troublesome"}, {"upTo": 2, "label": "Dangerous"}, {"upTo": 3, "label": "Formidable"}, {"upTo": 4, "label": "Extreme"}, {"label": "Epic"}]},
+    {"key": "new-rank", "name": "Rank being sworn", "hint": "Set while you swear a vow.", "kind": "counter", "min": 0, "max": 5, "initial": 0, "levels": [{"upTo": 0, "label": "Free"}, {"upTo": 1, "label": "Troublesome"}, {"upTo": 2, "label": "Dangerous"}, {"upTo": 3, "label": "Formidable"}, {"upTo": 4, "label": "Extreme"}, {"label": "Epic"}]},
+    {"key": "journey", "name": "Journey progress", "kind": "counter", "min": 0, "max": 40, "initial": 0},
+    {"key": "journey-rank", "name": "Journey rank", "hint": "Free means no journey is under way.", "kind": "counter", "min": 0, "max": 5, "initial": 0, "levels": [{"upTo": 0, "label": "Free"}, {"upTo": 1, "label": "Troublesome"}, {"upTo": 2, "label": "Dangerous"}, {"upTo": 3, "label": "Formidable"}, {"upTo": 4, "label": "Extreme"}, {"label": "Epic"}]},
+    {"key": "fight", "name": "Fight progress", "kind": "counter", "min": 0, "max": 40, "initial": 0},
+    {"key": "fight-rank", "name": "Foe rank", "hint": "Free means no fight is under way.", "kind": "counter", "min": 0, "max": 5, "initial": 0, "levels": [{"upTo": 0, "label": "Free"}, {"upTo": 1, "label": "Troublesome"}, {"upTo": 2, "label": "Dangerous"}, {"upTo": 3, "label": "Formidable"}, {"upTo": 4, "label": "Extreme"}, {"label": "Epic"}]},
+    {"key": "initiative", "name": "Initiative", "hint": "Who is in control of the fight.", "kind": "counter", "min": 0, "max": 1, "initial": 0, "levels": [{"upTo": 0, "label": "Foe"}, {"label": "You"}]},
+    {"key": "bonds", "name": "Bonds", "hint": "Ticks marked on your bonds track.", "kind": "counter", "min": 0, "max": 40, "initial": 0}
+  ],
+  "factSlots": [
+    {"key": "vow-1", "label": "Vow 1", "type": "thread"},
+    {"key": "vow-2", "label": "Vow 2", "type": "thread"},
+    {"key": "vow-3", "label": "Vow 3", "type": "thread"},
+    {"key": "vow-4", "label": "Vow 4", "type": "thread"},
+    {"key": "vow-5", "label": "Vow 5", "type": "thread"},
+    {"key": "destination", "label": "Destination", "type": "text", "hint": "Where the journey under way ends"},
+    {"key": "foe", "label": "Foe", "type": "npc", "hint": "Who you are fighting"}
+  ],
+  "sceneTypes": [
+    {
+      "key": "the-ironlands",
+      "name": "The Ironlands",
+      "purpose": "Set the scene where your story begins.",
+      "tips": "Think small: a settlement, a road, a ruin. The Action and Theme tables spark the first trouble.",
+      "oracles": ["action", "theme"],
+      "setup": [
+        {"key": "place", "kind": "prompt", "title": "Where does your story begin?", "tip": "A name and a feeling. It is kept as your home.", "mandatory": true, "effects": [{"kind": "createPlace", "name": "{answer}", "tags": ["home"]}]},
+        {"key": "land", "kind": "prompt", "title": "What is the land like?", "tip": "Weather, wildlife, who rules here and who is afraid."},
+        {"key": "trouble", "kind": "prompt", "title": "What trouble brings you here?", "tip": "Roll Action and Theme for a spark, or decide.", "inspiration": ["action", "theme"]}
+      ],
+      "play": [],
+      "closing": []
+    },
+    {
+      "key": "ironsworn",
+      "name": "Ironsworn",
+      "purpose": "Make your Character and the people who matter to them.",
+      "tips": "Make the Character on the sheet: spend 9 points over five stats (1 to 3 each; 3, 2, 2, 1, 1 fits) and write three assets in the list. Then name up to three bonds, each a tick on your bonds track.",
+      "oracles": [],
+      "setup": [
+        {"key": "hero", "kind": "character", "title": "Who are you?", "tip": "Make your Character in the Characters panel first, then choose it here.", "mandatory": true},
+        {"key": "bond-1", "kind": "prompt", "title": "Who is your first bond?", "tip": "Someone or somewhere you are tied to. Skip it if you have none yet.", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["bond"]}, {"kind": "tracker", "tracker": "bonds", "op": "add", "value": 1}]},
+        {"key": "bond-2", "kind": "prompt", "title": "Who is your second bond?", "tip": "Someone or somewhere you are tied to. Skip it if you have none yet.", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["bond"]}, {"kind": "tracker", "tracker": "bonds", "op": "add", "value": 1}]},
+        {"key": "bond-3", "kind": "prompt", "title": "Who is your third bond?", "tip": "Someone or somewhere you are tied to. Skip it if you have none yet.", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["bond"]}, {"kind": "tracker", "tracker": "bonds", "op": "add", "value": 1}]}
+      ],
+      "play": [],
+      "closing": []
+    },
+    {
+      "key": "swear-vow",
+      "name": "Swear a vow",
+      "purpose": "Swear upon iron to see a quest through.",
+      "tips": "You hold five vows at most, one per slot. Give the vow a rank: Troublesome is a day's work, Epic a life's. A background vow takes no roll. Not sure what happens next? Ask the Oracle.",
+      "oracles": ["challenge-rank", "ask-the-oracle"],
+      "setup": [],
+      "play": [
+        {"key": "count", "kind": "condition", "title": "Is there a free vow slot?", "count": {"of": "thread", "tags": ["vow"]}, "bands": [{"upTo": 4, "next": "vow"}, {"next": "full"}]},
+        {"key": "full", "kind": "prompt", "title": "All five vows are sworn", "prompt": "Fulfill or forsake a vow before you swear another.", "next": "end"},
+        {"key": "vow", "kind": "prompt", "title": "What do you swear to do?", "tip": "Write the vow as a promise you can fail.", "mandatory": true, "effects": [{"kind": "sceneTitle", "title": "{answer}"}]},
+        {"key": "rank", "kind": "choice", "title": "How formidable is the quest?", "tip": "Roll Challenge Rank for a suggestion, or choose.", "mandatory": true, "options": [{"key": "r1", "label": "Troublesome", "effects": [{"kind": "tracker", "tracker": "new-rank", "op": "set", "value": 1}]}, {"key": "r2", "label": "Dangerous", "effects": [{"kind": "tracker", "tracker": "new-rank", "op": "set", "value": 2}]}, {"key": "r3", "label": "Formidable", "effects": [{"kind": "tracker", "tracker": "new-rank", "op": "set", "value": 3}]}, {"key": "r4", "label": "Extreme", "effects": [{"kind": "tracker", "tracker": "new-rank", "op": "set", "value": 4}]}, {"key": "r5", "label": "Epic", "effects": [{"kind": "tracker", "tracker": "new-rank", "op": "set", "value": 5}]}]},
+        {"key": "slot", "kind": "choice", "title": "Which slot holds it?", "prompt": "Vow 1: {fact:vow-1} ({tracker:vow-1-rank}, {tracker:vow-1} of 40 ticks)\nVow 2: {fact:vow-2} ({tracker:vow-2-rank}, {tracker:vow-2} of 40 ticks)\nVow 3: {fact:vow-3} ({tracker:vow-3-rank}, {tracker:vow-3} of 40 ticks)\nVow 4: {fact:vow-4} ({tracker:vow-4-rank}, {tracker:vow-4} of 40 ticks)\nVow 5: {fact:vow-5} ({tracker:vow-5-rank}, {tracker:vow-5} of 40 ticks)\nPick a slot that reads Free.", "mandatory": true, "options": [{"key": "s1", "label": "Vow 1", "effects": [{"kind": "createThread", "name": "{step:vow}", "tags": ["vow"]}, {"kind": "fillFact", "slot": "vow-1"}, {"kind": "tracker", "tracker": "vow-1", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-1-rank", "op": "set", "value": {"tracker": "new-rank"}}]}, {"key": "s2", "label": "Vow 2", "effects": [{"kind": "createThread", "name": "{step:vow}", "tags": ["vow"]}, {"kind": "fillFact", "slot": "vow-2"}, {"kind": "tracker", "tracker": "vow-2", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-2-rank", "op": "set", "value": {"tracker": "new-rank"}}]}, {"key": "s3", "label": "Vow 3", "effects": [{"kind": "createThread", "name": "{step:vow}", "tags": ["vow"]}, {"kind": "fillFact", "slot": "vow-3"}, {"kind": "tracker", "tracker": "vow-3", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-3-rank", "op": "set", "value": {"tracker": "new-rank"}}]}, {"key": "s4", "label": "Vow 4", "effects": [{"kind": "createThread", "name": "{step:vow}", "tags": ["vow"]}, {"kind": "fillFact", "slot": "vow-4"}, {"kind": "tracker", "tracker": "vow-4", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-4-rank", "op": "set", "value": {"tracker": "new-rank"}}]}, {"key": "s5", "label": "Vow 5", "effects": [{"kind": "createThread", "name": "{step:vow}", "tags": ["vow"]}, {"kind": "fillFact", "slot": "vow-5"}, {"kind": "tracker", "tracker": "vow-5", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-5-rank", "op": "set", "value": {"tracker": "new-rank"}}]}]},
+        {"key": "roll", "kind": "check", "title": "Swear upon iron", "tip": "Roll heart, plus one if you swear to someone you share a bond with. A background vow takes no roll: skip it.", "check": "heart", "next": "end", "outcomes": [{"band": "strong", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+2,{momentum-max})"}}]}, {"band": "weak", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+1,{momentum-max})"}}]}, {"band": "miss", "next": "obstacle"}]},
+        {"key": "obstacle", "kind": "choice", "title": "What stands in your way?", "tip": "Imagine the obstacle. Pressing on costs momentum; giving up forsakes the vow.", "mandatory": true, "options": [{"key": "press", "label": "Press on", "effects": [{"kind": "sheet", "field": "momentum", "op": "subtract", "value": 2}]}, {"key": "give-up", "label": "Give up", "effects": [{"kind": "nextScene", "sceneType": "forsake-vow"}]}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "milestone",
+      "name": "Reach a milestone",
+      "purpose": "Mark progress on a vow.",
+      "tips": "Mark progress when you overcome a critical obstacle, finish a perilous journey, solve a mystery, defeat a threat or gain vital support. A lower rank fills slower.",
+      "oracles": [],
+      "setup": [],
+      "play": [
+        {"key": "which", "kind": "choice", "title": "Which vow moves forward?", "prompt": "Vow 1: {fact:vow-1} ({tracker:vow-1-rank}, {tracker:vow-1} of 40 ticks)\nVow 2: {fact:vow-2} ({tracker:vow-2-rank}, {tracker:vow-2} of 40 ticks)\nVow 3: {fact:vow-3} ({tracker:vow-3-rank}, {tracker:vow-3} of 40 ticks)\nVow 4: {fact:vow-4} ({tracker:vow-4-rank}, {tracker:vow-4} of 40 ticks)\nVow 5: {fact:vow-5} ({tracker:vow-5-rank}, {tracker:vow-5} of 40 ticks)", "options": [{"key": "vow-1", "label": "Vow 1", "effects": [{"kind": "tracker", "tracker": "vow-1", "op": "add", "value": {"formula": "min(1,{tracker:vow-1-rank})*max(4*(4-{tracker:vow-1-rank}),6-{tracker:vow-1-rank})"}}]}, {"key": "vow-2", "label": "Vow 2", "effects": [{"kind": "tracker", "tracker": "vow-2", "op": "add", "value": {"formula": "min(1,{tracker:vow-2-rank})*max(4*(4-{tracker:vow-2-rank}),6-{tracker:vow-2-rank})"}}]}, {"key": "vow-3", "label": "Vow 3", "effects": [{"kind": "tracker", "tracker": "vow-3", "op": "add", "value": {"formula": "min(1,{tracker:vow-3-rank})*max(4*(4-{tracker:vow-3-rank}),6-{tracker:vow-3-rank})"}}]}, {"key": "vow-4", "label": "Vow 4", "effects": [{"kind": "tracker", "tracker": "vow-4", "op": "add", "value": {"formula": "min(1,{tracker:vow-4-rank})*max(4*(4-{tracker:vow-4-rank}),6-{tracker:vow-4-rank})"}}]}, {"key": "vow-5", "label": "Vow 5", "effects": [{"kind": "tracker", "tracker": "vow-5", "op": "add", "value": {"formula": "min(1,{tracker:vow-5-rank})*max(4*(4-{tracker:vow-5-rank}),6-{tracker:vow-5-rank})"}}]}, {"key": "none", "label": "None"}], "skip": "none"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "fulfill-vow",
+      "name": "Fulfill a vow",
+      "purpose": "Roll your progress against a vow you believe is done.",
+      "tips": "Pick the vow, then roll the challenge dice against its filled boxes. A free slot has nothing to fulfill.",
+      "oracles": ["ask-the-oracle"],
+      "setup": [],
+      "play": [
+        {"key": "which", "kind": "choice", "title": "Which vow do you fulfill?", "prompt": "Vow 1: {fact:vow-1} ({tracker:vow-1-rank}, {tracker:vow-1} of 40 ticks)\nVow 2: {fact:vow-2} ({tracker:vow-2-rank}, {tracker:vow-2} of 40 ticks)\nVow 3: {fact:vow-3} ({tracker:vow-3-rank}, {tracker:vow-3} of 40 ticks)\nVow 4: {fact:vow-4} ({tracker:vow-4-rank}, {tracker:vow-4} of 40 ticks)\nVow 5: {fact:vow-5} ({tracker:vow-5-rank}, {tracker:vow-5} of 40 ticks)", "options": [{"key": "vow-1", "label": "Vow 1", "next": "open-1"}, {"key": "vow-2", "label": "Vow 2", "next": "open-2"}, {"key": "vow-3", "label": "Vow 3", "next": "open-3"}, {"key": "vow-4", "label": "Vow 4", "next": "open-4"}, {"key": "vow-5", "label": "Vow 5", "next": "open-5"}, {"key": "none", "label": "None"}], "skip": "none", "next": "end"},
+        {"key": "open-1", "kind": "condition", "title": "Is vow 1 sworn?", "tracker": "vow-1-rank", "bands": [{"upTo": 0, "next": "end"}, {"next": "check-1"}]},
+        {"key": "check-1", "kind": "check", "title": "Fulfill vow 1", "tip": "A progress roll: momentum does not help. Strong earns experience equal to the rank; weak earns one less.", "check": "fulfill-1", "next": "end", "outcomes": [{"band": "strong", "effects": [{"kind": "sheet", "field": "experience", "op": "add", "value": {"formula": "{tracker:vow-1-rank}"}}, {"kind": "closeThread", "fact": "vow-1"}, {"kind": "tracker", "tracker": "vow-1", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-1-rank", "op": "set", "value": 0}]}, {"band": "weak", "effects": [{"kind": "sheet", "field": "experience", "op": "add", "value": {"formula": "max(0,{tracker:vow-1-rank}-1)"}}, {"kind": "closeThread", "fact": "vow-1"}, {"kind": "tracker", "tracker": "vow-1", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-1-rank", "op": "set", "value": 0}]}, {"band": "miss", "next": "undone-1"}]},
+        {"key": "undone-1", "kind": "choice", "title": "Your quest is undone", "tip": "Recommitting keeps one box of progress and raises the rank by one. Giving up forsakes the vow. Not sure what happens next? Ask the Oracle.", "mandatory": true, "options": [{"key": "recommit", "label": "Recommit", "effects": [{"kind": "tracker", "tracker": "vow-1", "op": "set", "value": {"formula": "min({tracker:vow-1},4)"}}, {"kind": "tracker", "tracker": "vow-1-rank", "op": "add", "value": 1}]}, {"key": "give-up", "label": "Give up", "effects": [{"kind": "nextScene", "sceneType": "forsake-vow"}]}], "next": "end"},
+        {"key": "open-2", "kind": "condition", "title": "Is vow 2 sworn?", "tracker": "vow-2-rank", "bands": [{"upTo": 0, "next": "end"}, {"next": "check-2"}]},
+        {"key": "check-2", "kind": "check", "title": "Fulfill vow 2", "tip": "A progress roll: momentum does not help. Strong earns experience equal to the rank; weak earns one less.", "check": "fulfill-2", "next": "end", "outcomes": [{"band": "strong", "effects": [{"kind": "sheet", "field": "experience", "op": "add", "value": {"formula": "{tracker:vow-2-rank}"}}, {"kind": "closeThread", "fact": "vow-2"}, {"kind": "tracker", "tracker": "vow-2", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-2-rank", "op": "set", "value": 0}]}, {"band": "weak", "effects": [{"kind": "sheet", "field": "experience", "op": "add", "value": {"formula": "max(0,{tracker:vow-2-rank}-1)"}}, {"kind": "closeThread", "fact": "vow-2"}, {"kind": "tracker", "tracker": "vow-2", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-2-rank", "op": "set", "value": 0}]}, {"band": "miss", "next": "undone-2"}]},
+        {"key": "undone-2", "kind": "choice", "title": "Your quest is undone", "tip": "Recommitting keeps one box of progress and raises the rank by one. Giving up forsakes the vow. Not sure what happens next? Ask the Oracle.", "mandatory": true, "options": [{"key": "recommit", "label": "Recommit", "effects": [{"kind": "tracker", "tracker": "vow-2", "op": "set", "value": {"formula": "min({tracker:vow-2},4)"}}, {"kind": "tracker", "tracker": "vow-2-rank", "op": "add", "value": 1}]}, {"key": "give-up", "label": "Give up", "effects": [{"kind": "nextScene", "sceneType": "forsake-vow"}]}], "next": "end"},
+        {"key": "open-3", "kind": "condition", "title": "Is vow 3 sworn?", "tracker": "vow-3-rank", "bands": [{"upTo": 0, "next": "end"}, {"next": "check-3"}]},
+        {"key": "check-3", "kind": "check", "title": "Fulfill vow 3", "tip": "A progress roll: momentum does not help. Strong earns experience equal to the rank; weak earns one less.", "check": "fulfill-3", "next": "end", "outcomes": [{"band": "strong", "effects": [{"kind": "sheet", "field": "experience", "op": "add", "value": {"formula": "{tracker:vow-3-rank}"}}, {"kind": "closeThread", "fact": "vow-3"}, {"kind": "tracker", "tracker": "vow-3", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-3-rank", "op": "set", "value": 0}]}, {"band": "weak", "effects": [{"kind": "sheet", "field": "experience", "op": "add", "value": {"formula": "max(0,{tracker:vow-3-rank}-1)"}}, {"kind": "closeThread", "fact": "vow-3"}, {"kind": "tracker", "tracker": "vow-3", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-3-rank", "op": "set", "value": 0}]}, {"band": "miss", "next": "undone-3"}]},
+        {"key": "undone-3", "kind": "choice", "title": "Your quest is undone", "tip": "Recommitting keeps one box of progress and raises the rank by one. Giving up forsakes the vow. Not sure what happens next? Ask the Oracle.", "mandatory": true, "options": [{"key": "recommit", "label": "Recommit", "effects": [{"kind": "tracker", "tracker": "vow-3", "op": "set", "value": {"formula": "min({tracker:vow-3},4)"}}, {"kind": "tracker", "tracker": "vow-3-rank", "op": "add", "value": 1}]}, {"key": "give-up", "label": "Give up", "effects": [{"kind": "nextScene", "sceneType": "forsake-vow"}]}], "next": "end"},
+        {"key": "open-4", "kind": "condition", "title": "Is vow 4 sworn?", "tracker": "vow-4-rank", "bands": [{"upTo": 0, "next": "end"}, {"next": "check-4"}]},
+        {"key": "check-4", "kind": "check", "title": "Fulfill vow 4", "tip": "A progress roll: momentum does not help. Strong earns experience equal to the rank; weak earns one less.", "check": "fulfill-4", "next": "end", "outcomes": [{"band": "strong", "effects": [{"kind": "sheet", "field": "experience", "op": "add", "value": {"formula": "{tracker:vow-4-rank}"}}, {"kind": "closeThread", "fact": "vow-4"}, {"kind": "tracker", "tracker": "vow-4", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-4-rank", "op": "set", "value": 0}]}, {"band": "weak", "effects": [{"kind": "sheet", "field": "experience", "op": "add", "value": {"formula": "max(0,{tracker:vow-4-rank}-1)"}}, {"kind": "closeThread", "fact": "vow-4"}, {"kind": "tracker", "tracker": "vow-4", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-4-rank", "op": "set", "value": 0}]}, {"band": "miss", "next": "undone-4"}]},
+        {"key": "undone-4", "kind": "choice", "title": "Your quest is undone", "tip": "Recommitting keeps one box of progress and raises the rank by one. Giving up forsakes the vow. Not sure what happens next? Ask the Oracle.", "mandatory": true, "options": [{"key": "recommit", "label": "Recommit", "effects": [{"kind": "tracker", "tracker": "vow-4", "op": "set", "value": {"formula": "min({tracker:vow-4},4)"}}, {"kind": "tracker", "tracker": "vow-4-rank", "op": "add", "value": 1}]}, {"key": "give-up", "label": "Give up", "effects": [{"kind": "nextScene", "sceneType": "forsake-vow"}]}], "next": "end"},
+        {"key": "open-5", "kind": "condition", "title": "Is vow 5 sworn?", "tracker": "vow-5-rank", "bands": [{"upTo": 0, "next": "end"}, {"next": "check-5"}]},
+        {"key": "check-5", "kind": "check", "title": "Fulfill vow 5", "tip": "A progress roll: momentum does not help. Strong earns experience equal to the rank; weak earns one less.", "check": "fulfill-5", "next": "end", "outcomes": [{"band": "strong", "effects": [{"kind": "sheet", "field": "experience", "op": "add", "value": {"formula": "{tracker:vow-5-rank}"}}, {"kind": "closeThread", "fact": "vow-5"}, {"kind": "tracker", "tracker": "vow-5", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-5-rank", "op": "set", "value": 0}]}, {"band": "weak", "effects": [{"kind": "sheet", "field": "experience", "op": "add", "value": {"formula": "max(0,{tracker:vow-5-rank}-1)"}}, {"kind": "closeThread", "fact": "vow-5"}, {"kind": "tracker", "tracker": "vow-5", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-5-rank", "op": "set", "value": 0}]}, {"band": "miss", "next": "undone-5"}]},
+        {"key": "undone-5", "kind": "choice", "title": "Your quest is undone", "tip": "Recommitting keeps one box of progress and raises the rank by one. Giving up forsakes the vow. Not sure what happens next? Ask the Oracle.", "mandatory": true, "options": [{"key": "recommit", "label": "Recommit", "effects": [{"kind": "tracker", "tracker": "vow-5", "op": "set", "value": {"formula": "min({tracker:vow-5},4)"}}, {"kind": "tracker", "tracker": "vow-5-rank", "op": "add", "value": 1}]}, {"key": "give-up", "label": "Give up", "effects": [{"kind": "nextScene", "sceneType": "forsake-vow"}]}], "next": "end"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "forsake-vow",
+      "name": "Forsake a vow",
+      "purpose": "Renounce a quest, or accept that the goal is lost.",
+      "tips": "The vow is cleared and you endure stress equal to its rank. If you swore it to someone you share a bond with, test the bond when you next meet.",
+      "oracles": [],
+      "setup": [],
+      "play": [
+        {"key": "which", "kind": "choice", "title": "Which vow do you forsake?", "prompt": "Vow 1: {fact:vow-1} ({tracker:vow-1-rank}, {tracker:vow-1} of 40 ticks)\nVow 2: {fact:vow-2} ({tracker:vow-2-rank}, {tracker:vow-2} of 40 ticks)\nVow 3: {fact:vow-3} ({tracker:vow-3-rank}, {tracker:vow-3} of 40 ticks)\nVow 4: {fact:vow-4} ({tracker:vow-4-rank}, {tracker:vow-4} of 40 ticks)\nVow 5: {fact:vow-5} ({tracker:vow-5-rank}, {tracker:vow-5} of 40 ticks)", "options": [{"key": "vow-1", "label": "Vow 1", "effects": [{"kind": "sheet", "field": "spirit", "op": "subtract", "value": {"formula": "{tracker:vow-1-rank}"}}, {"kind": "closeThread", "fact": "vow-1"}, {"kind": "tracker", "tracker": "vow-1", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-1-rank", "op": "set", "value": 0}, {"kind": "nextScene", "sceneType": "endure-stress"}]}, {"key": "vow-2", "label": "Vow 2", "effects": [{"kind": "sheet", "field": "spirit", "op": "subtract", "value": {"formula": "{tracker:vow-2-rank}"}}, {"kind": "closeThread", "fact": "vow-2"}, {"kind": "tracker", "tracker": "vow-2", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-2-rank", "op": "set", "value": 0}, {"kind": "nextScene", "sceneType": "endure-stress"}]}, {"key": "vow-3", "label": "Vow 3", "effects": [{"kind": "sheet", "field": "spirit", "op": "subtract", "value": {"formula": "{tracker:vow-3-rank}"}}, {"kind": "closeThread", "fact": "vow-3"}, {"kind": "tracker", "tracker": "vow-3", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-3-rank", "op": "set", "value": 0}, {"kind": "nextScene", "sceneType": "endure-stress"}]}, {"key": "vow-4", "label": "Vow 4", "effects": [{"kind": "sheet", "field": "spirit", "op": "subtract", "value": {"formula": "{tracker:vow-4-rank}"}}, {"kind": "closeThread", "fact": "vow-4"}, {"kind": "tracker", "tracker": "vow-4", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-4-rank", "op": "set", "value": 0}, {"kind": "nextScene", "sceneType": "endure-stress"}]}, {"key": "vow-5", "label": "Vow 5", "effects": [{"kind": "sheet", "field": "spirit", "op": "subtract", "value": {"formula": "{tracker:vow-5-rank}"}}, {"kind": "closeThread", "fact": "vow-5"}, {"kind": "tracker", "tracker": "vow-5", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "vow-5-rank", "op": "set", "value": 0}, {"kind": "nextScene", "sceneType": "endure-stress"}]}, {"key": "none", "label": "None"}], "skip": "none"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "face-danger",
+      "name": "Face danger",
+      "purpose": "Act against a risk, or react to an imminent threat.",
+      "tips": "Pick the stat by how you act: edge for speed, heart for courage, iron for force, shadow for stealth, wits for insight. If both challenge dice show the same face it is a match: a twist or an extreme result, so roll Major Plot Twist or decide it.",
+      "oracles": ["ask-the-oracle", "major-plot-twist"],
+      "setup": [
+        {"key": "what", "kind": "prompt", "title": "What do you do?", "mandatory": true, "effects": [{"kind": "sceneTitle", "title": "{answer}"}]}
+      ],
+      "play": [
+        {"key": "roll", "kind": "check", "title": "Face the danger", "checks": ["edge", "heart", "iron", "shadow", "wits"], "next": "end", "outcomes": [{"band": "strong", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+1,{momentum-max})"}}]}, {"band": "weak", "next": "cost"}, {"band": "miss", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "pay-the-price"}]}]},
+        {"key": "cost", "kind": "choice", "title": "What does it cost?", "tip": "Delayed or put at a disadvantage costs momentum; tired or hurt is harm; afraid is stress; spent gear is supply.", "mandatory": true, "options": [{"key": "momentum", "label": "Lose momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "subtract", "value": 1}]}, {"key": "supply", "label": "Spend supply", "effects": [{"kind": "sheet", "field": "supply", "op": "subtract", "value": 1}]}, {"key": "harm", "label": "Endure harm", "effects": [{"kind": "nextScene", "sceneType": "endure-harm"}]}, {"key": "stress", "label": "Endure stress", "effects": [{"kind": "nextScene", "sceneType": "endure-stress"}]}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "secure-advantage",
+      "name": "Secure an advantage",
+      "purpose": "Assess a situation, prepare, or gain leverage.",
+      "tips": "Pick the stat by how you prepare. Taking control means your next move gets +1 and is rolled by hand from the sheet.",
+      "oracles": ["ask-the-oracle"],
+      "setup": [],
+      "play": [
+        {"key": "roll", "kind": "check", "title": "Secure the advantage", "checks": ["edge", "heart", "iron", "shadow", "wits"], "next": "end", "outcomes": [{"band": "strong", "next": "edge"}, {"band": "weak", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+1,{momentum-max})"}}]}, {"band": "miss", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "pay-the-price"}]}]},
+        {"key": "edge", "kind": "choice", "title": "What does the advantage give you?", "tip": "Taking control: make another move now, not a progress move, with +1. Roll it from the sheet.", "mandatory": true, "options": [{"key": "prepare", "label": "Prepare to act", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+2,{momentum-max})"}}]}, {"key": "control", "label": "Take control"}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "gather-information",
+      "name": "Gather information",
+      "purpose": "Search, ask questions, investigate or follow a track.",
+      "tips": "Roll wits, plus one in a community or with someone you share a bond with. Not sure what happens next? Ask the Oracle.",
+      "oracles": ["ask-the-oracle", "action", "theme"],
+      "setup": [],
+      "play": [
+        {"key": "roll", "kind": "check", "title": "Gather information", "tip": "A strong hit gives something specific and helpful; a weak hit comes with a complication. If both challenge dice show the same face it is a match: a twist or an extreme result, so roll Major Plot Twist or decide it.", "check": "wits", "outcomes": [{"band": "strong", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+2,{momentum-max})"}}]}, {"band": "weak", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+1,{momentum-max})"}}]}, {"band": "miss", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "pay-the-price"}]}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "heal",
+      "name": "Heal",
+      "purpose": "Treat an injury or ailment.",
+      "tips": "Roll wits to treat another; to heal yourself use the lower of wits and iron. The wounded debility blocks health gains until it is cleared: take that into account by hand.",
+      "oracles": ["ask-the-oracle"],
+      "setup": [],
+      "play": [
+        {"key": "roll", "kind": "check", "title": "Treat the wound", "checks": ["wits", "heal-self"], "outcomes": [{"band": "strong", "next": "treat"}, {"band": "weak", "next": "cost"}, {"band": "miss", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "pay-the-price"}]}]},
+        {"key": "cost", "kind": "choice", "title": "What does it cost?", "mandatory": true, "options": [{"key": "supply", "label": "Spend supply", "next": "treat", "effects": [{"kind": "sheet", "field": "supply", "op": "subtract", "value": 1}]}, {"key": "momentum", "label": "Lose momentum", "next": "treat", "effects": [{"kind": "sheet", "field": "momentum", "op": "subtract", "value": 1}]}]},
+        {"key": "treat", "kind": "choice", "title": "What does the care do?", "tip": "Clearing wounded needs the care to be able to help with it.", "mandatory": true, "options": [{"key": "health", "label": "Health +2", "effects": [{"kind": "sheet", "field": "health", "op": "add", "value": 2}]}, {"key": "wounded", "label": "Clear wounded, health +2", "effects": [{"kind": "sheet", "field": "conditions", "op": "clear", "value": "wounded"}, {"kind": "sheet", "field": "health", "op": "add", "value": 2}]}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "resupply",
+      "name": "Resupply",
+      "purpose": "Hunt, forage or scavenge.",
+      "tips": "Roll wits. A weak hit trades momentum for each point of supply.",
+      "oracles": [],
+      "setup": [],
+      "play": [
+        {"key": "roll", "kind": "check", "title": "Resupply", "check": "wits", "next": "end", "outcomes": [{"band": "strong", "effects": [{"kind": "sheet", "field": "supply", "op": "add", "value": 2}]}, {"band": "weak", "next": "scavenge"}, {"band": "miss", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "pay-the-price"}]}]},
+        {"key": "scavenge", "kind": "choice", "title": "How much do you take?", "options": [{"key": "one", "label": "Supply +1, lose 1 momentum", "effects": [{"kind": "sheet", "field": "supply", "op": "add", "value": 1}, {"kind": "sheet", "field": "momentum", "op": "subtract", "value": 1}]}, {"key": "two", "label": "Supply +2, lose 2 momentum", "effects": [{"kind": "sheet", "field": "supply", "op": "add", "value": 2}, {"kind": "sheet", "field": "momentum", "op": "subtract", "value": 2}]}, {"key": "none", "label": "Nothing"}], "skip": "none"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "make-camp",
+      "name": "Make camp",
+      "purpose": "Rest and recover in the wild.",
+      "tips": "Roll supply. A strong hit gives two choices (the first, then a second), a weak hit one. Companions share the health. Prepare gives +1 to the next journey roll, by hand.",
+      "oracles": [],
+      "setup": [],
+      "play": [
+        {"key": "roll", "kind": "check", "title": "Make camp", "check": "supply", "outcomes": [{"band": "strong", "next": "first"}, {"band": "weak", "next": "second"}, {"band": "miss", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "pay-the-price"}]}]},
+        {"key": "first", "kind": "choice", "title": "First, how do you spend the rest?", "mandatory": true, "options": [{"key": "recuperate", "label": "Recuperate", "effects": [{"kind": "sheet", "field": "health", "op": "add", "value": 1}]}, {"key": "partake", "label": "Partake", "effects": [{"kind": "sheet", "field": "supply", "op": "subtract", "value": 1}, {"kind": "sheet", "field": "health", "op": "add", "value": 1}]}, {"key": "relax", "label": "Relax", "effects": [{"kind": "sheet", "field": "spirit", "op": "add", "value": 1}]}, {"key": "focus", "label": "Focus", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+1,{momentum-max})"}}]}, {"key": "prepare", "label": "Prepare"}]},
+        {"key": "second", "kind": "choice", "title": "How do you spend the rest?", "mandatory": true, "options": [{"key": "recuperate", "label": "Recuperate", "effects": [{"kind": "sheet", "field": "health", "op": "add", "value": 1}]}, {"key": "partake", "label": "Partake", "effects": [{"kind": "sheet", "field": "supply", "op": "subtract", "value": 1}, {"kind": "sheet", "field": "health", "op": "add", "value": 1}]}, {"key": "relax", "label": "Relax", "effects": [{"kind": "sheet", "field": "spirit", "op": "add", "value": 1}]}, {"key": "focus", "label": "Focus", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+1,{momentum-max})"}}]}, {"key": "prepare", "label": "Prepare"}], "next": "end"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "journey",
+      "name": "Undertake a journey",
+      "purpose": "Cross hazardous or unfamiliar lands, leg by leg.",
+      "tips": "The first scene sets the journey's rank and rolls its first leg; the next scenes roll later legs. Reach your destination when you arrive. Not sure what happens next? Ask the Oracle.",
+      "oracles": ["ask-the-oracle"],
+      "setup": [],
+      "play": [
+        {"key": "active", "kind": "condition", "title": "Is a journey under way?", "tracker": "journey-rank", "bands": [{"upTo": 0, "next": "where"}, {"next": "leg"}]},
+        {"key": "where", "kind": "prompt", "title": "Where does the journey lead?", "mandatory": true, "effects": [{"kind": "sceneTitle", "title": "{answer}"}, {"kind": "fillFact", "slot": "destination"}]},
+        {"key": "rank", "kind": "choice", "title": "How hazardous is the road?", "tip": "Add +1 to the first roll when you set off from a place you share a bond with.", "mandatory": true, "options": [{"key": "r1", "label": "Troublesome", "effects": [{"kind": "tracker", "tracker": "journey-rank", "op": "set", "value": 1}, {"kind": "tracker", "tracker": "journey", "op": "set", "value": 0}]}, {"key": "r2", "label": "Dangerous", "effects": [{"kind": "tracker", "tracker": "journey-rank", "op": "set", "value": 2}, {"kind": "tracker", "tracker": "journey", "op": "set", "value": 0}]}, {"key": "r3", "label": "Formidable", "effects": [{"kind": "tracker", "tracker": "journey-rank", "op": "set", "value": 3}, {"kind": "tracker", "tracker": "journey", "op": "set", "value": 0}]}, {"key": "r4", "label": "Extreme", "effects": [{"kind": "tracker", "tracker": "journey-rank", "op": "set", "value": 4}, {"kind": "tracker", "tracker": "journey", "op": "set", "value": 0}]}, {"key": "r5", "label": "Epic", "effects": [{"kind": "tracker", "tracker": "journey-rank", "op": "set", "value": 5}, {"kind": "tracker", "tracker": "journey", "op": "set", "value": 0}]}]},
+        {"key": "leg", "kind": "check", "title": "Roll the leg", "check": "wits", "outcomes": [{"band": "strong", "next": "speed"}, {"band": "weak", "next": "arrived", "effects": [{"kind": "tracker", "tracker": "journey", "op": "add", "value": {"formula": "min(1,{tracker:journey-rank})*max(4*(4-{tracker:journey-rank}),6-{tracker:journey-rank})"}}, {"kind": "sheet", "field": "supply", "op": "subtract", "value": 1}]}, {"band": "miss", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "pay-the-price"}]}]},
+        {"key": "speed", "kind": "choice", "title": "How do you reach the waypoint?", "mandatory": true, "options": [{"key": "resources", "label": "Good use of resources", "effects": [{"kind": "tracker", "tracker": "journey", "op": "add", "value": {"formula": "min(1,{tracker:journey-rank})*max(4*(4-{tracker:journey-rank}),6-{tracker:journey-rank})"}}]}, {"key": "speed", "label": "At speed", "effects": [{"kind": "tracker", "tracker": "journey", "op": "add", "value": {"formula": "min(1,{tracker:journey-rank})*max(4*(4-{tracker:journey-rank}),6-{tracker:journey-rank})"}}, {"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+1,{momentum-max})"}}, {"kind": "sheet", "field": "supply", "op": "subtract", "value": 1}]}], "next": "arrived"},
+        {"key": "arrived", "kind": "choice", "title": "Have you arrived?", "options": [{"key": "not-yet", "label": "Not yet", "next": "end"}, {"key": "yes", "label": "Yes", "next": "reach"}], "skip": "not-yet"},
+        {"key": "reach", "kind": "check", "title": "Reach your destination", "tip": "A progress roll: momentum does not help.", "check": "journey", "next": "end", "outcomes": [{"band": "strong", "next": "boon", "effects": [{"kind": "tracker", "tracker": "journey", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "journey-rank", "op": "set", "value": 0}]}, {"band": "weak", "effects": [{"kind": "tracker", "tracker": "journey", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "journey-rank", "op": "set", "value": 0}]}, {"band": "miss", "next": "astray"}]},
+        {"key": "boon", "kind": "choice", "title": "What does arriving give you?", "tip": "Another move: roll it from the sheet with +1.", "mandatory": true, "options": [{"key": "momentum", "label": "Momentum +1", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+1,{momentum-max})"}}]}, {"key": "move", "label": "Another move with +1"}], "next": "end"},
+        {"key": "astray", "kind": "choice", "title": "You have gone astray", "tip": "If the journey goes on, one box of progress stays and its rank rises by one.", "mandatory": true, "options": [{"key": "on", "label": "Keep going", "effects": [{"kind": "tracker", "tracker": "journey", "op": "set", "value": {"formula": "min({tracker:journey},4)"}}, {"kind": "tracker", "tracker": "journey-rank", "op": "add", "value": 1}]}, {"key": "lost", "label": "Lose the destination", "effects": [{"kind": "tracker", "tracker": "journey", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "journey-rank", "op": "set", "value": 0}]}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "compel",
+      "name": "Compel",
+      "purpose": "Persuade, threaten or deceive someone.",
+      "tips": "Heart to charm or convince (plus one with a bond), iron to threaten, shadow to lie. Not sure what happens next? Ask the Oracle.",
+      "oracles": ["ask-the-oracle"],
+      "setup": [],
+      "play": [
+        {"key": "roll", "kind": "check", "title": "Compel", "tip": "A weak hit: they agree, but ask something of you in return.", "checks": ["heart", "iron", "shadow"], "outcomes": [{"band": "strong", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+1,{momentum-max})"}}]}, {"band": "weak", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+1,{momentum-max})"}}]}, {"band": "miss", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "pay-the-price"}]}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "sojourn",
+      "name": "Sojourn",
+      "purpose": "Spend time in a community seeking help.",
+      "tips": "Roll heart, plus one with a bond. A strong hit gives two choices, a weak hit one (one more with a bond). Taking a quest sends you to swear a vow.",
+      "oracles": ["ask-the-oracle"],
+      "setup": [],
+      "play": [
+        {"key": "roll", "kind": "check", "title": "Sojourn", "check": "heart", "outcomes": [{"band": "strong", "next": "first"}, {"band": "weak", "next": "second"}, {"band": "miss", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "pay-the-price"}]}]},
+        {"key": "first", "kind": "choice", "title": "First, what do you take?", "mandatory": true, "options": [{"key": "mend", "label": "Mend", "effects": [{"kind": "sheet", "field": "conditions", "op": "clear", "value": "wounded"}, {"kind": "sheet", "field": "health", "op": "add", "value": 1}]}, {"key": "hearten", "label": "Hearten", "effects": [{"kind": "sheet", "field": "conditions", "op": "clear", "value": "shaken"}, {"kind": "sheet", "field": "spirit", "op": "add", "value": 1}]}, {"key": "equip", "label": "Equip", "effects": [{"kind": "sheet", "field": "conditions", "op": "clear", "value": "unprepared"}, {"kind": "sheet", "field": "supply", "op": "add", "value": 1}]}, {"key": "health", "label": "Health +2", "effects": [{"kind": "sheet", "field": "health", "op": "add", "value": 2}]}, {"key": "spirit", "label": "Spirit +2", "effects": [{"kind": "sheet", "field": "spirit", "op": "add", "value": 2}]}, {"key": "supply", "label": "Supply +2", "effects": [{"kind": "sheet", "field": "supply", "op": "add", "value": 2}]}, {"key": "plan", "label": "Momentum +2", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+2,{momentum-max})"}}]}, {"key": "quest", "label": "Take a quest", "effects": [{"kind": "nextScene", "sceneType": "swear-vow"}]}]},
+        {"key": "second", "kind": "choice", "title": "What do you take?", "mandatory": true, "options": [{"key": "mend", "label": "Mend", "effects": [{"kind": "sheet", "field": "conditions", "op": "clear", "value": "wounded"}, {"kind": "sheet", "field": "health", "op": "add", "value": 1}]}, {"key": "hearten", "label": "Hearten", "effects": [{"kind": "sheet", "field": "conditions", "op": "clear", "value": "shaken"}, {"kind": "sheet", "field": "spirit", "op": "add", "value": 1}]}, {"key": "equip", "label": "Equip", "effects": [{"kind": "sheet", "field": "conditions", "op": "clear", "value": "unprepared"}, {"kind": "sheet", "field": "supply", "op": "add", "value": 1}]}, {"key": "health", "label": "Health +2", "effects": [{"kind": "sheet", "field": "health", "op": "add", "value": 2}]}, {"key": "spirit", "label": "Spirit +2", "effects": [{"kind": "sheet", "field": "spirit", "op": "add", "value": 2}]}, {"key": "supply", "label": "Supply +2", "effects": [{"kind": "sheet", "field": "supply", "op": "add", "value": 2}]}, {"key": "plan", "label": "Momentum +2", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+2,{momentum-max})"}}]}, {"key": "quest", "label": "Take a quest", "effects": [{"kind": "nextScene", "sceneType": "swear-vow"}]}], "next": "end"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "forge-bond",
+      "name": "Forge a bond",
+      "purpose": "Tie yourself to a person or a community.",
+      "tips": "Use it after standing together through hardship. Each bond is a tick on your bonds track. Not sure what happens next? Ask the Oracle.",
+      "oracles": ["ask-the-oracle"],
+      "setup": [],
+      "play": [
+        {"key": "who", "kind": "prompt", "title": "Who do you bond with?", "mandatory": true, "effects": [{"kind": "sceneTitle", "title": "{answer}"}]},
+        {"key": "roll", "kind": "check", "title": "Forge the bond", "check": "heart", "next": "end", "outcomes": [{"band": "strong", "next": "gift", "effects": [{"kind": "createNpc", "name": "{step:who}", "tags": ["bond"]}, {"kind": "tracker", "tracker": "bonds", "op": "add", "value": 1}]}, {"band": "weak", "next": "ask"}, {"band": "miss", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "pay-the-price"}]}]},
+        {"key": "ask", "kind": "prompt", "title": "What do they ask of you first?", "tip": "Do it or swear a vow to do it, then the bond stands.", "mandatory": true, "next": "end", "effects": [{"kind": "createNpc", "name": "{step:who}", "tags": ["bond"]}, {"kind": "tracker", "tracker": "bonds", "op": "add", "value": 1}]},
+        {"key": "gift", "kind": "choice", "title": "What does the bond give you?", "mandatory": true, "options": [{"key": "spirit", "label": "Spirit +1", "effects": [{"kind": "sheet", "field": "spirit", "op": "add", "value": 1}]}, {"key": "momentum", "label": "Momentum +2", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+2,{momentum-max})"}}]}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "test-bond",
+      "name": "Test your bond",
+      "purpose": "A bond is tried by conflict, betrayal or time.",
+      "tips": "On a miss, or a weak hit you will not answer, clear the bond: close it in the NPC list. Not sure what happens next? Ask the Oracle.",
+      "oracles": ["ask-the-oracle"],
+      "setup": [],
+      "play": [
+        {"key": "who", "kind": "pick", "title": "Whose bond is tested?", "of": "npc", "tags": ["bond"], "mode": "choose"},
+        {"key": "roll", "kind": "check", "title": "Test the bond", "tip": "On a miss, clear the bond: close the NPC in the list.", "check": "heart", "next": "end", "outcomes": [{"band": "strong", "next": "gift"}, {"band": "weak", "next": "ask"}, {"band": "miss", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "pay-the-price"}]}]},
+        {"key": "ask", "kind": "prompt", "title": "What do they ask of you?", "tip": "Do it or swear a vow to do it; if you refuse, clear the bond and pay the price.", "next": "end"},
+        {"key": "gift", "kind": "choice", "title": "What does the bond give you?", "mandatory": true, "options": [{"key": "spirit", "label": "Spirit +1", "effects": [{"kind": "sheet", "field": "spirit", "op": "add", "value": 1}]}, {"key": "momentum", "label": "Momentum +2", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+2,{momentum-max})"}}]}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "enter-the-fray",
+      "name": "Enter the fray",
+      "purpose": "A fight begins: name the foe and set its rank.",
+      "tips": "Heart if you face each other, shadow if you strike unseen, wits if you are ambushed. The foe's rank sets how fast your blows fill the progress track. Roll Combat Action for a first beat.",
+      "oracles": ["challenge-rank", "combat-action"],
+      "setup": [],
+      "play": [
+        {"key": "foe", "kind": "prompt", "title": "Who do you fight?", "mandatory": true, "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["foe"]}, {"kind": "fillFact", "slot": "foe"}, {"kind": "sceneTitle", "title": "{answer}"}]},
+        {"key": "rank", "kind": "choice", "title": "How tough is the foe?", "tip": "Roll Challenge Rank for a suggestion.", "mandatory": true, "options": [{"key": "r1", "label": "Troublesome", "effects": [{"kind": "tracker", "tracker": "fight-rank", "op": "set", "value": 1}, {"kind": "tracker", "tracker": "fight", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "initiative", "op": "set", "value": 0}]}, {"key": "r2", "label": "Dangerous", "effects": [{"kind": "tracker", "tracker": "fight-rank", "op": "set", "value": 2}, {"kind": "tracker", "tracker": "fight", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "initiative", "op": "set", "value": 0}]}, {"key": "r3", "label": "Formidable", "effects": [{"kind": "tracker", "tracker": "fight-rank", "op": "set", "value": 3}, {"kind": "tracker", "tracker": "fight", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "initiative", "op": "set", "value": 0}]}, {"key": "r4", "label": "Extreme", "effects": [{"kind": "tracker", "tracker": "fight-rank", "op": "set", "value": 4}, {"kind": "tracker", "tracker": "fight", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "initiative", "op": "set", "value": 0}]}, {"key": "r5", "label": "Epic", "effects": [{"kind": "tracker", "tracker": "fight-rank", "op": "set", "value": 5}, {"kind": "tracker", "tracker": "fight", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "initiative", "op": "set", "value": 0}]}]},
+        {"key": "roll", "kind": "check", "title": "Who is in control?", "checks": ["heart", "shadow", "wits"], "next": "end", "outcomes": [{"band": "strong", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+2,{momentum-max})"}}, {"kind": "tracker", "tracker": "initiative", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "fight-round"}]}, {"band": "weak", "next": "edge"}, {"band": "miss", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "pay-the-price"}]}]},
+        {"key": "edge", "kind": "choice", "title": "What do you gain?", "mandatory": true, "options": [{"key": "position", "label": "Bolster your position", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+2,{momentum-max})"}}, {"kind": "nextScene", "sceneType": "fight-round"}]}, {"key": "act", "label": "Prepare to act", "effects": [{"kind": "tracker", "tracker": "initiative", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "fight-round"}]}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "fight-round",
+      "name": "Fight",
+      "purpose": "One exchange of blows.",
+      "tips": "With initiative you strike (iron up close, edge at range); without it you clash. A strong hit with initiative lets you end the fight. Turn the Tide and Draw the Circle are rolled by hand from the sheet. If both challenge dice show the same face it is a match: a twist or an extreme result, so roll Major Plot Twist or decide it.",
+      "oracles": ["combat-action", "ask-the-oracle"],
+      "setup": [],
+      "play": [
+        {"key": "any", "kind": "condition", "title": "Is a fight under way?", "tracker": "fight-rank", "bands": [{"upTo": 0, "next": "none"}, {"next": "who"}]},
+        {"key": "who", "kind": "condition", "title": "Who has the initiative?", "tracker": "initiative", "bands": [{"upTo": 0, "next": "clash"}, {"next": "strike"}]},
+        {"key": "strike", "kind": "check", "title": "Strike", "tip": "Strong: your blow lands hard (twice the progress) and you keep the initiative. Weak: it lands and the foe takes the initiative.", "checks": ["iron", "edge"], "next": "end", "outcomes": [{"band": "strong", "next": "decisive", "effects": [{"kind": "tracker", "tracker": "fight", "op": "add", "value": {"formula": "2*(min(1,{tracker:fight-rank})*max(4*(4-{tracker:fight-rank}),6-{tracker:fight-rank}))"}}]}, {"band": "weak", "effects": [{"kind": "tracker", "tracker": "fight", "op": "add", "value": {"formula": "min(1,{tracker:fight-rank})*max(4*(4-{tracker:fight-rank}),6-{tracker:fight-rank})"}}, {"kind": "tracker", "tracker": "initiative", "op": "set", "value": 0}, {"kind": "nextScene", "sceneType": "fight-round"}]}, {"band": "miss", "next": "end", "effects": [{"kind": "tracker", "tracker": "initiative", "op": "set", "value": 0}, {"kind": "nextScene", "sceneType": "pay-the-price"}]}]},
+        {"key": "clash", "kind": "check", "title": "Clash", "tip": "Strong: you land your blow and take the initiative. Weak: it lands, then you pay the price.", "checks": ["iron", "edge"], "next": "end", "outcomes": [{"band": "strong", "next": "opening", "effects": [{"kind": "tracker", "tracker": "fight", "op": "add", "value": {"formula": "min(1,{tracker:fight-rank})*max(4*(4-{tracker:fight-rank}),6-{tracker:fight-rank})"}}, {"kind": "tracker", "tracker": "initiative", "op": "set", "value": 1}]}, {"band": "weak", "next": "end", "effects": [{"kind": "tracker", "tracker": "fight", "op": "add", "value": {"formula": "min(1,{tracker:fight-rank})*max(4*(4-{tracker:fight-rank}),6-{tracker:fight-rank})"}}, {"kind": "tracker", "tracker": "initiative", "op": "set", "value": 0}, {"kind": "nextScene", "sceneType": "pay-the-price"}]}, {"band": "miss", "next": "end", "effects": [{"kind": "tracker", "tracker": "initiative", "op": "set", "value": 0}, {"kind": "nextScene", "sceneType": "pay-the-price"}]}]},
+        {"key": "opening", "kind": "choice", "title": "What do you gain?", "mandatory": true, "options": [{"key": "position", "label": "Bolster your position", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+1,{momentum-max})"}}]}, {"key": "opening", "label": "Find an opening", "effects": [{"kind": "tracker", "tracker": "fight", "op": "add", "value": {"formula": "min(1,{tracker:fight-rank})*max(4*(4-{tracker:fight-rank}),6-{tracker:fight-rank})"}}]}], "next": "decisive"},
+        {"key": "decisive", "kind": "choice", "title": "Is it decisive?", "tip": "End it when you take decisive action with the initiative.", "mandatory": true, "options": [{"key": "on", "label": "Fight on", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "fight-round"}]}, {"key": "finish", "label": "End it", "next": "end-fight"}]},
+        {"key": "end-fight", "kind": "check", "title": "End the fight", "tip": "A progress roll: momentum does not help. A weak hit leaves a toll.", "check": "fight", "next": "end", "outcomes": [{"band": "strong", "effects": [{"kind": "tracker", "tracker": "fight", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "fight-rank", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "initiative", "op": "set", "value": 0}]}, {"band": "weak", "next": "toll", "effects": [{"kind": "tracker", "tracker": "fight", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "fight-rank", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "initiative", "op": "set", "value": 0}]}, {"band": "miss", "next": "end", "effects": [{"kind": "tracker", "tracker": "fight", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "fight-rank", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "initiative", "op": "set", "value": 0}, {"kind": "nextScene", "sceneType": "pay-the-price"}]}]},
+        {"key": "toll", "kind": "choice", "title": "What does victory cost?", "tip": "Or a new danger, a loss, a missed objective or a mark for vengeance: take it by hand.", "mandatory": true, "options": [{"key": "harm", "label": "It is worse than you thought", "effects": [{"kind": "nextScene", "sceneType": "endure-harm"}]}, {"key": "stress", "label": "You are overcome", "effects": [{"kind": "nextScene", "sceneType": "endure-stress"}]}, {"key": "other", "label": "Something else"}], "next": "end"},
+        {"key": "none", "kind": "prompt", "title": "No fight is under way", "prompt": "Start with Enter the Fray, which sets the foe's rank."}
+      ],
+      "closing": []
+    },
+    {
+      "key": "battle",
+      "name": "Battle",
+      "purpose": "A fight that passes in a blur.",
+      "tips": "Edge at range or with speed, heart with allies, iron up close, shadow by trickery, wits by tactics. Anything less than a strong hit costs you.",
+      "oracles": [],
+      "setup": [],
+      "play": [
+        {"key": "roll", "kind": "check", "title": "Fight the battle", "checks": ["edge", "heart", "iron", "shadow", "wits"], "outcomes": [{"band": "strong", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+2,{momentum-max})"}}]}, {"band": "weak", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "pay-the-price"}]}, {"band": "miss", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "pay-the-price"}]}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "advance",
+      "name": "Advance",
+      "purpose": "Spend experience on an asset.",
+      "tips": "A new asset costs 3 experience, an upgrade 2. Check your experience on the sheet first, then change the asset list by hand.",
+      "oracles": [],
+      "setup": [],
+      "play": [
+        {"key": "spend", "kind": "choice", "title": "What do you spend experience on?", "options": [{"key": "asset", "label": "A new asset", "effects": [{"kind": "sheet", "field": "experience", "op": "subtract", "value": 3}]}, {"key": "upgrade", "label": "An upgrade", "effects": [{"kind": "sheet", "field": "experience", "op": "subtract", "value": 2}]}, {"key": "none", "label": "Nothing"}], "skip": "none"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "pay-the-price",
+      "name": "Pay the price",
+      "purpose": "Suffer the outcome of a move.",
+      "tips": "Choose the most obvious bad outcome, ask the oracle between two bad outcomes, or roll the table. Roll again if the result does not fit.",
+      "oracles": ["pay-the-price", "ask-the-oracle"],
+      "setup": [],
+      "play": [
+        {"key": "table", "kind": "table", "title": "Roll the table", "tip": "Skip it if you already know the price.", "table": "pay-the-price"},
+        {"key": "cost", "kind": "choice", "title": "Apply a cost?", "tip": "Pick what the fiction calls for.", "options": [{"key": "momentum", "label": "Lose momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "subtract", "value": 1}]}, {"key": "supply", "label": "Spend supply", "effects": [{"kind": "sheet", "field": "supply", "op": "subtract", "value": 1}]}, {"key": "harm", "label": "Endure harm", "effects": [{"kind": "nextScene", "sceneType": "endure-harm"}]}, {"key": "stress", "label": "Endure stress", "effects": [{"kind": "nextScene", "sceneType": "endure-stress"}]}, {"key": "story", "label": "Story only"}], "skip": "story"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "endure-harm",
+      "name": "Endure harm",
+      "purpose": "Suffer physical damage.",
+      "tips": "Lose health equal to the foe's rank or what fits. At 0 health a miss marks a debility or rolls the table.",
+      "oracles": ["endure-harm-table"],
+      "setup": [],
+      "play": [
+        {"key": "harm", "kind": "choice", "title": "How much do you suffer?", "tip": "Take it from your health meter: the foe's rank, or what the fiction calls for. Leftover loss at 0 comes out of momentum.", "options": [{"key": "l1", "label": "Health -1", "effects": [{"kind": "sheet", "field": "health", "op": "subtract", "value": 1}]}, {"key": "l2", "label": "Health -2", "effects": [{"kind": "sheet", "field": "health", "op": "subtract", "value": 2}]}, {"key": "l3", "label": "Health -3", "effects": [{"kind": "sheet", "field": "health", "op": "subtract", "value": 3}]}, {"key": "l4", "label": "Health -4", "effects": [{"kind": "sheet", "field": "health", "op": "subtract", "value": 4}]}, {"key": "l5", "label": "Health -5", "effects": [{"kind": "sheet", "field": "health", "op": "subtract", "value": 5}]}, {"key": "done", "label": "Already suffered"}], "skip": "done"},
+        {"key": "roll", "kind": "check", "title": "Endure it", "tip": "Roll health or iron, whichever is higher.", "check": "endure-harm", "next": "end", "outcomes": [{"band": "strong", "next": "choose"}, {"band": "miss", "next": "zero", "effects": [{"kind": "sheet", "field": "momentum", "op": "subtract", "value": 1}]}]},
+        {"key": "choose", "kind": "choice", "title": "How do you take it?", "tip": "Shaking it off trades 1 momentum for 1 health; do not pick it while the meter is full.", "mandatory": true, "options": [{"key": "shake", "label": "Shake it off", "effects": [{"kind": "sheet", "field": "momentum", "op": "subtract", "value": 1}, {"kind": "sheet", "field": "health", "op": "add", "value": 1}]}, {"key": "embrace", "label": "Embrace it", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+1,{momentum-max})"}}]}], "next": "end"},
+        {"key": "zero", "kind": "choice", "title": "At 0 health?", "tip": "A miss with the health meter at 0 marks a debility or sends you to the table.", "mandatory": true, "options": [{"key": "above", "label": "Not at 0"}, {"key": "mark", "label": "Mark wounded", "effects": [{"kind": "sheet", "field": "conditions", "op": "mark", "value": "wounded"}]}, {"key": "bane", "label": "Mark maimed", "effects": [{"kind": "sheet", "field": "banes", "op": "mark", "value": "maimed"}]}, {"key": "table", "label": "Roll the table", "next": "table"}], "next": "end"},
+        {"key": "table", "kind": "table", "title": "What does it cost?", "table": "endure-harm-table"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "endure-stress",
+      "name": "Endure stress",
+      "purpose": "Suffer mental shock or despair.",
+      "tips": "Lose spirit equal to the foe's rank or what fits. At 0 spirit a miss marks a debility or rolls the table.",
+      "oracles": ["endure-stress-table"],
+      "setup": [],
+      "play": [
+        {"key": "harm", "kind": "choice", "title": "How much do you suffer?", "tip": "Take it from your spirit meter: the foe's rank, or what the fiction calls for. Leftover loss at 0 comes out of momentum.", "options": [{"key": "l1", "label": "Spirit -1", "effects": [{"kind": "sheet", "field": "spirit", "op": "subtract", "value": 1}]}, {"key": "l2", "label": "Spirit -2", "effects": [{"kind": "sheet", "field": "spirit", "op": "subtract", "value": 2}]}, {"key": "l3", "label": "Spirit -3", "effects": [{"kind": "sheet", "field": "spirit", "op": "subtract", "value": 3}]}, {"key": "l4", "label": "Spirit -4", "effects": [{"kind": "sheet", "field": "spirit", "op": "subtract", "value": 4}]}, {"key": "l5", "label": "Spirit -5", "effects": [{"kind": "sheet", "field": "spirit", "op": "subtract", "value": 5}]}, {"key": "done", "label": "Already suffered"}], "skip": "done"},
+        {"key": "roll", "kind": "check", "title": "Endure it", "tip": "Roll spirit or heart, whichever is higher.", "check": "endure-stress", "next": "end", "outcomes": [{"band": "strong", "next": "choose"}, {"band": "miss", "next": "zero", "effects": [{"kind": "sheet", "field": "momentum", "op": "subtract", "value": 1}]}]},
+        {"key": "choose", "kind": "choice", "title": "How do you take it?", "tip": "Shaking it off trades 1 momentum for 1 spirit; do not pick it while the meter is full.", "mandatory": true, "options": [{"key": "shake", "label": "Shake it off", "effects": [{"kind": "sheet", "field": "momentum", "op": "subtract", "value": 1}, {"kind": "sheet", "field": "spirit", "op": "add", "value": 1}]}, {"key": "embrace", "label": "Embrace it", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "min({momentum}+1,{momentum-max})"}}]}], "next": "end"},
+        {"key": "zero", "kind": "choice", "title": "At 0 spirit?", "tip": "A miss with the spirit meter at 0 marks a debility or sends you to the table.", "mandatory": true, "options": [{"key": "above", "label": "Not at 0"}, {"key": "mark", "label": "Mark shaken", "effects": [{"kind": "sheet", "field": "conditions", "op": "mark", "value": "shaken"}]}, {"key": "bane", "label": "Mark corrupted", "effects": [{"kind": "sheet", "field": "banes", "op": "mark", "value": "corrupted"}]}, {"key": "table", "label": "Roll the table", "next": "table"}], "next": "end"},
+        {"key": "table", "kind": "table", "title": "What does it cost?", "table": "endure-stress-table"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "face-death",
+      "name": "Face death",
+      "purpose": "You are at the brink of death.",
+      "tips": "Roll heart. A weak hit offers a noble sacrifice or a quest in exchange for your life. Not sure what happens next? Ask the Oracle.",
+      "oracles": ["ask-the-oracle"],
+      "setup": [],
+      "play": [
+        {"key": "roll", "kind": "check", "title": "Face the brink", "check": "heart", "next": "end", "outcomes": [{"band": "weak", "next": "fate"}, {"band": "miss", "next": "dead"}]},
+        {"key": "fate", "kind": "choice", "title": "What do you choose?", "tip": "A price is a quest: swear it at formidable or extreme, or you are gone. The debility clears only when the quest is done.", "mandatory": true, "options": [{"key": "sacrifice", "label": "A noble sacrifice"}, {"key": "price", "label": "A price", "effects": [{"kind": "sheet", "field": "burdens", "op": "mark", "value": "cursed"}, {"kind": "nextScene", "sceneType": "swear-vow"}]}], "next": "end"},
+        {"key": "dead", "kind": "prompt", "title": "You are dead", "prompt": "Your story ends here. Write your final moments, or make a new Character."}
+      ],
+      "closing": []
+    },
+    {
+      "key": "face-desolation",
+      "name": "Face desolation",
+      "purpose": "You are at the brink of desolation.",
+      "tips": "Roll heart. A weak hit offers a noble sacrifice or a quest in exchange for your mind. Not sure what happens next? Ask the Oracle.",
+      "oracles": ["ask-the-oracle"],
+      "setup": [],
+      "play": [
+        {"key": "roll", "kind": "check", "title": "Face the brink", "check": "heart", "next": "end", "outcomes": [{"band": "weak", "next": "fate"}, {"band": "miss", "next": "dead"}]},
+        {"key": "fate", "kind": "choice", "title": "What do you choose?", "tip": "A price is a quest: swear it at formidable or extreme, or you are gone. The debility clears only when the quest is done.", "mandatory": true, "options": [{"key": "sacrifice", "label": "A noble sacrifice"}, {"key": "price", "label": "A price", "effects": [{"kind": "sheet", "field": "burdens", "op": "mark", "value": "tormented"}, {"kind": "nextScene", "sceneType": "swear-vow"}]}], "next": "end"},
+        {"key": "dead", "kind": "prompt", "title": "You are lost", "prompt": "Your story ends here. Write your final moments, or make a new Character."}
+      ],
+      "closing": []
+    },
+    {
+      "key": "epilogue",
+      "name": "Epilogue",
+      "purpose": "Your life as an Ironsworn comes to an end.",
+      "tips": "Write what you hope for and what you fear, then roll your bonds.",
+      "oracles": ["ask-the-oracle"],
+      "setup": [
+        {"key": "hope", "kind": "prompt", "title": "What do you hope for?"},
+        {"key": "fear", "kind": "prompt", "title": "What do you fear?"}
+      ],
+      "play": [
+        {"key": "roll", "kind": "check", "title": "Roll your bonds", "tip": "A progress roll: momentum does not help. Strong, things come to pass as you hoped; weak, an unexpected turn; miss, your fears are realized.", "check": "bonds"}
+      ],
+      "closing": []
+    }
+  ],
+  "flows": [
+    {
+      "key": "ironsworn",
+      "name": "Ironsworn",
+      "description": "Swear vows, take on moves one scene at a time, and keep your promises or pay for breaking them.",
+      "introduction": "Solo play means you are the whole table: you describe what happens, roll the dice and decide what the world does. This guide gives you the questions and does the arithmetic, so you can keep the story moving.\n\nYou play an Ironsworn, a hero who swears vows and tries to keep them. The prologue sets the scene, makes your Character on the sheet (spend 9 points over five stats, and write three assets in the list), names up to three bonds and swears two vows: a background vow and the vow that starts the story. Then the adventure loops. Each scene is one move: pick the move that fits what you do, say what happens, and roll it. Fulfill or forsake a vow when its story ends, and move on to the epilogue when you retire.\n\nA move rolls an action die (d6) plus a stat, your score, against two challenge dice (d10). Every challenge die your score is above counts: two is a strong hit, one a weak hit, none a miss. A tie goes to the challenge die. A progress move, such as fulfilling a vow, has no action die: the filled boxes of the track are the score, and momentum does not help.\n\nMomentum is your drive. It rises on good rolls and falls on costs, from -6 to a maximum of 10 that each debility marked lowers. When it is negative and its size equals the action die, that die counts as 0. After a roll that the momentum would improve, you may burn it: your score becomes your momentum and the momentum resets. You choose when the roll is on the table.\n\nA match, both challenge dice showing the same face, means a twist or an extreme result: on a strong hit something good goes your way, on a miss something worse. Roll the Major Plot Twist table, or decide it. Ask the Oracle with the odds when you cannot tell: two equal digits on the roll are a twist too.\n\nFive vows fit on the sheet, one per slot, each with its rank and progress; a free slot reads Free. Reach a milestone to mark progress, and use the rank to know how much a box of progress is worth. Meters, debilities and experience live on the sheet.\n\nA few rare moves are not in the flow, because they depend on the moment. Roll them from the sheet and apply them by hand: Draw the Circle, Aid Your Ally, Turn the Tide, Companion Endure Harm, Out of Supply and Face a Setback.\n\nThis is an unofficial companion built on the Ironsworn SRD. It summarizes the rules in its own words and is not an official product.",
+      "default": true,
+      "defaultView": "focus",
+      "oracles": ["action", "theme", "combat-action", "major-plot-twist", "challenge-rank", "pay-the-price", "endure-harm-table", "endure-stress-table", "ask-the-oracle"],
+      "trackers": ["vow-1", "vow-2", "vow-3", "vow-4", "vow-5", "vow-1-rank", "vow-2-rank", "vow-3-rank", "vow-4-rank", "vow-5-rank", "new-rank", "journey", "journey-rank", "fight", "fight-rank", "initiative", "bonds"],
+      "phases": [
+        {"key": "prologue", "name": "Prologue", "description": "Set the scene, make your Character and swear your first vows. Done when the second vow is sworn.", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["the-ironlands", "ironsworn", "swear-vow", "swear-vow"]}},
+        {"key": "adventure", "name": "Adventure", "description": "One move per scene. Done when you retire.", "mode": "loop", "selection": {"rule": "player", "sceneTypes": ["face-danger", "secure-advantage", "gather-information", "heal", "resupply", "make-camp", "journey", "compel", "sojourn", "forge-bond", "test-bond", "enter-the-fray", "fight-round", "battle", "swear-vow", "milestone", "fulfill-vow", "forsake-vow", "advance", "pay-the-price"]}, "sessionOpening": [{"key": "vows", "kind": "prompt", "title": "Where do your vows stand?", "prompt": "Vow 1: {fact:vow-1} ({tracker:vow-1-rank}, {tracker:vow-1} of 40 ticks)\nVow 2: {fact:vow-2} ({tracker:vow-2-rank}, {tracker:vow-2} of 40 ticks)\nVow 3: {fact:vow-3} ({tracker:vow-3-rank}, {tracker:vow-3} of 40 ticks)\nVow 4: {fact:vow-4} ({tracker:vow-4-rank}, {tracker:vow-4} of 40 ticks)\nVow 5: {fact:vow-5} ({tracker:vow-5-rank}, {tracker:vow-5} of 40 ticks)\nMomentum and meters are on the sheet."}]},
+        {"key": "epilogue", "name": "Epilogue", "description": "Write the end of your story.", "mode": "once", "selection": {"rule": "sequence", "sceneTypes": ["epilogue"]}}
+      ]
+    }
+  ],
+  "sheet": {
+    "pointBudget": {"label": "Stat points", "total": 9, "fields": ["edge", "heart", "iron", "shadow", "wits"], "min": 1, "max": 3},
+    "fields": [
+      {"key": "edge", "label": "Edge", "hint": "Spend 9 points over the five stats, 1 to 3 each (3, 2, 2, 1, 1 fits).", "group": "Stats", "type": "number", "min": 1, "max": 3, "default": 1},
+      {"key": "heart", "label": "Heart", "hint": "Spend 9 points over the five stats, 1 to 3 each (3, 2, 2, 1, 1 fits).", "group": "Stats", "type": "number", "min": 1, "max": 3, "default": 1},
+      {"key": "iron", "label": "Iron", "hint": "Spend 9 points over the five stats, 1 to 3 each (3, 2, 2, 1, 1 fits).", "group": "Stats", "type": "number", "min": 1, "max": 3, "default": 1},
+      {"key": "shadow", "label": "Shadow", "hint": "Spend 9 points over the five stats, 1 to 3 each (3, 2, 2, 1, 1 fits).", "group": "Stats", "type": "number", "min": 1, "max": 3, "default": 1},
+      {"key": "wits", "label": "Wits", "hint": "Spend 9 points over the five stats, 1 to 3 each (3, 2, 2, 1, 1 fits).", "group": "Stats", "type": "number", "min": 1, "max": 3, "default": 1},
+      {"key": "momentum", "label": "Momentum", "hint": "From -6 to your maximum. Burn it on a roll to use it as the score; it then resets.", "group": "Meters", "type": "number", "min": -6, "max": 10, "default": 2},
+      {"key": "health", "label": "Health", "group": "Meters", "type": "track", "max": 5},
+      {"key": "spirit", "label": "Spirit", "group": "Meters", "type": "track", "max": 5},
+      {"key": "supply", "label": "Supply", "group": "Meters", "type": "track", "max": 5},
+      {"key": "conditions", "label": "Conditions", "hint": "Each one marked lowers your momentum maximum and reset.", "group": "Debilities", "type": "conditions", "options": [{"key": "wounded", "label": "Wounded"}, {"key": "shaken", "label": "Shaken"}, {"key": "unprepared", "label": "Unprepared"}, {"key": "encumbered", "label": "Encumbered"}]},
+      {"key": "banes", "label": "Banes", "group": "Debilities", "type": "conditions", "options": [{"key": "maimed", "label": "Maimed"}, {"key": "corrupted", "label": "Corrupted"}]},
+      {"key": "burdens", "label": "Burdens", "group": "Debilities", "type": "conditions", "options": [{"key": "cursed", "label": "Cursed"}, {"key": "tormented", "label": "Tormented"}]},
+      {"key": "debilities", "label": "Debilities marked", "group": "Debilities", "type": "derived", "formula": "{conditions}+{banes}+{burdens}"},
+      {"key": "momentum-reset", "label": "Momentum reset", "group": "Meters", "type": "derived", "formula": "max(0,2-{debilities})"},
+      {"key": "momentum-max", "label": "Momentum maximum", "group": "Meters", "type": "derived", "formula": "10-{debilities}"},
+      {"key": "experience", "label": "Experience", "hint": "Earned by fulfilling vows. Spend 3 on a new asset or 2 on an upgrade.", "group": "Progress", "type": "number", "min": 0, "default": 0},
+      {"key": "assets", "label": "Assets", "hint": "Write the name of each asset and its marked abilities; apply them by hand.", "group": "Progress", "type": "list", "itemLabel": "Asset"}
+    ]
+  },
+  "checks": [
+    {"key": "edge", "label": "Edge", "hint": "Roll the action die and add the stat. The score beats each challenge die it is above; burning momentum swaps the score for your momentum.", "dice": "1d6", "modifier": "{edge}", "challenge": {"count": 2, "sides": 10, "scoreMax": 10, "momentum": "momentum"}, "push": {"label": "Burn momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "{momentum-reset}"}}]}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "heart", "label": "Heart", "hint": "Roll the action die and add the stat. The score beats each challenge die it is above; burning momentum swaps the score for your momentum.", "dice": "1d6", "modifier": "{heart}", "challenge": {"count": 2, "sides": 10, "scoreMax": 10, "momentum": "momentum"}, "push": {"label": "Burn momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "{momentum-reset}"}}]}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "iron", "label": "Iron", "hint": "Roll the action die and add the stat. The score beats each challenge die it is above; burning momentum swaps the score for your momentum.", "dice": "1d6", "modifier": "{iron}", "challenge": {"count": 2, "sides": 10, "scoreMax": 10, "momentum": "momentum"}, "push": {"label": "Burn momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "{momentum-reset}"}}]}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "shadow", "label": "Shadow", "hint": "Roll the action die and add the stat. The score beats each challenge die it is above; burning momentum swaps the score for your momentum.", "dice": "1d6", "modifier": "{shadow}", "challenge": {"count": 2, "sides": 10, "scoreMax": 10, "momentum": "momentum"}, "push": {"label": "Burn momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "{momentum-reset}"}}]}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "wits", "label": "Wits", "hint": "Roll the action die and add the stat. The score beats each challenge die it is above; burning momentum swaps the score for your momentum.", "dice": "1d6", "modifier": "{wits}", "challenge": {"count": 2, "sides": 10, "scoreMax": 10, "momentum": "momentum"}, "push": {"label": "Burn momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "{momentum-reset}"}}]}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "health", "label": "Health", "hint": "Roll with your health meter as the stat.", "dice": "1d6", "modifier": "{health}", "challenge": {"count": 2, "sides": 10, "scoreMax": 10, "momentum": "momentum"}, "push": {"label": "Burn momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "{momentum-reset}"}}]}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "spirit", "label": "Spirit", "hint": "Roll with your spirit meter as the stat.", "dice": "1d6", "modifier": "{spirit}", "challenge": {"count": 2, "sides": 10, "scoreMax": 10, "momentum": "momentum"}, "push": {"label": "Burn momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "{momentum-reset}"}}]}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "supply", "label": "Supply", "hint": "Roll with your supply meter as the stat.", "dice": "1d6", "modifier": "{supply}", "challenge": {"count": 2, "sides": 10, "scoreMax": 10, "momentum": "momentum"}, "push": {"label": "Burn momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "{momentum-reset}"}}]}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "endure-harm", "label": "Endure harm", "hint": "Health or iron, whichever is higher.", "dice": "1d6", "modifier": "max({health},{iron})", "challenge": {"count": 2, "sides": 10, "scoreMax": 10, "momentum": "momentum"}, "push": {"label": "Burn momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "{momentum-reset}"}}]}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "endure-stress", "label": "Endure stress", "hint": "Spirit or heart, whichever is higher.", "dice": "1d6", "modifier": "max({spirit},{heart})", "challenge": {"count": 2, "sides": 10, "scoreMax": 10, "momentum": "momentum"}, "push": {"label": "Burn momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "{momentum-reset}"}}]}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "heal-self", "label": "Heal yourself", "hint": "Wits or iron, whichever is lower.", "dice": "1d6", "modifier": "min({wits},{iron})", "challenge": {"count": 2, "sides": 10, "scoreMax": 10, "momentum": "momentum"}, "push": {"label": "Burn momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "{momentum-reset}"}}]}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "fulfill-1", "label": "Fulfill vow 1", "hint": "A progress roll: the filled boxes of the vow are the score. Momentum is ignored.", "modifier": "{tracker:vow-1}/4", "challenge": {"count": 2, "sides": 10, "scoreMax": 10}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "fulfill-2", "label": "Fulfill vow 2", "hint": "A progress roll: the filled boxes of the vow are the score. Momentum is ignored.", "modifier": "{tracker:vow-2}/4", "challenge": {"count": 2, "sides": 10, "scoreMax": 10}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "fulfill-3", "label": "Fulfill vow 3", "hint": "A progress roll: the filled boxes of the vow are the score. Momentum is ignored.", "modifier": "{tracker:vow-3}/4", "challenge": {"count": 2, "sides": 10, "scoreMax": 10}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "fulfill-4", "label": "Fulfill vow 4", "hint": "A progress roll: the filled boxes of the vow are the score. Momentum is ignored.", "modifier": "{tracker:vow-4}/4", "challenge": {"count": 2, "sides": 10, "scoreMax": 10}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "fulfill-5", "label": "Fulfill vow 5", "hint": "A progress roll: the filled boxes of the vow are the score. Momentum is ignored.", "modifier": "{tracker:vow-5}/4", "challenge": {"count": 2, "sides": 10, "scoreMax": 10}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "journey", "label": "Reach your destination", "hint": "A progress roll against the journey. Momentum is ignored.", "modifier": "{tracker:journey}/4", "challenge": {"count": 2, "sides": 10, "scoreMax": 10}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "fight", "label": "End the fight", "hint": "A progress roll against the fight. Momentum is ignored.", "modifier": "{tracker:fight}/4", "challenge": {"count": 2, "sides": 10, "scoreMax": 10}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]},
+    {"key": "bonds", "label": "Bonds", "hint": "A progress roll against your bonds. Momentum is ignored.", "modifier": "{tracker:bonds}/4", "challenge": {"count": 2, "sides": 10, "scoreMax": 10}, "bands": [{"key": "miss", "label": "Miss", "upTo": 0}, {"key": "weak", "label": "Weak hit", "upTo": 1}, {"key": "strong", "label": "Strong hit"}]}
+  ]
+}

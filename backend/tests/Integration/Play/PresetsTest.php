@@ -779,6 +779,67 @@ final class PresetsTest extends KernelTestCase
         self::assertSame(['town', 'site', 'near', 'mid', 'deep'], array_values(array_map(static fn (\App\Play\Domain\GameSystem\Tag $tag): string => $tag->key, array_filter($snapshot->tags(), static fn (\App\Play\Domain\GameSystem\Tag $tag): bool => [\App\Play\Domain\GameSystem\Flow\ItemKind::Place] === $tag->appliesTo))));
     }
 
+    #[Test]
+    public function ironswornPublishesOnceWithItsCcByCreditsPointBudgetAndChallengeChecks(): void
+    {
+        $this->assertPublishesOnce('ironsworn');
+
+        $snapshot = $this->snapshot('ironsworn');
+        self::assertSame(['Ironsworn (unofficial)', 1, 'parchment'], [$snapshot->name(), $snapshot->releaseVersion(), $snapshot->theme()]);
+
+        // CC BY 4.0 (ADR 0021): the notice credits the author, names the licence and disclaims an official product; no badge, as the licence covers text only.
+        $credits = $snapshot->credits();
+        self::assertNotNull($credits);
+        self::assertStringContainsString('created by Shawn Tomkin', $credits->notice);
+        self::assertStringContainsString('Creative Commons Attribution 4.0 International License (https://creativecommons.org/licenses/by/4.0/)', $credits->notice);
+        self::assertStringContainsString('not an official Tomkin Press or Ironsworn product', $credits->notice);
+        self::assertSame(['CC BY 4.0', 'https://creativecommons.org/licenses/by/4.0/'], [$credits->license, $credits->url]);
+
+        // The five stats are spent as 9 points of 1 to 3 each.
+        $budgets = $snapshot->sheet()->budgets();
+        self::assertCount(1, $budgets);
+        self::assertSame([9, ['edge', 'heart', 'iron', 'shadow', 'wits'], 1, 3], [$budgets[0]->total, $budgets[0]->fields, $budgets[0]->min, $budgets[0]->max]);
+        self::assertInstanceOf(NumberField::class, $snapshot->sheet()->field('momentum'));
+        self::assertSame([-6, 10], [$snapshot->sheet()->field('momentum')->min, $snapshot->sheet()->field('momentum')->max]);
+
+        // An action roll is an action die against two d10 and can burn the momentum; a progress roll has no action die and no burn (ADR 0049).
+        $edge = $snapshot->check('edge') ?? self::fail('No edge.');
+        $action = $edge->challenge ?? self::fail('No challenge.');
+        self::assertSame(['1d6', 2, 10, 10, 'momentum', 'Burn momentum'], [$edge->dice?->notation(), $action->count, $action->sides, $action->scoreMax, $action->momentum, $edge->push?->label]);
+        $fulfill = $snapshot->check('fulfill-1') ?? self::fail('No fulfill-1.');
+        $progress = $fulfill->challenge ?? self::fail('No challenge.');
+        self::assertSame([null, 2, 10, null, null], [$fulfill->dice, $progress->count, $progress->sides, $progress->momentum, $fulfill->push]);
+        foreach ($snapshot->checks() as $check) {
+            self::assertSame(['miss', 'weak', 'strong'], array_map(static fn (\App\Play\Domain\GameSystem\Check\CheckBand $band): string => $band->key, $check->bands), $check->key);
+        }
+        self::assertCount(19, $snapshot->checks());
+
+        // The eight SRD tables are 1d100 with an entry for every roll, and the oracle odds are the five of the SRD.
+        self::assertSame(['action', 'theme', 'combat-action', 'major-plot-twist', 'challenge-rank', 'pay-the-price', 'endure-harm-table', 'endure-stress-table'], $snapshot->oracleTableKeys());
+        $this->assertRangedTableResolves($snapshot, 'challenge-rank', 'Troublesome', 'Epic');
+        $this->assertRangedTableResolves($snapshot, 'action', 'Scheme', 'Summon');
+        self::assertSame(['ask-the-oracle'], $this->likelihoodKeys($snapshot));
+        self::assertSame(['almost-certain' => 90, 'likely' => 75, 'even' => 50, 'unlikely' => 25, 'small-chance' => 10], $this->targets($snapshot->likelihoodOracle('ask-the-oracle')->oracle()->levels()));
+    }
+
+    #[Test]
+    public function ironswornHasAPrologueAnAdventureLoopOfTwentyMovesAndAnEpilogue(): void
+    {
+        // The only authoring warnings are the three on the Fight scene, whose guard on the foe's rank sits beside consequences that come from rolls, not from the rank.
+        $display = $this->assertPublishesOnce('ironsworn');
+        self::assertSame(3, substr_count($display, 'Warning'));
+        self::assertSame(3, substr_count($display, 'does not lower tracker fight-rank'));
+
+        $flow = $this->snapshot('ironsworn')->defaultFlow() ?? self::fail('No flow.');
+        self::assertSame(['ironsworn', ['prologue', 'adventure', 'epilogue'], [PhaseMode::Once, PhaseMode::Loop, PhaseMode::Once]], [$flow->key, array_map(static fn (\App\Play\Domain\GameSystem\Flow\Phase $phase): string => $phase->key, $flow->phases), array_map(static fn (\App\Play\Domain\GameSystem\Flow\Phase $phase): PhaseMode => $phase->mode, $flow->phases)]);
+        // The player picks one of twenty moves; the suffer moves are reached only through the moves that send you there.
+        $adventure = $flow->phases[1]->selection;
+        self::assertSame([SelectionRule::Player, 20], [$adventure->rule, \count($adventure->sceneTypes)]);
+        foreach (['endure-harm', 'endure-stress', 'face-death', 'face-desolation'] as $suffer) {
+            self::assertNotContains($suffer, $adventure->sceneTypes);
+        }
+    }
+
     /**
      * @return string what the first publication printed, authoring warnings included
      */

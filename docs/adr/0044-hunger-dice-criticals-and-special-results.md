@@ -1,6 +1,6 @@
 # 0044. Hunger dice, critical pairs and special results
 
-- **Status:** Accepted
+- **Status:** Accepted, amended by [0049](0049-challenge-dice-and-burning-momentum.md) (a new special result, `match`, shown only and not a step outcome)
 - **Date:** 2026-10-27
 
 ## Context

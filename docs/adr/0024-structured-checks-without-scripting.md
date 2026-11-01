@@ -1,6 +1,6 @@
 # 0024. Structured checks without scripting
 
-- **Status:** Accepted, amended by [0041](0041-dice-pools-pushes-and-conditions.md)
+- **Status:** Accepted, amended by [0041](0041-dice-pools-pushes-and-conditions.md) and [0049](0049-challenge-dice-and-burning-momentum.md) (challenge dice)
 - **Date:** 2026-10-13
 
 ## Context

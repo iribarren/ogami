@@ -172,9 +172,15 @@ final class CheckChallengeTest extends TestCase
     #[Test]
     public function aScoreTooBigForAnIntegerOverflows(): void
     {
-        $this->expectException(CheckEvaluationFailed::class);
+        // A constant dice total just below PHP_INT_MAX (as in CheckTest), so the modifier pushes the sum past it.
+        // The two challenge dice are the only numbers the roll consumes, and it reaches the overflow guard after them.
+        $huge = DiceExpression::fromString('9*1000000*1000000*1000000+223372*1000000*1000000+36854*1000000+773759');
+        $check = new Check('huge', 'Huge', null, $huge, Formula::fromString('{edge} * 1000000 * 1000'), null, $this->bands(), null, null, new CheckChallenge(2, 10));
 
-        $this->action()->perform(new ScriptedRandomNumberGenerator(1), $this->sheet(['edge' => \PHP_INT_MAX]), null, 0);
+        $this->expectException(CheckEvaluationFailed::class);
+        $this->expectExceptionMessageIsOrContains('the total of the check overflows.');
+
+        $check->perform(new ScriptedRandomNumberGenerator(1, 1), $this->sheet(['edge' => 1]), null, 0);
     }
 
     #[Test]

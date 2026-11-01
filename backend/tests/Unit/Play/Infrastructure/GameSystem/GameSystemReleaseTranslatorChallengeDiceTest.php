@@ -82,6 +82,25 @@ final class GameSystemReleaseTranslatorChallengeDiceTest extends TestCase
     }
 
     #[Test]
+    public function aNullPushReadsAsNoPush(): void
+    {
+        $content = ReleaseArrays::with($this->playable(), 'checks.0.push', null);
+
+        self::assertNull($this->translate($content)->check('edge')?->push);
+    }
+
+    #[Test]
+    public function aNullChallengeReadsAsNoChallenge(): void
+    {
+        $content = ReleaseArrays::with($this->playable(), 'checks.0.challenge', null);
+        $check = $this->translate($content)->check('edge');
+
+        self::assertInstanceOf(Check::class, $check);
+        self::assertNull($check->challenge);
+        self::assertSame('1d6', $check->dice?->notation());
+    }
+
+    #[Test]
     public function aPushWithoutChallengeDiceOrAPoolIsStillRefused(): void
     {
         $content = ReleaseArrays::with($this->playable(), 'checks.0.push', ['label' => 'Burn momentum']);
@@ -99,7 +118,7 @@ final class GameSystemReleaseTranslatorChallengeDiceTest extends TestCase
     public static function malformedParts(): iterable
     {
         yield 'a challenge that is not an object' => ['checks.1.challenge', 2, 'checks[1].challenge'];
-        yield 'a null challenge' => ['checks.1.challenge', null, 'checks[1].challenge'];
+        yield 'a null challenge on a check with no dice' => ['checks.1.challenge', null, 'checks[1].dice'];
         yield 'an unknown property' => ['checks.1.challenge.face', 10, 'checks[1].challenge.face'];
         yield 'no count' => ['checks.1.challenge.count', null, 'checks[1].challenge.count'];
         yield 'one die' => ['checks.1.challenge.count', 1, 'checks[1].challenge.count'];

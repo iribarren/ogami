@@ -1,7 +1,7 @@
 # Feature: preset-ironsworn
 
 - **Locator:** `odd/tasks/preset-ironsworn.md` · Engram topic `odd/preset-ironsworn/tasks`
-- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-2-play-roll` · **Status:** in progress
+- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-3-play-api` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-west-marches` (PRs #338–#339)
@@ -94,8 +94,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: ADR 0049 and its index, amendments noted on ADR 0024 and ADR 0044, `docs/contracts/gamesystem-release.md`, glossary | delegated writer (slice 1) | [x] | `02afb8aa` |
 | T2 | 1 | Schema `v2.schema.json`, Studio validation in `Checks.php`, Play translator refuses `challenge`, valid and invalid fixtures, contract tests | delegated writer (slice 1) | [x] | `4b493539` |
-| T3 | 2 | Randomness: challenge roll kernel. Play domain: action and progress rolls, score cap, hits, negative momentum, `match` | delegated writer (slice 2) | [x] | |
-| T4 | 2 | Journal content and legacy read | delegated writer (slice 2) | [x] | |
+| T3 | 2 | Randomness: challenge roll kernel. Play domain: action and progress rolls, score cap, hits, negative momentum, `match` | delegated writer (slice 2) | [x] | `5e375728` |
+| T4 | 2 | Journal content and legacy read | delegated writer (slice 2) | [x] | `7226d202` |
 | T5 | 3 | Play UI: roll dialog and journal show the score, each challenge die, the cancelled die and a match | | [ ] | |
 | T6 | 4 | Burn: domain, `CheckPusher` from the sheet, pending step, journal, API | | [ ] | |
 | T7 | 4 | Play UI: burn offer on the sheet and the pending step | | [ ] | |
@@ -108,7 +108,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T14 | 7 | Slice 6 review fixes; e2e `frontend/e2e/play-ironsworn.spec.ts` | | [ ] | |
 | T15 | 7 | Chrome play pass: swear a vow, a move with a burn, a match, a negative momentum, fulfilling a vow; fixes | | [ ] | |
 | T16 | 7 | Closing: Reviews, roadmap `Done:` line under B16, follow-ups if any | | [ ] | |
-| T17 | 3 | Play API: `challenge` on the check and on its journal content, API tests, `make api`. Written on local branch `feat/preset-ironsworn-3-play-api` (`74ec85a8`, `7384cee9`), to bring onto the latest `main` | delegated writer (slice 2) | [ ] | |
+| T17 | 3 | Play API: `challenge` on the check and on its journal content, API tests, `make api`. Drafted on local branch `draft/preset-ironsworn-3-play-api` (`74ec85a8`, `7384cee9`), brought onto the latest `main` | | [ ] | |
 
 ## Progress
 
@@ -120,13 +120,15 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: Slice 1 review fixes: `scoreMax` caps a progress roll (contract, ADR 0049); test of a multi-die action roll without momentum or push (already passing: no RED).
 - 2026-11-01: T3 done: `ChallengeDice`/`ChallengeRoll`, `DiceExpression::rollsOneDie`, `CheckChallenge`, `ChallengeResult`, `Check::perform` for action and progress rolls, `SpecialResult::Match` (refused as a step outcome in `outcomeKey`, not offered by `canProduce`), translator `checkChallenge`, a challenge push refused. RED: classes not found (kernel, domain) and 23 translator failures (`not played yet`); GREEN after the implementation.
 - 2026-11-01: T4 done: `CheckChallengeContent` and its invariants in `CheckContent`; the match is derived from the faces. RED: class not found, GREEN after the implementation. Slice split: API and UI moved to slice 3.
+- 2026-11-01: Slice 2 review fixes: a null `push` or `challenge` reads as not set in the translator (Studio and the schema accept both; a real challenge push is still refused); the overflow test now reaches the overflow guard. RED: 2 errors and 1 failure (`not played yet`, `must be an object`); the overflow test was failing on the formula range, not the guard.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-fac7148035c23430` | `02afb8aa`, `4b493539`, `5df5b214` | Approved. Two suggestions, fixed in slice 2: `scoreMax` on a progress roll unstated in the contract; no test of a multi-die action roll without `momentum` | [#342](https://github.com/iribarren/ogami/pull/342) |
+| 2 | `review-4b6a6a1688d15960` | `d61231dd`, `5e375728`, `7226d202` | Approved. Three warnings, fixed in slice 3: the translator probably refuses a challenge check with an explicit `push: null`, which Studio accepts, with a misleading message; the overflow test scripts one random value where an action roll needs three; no test drives a challenge roll through the API (a progress roll, a match) | [#343](https://github.com/iribarren/ogami/pull/343) |
 
 ## Next step
 
-Slice 2 in review. Then slice 3: Play API (T17, from local branch `feat/preset-ironsworn-3-play-api`) and Play UI (T5). The writer's `make verify` failed on frontend types only because of the generated client, which now lands in slice 3.
+Slice 3: slice 2 review fixes, Play API (T17), Play UI (T5). Then slice 4: burning momentum (T6, T7).

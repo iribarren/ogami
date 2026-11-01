@@ -27,15 +27,22 @@ export function burnScore(momentum: number, scoreMax: number | null) {
   return scoreMax === null ? momentum : Math.min(momentum, scoreMax)
 }
 
-/** How many challenge dice a score beats: those showing strictly less, as ties go to the dice. */
+/** Whether a score beats a challenge die: it must show strictly less, as ties go to the dice. */
+export function isBeatenBy(die: { face: number }, score: number) {
+  return die.face < score
+}
+
+/** How many challenge dice a score beats. */
 export function diceBeatenBy(dice: readonly { face: number }[], score: number) {
-  return dice.filter(({ face }) => face < score).length
+  return dice.filter((die) => isBeatenBy(die, score)).length
 }
 
 /**
  * Whether the entry is a challenge roll that was not burned yet, whose check declares a push and
  * names a momentum, and whose momentum when rolled would beat more dice than the score did. It
- * mirrors the offer rule of the backend; negative or zero momentum beats nothing. The momentum now
+ * mirrors the offer rule of the backend, and its guard on the pinned check (dice count, sides and
+ * cap must still be those of the roll, as `CheckPusher` compares); negative or zero momentum beats
+ * nothing. The momentum now
  * may differ: the offer tells it, and the API checks it again.
  */
 export function canBurn(campaign: Campaign, entry: JournalEntry) {
@@ -49,7 +56,10 @@ export function canBurn(campaign: Campaign, entry: JournalEntry) {
     challenge.burn !== null ||
     challenge.momentum === null ||
     (pinned?.push ?? null) === null ||
-    (pinned?.challenge?.momentum ?? null) === null
+    (pinned?.challenge?.momentum ?? null) === null ||
+    pinned?.challenge?.count !== challenge.dice.length ||
+    pinned.challenge.sides !== challenge.sides ||
+    pinned.challenge.scoreMax !== challenge.scoreMax
   ) {
     return false
   }

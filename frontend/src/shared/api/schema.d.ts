@@ -4675,6 +4675,29 @@ export interface components {
                 };
             } | null;
         };
+        /** @description The check rolls `count` challenge dice of `sides` sides, each compared on its own with the score; the total is the number of dice the score beats (strictly: ties go to the dice). With `dice` it is an action roll (score = dice + modifier + situational modifier); without, a progress roll (score = modifier + situational modifier, which is then required). The score is at most `scoreMax`. Refuses a pool and a difficulty. */
+        GameSystemCheckChallenge: {
+            /**
+             * @description The number of challenge dice, 2 to 10.
+             * @example 2
+             */
+            count: number;
+            /**
+             * @description Faces of each die, 2 to 1,000.
+             * @example 10
+             */
+            sides: number;
+            /**
+             * @description The most the score can be, 1 to 1,000. Absent: no cap.
+             * @example 10
+             */
+            scoreMax?: number | null;
+            /**
+             * @description The key of a `number` field of the sheet, which may be negative: a negative value equal to the action die cancels it. Only with `dice` that roll exactly one die, never on a progress roll. It makes `push` a burn: the score becomes the momentum.
+             * @example momentum
+             */
+            momentum?: string | null;
+        };
         /** @description Only on a check with a pool. A push is offered when a die failed. */
         GameSystemCheckPush: {
             /**
@@ -4727,7 +4750,7 @@ export interface components {
                 formula: string;
             };
         };
-        /** @description Rolls dice or a pool, exactly one of `dice` and `pool`. With dice, total = dice + modifier + situational modifier; with a pool, total = the successes (no modifier). The outcome is the first band whose bound is at least the total. */
+        /** @description Rolls dice, a pool or challenge dice (exactly one of `dice`, `pool`, and `challenge` with or without `dice`). With dice, total = dice + modifier + situational modifier; with a pool, total = the successes (no modifier); with a challenge, total = the challenge dice the score beats. The outcome is the first band whose bound is at least the total. */
         GameSystemCheck: {
             /**
              * @description Unique among the draft's checks: a-z, 0-9 and "-".
@@ -4739,13 +4762,15 @@ export interface components {
             /** @description Shown to the player when they roll. */
             hint?: string | null;
             /**
-             * @description Dice notation, at most 100 characters. Absent on a pool check.
+             * @description Dice notation, at most 100 characters. Absent on a pool check and on a progress roll.
              * @example 1d10
              */
             dice?: string | null;
             /** @description The dice pool rolled instead of `dice`; absent on a dice check. */
             pool?: components["schemas"]["GameSystemCheckPool"] | null;
-            /** @description What a player may pay to push a failed pool roll; only with `pool`. */
+            /** @description The challenge dice the score is compared against (ADR 0049); absent on a dice or pool check. */
+            challenge?: components["schemas"]["GameSystemCheckChallenge"] | null;
+            /** @description What a player may pay to push a failed pool roll, or to burn the momentum of a challenge check; only with `pool` or `challenge.momentum`. */
             push?: components["schemas"]["GameSystemCheckPush"] | null;
             /**
              * @description A formula over the sheet and trackers (1 to 200 characters) added to the roll. Refused with a pool.

@@ -101,6 +101,26 @@ describe('canBurn', () => {
     expect(canBurn({ ...nightJobCampaign, checks: [] }, burnableRollEntry)).toBe(false)
   })
 
+  it('offers nothing when the pinned check changed the shape of the challenge since the roll', () => {
+    const challenge = {
+      count: 2,
+      sides: 10,
+      scoreMax: 10,
+      momentumLabel: 'Momentum',
+      momentum: 'momentum',
+    }
+    const pinned = (over: { count?: number; sides?: number; scoreMax?: number | null }) => ({
+      ...nightJobCampaign,
+      checks: [{ ...edgeCheck, challenge: { ...challenge, ...over } }],
+    })
+    // The roll holds two d10 and a cap of 10.
+    expect(canBurn(pinned({}), burnableRollEntry)).toBe(true)
+    expect(canBurn(pinned({ count: 3 }), burnableRollEntry)).toBe(false)
+    expect(canBurn(pinned({ sides: 8 }), burnableRollEntry)).toBe(false)
+    expect(canBurn(pinned({ scoreMax: 8 }), burnableRollEntry)).toBe(false)
+    expect(canBurn(pinned({ scoreMax: null }), burnableRollEntry)).toBe(false)
+  })
+
   it('offers nothing when the roll recorded no momentum, for a progress roll or a pool roll', () => {
     expect(canBurn(edgeCampaign, rolledWith(null))).toBe(false)
     expect(canBurn(edgeCampaign, vowProgressEntry)).toBe(false)

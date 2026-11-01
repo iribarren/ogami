@@ -376,7 +376,22 @@ describe('burning the momentum of a challenge roll from the "Roll a check" dialo
       ...content,
       challenge: { ...content.challenge, scoreMax: 8, momentum: 8 },
     })
-    renderBurn(() => burnable(10), undefined, Response.json(capped, { status: 201 }))
+    // The pinned check caps at 8 too: a roll of another cap is refused (see `canBurn`).
+    const cappedCheck = {
+      ...edgeCheck,
+      challenge: {
+        count: 2,
+        sides: 10,
+        scoreMax: 8,
+        momentumLabel: 'Momentum',
+        momentum: 'momentum',
+      },
+    }
+    renderBurn(
+      () => ({ ...burnable(10), checks: [cappedCheck] }),
+      undefined,
+      Response.json(capped, { status: 201 }),
+    )
 
     const dialog = await rollGrit(user)
 

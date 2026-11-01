@@ -17437,6 +17437,38 @@
                 },
                 "type": "object"
             },
+            "GameSystemCheckChallenge": {
+                "description": "The check rolls `count` challenge dice of `sides` sides, each compared on its own with the score; the total is the number of dice the score beats (strictly: ties go to the dice). With `dice` it is an action roll (score = dice + modifier + situational modifier); without, a progress roll (score = modifier + situational modifier, which is then required). The score is at most `scoreMax`. Refuses a pool and a difficulty.",
+                "required": [
+                    "count",
+                    "sides"
+                ],
+                "properties": {
+                    "count": {
+                        "description": "The number of challenge dice, 2 to 10.",
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "sides": {
+                        "description": "Faces of each die, 2 to 1,000.",
+                        "type": "integer",
+                        "example": 10
+                    },
+                    "scoreMax": {
+                        "description": "The most the score can be, 1 to 1,000. Absent: no cap.",
+                        "type": "integer",
+                        "example": 10,
+                        "nullable": true
+                    },
+                    "momentum": {
+                        "description": "The key of a `number` field of the sheet, which may be negative: a negative value equal to the action die cancels it. Only with `dice` that roll exactly one die, never on a progress roll. It makes `push` a burn: the score becomes the momentum.",
+                        "type": "string",
+                        "example": "momentum",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
             "GameSystemCheckPush": {
                 "description": "Only on a check with a pool. A push is offered when a die failed.",
                 "required": [
@@ -17556,7 +17588,7 @@
                 "type": "object"
             },
             "GameSystemCheck": {
-                "description": "Rolls dice or a pool, exactly one of `dice` and `pool`. With dice, total = dice + modifier + situational modifier; with a pool, total = the successes (no modifier). The outcome is the first band whose bound is at least the total.",
+                "description": "Rolls dice, a pool or challenge dice (exactly one of `dice`, `pool`, and `challenge` with or without `dice`). With dice, total = dice + modifier + situational modifier; with a pool, total = the successes (no modifier); with a challenge, total = the challenge dice the score beats. The outcome is the first band whose bound is at least the total.",
                 "required": [
                     "key",
                     "label",
@@ -17581,7 +17613,7 @@
                         "maxLength": 500
                     },
                     "dice": {
-                        "description": "Dice notation, at most 100 characters. Absent on a pool check.",
+                        "description": "Dice notation, at most 100 characters. Absent on a pool check and on a progress roll.",
                         "type": "string",
                         "example": "1d10",
                         "nullable": true
@@ -17595,6 +17627,15 @@
                         "nullable": true,
                         "description": "The dice pool rolled instead of `dice`; absent on a dice check."
                     },
+                    "challenge": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/GameSystemCheckChallenge"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The challenge dice the score is compared against (ADR 0049); absent on a dice or pool check."
+                    },
                     "push": {
                         "oneOf": [
                             {
@@ -17602,7 +17643,7 @@
                             }
                         ],
                         "nullable": true,
-                        "description": "What a player may pay to push a failed pool roll; only with `pool`."
+                        "description": "What a player may pay to push a failed pool roll, or to burn the momentum of a challenge check; only with `pool` or `challenge.momentum`."
                     },
                     "modifier": {
                         "description": "A formula over the sheet and trackers (1 to 200 characters) added to the roll. Refused with a pool.",

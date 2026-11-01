@@ -1,7 +1,7 @@
 # Feature: preset-ironsworn
 
 - **Locator:** `odd/tasks/preset-ironsworn.md` · Engram topic `odd/preset-ironsworn/tasks`
-- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-6-play-burn-ui` · **Status:** in progress
+- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-7-studio` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-west-marches` (PRs #338–#339)
@@ -48,7 +48,7 @@ Out of scope: asset cards as data (a `list` field holds their names; the player 
 | When a burn is offered (Claude) | Only when momentum beats more challenge dice than the score. So a roll that cannot improve completes at once, as a roll with no failed die does. Checked again when the burn arrives, so a momentum edited by hand in between fails closed. The SRD's "cancel any die below momentum" is the same as using the larger of score and momentum: if the score beats die A and momentum beats die B, and neither beats the other's die, then S > A ≥ M > B ≥ S, a contradiction |
 | Match (Claude) | A new special result `match`, when every challenge die shows the same face. Shown in the roll dialog, journal and sandbox. **Not** offered in step `outcomes`: a special entry replaces the band entry (ADR 0044), and a match must keep the band's effects. A flow tip points at the Major Plot Twist oracle. A burn cannot change it |
 | Rollout (Claude) | Additive in schema version 2, so every release keeps its hash. Play's translator refuses `challenge` until slice 2 and a challenge `push` until slice 5, with the path and a message naming the ADR (precedent ADR 0044) |
-| Authoring route (Claude) | The writer authors the JSON by hand. A Chrome play pass in slice 9 replaces a separate playtest |
+| Authoring route (Claude) | The writer authors the JSON by hand. A Chrome play pass in slice 10 replaces a separate playtest |
 
 ## Design
 
@@ -70,7 +70,15 @@ Out of scope: asset cards as data (a `list` field holds their names; the player 
 - **API:** same push endpoints. `burn` on `CheckChallengeContentResponse`, and the field key `momentum` on `CheckChallengeResponse`, so the UI reads the value on the Character's sheet. A burn the momentum no longer improves answers 409, as other `CheckCannotBePushed` do.
 - **UI:** the offer says "Burn" and states the momentum now on the Character's sheet and the dice it would beat, against those of the roll. When that no longer improves on the roll, the burn button is gone and Keep stays, with a line saying why. The journal shows the burned momentum, the new score, the band before and each die against the new score.
 
-### Preset sketch (detailed before slice 8)
+### Studio editor and sandbox (slices 7 and 8)
+
+- **Editor modes:** `CheckMode` gains `challenge`. A challenge draft holds `count`, `sides`, `scoreMax`, `momentum` and a kind, action or progress. Action keeps dice and modifier; progress has no dice, needs a modifier, and has no momentum and no burn. The difficulty is hidden and dropped on a challenge check, as the contract refuses it. The burn is the existing `PushEditor` without `maxDice`, worded as a burn, shown only while a momentum is chosen; clearing the momentum drops it. The momentum select lists the `number` fields only. The publisher stays the authority: its errors map to the inputs by path.
+- **Sandbox roll:** `CheckTestRoll` composes the kernel's `ChallengeDice` and `ChallengeRoll` as Play's `Check::perform` does, in the same order: everything is evaluated before anything rolls. Studio never imports Play.
+- **Sandbox burn:** stateless, like a pool push: the same `/push` endpoint and samples, with `faces` the action die first, then the challenge dice. The server rebuilds the first score from the action die, the samples and the situational modifier, reads the momentum from the samples, and answers 409 (`CheckTestRollNotPushable`) when the burn does not beat more dice. The cost is never applied, as a test roll has no campaign.
+- **Sandbox response:** `challenge` on `CheckTestRollResponse`: `actionDie` (null on a progress roll), `sides`, `scoreMax`, `score`, `momentum`, `momentumField`, `cancelled`, `dice [{face, beaten}]`, `burn { momentum, score } | null`. `match` joins the special results. `rolledSuccesses` holds the total before a burn, as it does before a push.
+- **API docs:** `challenge` on the `GameSystemCheck` model, which documents save bodies and reads.
+
+### Preset sketch (detailed before slice 9)
 
 - **Sheet:** `edge`, `heart`, `iron`, `shadow`, `wits` number 1–3 with a point budget of 9 (the 3, 2, 2, 1, 1 array fits); `momentum` number −6..10, start 2; `health`, `spirit`, `supply` tracks 0–5, start 5; conditions fields `conditions` (wounded, shaken, unprepared, encumbered), `banes` (maimed, corrupted), `burdens` (cursed, tormented); derived `debilities`, `momentum-reset`, `momentum-max`; `experience` number; `assets` list.
 - **Vow slots:** trackers `vow-1`…`vow-5` 0–40, `vow-1-step`…`vow-5-step` (ticks per milestone: Troublesome 12, Dangerous 8, Formidable 4, Extreme 2, Epic 1); Fact slots holding each vow's Thread. Journey, fight and bonds also as 0–40 trackers.
@@ -79,13 +87,13 @@ Out of scope: asset cards as data (a `list` field holds their names; the player 
 
 ## Constraints
 
-- Every slice is safe on `main` alone: a release using `challenge` cannot start a Campaign until slice 2, one with a challenge `push` until slice 5, and no shipped release uses it until slice 8. Between slices 2 and 3 the backend rolls challenge checks and no UI shows their dice, and between slices 5 and 6 the API burns and no UI offers it; no shipped release reaches either. In slice 4 the domain burns and the journal stores it, and nothing calls them.
+- Every slice is safe on `main` alone: a release using `challenge` cannot start a Campaign until slice 2, one with a challenge `push` until slice 5, and no shipped release uses it until slice 9. Between slices 2 and 3 the backend rolls challenge checks and no UI shows their dice, and between slices 5 and 6 the API burns and no UI offers it; no shipped release reaches either. In slice 4 the domain burns and the journal stores it, and nothing calls them. Between slices 7 and 8 Studio edits challenge checks and hides the sandbox for them, as the test roll would read an action roll as a plain dice check.
 - Formula kernel unchanged. Flow step outcomes unchanged.
 - Every release valid before keeps its hash.
 
 ## Slice plan
 
-Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice. Slice 2 was split after its writer reached ~2,040 lines before the UI: the API and the UI became slice 3, and later slices moved up by one. Slice 4 was split after its writer reached ~2,330 lines before the UI (`backend/tests` alone 1,515): the domain and the journal stayed, the application and the API became slice 5, the UI slice 6.
+Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice. Slice 2 was split after its writer reached ~2,040 lines before the UI: the API and the UI became slice 3, and later slices moved up by one. Slice 4 was split after its writer reached ~2,330 lines before the UI (`backend/tests` alone 1,515): the domain and the journal stayed, the application and the API became slice 5, the UI slice 6. Slice 7 was split after its writer reached ~1,310 lines with the editor alone: the sandbox became slice 8, and later slices moved up by one.
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
@@ -95,9 +103,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 4 | `feat/preset-ironsworn-4-play-burn` | `feat(play): preset-ironsworn 4/9 burn domain and journal` | T6 | ~1,060 |
 | 5 | `feat/preset-ironsworn-5-play-burn-api` | `feat(play): preset-ironsworn 5/9 burn API` | T18 | ~1,290 (API ~120). Drafted on local branch `draft/preset-ironsworn-5-play-burn-api` (`69c73ff2`) |
 | 6 | `feat/preset-ironsworn-6-play-burn-ui` | `feat(play): preset-ironsworn 6/9 burn UI` | T7 | ~700 |
-| 7 | `feat/preset-ironsworn-7-studio` | `feat(studio): preset-ironsworn 7/9 check editor` | T8, T9 | ~1,600 (API ~300) |
-| 8 | `feat/preset-ironsworn-8-release` | `feat(presets): preset-ironsworn 8/9 release` | T11, T12, T13 | ~1,700 |
-| 9 | `feat/preset-ironsworn-9-play-pass` | `feat(presets): preset-ironsworn 9/9 play pass` | T14, T15, T16 | ~600 |
+| 7 | `feat/preset-ironsworn-7-studio` | `feat(studio): preset-ironsworn 7/10 check editor` | T8 | ~1,330 (API ~80) |
+| 8 | `feat/preset-ironsworn-8-sandbox` | `feat(studio): preset-ironsworn 8/10 sandbox` | T9 | ~1,000 (API ~200) |
+| 9 | `feat/preset-ironsworn-9-release` | `feat(presets): preset-ironsworn 9/10 release` | T11, T12, T13 | ~1,700 |
+| 10 | `feat/preset-ironsworn-10-play-pass` | `feat(presets): preset-ironsworn 10/10 play pass` | T14, T15, T16 | ~600 |
 
 ## Tasks
 
@@ -109,16 +118,16 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T4 | 2 | Journal content and legacy read | delegated writer (slice 2) | [x] | `7226d202` |
 | T5 | 3 | Play UI: roll dialog and journal show the score, each challenge die, the cancelled die and a match | delegated writer (slice 3) | [x] | `5cd305d2` |
 | T6 | 4 | Burn domain: `Check::burn`, `BurnResult`, the offer rule, `FlowRun::pushable`, a pending challenge roll, journal `challenge.burn`, the `savePush` guard. The translator still refuses a challenge push | delegated writer (slice 4), split inline by the parent | [x] | `bbf1879f` |
-| T7 | 6 | Play UI: burn offer on the sheet and the pending step, burned entry in the journal | delegated writer (slice 6) | [x] | |
-| T8 | 7 | Studio check editor: challenge mode, action or progress, momentum select, burn | | [ ] | |
-| T9 | 7 | Studio sandbox: challenge roll, match, burn | | [ ] | |
+| T7 | 6 | Play UI: burn offer on the sheet and the pending step, burned entry in the journal | delegated writer (slice 6) | [x] | `5957328f` |
+| T8 | 7 | Studio check editor: challenge mode, action or progress, momentum select, burn | delegated writer (slice 7) | [x] | |
+| T9 | 8 | Studio sandbox: challenge roll, match, burn; shown again for challenge checks | | [ ] | |
 | T10 | 1 | Studio references: `challenge.momentum` blocks a rename or deletion (`DraftReferences`) | delegated writer (slice 1) | [x] | `5df5b214` |
-| T11 | 8 | Read the official licensing page; design the flow in this doc; flow example in `docs/domain/flow-examples.md` | | [ ] | |
-| T12 | 8 | `backend/presets/ironsworn.json` base: credits, sheet, trackers, checks; `PresetsTest` | | [ ] | |
-| T13 | 8 | Flow, Scene Types and tables; `IronswornPresetFlowTest` | | [ ] | |
-| T14 | 9 | Slice 8 review fixes; e2e `frontend/e2e/play-ironsworn.spec.ts` | | [ ] | |
-| T15 | 9 | Chrome play pass: swear a vow, a move with a burn, a match, a negative momentum, fulfilling a vow; fixes | | [ ] | |
-| T16 | 9 | Closing: Reviews, roadmap `Done:` line under B16, follow-ups if any | | [ ] | |
+| T11 | 9 | Read the official licensing page; design the flow in this doc; flow example in `docs/domain/flow-examples.md` | | [ ] | |
+| T12 | 9 | `backend/presets/ironsworn.json` base: credits, sheet, trackers, checks; `PresetsTest` | | [ ] | |
+| T13 | 9 | Flow, Scene Types and tables; `IronswornPresetFlowTest` | | [ ] | |
+| T14 | 10 | Slice 9 review fixes; e2e `frontend/e2e/play-ironsworn.spec.ts` | | [ ] | |
+| T15 | 10 | Chrome play pass: swear a vow, a move with a burn, a match, a negative momentum, fulfilling a vow; fixes | | [ ] | |
+| T16 | 10 | Closing: Reviews, roadmap `Done:` line under B16, follow-ups if any | | [ ] | |
 | T17 | 3 | Play API: `challenge` on the check and on its journal content, API tests, `make api`. Drafted on local branch `draft/preset-ironsworn-3-play-api` (`74ec85a8`, `7384cee9`), brought onto the latest `main` | delegated writer (slice 3) | [x] | `3a51fbb1` |
 | T18 | 5 | Burn through the application and the API: `CheckPusher`, the translator accepts a challenge push (needs a momentum, refuses `maxDice`), `burn` and `momentum` on the responses, API tests from the sheet and the pending step, contract doc, `make api`. Drafted on local branch `draft/preset-ironsworn-5-play-burn-api` (`69c73ff2`), whose tree is the end state of slices 4 and 5 | delegated writer (slice 5) | [x] | `ed3c1993` |
 
@@ -141,6 +150,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: T18 done: restored from the draft tests first. RED: 52 of 229 focused tests failed (a challenge push answered 422 `not played yet`, the old `notAPushableCheck` message); GREEN after restoring the code, `make api` regenerated `burn` and `momentum`. Checklist pass added tests for a Character who left on a burn, from the sheet and from a pending step (passed at once, no RED); contract doc and ADR 0049 now say the burn is played.
 - 2026-11-01: Slice 5 review fixes: a burn API case for another number of challenge dice (passed at once; proved by removing the comparison in `CheckPusher`, which failed with 200 instead of 409, then restored); `CheckContent::of` refuses a blank `bandLabel` (stored rows cannot hold one). RED: the blank-label case did not throw, GREEN after the check.
 - 2026-11-01: T7 done: `canBurn`/`burnScore`/`diceBeatenBy` in `pushing.ts` (`canPush` includes a burn), `PushOffer` burn mode (momentum now, score, dice against the roll; no Burn and a line when it no longer improves or cannot be read), `usePushCheck` reads the campaign again on a refusal (the flow command already did on a 409), `JournalEntryView` burned block with each die against the new score, fixtures and a story. Implementation was written before its tests; RED then shown by reverting each source file: 6 view failures, 7 dialog failures (the stale-sheet refresh alone fails with the old `usePushCheck`), 5 pending-step failures, and `pushing.test.ts` failed on the missing exports. GREEN with the code restored.
+- 2026-11-01: Slice 6 review fixes: the burned view tells each die by `isBeatenBy` (view test of a die tying the burned score and one above it passed at once: no RED); `canBurn` compares the stored roll's dice count, sides and cap with the pinned check. RED: the pinned-shape test offered a burn for 3 dice (expected false); one existing dialog test pinned another cap than its roll and was fixed.
+- 2026-11-01: T8 done: `ChallengeDraft`, `challenge` mode with action or progress roll, momentum select (number fields), the burn through `PushEditor burn`, client limits and `challenge.*` error paths, `challenge: null` kept as stored, `GameSystemCheck` OpenAPI `challenge`, `make api` (the spec is `frontend/src/shared/api/openapi.json`), a story. The sandbox is hidden for a challenge check until T9 (RED: the sandbox was still shown; GREEN after the guard). RED for the draft and error-path tests: 17 of 19 and 4 of 48 failed before the implementation. The editor UI was written before its `ChecksTab` tests, which passed once their own mistakes were fixed (no RED claimed for them).
 
 ## Reviews
 
@@ -151,7 +162,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 3 | `review-b9631babc081be6b` | `d5426a99`, `3a51fbb1`, `5cd305d2` | Approved. Two warnings and a suggestion, fixed in slice 4: no test rolls a challenge check from the roll form; `scoreWasCapped` counts the situational modifier with no test where it alone decides the cap; `aNullPushReadsAsNoPush` also passes if the check is missing | [#344](https://github.com/iribarren/ogami/pull/344) |
 | 4 | `review-49d6f083bf0372ca` | `5c1c300c`, `38a8a9a6`, `bbf1879f` | Approved. A warning and a suggestion, fixed in slice 5: no test calls `JournalEntry::pushedWith` on a burned entry, with unburned content on a challenge entry or on a plain dice entry; a blank `rolledBandLabel` is accepted where a blank `rolledBandKey` is refused | [#345](https://github.com/iribarren/ogami/pull/345) |
 | 5 | `review-53a4035203b7f132` | `c3c98cb3`, `ed3c1993`, `2f550834` | Approved. A suggestion, fixed in slice 6: no test exercises the guard in `CheckPusher` that refuses a stored roll with another number of challenge dice than the pinned check. User decision, also in slice 6: `CheckContent` refuses a blank `bandLabel`, as `CheckChallengeBurnContent` does. No stored row can hold one: the translator has refused a blank check band label since checks were first read (`7f84f68d`) | [#346](https://github.com/iribarren/ogami/pull/346) |
+| 6 | `review-dfb24acc6e74c150` | `972396ea`, `5957328f` | Approved. Two suggestions, fixed in slice 7: the burned view recomputes each die inline, with no test of a die that ties or stays above the burned score; `canBurn` offers a burn the API refuses when the stored roll's dice count, sides or cap differ from the pinned check | [#347](https://github.com/iribarren/ogami/pull/347) |
 
 ## Next step
 
-Slice 6 written: slice 5 review fixes and the burn UI (T7); next the native review of the slice, then its PR. Then slice 7: the Studio check editor and sandbox (T8, T9).
+Slice 7: slice 6 fixes and the editor (T8) are committed; next its native review, then its PR. Then slice 8: the sandbox (T9), with slice 7's review fixes first. Then slice 9: the release (T11, T12, T13).

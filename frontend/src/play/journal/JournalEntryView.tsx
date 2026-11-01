@@ -5,6 +5,7 @@ import { cn } from '@/shared/lib/utils'
 import { Badge } from '@/shared/ui/badge'
 import { IconTile } from '@/shared/ui/icon-tile'
 
+import { isBeatenBy } from '../checks/pushing'
 import { DiceGroups } from '../dice/DiceGroups'
 import { specialResultLabels } from './specialResults'
 import { DieShape } from '@/shared/ui/die-shape'
@@ -420,7 +421,7 @@ function ChallengeDice({ challenge, score }: { challenge: CheckChallenge; score?
         {challenge.dice.map((stored, index) => {
           const die = {
             ...stored,
-            beaten: score === undefined ? stored.beaten : stored.face < score,
+            beaten: score === undefined ? stored.beaten : isBeatenBy(stored, score),
           }
           return (
             <li

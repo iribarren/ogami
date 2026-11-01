@@ -21,6 +21,7 @@ import { BandsEditor, type BandSource } from './BandsEditor'
 import { CheckSandbox } from './CheckSandbox'
 import { PushEditor } from './PushEditor'
 import { TextField } from '../narrative/TextField'
+import { SelectField } from '../narrative/steps/fields'
 import { FormulaInput } from '../sheet/FormulaInput'
 import { previewTemplate } from '../sheet/previewTemplate'
 import { useGameSystemSheet } from '../sheet/useGameSystemSheet'
@@ -31,6 +32,7 @@ import {
   duplicateCheck,
   followBands,
   mergeBandErrors,
+  editChallenge,
   modeOf,
   readCheck,
   sameCheck,
@@ -42,6 +44,7 @@ import {
   type CheckErrors,
   type CheckMode,
   type DifficultyDraft,
+  type ChallengeDraft,
   type PoolDraft,
   type PushDraft,
   type StoredCheck,
@@ -368,6 +371,14 @@ function CheckList({
   )
 }
 
+/** What a check with no dice notation rolls, for its list row. */
+function rollKind(check: GameSystemChecks['checks'][number]) {
+  if (check.pool !== undefined) {
+    return 'dice pool'
+  }
+  return check.challenge ? 'challenge dice' : 'no dice'
+}
+
 function CheckRow({
   gameSystemKey,
   data,
@@ -391,7 +402,7 @@ function CheckRow({
   onMove: (target: number) => void
   onDeleted: (result: GameSystemChecks) => void
 }) {
-  const { key, label, dice, pool } = check
+  const { key, label, dice } = check
   if (typeof key !== 'string') {
     return (
       <li className="px-4 py-3 text-sm text-muted-foreground">
@@ -408,9 +419,7 @@ function CheckRow({
         <p className="list-row-title">{typeof label === 'string' ? label : key}</p>
         <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <span className="list-row-key break-all">{key}</span>
-          <Badge variant="secondary">
-            {typeof dice === 'string' ? dice : pool === undefined ? 'no dice' : 'dice pool'}
-          </Badge>
+          <Badge variant="secondary">{typeof dice === 'string' ? dice : rollKind(check)}</Badge>
           {!editable && <Badge variant="outline">Can&apos;t be edited here</Badge>}
         </p>
       </div>
@@ -670,7 +679,20 @@ function CheckEditor({
     [hungerIsFormula, hunger, start],
   )
   const costContext = useMemo(() => pushContext(start), [start])
+  // The momentum is a number field; one the sheet no longer has stays listed, so the form shows it.
+  const momentumOptions = useMemo(() => {
+    const listed = start.fields
+      .filter(({ type }) => type === 'number')
+      .map(({ key, label }) => ({ key, name: `${label} (${key})` }))
+    const held = draft.challenge?.momentum ?? ''
+    return [
+      { key: '', name: 'No momentum' },
+      ...listed,
+      ...(held === '' || listed.some(({ key }) => key === held) ? [] : [{ key: held, name: held }]),
+    ]
+  }, [start.fields, draft.challenge?.momentum])
   const modeId = useId()
+  const kindId = useId()
   const difficultyId = useId()
 
   const position =
@@ -709,8 +731,13 @@ function CheckEditor({
       current.pool === null ? current : { ...current, pool: { ...current.pool, ...changes } },
     )
   }
+  const changeChallenge = (changes: Partial<ChallengeDraft>) => {
+    setDraft((current) => editChallenge(current, changes))
+  }
   const changePush = (push: PushDraft | null) => {
-    setDraft((current) => (current.pool === null ? current : { ...current, push }))
+    setDraft((current) =>
+      current.pool === null && current.challenge === null ? current : { ...current, push },
+    )
   }
   const changeMode = (mode: CheckMode) => {
     setDraft((current) => switchMode(current, mode))
@@ -844,6 +871,7 @@ function CheckEditor({
                   [
                     ['dice', 'Dice roll'],
                     ['pool', 'Dice pool'],
+                    ['challenge', 'Challenge dice'],
                   ] as const
                 ).map(([mode, name]) => (
                   <Label key={mode} className="flex items-center gap-2 font-normal">
@@ -860,21 +888,53 @@ function CheckEditor({
                 ))}
               </div>
               <p id={modeId} className="hint">
-                A dice roll adds a modifier to its total; a dice pool counts the dice that succeed.
-                A push goes with the pool: switching to Dice roll drops both.
+                A dice roll adds a modifier to its total; a dice pool counts the dice that succeed;
+                challenge dice count the dice a score beats. A push goes with the pool, and a burn
+                with challenge dice: switching to another roll type drops it.
               </p>
             </fieldset>
             {draft.pool === null ? (
               <>
-                <TextField
-                  label="Dice"
-                  value={draft.dice}
-                  onChange={(dice) => {
-                    change({ dice })
-                  }}
-                  error={shown.dice}
-                  help="Dice notation such as 1d10 or 2d6; the publisher checks it when you save."
-                />
+                {draft.challenge !== null && (
+                  <fieldset className="space-y-2 sm:col-span-2">
+                    <legend className="text-sm font-medium">Challenge roll</legend>
+                    <div className="flex flex-wrap gap-4">
+                      {(
+                        [
+                          ['action', 'Action roll'],
+                          ['progress', 'Progress roll'],
+                        ] as const
+                      ).map(([kind, name]) => (
+                        <Label key={kind} className="flex items-center gap-2 font-normal">
+                          <input
+                            type="radio"
+                            name={`${kindId}-kind`}
+                            checked={draft.challenge?.kind === kind}
+                            onChange={() => {
+                              changeChallenge({ kind })
+                            }}
+                          />
+                          {name}
+                        </Label>
+                      ))}
+                    </div>
+                    <p className="hint">
+                      An action roll rolls the dice below and adds the modifier. A progress roll has
+                      no dice: its modifier is the score, and it has no momentum and no burn.
+                    </p>
+                  </fieldset>
+                )}
+                {draft.challenge?.kind !== 'progress' && (
+                  <TextField
+                    label="Dice"
+                    value={draft.dice}
+                    onChange={(dice) => {
+                      change({ dice })
+                    }}
+                    error={shown.dice}
+                    help="Dice notation such as 1d10 or 2d6; the publisher checks it when you save."
+                  />
+                )}
                 <div className="space-y-2">
                   <FormulaInput
                     label="Modifier"
@@ -888,6 +948,54 @@ function CheckEditor({
                   />
                   {reads.length > 0 && <p className="hint">Reads {reads.join(', ')}</p>}
                 </div>
+                {draft.challenge !== null && (
+                  <>
+                    <TextField
+                      label="Challenge count"
+                      value={draft.challenge.count}
+                      onChange={(count) => {
+                        changeChallenge({ count })
+                      }}
+                      error={shown.challengeCount}
+                      help="How many challenge dice, 2 to 10. Each is compared on its own."
+                    />
+                    <TextField
+                      label="Challenge sides"
+                      value={draft.challenge.sides}
+                      onChange={(sides) => {
+                        changeChallenge({ sides })
+                      }}
+                      error={shown.challengeSides}
+                    />
+                    <TextField
+                      label="Score cap"
+                      value={draft.challenge.scoreMax}
+                      onChange={(scoreMax) => {
+                        changeChallenge({ scoreMax })
+                      }}
+                      error={shown.challengeScoreMax}
+                      help="Optional, 1 to 1000: the score is at most this. A die the score does not beat, a tie included, is not beaten."
+                    />
+                    {draft.challenge.kind === 'action' && (
+                      <div className="space-y-2">
+                        <SelectField
+                          label="Momentum"
+                          value={draft.challenge.momentum}
+                          options={momentumOptions}
+                          error={shown.challengeMomentum}
+                          onChange={(momentum) => {
+                            changeChallenge({ momentum })
+                          }}
+                        />
+                        <p className="hint">
+                          Optional: a number field of the sheet. A negative value equal to the
+                          action die cancels it, and the dice must be exactly one die. Choosing one
+                          lets the check burn it.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
               </>
             ) : (
               <>
@@ -953,58 +1061,62 @@ function CheckEditor({
               </>
             )}
           </div>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <input
-                id={difficultyId}
-                type="checkbox"
-                checked={draft.difficulty !== null}
-                onChange={(event) => {
-                  change({ difficulty: event.target.checked ? blankDifficulty() : null })
-                }}
-              />
-              <Label htmlFor={difficultyId}>Difficulty</Label>
-            </div>
-            {shown.difficulty && <p className="text-sm text-destructive">{shown.difficulty}</p>}
-            {draft.difficulty !== null && (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <TextField
-                  label="Difficulty label"
-                  value={draft.difficulty.label}
-                  onChange={(label) => {
-                    changeDifficulty({ label })
+          {draft.challenge === null && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input
+                  id={difficultyId}
+                  type="checkbox"
+                  checked={draft.difficulty !== null}
+                  onChange={(event) => {
+                    change({ difficulty: event.target.checked ? blankDifficulty() : null })
                   }}
-                  error={shown.difficultyLabel}
                 />
-                <TextField
-                  label="Default"
-                  value={draft.difficulty.default}
-                  onChange={(value) => {
-                    changeDifficulty({ default: value })
-                  }}
-                  error={shown.difficultyDefault}
-                />
-                <TextField
-                  label="Min"
-                  value={draft.difficulty.min}
-                  onChange={(min) => {
-                    changeDifficulty({ min })
-                  }}
-                  error={shown.difficultyMin}
-                />
-                <TextField
-                  label="Max"
-                  value={draft.difficulty.max}
-                  onChange={(max) => {
-                    changeDifficulty({ max })
-                  }}
-                  error={shown.difficultyMax}
-                />
+                <Label htmlFor={difficultyId}>Difficulty</Label>
               </div>
-            )}
-          </div>
-          {draft.pool !== null && (
+              {shown.difficulty && <p className="text-sm text-destructive">{shown.difficulty}</p>}
+              {draft.difficulty !== null && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <TextField
+                    label="Difficulty label"
+                    value={draft.difficulty.label}
+                    onChange={(label) => {
+                      changeDifficulty({ label })
+                    }}
+                    error={shown.difficultyLabel}
+                  />
+                  <TextField
+                    label="Default"
+                    value={draft.difficulty.default}
+                    onChange={(value) => {
+                      changeDifficulty({ default: value })
+                    }}
+                    error={shown.difficultyDefault}
+                  />
+                  <TextField
+                    label="Min"
+                    value={draft.difficulty.min}
+                    onChange={(min) => {
+                      changeDifficulty({ min })
+                    }}
+                    error={shown.difficultyMin}
+                  />
+                  <TextField
+                    label="Max"
+                    value={draft.difficulty.max}
+                    onChange={(max) => {
+                      changeDifficulty({ max })
+                    }}
+                    error={shown.difficultyMax}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          {(draft.pool !== null ||
+            (draft.challenge?.kind === 'action' && draft.challenge.momentum !== '')) && (
             <PushEditor
+              burn={draft.challenge !== null}
               push={draft.push}
               context={costContext}
               labelError={shown.pushLabel}
@@ -1037,7 +1149,10 @@ function CheckEditor({
           </Button>
         </div>
       </form>
-      {original !== null && (
+      {original !== null && draft.challenge !== null && (
+        <p className="hint">Test rolls of challenge dice are not available yet.</p>
+      )}
+      {original !== null && draft.challenge === null && (
         <CheckSandbox
           gameSystemKey={gameSystemKey}
           catalog={start}

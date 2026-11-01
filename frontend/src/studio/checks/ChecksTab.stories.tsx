@@ -376,3 +376,38 @@ export const HungerAndCriticals: Story = {
     await expect(sandbox.getByText(/Re-roll up to 3 failed dice/)).toBeVisible()
   },
 }
+
+/** A challenge check (ADR 0049): the challenge dice, the momentum of the sheet and its burn; no difficulty. */
+const challenge = {
+  key: 'edge',
+  label: 'Edge',
+  dice: '1d6',
+  modifier: '{pow}',
+  challenge: { count: 2, sides: 10, scoreMax: 10, momentum: 'momentum' },
+  push: { label: 'Burn momentum' },
+  bands: [
+    { key: 'miss', label: 'Miss', upTo: 0 },
+    { key: 'weak', label: 'Weak hit', upTo: 1 },
+    { key: 'strong', label: 'Strong hit' },
+  ],
+}
+
+export const ChallengeCheck: Story = {
+  parameters: {
+    api: {
+      [`GET ${base}/checks`]: json({
+        ...checks,
+        checks: [challenge],
+        fields: [...checks.fields, { key: 'momentum', label: 'Momentum', type: 'number', max: 10 }],
+      }),
+      [`GET ${base}/sheet`]: json(sheet),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit edge' }))
+    await expect(canvas.getByLabelText('Challenge count')).toHaveValue('2')
+    await expect(canvas.getByLabelText('Can be burned')).toBeChecked()
+    await expect(canvas.queryByLabelText('Difficulty')).toBeNull()
+  },
+}

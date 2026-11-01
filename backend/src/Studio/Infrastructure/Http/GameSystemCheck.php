@@ -14,7 +14,7 @@ use OpenApi\Attributes as OA;
  * Optional fields are nullable with no PHP default (see GameSystemOracleTableEntry).
  */
 #[OA\Schema(
-    description: 'Rolls dice or a pool, exactly one of `dice` and `pool`. With dice, total = dice + modifier + situational modifier; with a pool, total = the successes (no modifier). The outcome is the first band whose bound is at least the total.',
+    description: 'Rolls dice, a pool or challenge dice (exactly one of `dice`, `pool`, and `challenge` with or without `dice`). With dice, total = dice + modifier + situational modifier; with a pool, total = the successes (no modifier); with a challenge, total = the challenge dice the score beats. The outcome is the first band whose bound is at least the total.',
     required: ['key', 'label', 'bands'],
 )]
 final readonly class GameSystemCheck
@@ -29,11 +29,13 @@ final readonly class GameSystemCheck
         public string $label,
         #[OA\Property(description: 'Shown to the player when they roll.', maxLength: 500)]
         public ?string $hint,
-        #[OA\Property(description: 'Dice notation, at most 100 characters. Absent on a pool check.', example: '1d10')]
+        #[OA\Property(description: 'Dice notation, at most 100 characters. Absent on a pool check and on a progress roll.', example: '1d10')]
         public ?string $dice,
         #[OA\Property(ref: new Model(type: GameSystemCheckPool::class), description: 'The dice pool rolled instead of `dice`; absent on a dice check.', nullable: true)]
         public ?GameSystemCheckPool $pool,
-        #[OA\Property(ref: new Model(type: GameSystemCheckPush::class), description: 'What a player may pay to push a failed pool roll; only with `pool`.', nullable: true)]
+        #[OA\Property(ref: new Model(type: GameSystemCheckChallenge::class), description: 'The challenge dice the score is compared against (ADR 0049); absent on a dice or pool check.', nullable: true)]
+        public ?GameSystemCheckChallenge $challenge,
+        #[OA\Property(ref: new Model(type: GameSystemCheckPush::class), description: 'What a player may pay to push a failed pool roll, or to burn the momentum of a challenge check; only with `pool` or `challenge.momentum`.', nullable: true)]
         public ?GameSystemCheckPush $push,
         #[OA\Property(description: 'A formula over the sheet and trackers (1 to 200 characters) added to the roll. Refused with a pool.', example: '{hands}+{edge}')]
         public ?string $modifier,

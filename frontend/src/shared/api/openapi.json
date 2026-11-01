@@ -6880,7 +6880,7 @@
                 "tags": [
                     "Studio"
                 ],
-                "summary": "Push a sandbox roll of a pool check of one of my GameSystem drafts: the client sends the faces of the roll with its samples and gets the failed dice re-rolled; never changes the draft, is never recorded and never applies the push cost",
+                "summary": "Push a sandbox roll of a pool check of one of my GameSystem drafts, or burn that of a challenge check: the client sends the faces of the roll with its samples and gets the failed dice re-rolled, or the momentum burned (no dice are rolled); never changes the draft, is never recorded and never applies the push cost",
                 "operationId": "testPushCheck",
                 "parameters": [
                     {
@@ -6912,7 +6912,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "The pool with its failed dice re-rolled once (marked as re-rolled), the successes it had before the push, the total and band of the pushed successes and the label of the push, whose cost is not applied.",
+                        "description": "The pool with its failed dice re-rolled once (marked as re-rolled), the successes it had before the push, the total and band of the pushed successes and the label of the push, whose cost is not applied. For a challenge check, the challenge dice against the burned score, the burn, the total it had before the burn and the band of the burned total.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6962,7 +6962,7 @@
                         }
                     },
                     "409": {
-                        "description": "The check cannot be pushed: it declares no push (a dice check never does), or no die of the roll failed. As Play refuses the push of a roll that cannot be pushed.",
+                        "description": "The check cannot be pushed: it declares no push (a dice check never does, and neither does a progress roll), no die of the roll failed, or the momentum of a challenge roll, capped, beats no more challenge dice than the score did. As Play refuses the push of a roll that cannot be pushed.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -6982,7 +6982,7 @@
                         }
                     },
                     "422": {
-                        "description": "A sample, the difficulty or the situational modifier is not a value the draft accepts (the message starts with its path), the faces are not a list of integers or not the roll of the pool for these samples (the message starts with \"faces\"), a formula cannot be evaluated for these samples (nothing is re-rolled), the saved draft is not readable, or it has schema version 1 (no checks).",
+                        "description": "A sample, the difficulty or the situational modifier is not a value the draft accepts (the message starts with its path), the faces are not a list of integers or not the roll of the pool or of the challenge check for these samples (the message starts with \"faces\"), a formula cannot be evaluated for these samples (nothing is re-rolled), the saved draft is not readable, or it has schema version 1 (no checks).",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -18052,7 +18052,8 @@
                 "enum": [
                     "critical",
                     "messyCritical",
-                    "bestialFailure"
+                    "bestialFailure",
+                    "match"
                 ]
             },
             "CheckTestRollPushResponse": {
@@ -18081,6 +18082,115 @@
                                 "$ref": "#/components/schemas/CheckTestSpecialResult"
                             }
                         ]
+                    }
+                },
+                "type": "object"
+            },
+            "CheckTestRollChallengeDieResponse": {
+                "required": [
+                    "face",
+                    "beaten"
+                ],
+                "properties": {
+                    "face": {
+                        "description": "The face the die shows.",
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "beaten": {
+                        "description": "Whether the score beat the die: the die shows a face strictly below it. A tie goes to the die. After a burn, against the burned score.",
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "type": "object"
+            },
+            "CheckTestRollBurnResponse": {
+                "required": [
+                    "momentum",
+                    "score"
+                ],
+                "properties": {
+                    "momentum": {
+                        "description": "The momentum burned: the value of the check's momentum field for the samples.",
+                        "type": "integer",
+                        "example": 9
+                    },
+                    "score": {
+                        "description": "The score the burn made: the momentum, capped at the check's score cap.",
+                        "type": "integer",
+                        "example": 9
+                    }
+                },
+                "type": "object"
+            },
+            "CheckTestRollChallengeResponse": {
+                "required": [
+                    "actionDie",
+                    "sides",
+                    "scoreMax",
+                    "score",
+                    "momentum",
+                    "momentumField",
+                    "cancelled",
+                    "dice",
+                    "burn"
+                ],
+                "properties": {
+                    "actionDie": {
+                        "description": "The action die as rolled: the total of the check's dice; null on a progress roll, which rolls none. A cancelled die is still shown.",
+                        "type": "integer",
+                        "example": 4,
+                        "nullable": true
+                    },
+                    "sides": {
+                        "description": "The faces of each challenge die.",
+                        "type": "integer",
+                        "example": 10
+                    },
+                    "scoreMax": {
+                        "description": "The highest the score can be; null for no cap.",
+                        "type": "integer",
+                        "example": 10,
+                        "nullable": true
+                    },
+                    "score": {
+                        "description": "The score the challenge dice were compared against: the action die (0 when cancelled), the modifier and the situational modifier, capped at the score cap; after a burn, the burned score.",
+                        "type": "integer",
+                        "example": 6
+                    },
+                    "momentum": {
+                        "description": "The value of the check's momentum field for the samples; null when the check names none.",
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true
+                    },
+                    "momentumField": {
+                        "description": "The key of the momentum field; null when the check names none.",
+                        "type": "string",
+                        "example": "momentum",
+                        "nullable": true
+                    },
+                    "cancelled": {
+                        "description": "Whether negative momentum equal to the action die cancelled it, so it counted 0.",
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "dice": {
+                        "description": "Every challenge die in roll order, with whether the score beat it.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CheckTestRollChallengeDieResponse"
+                        }
+                    },
+                    "burn": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckTestRollBurnResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "Only on a burned roll: the momentum burned and the score it made; null before a burn."
                     }
                 },
                 "type": "object"
@@ -18114,6 +18224,7 @@
                     "dice",
                     "pool",
                     "push",
+                    "challenge",
                     "rolledSuccesses",
                     "special",
                     "modifier",
@@ -18131,7 +18242,7 @@
                             }
                         ],
                         "nullable": true,
-                        "description": "The check's dice as rolled: normalized notation, total and every dice group; null for a pool check."
+                        "description": "The check's dice as rolled: normalized notation, total and every dice group; null for a pool check, for a progress roll, and for a burned roll (its action die is in the challenge)."
                     },
                     "pool": {
                         "oneOf": [
@@ -18149,16 +18260,25 @@
                             }
                         ],
                         "nullable": true,
-                        "description": "The push the pool check declares: it can be pushed when a die failed; null for a check that declares none, and for a dice check."
+                        "description": "The push the check declares: a pool check can be pushed when a die failed, a challenge check burns its momentum; null for a check that declares none, and for a dice check."
+                    },
+                    "challenge": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckTestRollChallengeResponse"
+                            }
+                        ],
+                        "nullable": true,
+                        "description": "The check's challenge dice as rolled, or as burned by the push endpoint (ADR 0049); null for a dice or a pool check."
                     },
                     "rolledSuccesses": {
-                        "description": "Only on a pushed roll: the total the roll had before the push.",
+                        "description": "Only on a pushed or burned roll: the total the roll had before the push.",
                         "type": "integer",
                         "example": 1,
                         "nullable": true
                     },
                     "special": {
-                        "description": "The special result of the roll as it stands, after a push the push's (ADR 0044): critical, messy critical or bestial failure. Null for none, and for a dice check.",
+                        "description": "The special result of the roll as it stands, after a push the push's (ADR 0044): critical, messy critical or bestial failure, or a match of the challenge dice (ADR 0049), which a burn keeps. Null for none, and for a dice check.",
                         "nullable": true,
                         "oneOf": [
                             {
@@ -18208,7 +18328,7 @@
                 ],
                 "properties": {
                     "faces": {
-                        "description": "The face of each die of the roll to push, in roll order: as many as the pool's size for these samples and situational modifier, each from 1 to the pool's sides (422 otherwise).",
+                        "description": "The face of each die of the roll to push, in roll order: as many as the pool's size for these samples and situational modifier, each from 1 to the pool's sides (422 otherwise). To burn a challenge check, the action die first (1 to the sides of its one die), then each challenge die (1 to its sides).",
                         "type": "array",
                         "items": {
                             "type": "integer"

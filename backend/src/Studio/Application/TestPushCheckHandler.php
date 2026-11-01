@@ -27,8 +27,8 @@ final readonly class TestPushCheckHandler implements QueryHandler
      * @throws GameSystemNotFound       when the user has no such GameSystem
      * @throws InvalidReleaseContent    when the draft is schema version 1 (it has no checks)
      * @throws CheckNotFound            when the draft has no check with this key
-     * @throws InvalidTestRoll          when a sample, the difficulty, the situational modifier or the faces are not values the draft accepts; nothing is re-rolled
-     * @throws CheckTestRollNotPushable when the check declares no push (a dice check never does), or no die of the roll failed
+     * @throws InvalidTestRoll          when a sample, the difficulty, the situational modifier or the faces are not values the draft accepts; nothing is re-rolled or burned
+     * @throws CheckTestRollNotPushable when the check declares no push (a dice check never does), no die of the roll failed, or a burn beats no more challenge dice than the score did
      * @throws CheckTestRollFailed      when the saved draft is not readable, or a formula fails for these samples; nothing is re-rolled
      */
     public function __invoke(TestPushCheck $query): CheckTestRollView

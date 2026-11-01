@@ -1225,7 +1225,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Push a sandbox roll of a pool check of one of my GameSystem drafts: the client sends the faces of the roll with its samples and gets the failed dice re-rolled; never changes the draft, is never recorded and never applies the push cost */
+        /** Push a sandbox roll of a pool check of one of my GameSystem drafts, or burn that of a challenge check: the client sends the faces of the roll with its samples and gets the failed dice re-rolled, or the momentum burned (no dice are rolled); never changes the draft, is never recorded and never applies the push cost */
         post: operations["testPushCheck"];
         delete?: never;
         options?: never;
@@ -5002,7 +5002,7 @@ export interface components {
             criticalsBonus: number;
         };
         /** @enum {string} */
-        CheckTestSpecialResult: "critical" | "messyCritical" | "bestialFailure";
+        CheckTestSpecialResult: "critical" | "messyCritical" | "bestialFailure" | "match";
         CheckTestRollPushResponse: {
             /**
              * @description What the push costs, in the words of the check.
@@ -5017,6 +5017,71 @@ export interface components {
             /** @description Only on a pushed roll: the special result the roll had before the push; null for none, and before a push. */
             rolledSpecial: components["schemas"]["CheckTestSpecialResult"] | null;
         };
+        CheckTestRollChallengeDieResponse: {
+            /**
+             * @description The face the die shows.
+             * @example 5
+             */
+            face: number;
+            /**
+             * @description Whether the score beat the die: the die shows a face strictly below it. A tie goes to the die. After a burn, against the burned score.
+             * @example true
+             */
+            beaten: boolean;
+        };
+        CheckTestRollBurnResponse: {
+            /**
+             * @description The momentum burned: the value of the check's momentum field for the samples.
+             * @example 9
+             */
+            momentum: number;
+            /**
+             * @description The score the burn made: the momentum, capped at the check's score cap.
+             * @example 9
+             */
+            score: number;
+        };
+        CheckTestRollChallengeResponse: {
+            /**
+             * @description The action die as rolled: the total of the check's dice; null on a progress roll, which rolls none. A cancelled die is still shown.
+             * @example 4
+             */
+            actionDie: number | null;
+            /**
+             * @description The faces of each challenge die.
+             * @example 10
+             */
+            sides: number;
+            /**
+             * @description The highest the score can be; null for no cap.
+             * @example 10
+             */
+            scoreMax: number | null;
+            /**
+             * @description The score the challenge dice were compared against: the action die (0 when cancelled), the modifier and the situational modifier, capped at the score cap; after a burn, the burned score.
+             * @example 6
+             */
+            score: number;
+            /**
+             * @description The value of the check's momentum field for the samples; null when the check names none.
+             * @example 2
+             */
+            momentum: number | null;
+            /**
+             * @description The key of the momentum field; null when the check names none.
+             * @example momentum
+             */
+            momentumField: string | null;
+            /**
+             * @description Whether negative momentum equal to the action die cancelled it, so it counted 0.
+             * @example false
+             */
+            cancelled: boolean;
+            /** @description Every challenge die in roll order, with whether the score beat it. */
+            dice: components["schemas"]["CheckTestRollChallengeDieResponse"][];
+            /** @description Only on a burned roll: the momentum burned and the score it made; null before a burn. */
+            burn: components["schemas"]["CheckTestRollBurnResponse"] | null;
+        };
         CheckTestRollBandResponse: {
             /** @example success */
             key: string;
@@ -5029,18 +5094,20 @@ export interface components {
             bound: number | null;
         };
         CheckTestRollResponse: {
-            /** @description The check's dice as rolled: normalized notation, total and every dice group; null for a pool check. */
+            /** @description The check's dice as rolled: normalized notation, total and every dice group; null for a pool check, for a progress roll, and for a burned roll (its action die is in the challenge). */
             dice: components["schemas"]["RollResponse"] | null;
             /** @description The check's pool as rolled, or as pushed by the push endpoint; null for a dice check. */
             pool: components["schemas"]["CheckTestRollPoolResponse"] | null;
-            /** @description The push the pool check declares: it can be pushed when a die failed; null for a check that declares none, and for a dice check. */
+            /** @description The push the check declares: a pool check can be pushed when a die failed, a challenge check burns its momentum; null for a check that declares none, and for a dice check. */
             push: components["schemas"]["CheckTestRollPushResponse"] | null;
+            /** @description The check's challenge dice as rolled, or as burned by the push endpoint (ADR 0049); null for a dice or a pool check. */
+            challenge: components["schemas"]["CheckTestRollChallengeResponse"] | null;
             /**
-             * @description Only on a pushed roll: the total the roll had before the push.
+             * @description Only on a pushed or burned roll: the total the roll had before the push.
              * @example 1
              */
             rolledSuccesses: number | null;
-            /** @description The special result of the roll as it stands, after a push the push's (ADR 0044): critical, messy critical or bestial failure. Null for none, and for a dice check. */
+            /** @description The special result of the roll as it stands, after a push the push's (ADR 0044): critical, messy critical or bestial failure, or a match of the challenge dice (ADR 0049), which a burn keeps. Null for none, and for a dice check. */
             special: components["schemas"]["CheckTestSpecialResult"] | null;
             /**
              * @description The value of the check's modifier formula for the samples; 0 when it has none, and for a pool check.
@@ -5072,7 +5139,7 @@ export interface components {
         };
         CheckTestPushRequest: {
             /**
-             * @description The face of each die of the roll to push, in roll order: as many as the pool's size for these samples and situational modifier, each from 1 to the pool's sides (422 otherwise).
+             * @description The face of each die of the roll to push, in roll order: as many as the pool's size for these samples and situational modifier, each from 1 to the pool's sides (422 otherwise). To burn a challenge check, the action die first (1 to the sides of its one die), then each challenge die (1 to its sides).
              * @example [
              *       1,
              *       5,
@@ -11773,7 +11840,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The pool with its failed dice re-rolled once (marked as re-rolled), the successes it had before the push, the total and band of the pushed successes and the label of the push, whose cost is not applied. */
+            /** @description The pool with its failed dice re-rolled once (marked as re-rolled), the successes it had before the push, the total and band of the pushed successes and the label of the push, whose cost is not applied. For a challenge check, the challenge dice against the burned score, the burn, the total it had before the burn and the band of the burned total. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -11818,7 +11885,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The check cannot be pushed: it declares no push (a dice check never does), or no die of the roll failed. As Play refuses the push of a roll that cannot be pushed. */
+            /** @description The check cannot be pushed: it declares no push (a dice check never does, and neither does a progress roll), no die of the roll failed, or the momentum of a challenge roll, capped, beats no more challenge dice than the score did. As Play refuses the push of a roll that cannot be pushed. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -11836,7 +11903,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description A sample, the difficulty or the situational modifier is not a value the draft accepts (the message starts with its path), the faces are not a list of integers or not the roll of the pool for these samples (the message starts with "faces"), a formula cannot be evaluated for these samples (nothing is re-rolled), the saved draft is not readable, or it has schema version 1 (no checks). */
+            /** @description A sample, the difficulty or the situational modifier is not a value the draft accepts (the message starts with its path), the faces are not a list of integers or not the roll of the pool or of the challenge check for these samples (the message starts with "faces"), a formula cannot be evaluated for these samples (nothing is re-rolled), the saved draft is not readable, or it has schema version 1 (no checks). */
             422: {
                 headers: {
                     [name: string]: unknown;

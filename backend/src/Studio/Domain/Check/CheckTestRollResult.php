@@ -11,7 +11,8 @@ use App\Randomness\Domain\Roll;
  * the difficulty that applied, their total (the successes of a pool), every band with the bound it
  * had for these samples (the last has none) and the band the total falls in. A pool check also tells
  * its push, and a pushed roll the total and special result it had before the push. A pool check
- * can also have a special result (ADR 0044).
+ * can also have a special result (ADR 0044). A challenge check tells its challenge dice, and a burned
+ * roll the total and special result it had before the burn (ADR 0049).
  */
 final readonly class CheckTestRollResult
 {
@@ -33,6 +34,7 @@ final readonly class CheckTestRollResult
         public ?int $rolledSuccesses = null,
         public ?CheckTestSpecialResult $special = null,
         public ?CheckTestSpecialResult $rolledSpecial = null,
+        public ?CheckTestChallengeRoll $challenge = null,
     ) {
     }
 }

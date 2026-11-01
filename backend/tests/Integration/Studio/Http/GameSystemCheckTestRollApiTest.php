@@ -10,6 +10,9 @@ use App\Randomness\Domain\RandomNumberGenerator;
 use App\Shared\Application\Bus\CommandBus;
 use App\Studio\Application\PublishGameSystemRelease;
 use App\Studio\Infrastructure\Http\CheckTestRollBandResponse;
+use App\Studio\Infrastructure\Http\CheckTestRollBurnResponse;
+use App\Studio\Infrastructure\Http\CheckTestRollChallengeDieResponse;
+use App\Studio\Infrastructure\Http\CheckTestRollChallengeResponse;
 use App\Studio\Infrastructure\Http\CheckTestRollPoolDieResponse;
 use App\Studio\Infrastructure\Http\CheckTestRollPoolResponse;
 use App\Studio\Infrastructure\Http\CheckTestRollPushResponse;
@@ -29,7 +32,10 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  * of 0 to 10, default 4; edge is derived, {hands}/2) with a difficulty of 9 to 29 (default 13) and
  * bands bounded by it; "luck" rolls d% against 20 and the alarm clock (6 segments), with no difficulty.
  * The pool cases save "grit" in the draft: {hands} dice of 6 sides that succeed on 5+ (hands 4 by default),
- * bands miss up to 0, weak up to 1 and strong above, and a push "Take a Condition".
+ * bands miss up to 0, weak up to 1 and strong above, and a push "Take a Condition". The challenge cases
+ * run on valid/v2-challenge-dice: "edge" rolls 1d6 plus {edge} (2 by default) against two dice of 10
+ * sides, the score capped at 10, with the momentum field "momentum" (-6 to 10, 2 by default) and a
+ * burn; "fulfill" is a progress roll of {vow} / 4.
  */
 #[CoversClass(GameSystemCheckController::class)]
 #[CoversClass(CheckTestRollResponse::class)]
@@ -37,6 +43,9 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 #[CoversClass(CheckTestRollPoolResponse::class)]
 #[CoversClass(CheckTestRollPoolDieResponse::class)]
 #[CoversClass(CheckTestRollPushResponse::class)]
+#[CoversClass(CheckTestRollChallengeResponse::class)]
+#[CoversClass(CheckTestRollChallengeDieResponse::class)]
+#[CoversClass(CheckTestRollBurnResponse::class)]
 final class GameSystemCheckTestRollApiTest extends WebTestCase
 {
     private const string PASSWORD = 'secret123';
@@ -44,6 +53,8 @@ final class GameSystemCheckTestRollApiTest extends WebTestCase
     private const string PATH = self::BASE.'/mine/checks/skill/test-rolls';
     private const string GRIT = self::BASE.'/mine/checks/grit/test-rolls';
     private const string GRIT_PUSH = self::GRIT.'/push';
+    private const string EDGE = self::BASE.'/mine/checks/edge/test-rolls';
+    private const string FULFILL = self::BASE.'/mine/checks/fulfill/test-rolls';
     /** Four hands: three regular dice and one Hunger die of ten sides, a pair of 10s worth 2 more. */
     private const array VAMPIRE_POOL = ['count' => ['formula' => '{hands}'], 'sides' => 10, 'successAt' => 6, 'criticals' => ['bonus' => 2], 'hunger' => ['count' => ['formula' => '{hands} - 3']]];
 
@@ -88,6 +99,7 @@ final class GameSystemCheckTestRollApiTest extends WebTestCase
             'dice' => ['expression' => '1d10', 'total' => 7, 'groups' => [['notation' => '1d10', 'sides' => 10, 'dice' => [['value' => 7, 'kept' => true]], 'subtotal' => 7]]],
             'pool' => null,
             'push' => null,
+            'challenge' => null,
             'rolledSuccesses' => null,
             'special' => null,
             'modifier' => 6,
@@ -356,6 +368,7 @@ final class GameSystemCheckTestRollApiTest extends WebTestCase
                 'criticalsBonus' => 0,
             ],
             'push' => ['label' => 'Take a Condition', 'maxDice' => null, 'rolledSpecial' => null],
+            'challenge' => null,
             'rolledSuccesses' => null,
             'special' => null,
             'modifier' => 0,
@@ -467,6 +480,7 @@ final class GameSystemCheckTestRollApiTest extends WebTestCase
                 'criticalsBonus' => 0,
             ],
             'push' => ['label' => 'Take a Condition', 'maxDice' => null, 'rolledSpecial' => null],
+            'challenge' => null,
             'rolledSuccesses' => 1,
             'special' => null,
             'modifier' => 0,
@@ -869,6 +883,226 @@ final class GameSystemCheckTestRollApiTest extends WebTestCase
 
         $this->client->jsonRequest('POST', self::BASE.'/mine/checks', ['expectedVersion' => $this->checks()['version'], 'check' => $check]);
         self::assertResponseStatusCodeSame(201);
+    }
+
+    #[Test]
+    public function anActionRollScoresTheDieAndTheModifierAgainstEachChallengeDie(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', 'valid/v2-challenge-dice');
+        $this->scriptRolls(4, 5, 7);
+
+        $this->testRoll(self::EDGE, []);
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame([
+            'dice' => ['expression' => '1d6', 'total' => 4, 'groups' => [['notation' => '1d6', 'sides' => 6, 'dice' => [['value' => 4, 'kept' => true]], 'subtotal' => 4]]],
+            'pool' => null,
+            'push' => ['label' => 'Burn momentum', 'maxDice' => null, 'rolledSpecial' => null],
+            'challenge' => [
+                'actionDie' => 4,
+                'sides' => 10,
+                'scoreMax' => 10,
+                'score' => 6,
+                'momentum' => 2,
+                'momentumField' => 'momentum',
+                'cancelled' => false,
+                'dice' => [['face' => 5, 'beaten' => true], ['face' => 7, 'beaten' => false]],
+                'burn' => null,
+            ],
+            'rolledSuccesses' => null,
+            'special' => null,
+            'modifier' => 2,
+            'situational' => 0,
+            'difficulty' => null,
+            'total' => 1,
+            'bands' => [['key' => 'miss', 'label' => 'Miss', 'bound' => 0], ['key' => 'weak', 'label' => 'Weak hit', 'bound' => 1], ['key' => 'strong', 'label' => 'Strong hit', 'bound' => null]],
+            'band' => 'weak',
+        ], $this->json());
+    }
+
+    #[Test]
+    public function aProgressRollHasNoDiceNoActionDieAndNoMomentum(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', 'valid/v2-challenge-dice');
+        // No action die is rolled: the generator holds the challenge dice only.
+        $this->scriptRolls(4, 7);
+
+        $this->testRoll(self::FULFILL, ['sheet' => ['vow' => 20]]);
+
+        self::assertResponseStatusCodeSame(200);
+        $roll = $this->json();
+        self::assertNull($roll['dice']);
+        self::assertNull($roll['push']);
+        self::assertSame([
+            'actionDie' => null,
+            'sides' => 10,
+            'scoreMax' => null,
+            'score' => 5,
+            'momentum' => null,
+            'momentumField' => null,
+            'cancelled' => false,
+            'dice' => [['face' => 4, 'beaten' => true], ['face' => 7, 'beaten' => false]],
+            'burn' => null,
+        ], $roll['challenge']);
+        self::assertSame([5, 1, 'weak'], [$roll['modifier'], $roll['total'], $roll['band']]);
+    }
+
+    #[Test]
+    public function negativeMomentumCancelsTheActionDieAndAMatchIsASpecialResult(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', 'valid/v2-challenge-dice');
+        $this->scriptRolls(4, 3, 3);
+
+        $this->testRoll(self::EDGE, ['sheet' => ['momentum' => -4], 'situational' => 1]);
+
+        self::assertResponseStatusCodeSame(200);
+        $roll = $this->json();
+        $challenge = $roll['challenge'] ?? null;
+        self::assertIsArray($challenge);
+        self::assertSame([4, 3, -4, true], [$challenge['actionDie'], $challenge['score'], $challenge['momentum'], $challenge['cancelled']]);
+        self::assertSame(['match', 0, 'miss', 1], [$roll['special'], $roll['total'], $roll['band'], $roll['situational']]);
+    }
+
+    #[Test]
+    public function aDifficultyIsRefusedForAChallengeCheck(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', 'valid/v2-challenge-dice');
+        $this->scriptRolls();
+
+        $this->testRoll(self::EDGE, ['difficulty' => 3]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame('difficulty: check "edge" declares no difficulty', $this->error());
+    }
+
+    #[Test]
+    public function aBurnRaisesTheScoreToTheMomentumAndRollsNothingAndSavesNothing(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', 'valid/v2-challenge-dice');
+        $before = $this->checks();
+        // A burn rolls no dice: an empty generator fails if it is asked for a number.
+        $this->scriptRolls();
+
+        $this->testRoll(self::EDGE.'/push', ['faces' => [2, 5, 3], 'sheet' => ['momentum' => 9]]);
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame([
+            'dice' => null,
+            'pool' => null,
+            'push' => ['label' => 'Burn momentum', 'maxDice' => null, 'rolledSpecial' => null],
+            'challenge' => [
+                'actionDie' => 2,
+                'sides' => 10,
+                'scoreMax' => 10,
+                'score' => 9,
+                'momentum' => 9,
+                'momentumField' => 'momentum',
+                'cancelled' => false,
+                'dice' => [['face' => 5, 'beaten' => true], ['face' => 3, 'beaten' => true]],
+                'burn' => ['momentum' => 9, 'score' => 9],
+            ],
+            'rolledSuccesses' => 1,
+            'special' => null,
+            'modifier' => 2,
+            'situational' => 0,
+            'difficulty' => null,
+            'total' => 2,
+            'bands' => [['key' => 'miss', 'label' => 'Miss', 'bound' => 0], ['key' => 'weak', 'label' => 'Weak hit', 'bound' => 1], ['key' => 'strong', 'label' => 'Strong hit', 'bound' => null]],
+            'band' => 'strong',
+        ], $this->json());
+        self::assertSame($before, $this->checks());
+    }
+
+    #[Test]
+    public function aBurnCappedByTheScoreMaxAndAMatchThatItKeeps(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', 'valid/v2-challenge-dice');
+        $this->scriptRolls();
+
+        // Momentum 10 against a cap of 10 burns to 10; the dice tie at 7 and are beaten, and they match.
+        $this->testRoll(self::EDGE.'/push', ['faces' => [1, 7, 7], 'sheet' => ['momentum' => 10]]);
+
+        self::assertResponseStatusCodeSame(200);
+        $roll = $this->json();
+        self::assertSame(['match', 2, 'strong'], [$roll['special'], $roll['total'], $roll['band']]);
+    }
+
+    /**
+     * @return iterable<string, array{list<int>, int, int}> the faces, the momentum and the situational modifier
+     */
+    public static function burnsThatBeatNoMoreDice(): iterable
+    {
+        yield 'a momentum that beats the same dice' => [[2, 3, 8], 6, 0];
+        yield 'a momentum equal to the score' => [[2, 3, 8], 4, 0];
+        yield 'a momentum of zero' => [[2, 1, 1], 0, 0];
+        yield 'a negative momentum' => [[2, 1, 1], -3, 0];
+        yield 'a situational modifier that already beats them' => [[2, 6, 7], 7, 3];
+    }
+
+    /**
+     * @param list<int> $faces
+     */
+    #[Test]
+    #[DataProvider('burnsThatBeatNoMoreDice')]
+    public function aBurnThatBeatsNoMoreDiceThanTheScoreDidIsAConflict(array $faces, int $momentum, int $situational): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', 'valid/v2-challenge-dice');
+        $this->scriptRolls();
+
+        $this->testRoll(self::EDGE.'/push', ['faces' => $faces, 'sheet' => ['momentum' => $momentum], 'situational' => $situational]);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('Check "edge" cannot burn momentum: it beats no more challenge dice than the score does.', $this->error());
+    }
+
+    #[Test]
+    public function aProgressRollCannotBeBurned(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', 'valid/v2-challenge-dice');
+        $this->scriptRolls();
+
+        $this->testRoll(self::FULFILL.'/push', ['faces' => [4, 7]]);
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame('Check "fulfill" cannot be pushed: it declares no push.', $this->error());
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function invalidBurnFaces(): iterable
+    {
+        yield 'no faces' => [[]];
+        yield 'the challenge dice without the action die' => [[5, 3]];
+        yield 'an extra face' => [[2, 5, 3, 4]];
+        yield 'an action die above its sides' => [[7, 5, 3]];
+        yield 'an action die of zero' => [[0, 5, 3]];
+        yield 'a challenge face above its sides' => [[2, 5, 11]];
+        yield 'a challenge face of zero' => [[2, 0, 3]];
+        yield 'a face that is not an integer' => [[2, 5, '3']];
+        yield 'faces that are not a list' => [['a' => 2, 'b' => 5, 'c' => 3]];
+    }
+
+    #[Test]
+    #[DataProvider('invalidBurnFaces')]
+    public function facesThatAreNotTheRollOfTheChallengeCheckAreUnprocessable(mixed $faces): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine', 'valid/v2-challenge-dice');
+        $this->scriptRolls();
+
+        $this->testRoll(self::EDGE.'/push', ['faces' => $faces, 'sheet' => ['momentum' => 9]]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertTrue(str_starts_with($this->error(), 'faces: '), $this->error());
     }
 
     /**

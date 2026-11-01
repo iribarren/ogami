@@ -225,6 +225,8 @@ final readonly class CheckPoolContent
 
         $result = SpecialResult::tryFrom($special) ?? throw InvalidJournalEntryContent::malformed($field, 'critical, messyCritical, bestialFailure or null');
         $possible = match ($result) {
+            // A match belongs to challenge dice (ADR 0049), never to a pool.
+            SpecialResult::Match => false,
             SpecialResult::Critical => $roll->hasCriticalPair(),
             SpecialResult::MessyCritical => $roll->hasHungerCriticalPair(),
             SpecialResult::BestialFailure => $roll->hasHungerOne(),

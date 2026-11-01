@@ -92,7 +92,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: ADR 0049 and its index, amendments noted on ADR 0024 and ADR 0044, `docs/contracts/gamesystem-release.md`, glossary | delegated writer (slice 1) | [x] | `02afb8aa` |
 | T2 | 1 | Schema `v2.schema.json`, Studio validation in `Checks.php`, Play translator refuses `challenge`, valid and invalid fixtures, contract tests | delegated writer (slice 1) | [x] | `4b493539` |
-| T3 | 2 | Randomness: challenge roll kernel. Play domain: action and progress rolls, score cap, hits, negative momentum, `match` | | [ ] | |
+| T3 | 2 | Randomness: challenge roll kernel. Play domain: action and progress rolls, score cap, hits, negative momentum, `match` | delegated writer (slice 2) | [x] | |
 | T4 | 2 | Journal content and legacy read, Play API, `make api` | | [ ] | |
 | T5 | 2 | Play UI: roll dialog and journal show the score, each challenge die, the cancelled die and a match | | [ ] | |
 | T6 | 3 | Burn: domain, `CheckPusher` from the sheet, pending step, journal, API | | [ ] | |
@@ -114,6 +114,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: T1 done: ADR 0049, index, amendments on ADR 0024/0041/0044, contract doc and glossary. Docs only: no RED.
 - 2026-11-01: T2 done: schema `challenge` and its oneOf, Studio `Checks` refusals, Play translator refuses `challenge` (ADR 0049), fixtures and tests. RED: 32 refusal cases and 41-test class failed (`challenge: unknown property`), GREEN after `Checks.php`; translator RED `unknown property`, GREEN after `refuseUnplayed`.
 - 2026-11-01: T10 done: `challenge.momentum` counts in `DraftReferences::sheetFieldPathsTo`. RED: expected the momentum path, got the push effect only; GREEN after the edit.
+- 2026-11-01: Slice 1 review fixes: `scoreMax` caps a progress roll (contract, ADR 0049); test of a multi-die action roll without momentum or push (already passing: no RED).
+- 2026-11-01: T3 done: `ChallengeDice`/`ChallengeRoll`, `DiceExpression::rollsOneDie`, `CheckChallenge`, `ChallengeResult`, `Check::perform` for action and progress rolls, `SpecialResult::Match` (refused as a step outcome in `outcomeKey`, not offered by `canProduce`), translator `checkChallenge`, a challenge push refused. RED: classes not found (kernel, domain) and 23 translator failures (`not played yet`); GREEN after the implementation.
 
 ## Reviews
 

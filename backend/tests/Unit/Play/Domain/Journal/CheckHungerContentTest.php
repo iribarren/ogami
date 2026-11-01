@@ -164,6 +164,7 @@ final class CheckHungerContentTest extends TestCase
         yield 'an unknown special result' => [static fn (array $e): array => self::withPool($e, ['special' => 'brutal']), '"special" must be critical, messyCritical, bestialFailure or null'];
         yield 'a critical the dice cannot show' => [static fn (array $e): array => self::withPool($e, ['special' => 'critical', 'criticalsBonus' => 0]), '"special" must be a special result the dice can show, not "critical"'];
         yield 'a bestial failure without a Hunger 1' => [static fn (array $e): array => self::withPool($e, ['special' => 'bestialFailure']), '"special" must be a special result the dice can show, not "bestialFailure"'];
+        yield 'a match, which belongs to challenge dice' => [static fn (array $e): array => self::withPool($e, ['special' => 'match']), '"special" must be a special result the dice can show, not "match"'];
         yield 'a bonus over 10' => [static fn (array $e): array => self::withPool($e, ['criticalsBonus' => 11]), '"criticalsBonus" must be between 0 and 10'];
         yield 'a total that ignores the critical pairs' => [static fn (array $e): array => ['total' => 2, 'diceTotal' => 2] + $e, '"total" must be the successes of the pool, plus the bonus of its critical pairs'];
         yield 'a Hunger die before a regular die' => [static fn (array $e): array => self::withPool($e, ['dice' => array_replace(self::diceOf(self::poolOf($e)), [0 => ['group' => 'hunger', 'face' => 10, 'success' => true]])]), '"group" must be Hunger dice after the regular dice'];

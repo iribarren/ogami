@@ -11,6 +11,7 @@ use App\Formula\Domain\Reference;
 use App\Formula\Domain\ReferenceKind;
 use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Check\CheckBand;
+use App\Play\Domain\GameSystem\Check\CheckChallenge;
 use App\Play\Domain\GameSystem\Check\CheckDifficulty;
 use App\Play\Domain\GameSystem\Check\CheckPool;
 use App\Play\Domain\GameSystem\Check\CheckPush;
@@ -85,6 +86,7 @@ use App\Play\Domain\GameSystem\Theme;
 use App\Play\Domain\GameSystem\Tracker;
 use App\Play\Domain\GameSystem\TrackerLevel;
 use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
+use App\Randomness\Domain\ChallengeDice;
 use App\Randomness\Domain\DiceExpression;
 use App\Randomness\Domain\DicePool;
 use App\Randomness\Domain\InvalidDiceExpression;
@@ -1003,8 +1005,14 @@ final readonly class GameSystemReleaseTranslator
         }
 
         $special = $this->string($view, $outcome['special'], $path.'.special');
-        if (!SpecialResult::tryFrom($special) instanceof SpecialResult) {
+        $result = SpecialResult::tryFrom($special);
+        if (!$result instanceof SpecialResult) {
             throw $this->invalid($view, $path.'.special', \sprintf('unknown special result "%s".', $special));
+        }
+
+        // Every reader of an outcome entry goes through here, so no step can name a match (ADR 0049).
+        if (SpecialResult::Match === $result) {
+            throw $this->invalid($view, $path.'.special', 'a match is shown only, the outcome of the band applies (ADR 0049).');
         }
 
         return ['special', $special];
@@ -1491,7 +1499,6 @@ final readonly class GameSystemReleaseTranslator
             $path = \sprintf('checks[%d]', $index);
             $check = $this->object($view, $item, $path);
             $this->assertProperties($view, $check, $path, ['key', 'label', 'hint', 'dice', 'modifier', 'pool', 'challenge', 'push', 'difficulty', 'bands']);
-            $this->refuseUnplayed($view, $check, $path, 'challenge', 'challenge dice are');
             $key = $this->key($view, $check['key'] ?? null, $path.'.key');
             if (isset($checks[$key])) {
                 throw $this->invalid($view, $path.'.key', \sprintf('duplicate check key "%s".', $key));
@@ -1502,17 +1509,74 @@ final readonly class GameSystemReleaseTranslator
             $label = $this->boundedString($view, $check['label'] ?? null, $path.'.label', self::MAX_CHECK_LABEL_LENGTH);
             $hint = null === ($check['hint'] ?? null) ? null : $this->boundedString($view, $check['hint'], $path.'.hint', self::MAX_CHECK_HINT_LENGTH, false);
             $pool = null === ($check['pool'] ?? null) ? null : $this->checkPool($view, $check, $path, $fields, $trackerKeys);
+            $challenged = \array_key_exists('challenge', $check);
+            if ($challenged) {
+                $this->refuseUnplayed($view, $check, $path, 'push', 'a challenge push is');
+            }
+
             $push = null === ($check['push'] ?? null) ? null : $this->checkPush($view, $check, $path, $fields, $trackerKeys, $pool instanceof CheckPool);
-            $dice = $pool instanceof CheckPool ? null : $this->dice($view, $check['dice'] ?? null, $path.'.dice');
+            // A progress roll (challenge dice and no dice) has no action die.
+            $dice = $pool instanceof CheckPool || ($challenged && null === ($check['dice'] ?? null)) ? null : $this->dice($view, $check['dice'] ?? null, $path.'.dice');
+            $challenge = $challenged ? $this->checkChallenge($view, $check, $path, $fields, $pool instanceof CheckPool, $dice, $modifier instanceof Formula) : null;
             $bands = $this->checkBands($view, $check['bands'] ?? null, $path.'.bands', $fields, $trackerKeys, $difficulty instanceof CheckDifficulty);
             try {
-                $checks[$key] = new Check($key, $label, $hint, $dice, $modifier, $difficulty, $bands, $pool, $push);
+                $checks[$key] = new Check($key, $label, $hint, $dice, $modifier, $difficulty, $bands, $pool, $push, $challenge);
             } catch (\InvalidArgumentException $invalid) {
                 throw $this->invalid($view, $path.'.bands', $invalid->getMessage());
             }
         }
 
         return array_values($checks);
+    }
+
+    /**
+     * The challenge dice of a check (ADR 0049): how many, their sides, the cap of the score and the
+     * number field whose negative value cancels the action die. With dice it is an action roll, without
+     * a progress roll, which needs the modifier that is its score and has no momentum.
+     *
+     * @param array<mixed>         $check
+     * @param array<string, Field> $fields
+     */
+    private function checkChallenge(PublishedReleaseView $view, array $check, string $path, array $fields, bool $pool, ?DiceExpression $dice, bool $modifier): CheckChallenge
+    {
+        if ($pool) {
+            throw $this->invalid($view, $path.'.challenge', 'a check rolls a pool or challenge dice, not both.');
+        }
+
+        if (null !== ($check['difficulty'] ?? null)) {
+            throw $this->invalid($view, $path.'.difficulty', 'a challenge check has no difficulty, the challenge dice are the difficulty.');
+        }
+
+        $path .= '.challenge';
+        $challenge = $this->object($view, $check['challenge'], $path);
+        $this->assertProperties($view, $challenge, $path, ['count', 'sides', 'scoreMax', 'momentum']);
+        $count = $this->requiredInt($view, $challenge['count'] ?? null, $path.'.count', ChallengeDice::MIN_COUNT, ChallengeDice::MAX_COUNT);
+        $sides = $this->requiredInt($view, $challenge['sides'] ?? null, $path.'.sides', ChallengeDice::MIN_SIDES, ChallengeDice::MAX_SIDES);
+        $scoreMax = null === ($challenge['scoreMax'] ?? null) ? null : $this->requiredInt($view, $challenge['scoreMax'], $path.'.scoreMax', CheckChallenge::MIN_SCORE_MAX, CheckChallenge::MAX_SCORE_MAX);
+        $momentum = null === ($challenge['momentum'] ?? null) ? null : $this->key($view, $challenge['momentum'], $path.'.momentum');
+        if (null !== $momentum) {
+            if (!($fields[$momentum] ?? null) instanceof NumberField) {
+                throw $this->invalid($view, $path.'.momentum', \sprintf('"%s" is not a number field of the sheet.', $momentum));
+            }
+
+            if (!$dice instanceof DiceExpression) {
+                throw $this->invalid($view, $path.'.momentum', 'a progress roll ignores momentum.');
+            }
+
+            if (!$dice->rollsOneDie()) {
+                throw $this->invalid($view, $path.'.momentum', \sprintf('needs dice that roll exactly one die, "%s" given.', $dice->notation()));
+            }
+        }
+
+        if (!$dice instanceof DiceExpression && !$modifier) {
+            throw $this->invalid($view, substr($path, 0, -\strlen('.challenge')).'.modifier', 'a progress roll needs a modifier, it is its score.');
+        }
+
+        try {
+            return new CheckChallenge($count, $sides, $scoreMax, $momentum);
+        } catch (\InvalidArgumentException $invalid) {
+            throw $this->invalid($view, $path, $invalid->getMessage());
+        }
     }
 
     /**

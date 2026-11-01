@@ -89,7 +89,7 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 | T1 | 1 | Docs: this feature doc; example 5 in `docs/domain/flow-examples.md` amended (places, roster of Characters, `foe` guard, rests, stale "until `play-places`" note, rules gaps); README preset list if it has one | delegated writer (slice 1) | [x] | b9d41bcf |
 | T2 | 1 | `backend/presets/west-marches.json` base: credits, tags, facts, trackers, sheet, checks, gear; `PresetsTest` (publishes once, credits verbatim, select options, conditions, currency, shops' categories, checks) | delegated writer (slice 1) | [x] | 4cdafa6c |
 | T3 | 1 | Flow, Scene Types and tables; `WestMarchesPresetFlowTest` playing founding, a session opening with no open Thread, travel with a world turn encounter by distance, a combat to victory, the `foe` guard, a trap with a condition, a rest chain, a shop purchase, a stranded closing and `closeThread` | delegated writer (slice 1) | [x] | c89f9df2 |
-| T4 | 2 | Slice 1 review fixes; e2e `frontend/e2e/play-west-marches.spec.ts`: founding, session opening, a town purchase | delegated writer (slice 2) | [ ] | |
+| T4 | 2 | Slice 1 review fixes; e2e `frontend/e2e/play-west-marches.spec.ts`: founding, session opening, a town purchase | delegated writer (slice 2) | [x] | |
 | T5 | 2 | Chrome play pass: founding, one full expedition, a fight, a rest; fixes | parent Chrome pass + delegated writer (slice 2) | [ ] | |
 | T6 | 2 | Closing: Reviews, roadmap `Done:` line under B15, follow-ups if any | parent (slice 2) | [ ] | |
 
@@ -99,6 +99,7 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 - 2026-11-01: T1 done: feature doc and flow example 5 amended (README lists two of seven presets, so it is left alone).
 - 2026-11-01: T2 done: release base publishes with no flow until T3. RED: three `PresetsTest` cases failed on the missing file; GREEN with the JSON (112 assertions).
 - 2026-11-01: T3 done: flow, 13 Scene Types and 8 tables; `PresetsTest` flow case and `WestMarchesPresetFlowTest` (22 tests). RED: the 22 flow tests errored on the release without a flow; removing the `threat` guard step made the victory test fail, so the guard is covered.
+- 2026-11-01: T4 done: slice 1 review fixes in the release (additive party, `expeditions` tracker, mandatory fallback rumor, stranded rations, short rest tip) with 21 new flow cases; a surviving forced `combat-round` plays to its end and a short rest at 0 hit dice still heals (documented gap); e2e `play-west-marches.spec.ts` added.
 
 ## Reviews
 

@@ -3,6 +3,7 @@ import {
   markedLabels,
   slotsUsed,
   stackText,
+  storedValue,
   summarize,
   toDraft,
   valueOrDefault,
@@ -92,6 +93,51 @@ describe('a conditions field', () => {
   it('leaves out a key the field no longer declares', () => {
     expect(markedLabels(wounds, ['gone', 'hurt'])).toEqual(['Hurt'])
     expect(summarize(wounds, ['gone'])).toBe('Wounds: none')
+  })
+})
+
+const stance: SheetFieldView = {
+  ...gear,
+  key: 'stance',
+  label: 'Stance',
+  type: 'select',
+  options: [
+    { key: 'guarded', label: 'Guarded' },
+    { key: 'reckless', label: 'Reckless' },
+  ],
+  defaultOption: 'guarded',
+}
+
+describe('a select field (ADR 0048)', () => {
+  it('starts at the default option, or none without one, for a value not stored yet', () => {
+    expect(valueOrDefault(stance, undefined)).toBe('guarded')
+    expect(valueOrDefault({ ...stance, defaultOption: null }, undefined)).toBeNull()
+    expect(toDraft(stance, undefined)).toBe('guarded')
+  })
+
+  it('keeps a stored null as none and reads an unexpected shape as none', () => {
+    expect(valueOrDefault(stance, null)).toBeNull()
+    expect(toDraft(stance, null)).toBe('')
+    expect(valueOrDefault(stance, 3)).toBeNull()
+  })
+
+  it('reads a stored Character with no value as none, not as the default', () => {
+    expect(storedValue(stance, undefined)).toBeNull()
+    expect(valueOrDefault(stance, storedValue(stance, undefined))).toBeNull()
+    expect(toDraft(stance, storedValue(stance, undefined))).toBe('')
+    expect(summarize(stance, storedValue(stance, undefined))).toBeNull()
+    expect(storedValue(stance, 'reckless')).toBe('reckless')
+  })
+
+  it('sends the chosen key, and null for none', () => {
+    expect(fromDraft(stance, 'reckless')).toBe('reckless')
+    expect(fromDraft(stance, '')).toBeNull()
+  })
+
+  it('summarizes the chosen option by label, and leaves none out', () => {
+    expect(summarize(stance, 'reckless')).toBe('Stance: Reckless')
+    expect(summarize(stance, 'gone')).toBe('Stance: gone')
+    expect(summarize(stance, null)).toBeNull()
   })
 })
 

@@ -612,6 +612,53 @@ describe('the formula of a derived field', () => {
   })
 })
 
+describe('a select field', () => {
+  it('sends its options in order and the default picked among them', async () => {
+    const { sent, handler } = recorder(Response.json(sheet, { status: 201 }))
+    const { user } = await openSheet({ [`POST ${base}/sheet/fields`]: handler })
+    await addField(user)
+    await typeText(user, inDialog().getByLabelText('Key'), 'stance')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Stance')
+    await chooseOption(user, 'Type', 'select', inDialog())
+    await typeText(user, inDialog().getByLabelText('Option 1 label'), 'Guarded')
+    await user.click(inDialog().getByRole('button', { name: 'Add option' }))
+    await typeText(user, inDialog().getByLabelText('Option 2 label'), 'Reckless')
+    await chooseOption(user, 'Default option', 'reckless', inDialog())
+    await user.click(inDialog().getByRole('button', { name: 'Create field' }))
+
+    await waitFor(() => {
+      expect(sent[0]?.field).toEqual({
+        key: 'stance',
+        label: 'Stance',
+        group: 'Stats',
+        type: 'select',
+        options: [
+          { key: 'guarded', label: 'Guarded' },
+          { key: 'reckless', label: 'Reckless' },
+        ],
+        default: 'reckless',
+      })
+    })
+  })
+
+  it('sends no default when it is left on None', async () => {
+    const { sent, handler } = recorder(Response.json(sheet, { status: 201 }))
+    const { user } = await openSheet({ [`POST ${base}/sheet/fields`]: handler })
+    await addField(user)
+    await typeText(user, inDialog().getByLabelText('Key'), 'stance')
+    await typeText(user, inDialog().getByLabelText('Label'), 'Stance')
+    await chooseOption(user, 'Type', 'select', inDialog())
+
+    expect(inDialog().getByLabelText('Default option')).toHaveValue('')
+    await typeText(user, inDialog().getByLabelText('Option 1 label'), 'Guarded')
+    await user.click(inDialog().getByRole('button', { name: 'Create field' }))
+
+    await waitFor(() => {
+      expect(sent[0]?.field).not.toHaveProperty('default')
+    })
+  })
+})
+
 describe('a conditions field', () => {
   async function newConditionsField(handlers: Record<string, FakeHandler> = {}) {
     const opened = await openSheet(handlers)

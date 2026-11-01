@@ -3,7 +3,7 @@ import type { SheetEconomy, SheetFieldView, SheetGear, SheetStack, SheetValue } 
 /**
  * What a field holds while it is edited: text as typed, so a number can be empty for a moment
  * (the browser then refuses the form), the rows of a list, the marked option keys of a conditions
- * field, an inventory's stacks, a track's current and max.
+ * field, the chosen option key of a select field ('' for none), an inventory's stacks, a track's current and max.
  */
 export type Draft = string | string[] | SheetStack[] | { current: string; max: string }
 
@@ -22,6 +22,13 @@ export function valueOrDefault(field: SheetFieldView, stored: SheetValue | undef
       return typeof stored === 'number' ? stored : (field.default ?? 0)
     case 'text':
       return typeof stored === 'string' ? stored : ''
+    case 'select':
+      // No value stored yet reads as the default option; a stored null is a deliberate "none".
+      return stored === undefined
+        ? (field.defaultOption ?? null)
+        : typeof stored === 'string'
+          ? stored
+          : null
     case 'list':
     case 'conditions':
     case 'inventory':
@@ -36,8 +43,22 @@ export function valueOrDefault(field: SheetFieldView, stored: SheetValue | undef
   }
 }
 
+/**
+ * What an existing Character holds for `field`: the stored value, except that a select field with
+ * none stored reads as none (null), not as its default (ADR 0048). The default is only for a new Character.
+ */
+export function storedValue(
+  field: SheetFieldView,
+  stored: SheetValue | undefined,
+): SheetValue | undefined {
+  return field.type === 'select' && stored === undefined ? null : stored
+}
+
 export function toDraft(field: SheetFieldView, stored: SheetValue | undefined): Draft {
   const value = valueOrDefault(field, stored)
+  if (value === null) {
+    return ''
+  }
   if (typeof value === 'number') {
     return String(value)
   }
@@ -108,6 +129,9 @@ export function fromDraft(field: SheetFieldView, draft: Draft): SheetValue {
     return stacksOf(draft)
   }
   if (typeof draft === 'string') {
+    if (field.type === 'select') {
+      return draft === '' ? null : draft
+    }
     return field.type === 'number' ? Number(draft) : draft
   }
   if (Array.isArray(draft)) {
@@ -163,6 +187,13 @@ export function summarize(
     return `${field.label}: ${String(derived[field.key] ?? '—')}`
   }
   const value = valueOrDefault(field, stored)
+  if (value === null) {
+    return null
+  }
+  if (field.type === 'select' && typeof value === 'string') {
+    const label = (field.options ?? []).find(({ key }) => key === value)?.label ?? value
+    return `${field.label}: ${label}`
+  }
   if (typeof value === 'string') {
     return value === '' ? null : `${field.label}: ${cut(value)}`
   }

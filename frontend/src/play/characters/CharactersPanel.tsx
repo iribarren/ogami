@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { summarize } from '@/shared/sheet/sheetValues'
+import { storedValue, summarize } from '@/shared/sheet/sheetValues'
 import { Button } from '@/shared/ui/button'
 
 import type { Campaign } from '../campaigns/useCampaigns'
@@ -90,7 +90,7 @@ export function CharactersPanel({ campaign }: { campaign: Campaign }) {
                     .map((field) =>
                       summarize(
                         field,
-                        character.values[field.key],
+                        storedValue(field, character.values[field.key]),
                         character.derived,
                         template.economy,
                       ),

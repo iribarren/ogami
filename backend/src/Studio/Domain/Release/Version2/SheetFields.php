@@ -30,6 +30,7 @@ final class SheetFields
     public const int MAX_LIST_ITEMS = 100;
     public const int MAX_TRACK = 999;
     public const int MAX_CONDITION_OPTIONS = 20;
+    public const int MAX_SELECT_OPTIONS = 50;
     public const int MAX_OPTION_LABEL_LENGTH = 60;
     public const int MAX_FORMULA_LENGTH = Formula::MAX_LENGTH;
     public const int MAX_CAPACITY = 999;
@@ -48,6 +49,7 @@ final class SheetFields
         'track' => ['max' => false, 'startMax' => false],
         'derived' => ['formula' => true],
         'conditions' => ['options' => true],
+        'select' => ['options' => true, 'default' => false],
         'inventory' => ['capacity' => false, 'maxStacks' => false, 'categories' => false],
     ];
 
@@ -167,6 +169,7 @@ final class SheetFields
             'track' => self::track($field, $path),
             'derived' => self::derived($field, $path),
             'conditions' => self::conditions($field, $path),
+            'select' => self::select($field, $path),
             'inventory' => self::inventory($field, $path, $gearCategories),
         };
 
@@ -316,9 +319,40 @@ final class SheetFields
      */
     private static function conditions(array $field, string $path): array
     {
+        [$field['options']] = self::options($field['options'], $path, self::MAX_CONDITION_OPTIONS);
+
+        return $field;
+    }
+
+    /**
+     * The options a Character picks one of (ADR 0048): 1 to 50, as the conditions options; the optional
+     * default is the key of one of them.
+     *
+     * @param array<string, mixed> $field
+     *
+     * @return array<string, mixed>
+     */
+    private static function select(array $field, string $path): array
+    {
+        [$field['options'], $keys] = self::options($field['options'], $path, self::MAX_SELECT_OPTIONS);
+        if (isset($field['default'])) {
+            $default = ReleaseFields::key($field['default'], $path.'.default');
+            if (!isset($keys[$default])) {
+                throw InvalidReleaseContent::at($path.'.default', \sprintf('unknown option "%s"', $default));
+            }
+        }
+
+        return $field;
+    }
+
+    /**
+     * @return array{list<array<string, mixed>>, array<string, true>} the checked options and their keys
+     */
+    private static function options(mixed $value, string $path, int $max): array
+    {
         $options = [];
         $keys = [];
-        foreach (ReleaseFields::sizedList($field['options'], $path.'.options', 1, self::MAX_CONDITION_OPTIONS, 'options') as $index => $option) {
+        foreach (ReleaseFields::sizedList($value, $path.'.options', 1, $max, 'options') as $index => $option) {
             $optionPath = \sprintf('%s.options[%d]', $path, $index);
             $option = ReleaseFields::object($option, $optionPath, self::OPTION);
             $key = ReleaseFields::key($option['key'], $optionPath.'.key');
@@ -331,8 +365,6 @@ final class SheetFields
             $options[] = $option;
         }
 
-        $field['options'] = $options;
-
-        return $field;
+        return [$options, $keys];
     }
 }

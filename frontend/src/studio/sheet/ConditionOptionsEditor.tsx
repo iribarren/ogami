@@ -19,7 +19,7 @@ import {
 } from './sheetDraft'
 
 /**
- * The options of a conditions field (ADR 0041): rows of a key and a label, in the order a
+ * The options of a conditions field (ADR 0041) or a select field (ADR 0048): rows of a key and a label, in the order a
  * Character form lists them. A key follows its label until it is typed by hand. Removing or
  * renaming an option an effect marks is refused by the server when the field is saved.
  */
@@ -28,6 +28,8 @@ export function ConditionOptionsEditor({
   onChange,
   error,
   errors,
+  max = optionLimits.count,
+  hint = 'A Character marks any of these; a formula reads how many are marked.',
 }: {
   options: OptionDraft[]
   onChange: (options: OptionDraft[]) => void
@@ -35,6 +37,10 @@ export function ConditionOptionsEditor({
   error?: string
   /** The messages of each option's inputs, by position. */
   errors?: Partial<Record<number, OptionErrors>>
+  /** The most options the field takes: 20 for conditions, 50 for a select. */
+  max?: number
+  /** What the field does with its options. */
+  hint?: string
 }) {
   const keyHintId = useId()
   const edit = (index: number, next: (option: OptionDraft) => OptionDraft) => {
@@ -57,7 +63,7 @@ export function ConditionOptionsEditor({
           type="button"
           variant="outline"
           size="sm"
-          disabled={options.length >= optionLimits.count}
+          disabled={options.length >= max}
           onClick={() => {
             onChange([...options, newOption()])
           }}
@@ -139,8 +145,7 @@ export function ConditionOptionsEditor({
       </ol>
       <KeyHint id={keyHintId}>Every option key follows this rule.</KeyHint>
       <p className="hint">
-        A Character marks any of these; a formula reads how many are marked. 1 to{' '}
-        {optionLimits.count} options.
+        {hint} 1 to {max} options.
       </p>
       {error && <FieldError>{error}</FieldError>}
     </div>

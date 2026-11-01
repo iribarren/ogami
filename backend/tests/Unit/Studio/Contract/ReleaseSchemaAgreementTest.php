@@ -197,6 +197,13 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: v2-sheet-group-unknown-property' => ['sheet.groups[0].color: unknown property', '/sheet/groups/0'],
         'generated: v2-sheet-field-span-0' => ['sheet.fields[0].span: must be at least 1', '/sheet/fields/0/span'],
         'generated: v2-sheet-field-span-5' => ['sheet.fields[0].span: must be at most 4', '/sheet/fields/0/span'],
+        'generated: v2-select-field-no-options' => ['sheet.fields[0].options: at least 1 options, 0 given', '/sheet/fields/0/options'],
+        'generated: v2-select-field-missing-options' => ['sheet.fields[0].options: required', '/sheet/fields/0'],
+        'generated: v2-select-field-51-options' => ['sheet.fields[0].options: at most 50 options, 51 given', '/sheet/fields/0/options'],
+        'generated: v2-select-field-default-bad-key' => ['sheet.fields[0].default: ', '/sheet/fields/0/default'],
+        'generated: v2-select-field-default-number' => ['sheet.fields[0].default: ', '/sheet/fields/0/default'],
+        'generated: v2-select-field-option-label-61' => ['sheet.fields[0].options[0].label: ', '/sheet/fields/0/options/0/label'],
+        'generated: v2-select-field-unknown-property' => ['sheet.fields[0].max: unknown property', '/sheet/fields/0'],
         'generated: v2-too-many-flows' => ['flows: at most 20 flows', '/flows'],
         'generated: v2-too-long-credits-notice' => ['gameSystem.credits.notice: must be at most 2000 characters', '/gameSystem/credits/notice'],
         'generated: v2-too-long-credits-license' => ['gameSystem.credits.license: must be at most 200 characters', '/gameSystem/credits/license'],
@@ -295,6 +302,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: v2-sheet-effect-derived-field' => 'sceneTypes[0].play[0].outcomes[0].effects[0].field: field "bonus" is a derived field, a sheet effect changes number and track fields only',
         'generated: v2-sheet-effect-text-field' => 'sceneTypes[0].play[0].outcomes[0].effects[0].field: field "name" is a text field, a sheet effect changes number and track fields only',
         'generated: v2-sheet-effect-list-field' => 'sceneTypes[0].play[0].outcomes[0].effects[0].field: field "gear" is a list field, a sheet effect changes number and track fields only',
+        'generated: v2-sheet-effect-select-field' => 'sceneTypes[0].play[0].outcomes[0].effects[0].field: field "stance" is a select field, a sheet effect changes number and track fields only',
         'generated: v2-sheet-effect-on-skip-option' => 'sceneTypes[0].play[0].options[1].effects[0]: a sheet effect is not allowed on the option the skip names',
         'generated: v2-sheet-effect-in-check-step-effects' => 'sceneTypes[0].play[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step, in the effects of a character or prompt step',
         'generated: v2-sheet-effect-in-roll-band' => 'sceneTypes[0].play[0].bands[0].effects[0]: a sheet effect is allowed only in the outcomes of a check step, in the effects of a character or prompt step',
@@ -309,6 +317,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: v2-sheet-effect-formula-reads-check' => 'sceneTypes[0].play[0].outcomes[0].effects[0].value.formula: {check:difficulty}: a check reference is read only by the bands of a check',
         'generated: v2-sheet-effect-formula-unknown-tracker' => 'sceneTypes[0].play[0].outcomes[0].effects[0].value.formula: {tracker:ghost}: unknown tracker "ghost"',
         'generated: v2-sheet-effect-formula-reads-text-field' => 'sceneTypes[0].play[0].outcomes[0].effects[0].value.formula: {name}: field "name" is a text field',
+        'generated: v2-sheet-effect-formula-reads-select-field' => 'sceneTypes[0].play[0].outcomes[0].effects[0].value.formula: {stance}: field "stance" is a select field',
         'generated: v2-check-step-repeated-check-in-checks' => 'sceneTypes[0].play[0].checks[1]: duplicate check "grit"',
         'generated: v2-check-step-unknown-check-in-checks' => 'sceneTypes[0].play[0].checks[1]: unknown check "ghost"',
         'generated: v2-check-step-checks-with-other-bands' => 'sceneTypes[0].play[0].checks[1]: check "luck" has other bands than check "grit"',
@@ -397,6 +406,8 @@ final class ReleaseSchemaAgreementTest extends TestCase
         'generated: v2-sheet-group-span-above-columns' => 'sheet.groups[1].span: must be at most the columns of the sheet (1), 2 given',
         'generated: v2-sheet-field-span-above-group-columns' => 'sheet.fields[0].span: must be at most the columns of group "Stats" (2), 3 given',
         'generated: v2-sheet-field-without-group' => 'sheet.fields[0].group: required, the sheet declares groups',
+        'generated: v2-select-field-default-not-an-option' => 'sheet.fields[0].default: unknown option "ghost"',
+        'generated: v2-select-field-duplicate-option-key' => 'sheet.fields[0].options[1].key: duplicate option key "a"',
         'generated: v2-sheet-field-in-undeclared-group' => 'sheet.fields[0].group: unknown group "Notes"',
         'v2-sheet-group-whitespace-only' => 'sheet.fields[0].group: must not be blank',
         'v2-sheet-item-label-whitespace-only' => 'sheet.fields[0].itemLabel: must not be blank',
@@ -430,7 +441,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
             yield 'generated: '.$name => [json_encode($release, \JSON_THROW_ON_ERROR)];
         }
 
-        foreach ([...self::generatedCheckCases()['valid'], ...self::generatedSheetLayoutCases()['valid']] as $name => $json) {
+        foreach ([...self::generatedCheckCases()['valid'], ...self::generatedSheetLayoutCases()['valid'], ...self::generatedSelectFieldCases()['valid']] as $name => $json) {
             yield $name => [$json];
         }
 
@@ -452,7 +463,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
             yield $name => [$name, $json];
         }
 
-        foreach ([...self::generatedCheckCases()['structural'], ...self::generatedSheetEffectCases()['structural'], ...self::generatedFlowChoiceCases()['structural'], ...self::generatedSheetLayoutCases()['structural']] as $name => $json) {
+        foreach ([...self::generatedCheckCases()['structural'], ...self::generatedSheetEffectCases()['structural'], ...self::generatedFlowChoiceCases()['structural'], ...self::generatedSheetLayoutCases()['structural'], ...self::generatedSelectFieldCases()['structural']] as $name => $json) {
             yield $name => [$name, $json];
         }
     }
@@ -466,7 +477,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
             yield $name => [$name, $json];
         }
 
-        foreach ([...self::generatedCheckCases()['semantic'], ...self::generatedSheetEffectCases()['semantic'], ...self::generatedFlowChoiceCases()['semantic'], ...self::generatedSheetLayoutCases()['semantic']] as $name => $json) {
+        foreach ([...self::generatedCheckCases()['semantic'], ...self::generatedSheetEffectCases()['semantic'], ...self::generatedFlowChoiceCases()['semantic'], ...self::generatedSheetLayoutCases()['semantic'], ...self::generatedSelectFieldCases()['semantic']] as $name => $json) {
             yield $name => [$name, $json];
         }
     }
@@ -723,6 +734,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
                 ['key' => 'bonus', 'label' => 'Bonus', 'type' => 'derived', 'formula' => '{pow}/10'],
                 ['key' => 'name', 'label' => 'Name', 'type' => 'text'],
                 ['key' => 'gear', 'label' => 'Gear', 'type' => 'list'],
+                ['key' => 'stance', 'label' => 'Stance', 'type' => 'select', 'options' => [['key' => 'guarded', 'label' => 'Guarded']]],
             ]],
             'sceneTypes' => [['key' => 'scene', 'name' => 'Scene', 'purpose' => 'Play a scene.', 'oracles' => [], 'setup' => $setup, 'play' => $play, 'closing' => []]],
             'checks' => [$check],
@@ -745,6 +757,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
             'v2-sheet-effect-derived-field' => $inOutcome(['field' => 'bonus']),
             'v2-sheet-effect-text-field' => $inOutcome(['field' => 'name']),
             'v2-sheet-effect-list-field' => $inOutcome(['field' => 'gear']),
+            'v2-sheet-effect-select-field' => $inOutcome(['field' => 'stance']),
             'v2-sheet-effect-on-skip-option' => $build([$stepOf(['kind' => 'choice', 'skip' => 'b', 'options' => [['key' => 'a', 'label' => 'A', 'effects' => [$effect()]], ['key' => 'b', 'label' => 'B', 'effects' => [$effect()]]]])]),
             'v2-sheet-effect-in-check-step-effects' => $build([$stepOf(['kind' => 'check', 'check' => 'sanity', 'effects' => [$effect()]])]),
             'v2-sheet-effect-in-roll-band' => $build([$stepOf(['kind' => 'roll', 'dice' => '1d6', 'bands' => [['effects' => [$effect()]]]])]),
@@ -759,6 +772,7 @@ final class ReleaseSchemaAgreementTest extends TestCase
             'v2-sheet-effect-formula-reads-check' => $inOutcome(['value' => ['formula' => '{check:difficulty}']]),
             'v2-sheet-effect-formula-unknown-tracker' => $inOutcome(['value' => ['formula' => '{tracker:ghost}']]),
             'v2-sheet-effect-formula-reads-text-field' => $inOutcome(['value' => ['formula' => '{name}']]),
+            'v2-sheet-effect-formula-reads-select-field' => $inOutcome(['value' => ['formula' => '{stance}']]),
         ];
 
         return ['structural' => self::generated($structural), 'semantic' => self::generated($semantic)];
@@ -858,6 +872,44 @@ final class ReleaseSchemaAgreementTest extends TestCase
             'v2-sheet-field-span-above-group-columns' => $build(['groups' => $stats, 'fields' => [$field(['span' => 3])]]),
             'v2-sheet-field-without-group' => $build(['groups' => $stats, 'fields' => [$field(['group' => null])]]),
             'v2-sheet-field-in-undeclared-group' => $build(['groups' => $stats, 'fields' => [$field(['group' => 'Notes'])]]),
+        ];
+
+        return ['valid' => self::generated($valid), 'structural' => self::generated($structural), 'semantic' => self::generated($semantic)];
+    }
+
+    /**
+     * Select sheet fields (ADR 0048), built in code from the minimal release.
+     *
+     * @return array{valid: array<string, string>, structural: array<string, string>, semantic: array<string, string>} JSON by case name
+     */
+    private static function generatedSelectFieldCases(): array
+    {
+        $option = static fn (string $key): array => ['key' => $key, 'label' => ucfirst($key)];
+        $select = static fn (array $override = []): array => array_filter(['key' => 'stance', 'label' => 'Stance', 'type' => 'select', 'options' => [$option('guarded'), $option('reckless')], ...$override], static fn (mixed $property): bool => null !== $property);
+        $build = static fn (array $override = []): string => json_encode([...self::minimalReleaseV2(), 'sheet' => ['fields' => [$select($override)]]], \JSON_THROW_ON_ERROR);
+        $options = static fn (int $count): array => array_map(static fn (int $i): array => $option('o'.$i), range(1, $count));
+        // array_filter drops a null property, so this one is encoded with the null kept.
+        $nullDefault = json_encode([...self::minimalReleaseV2(), 'sheet' => ['fields' => [[...$select(), 'default' => null]]]], \JSON_THROW_ON_ERROR);
+
+        $valid = [
+            'v2-select-field-default' => $build(['default' => 'reckless']),
+            'v2-select-field-null-default' => $nullDefault,
+            'v2-select-field-50-options' => $build(['options' => $options(50)]),
+        ];
+
+        $structural = [
+            'v2-select-field-no-options' => $build(['options' => []]),
+            'v2-select-field-missing-options' => $build(['options' => null]),
+            'v2-select-field-51-options' => $build(['options' => $options(51)]),
+            'v2-select-field-default-bad-key' => $build(['default' => 'Not A Key']),
+            'v2-select-field-default-number' => $build(['default' => 1]),
+            'v2-select-field-option-label-61' => $build(['options' => [['key' => 'a', 'label' => str_repeat('l', 61)]]]),
+            'v2-select-field-unknown-property' => $build(['max' => 3]),
+        ];
+
+        $semantic = [
+            'v2-select-field-default-not-an-option' => $build(['default' => 'ghost']),
+            'v2-select-field-duplicate-option-key' => $build(['options' => [$option('a'), $option('a')]]),
         ];
 
         return ['valid' => self::generated($valid), 'structural' => self::generated($structural), 'semantic' => self::generated($semantic)];

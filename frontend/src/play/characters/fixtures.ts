@@ -31,6 +31,7 @@ const base: SheetField = {
   capacity: null,
   maxStacks: null,
   categories: null,
+  defaultOption: null,
 }
 
 /** A conditions field (ADR 0041): three options a Character can be marked with, in this order. */
@@ -45,6 +46,19 @@ export const conditionsField: SheetField = {
     { key: 'shaken', label: 'Shaken' },
     { key: 'tired', label: 'Tired' },
   ],
+}
+
+/** A select field (ADR 0048) defaulting to its first option. */
+export const selectField: SheetField = {
+  ...base,
+  key: 'stance',
+  label: 'Stance',
+  type: 'select',
+  options: [
+    { key: 'guarded', label: 'Guarded' },
+    { key: 'reckless', label: 'Reckless' },
+  ],
+  defaultOption: 'guarded',
 }
 
 /** An inventory field (ADR 0045) in its own group, with room for ten slots. */

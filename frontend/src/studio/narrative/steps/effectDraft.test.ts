@@ -175,6 +175,18 @@ describe('an effect draft', () => {
     ])
   })
 
+  it('keeps a stored null fact as null when a slot is picked and then cleared', () => {
+    const [nulled] = effectsToDrafts([{ kind: 'closeThread', fact: null }])
+    if (nulled?.kind !== 'closeThread') {
+      throw new Error('Expected a closeThread effect.')
+    }
+    const picked = { ...nulled, fact: 'rumour' }
+
+    expect(effectsToStored([{ ...picked, fact: '' }], 'effects', {})).toEqual([
+      { kind: 'closeThread', fact: null },
+    ])
+  })
+
   it('starts a new closeThread and createPlace empty', () => {
     expect(newEffect('closeThread')).toMatchObject({ kind: 'closeThread', fact: '' })
     expect(newEffect('createPlace')).toMatchObject({ kind: 'createPlace', name: '', tags: [] })

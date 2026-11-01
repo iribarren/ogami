@@ -150,6 +150,34 @@ describe('the preview template', () => {
   })
 })
 
+describe('the preview template of a select field', () => {
+  it('reads its options and default option, and a default that is not text as none', () => {
+    const options = [
+      { key: 'guarded', label: 'Guarded' },
+      { key: 'reckless', label: 'Reckless' },
+    ]
+    const fields = [
+      { key: 'stance', label: 'Stance', type: 'select', options, default: 'guarded' },
+      { key: 'origin', label: 'Origin', type: 'select', options, default: 3 },
+      { key: 'pow', label: 'Power', type: 'number', default: 3 },
+    ]
+
+    const template = previewTemplate({ ...stored, fields, groups: null }, null)
+
+    expect(
+      template.fields.map((field) => [
+        field.key,
+        field.options?.length ?? null,
+        field.defaultOption,
+      ]),
+    ).toEqual([
+      ['stance', 2, 'guarded'],
+      ['origin', 2, null],
+      ['pow', null, null],
+    ])
+  })
+})
+
 describe('the preview template of an economy', () => {
   const economy = sheetWithEconomy as GameSystemSheet
 

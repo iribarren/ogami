@@ -146,10 +146,10 @@ final class GameSystemReleaseTranslatorGearTest extends TestCase
         yield 'a repeated category' => ['sheet.fields.1.categories.1', 'Gear', 'sheet.fields[1]: Inventory field "gear" accepts 1 to 20 distinct categories.'];
         yield 'a list property on an inventory' => ['sheet.fields.1.maxItems', 5, 'sheet.fields[1].maxItems: unknown property.'];
         yield 'a sheet effect on an inventory' => ['sceneTypes.21.play.1.options.0.effects.0.field', 'gear', 'sceneTypes[21].play[1].options[0].effects[0].field: field "gear" is a inventory field, a sheet effect changes number and track fields only.'];
-        yield 'a derived field reading an inventory' => ['sheet.fields.3', ['key' => 'load', 'label' => 'Load', 'type' => 'derived', 'formula' => '{gear}'], 'sheet.fields[3].formula: {gear}: field "gear" is a text, list or inventory field, a formula reads number, track, conditions and derived fields only.'];
+        yield 'a derived field reading an inventory' => ['sheet.fields.3', ['key' => 'load', 'label' => 'Load', 'type' => 'derived', 'formula' => '{gear}'], 'sheet.fields[3].formula: {gear}: field "gear" is a text, list, select or inventory field, a formula reads number, track, conditions and derived fields only.'];
         yield 'a track start max reading an inventory' => ['sheet.fields.3', ['key' => 'hp', 'label' => 'Hit points', 'type' => 'track', 'startMax' => ['formula' => '{gear}']], 'sheet.fields[3].startMax.formula: {gear}: field "gear" is not a number or derived field, a start max formula reads number and derived fields only.'];
         yield 'a point budget covering an inventory' => ['sheet.pointBudget', ['total' => 10, 'fields' => ['gear']], 'sheet.pointBudget: The point budget covers "gear", which is not a number field.'];
-        yield 'a check modifier reading an inventory' => ['checks', [['key' => 'skill', 'label' => 'Skill', 'dice' => '1d10', 'modifier' => '{gear}', 'bands' => [['key' => 'fail', 'label' => 'Fail', 'upTo' => 5], ['key' => 'hit', 'label' => 'Hit']]]], 'checks[0].modifier: {gear}: field "gear" is a text, list or inventory field'];
+        yield 'a check modifier reading an inventory' => ['checks', [['key' => 'skill', 'label' => 'Skill', 'dice' => '1d10', 'modifier' => '{gear}', 'bands' => [['key' => 'fail', 'label' => 'Fail', 'upTo' => 5], ['key' => 'hit', 'label' => 'Hit']]]], 'checks[0].modifier: {gear}: field "gear" is a text, list, select or inventory field'];
     }
 
     #[Test]

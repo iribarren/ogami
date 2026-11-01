@@ -3,6 +3,7 @@ import {
   slotsUsed,
   stacksOf,
   stackText,
+  storedValue,
   valueOrDefault,
   withUnit,
 } from '@/shared/sheet/sheetValues'
@@ -32,7 +33,7 @@ function FieldValue({
   if (field.type === 'derived') {
     return String(character.derived[field.key] ?? '—')
   }
-  const value = valueOrDefault(field, character.values[field.key])
+  const value = valueOrDefault(field, storedValue(field, character.values[field.key]))
   if (field.type === 'inventory') {
     const gear = economy?.gear ?? []
     const stacks = stacksOf(value)
@@ -49,6 +50,10 @@ function FieldValue({
         </span>
       </>
     )
+  }
+  if (field.type === 'select') {
+    const chosen = (field.options ?? []).find(({ key }) => key === value)
+    return chosen?.label ?? (typeof value === 'string' ? value : 'None')
   }
   if (field.type === 'conditions' && Array.isArray(value)) {
     const labels = markedLabels(
@@ -68,7 +73,7 @@ function FieldValue({
       </ul>
     )
   }
-  if (typeof value === 'object') {
+  if (typeof value === 'object' && value !== null) {
     return `${String(value.current)} / ${String(value.max)}`
   }
   return withUnit(field, String(value), economy)

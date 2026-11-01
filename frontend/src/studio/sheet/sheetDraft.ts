@@ -17,6 +17,7 @@ export const fieldTypes = [
   'list',
   'track',
   'conditions',
+  'select',
   'inventory',
   'derived',
 ] as const
@@ -26,8 +27,8 @@ export type FieldType = (typeof fieldTypes)[number]
 export const maxModes = ['fixed', 'perCharacter', 'startFormula'] as const
 export type MaxMode = (typeof maxModes)[number]
 
-/** The limits of a conditions field's options, as the publisher. */
-export const optionLimits = { count: 20, label: 60 }
+/** The limits of a conditions or select field's options, as the publisher. */
+export const optionLimits = { count: 20, selectCount: 50, label: 60 }
 
 /** One option of a conditions field; while `follow` is set its key follows its label. */
 export interface OptionDraft {
@@ -75,8 +76,10 @@ export interface FieldDraft {
   startMax: string
   /** Which of a track's `max` and `startMax` is written; neither for each Character. */
   maxMode: MaxMode
-  /** A conditions field's options, in order. */
+  /** A conditions or select field's options, in order. */
   options: OptionDraft[]
+  /** A select field's default: the key of one of its options, empty for none. */
+  defaultOption: string
   /** An inventory's slots, its most stacks and the gear categories it accepts (none: every entry). */
   capacity: string
   maxStacks: string
@@ -108,6 +111,7 @@ export function blankField(groups: SheetGroup[] | null): FieldDraft {
     startMax: '',
     maxMode: 'fixed',
     options: [],
+    defaultOption: '',
     capacity: '',
     maxStacks: '',
     categories: [],
@@ -128,6 +132,7 @@ export const typeProperties = [
   'startMax',
   'maxMode',
   'options',
+  'defaultOption',
   'capacity',
   'maxStacks',
   'categories',
@@ -139,6 +144,7 @@ const propertiesOf: Record<
   readonly Exclude<(typeof typeProperties)[number], 'maxMode'>[]
 > = {
   conditions: ['options'],
+  select: ['options', 'defaultOption'],
   inventory: ['capacity', 'maxStacks', 'categories'],
   number: ['min', 'max', 'default', 'roll'],
   text: ['multiline', 'maxLength'],
@@ -213,6 +219,13 @@ export function readField(stored: StoredField): FieldDraft | null {
       } else {
         draft.options = options
       }
+    } else if (name === 'defaultOption') {
+      // Stored as `default`, the key of an option.
+      if (typeof stored.default === 'string') {
+        draft.defaultOption = stored.default
+      } else if (stored.default !== undefined && stored.default !== null) {
+        readable = false
+      }
     } else if (name === 'categories') {
       const { categories } = stored
       if (
@@ -267,13 +280,15 @@ function readOptions(stored: unknown): OptionDraft[] | null {
   return options
 }
 
-/** The options to send, or null with the messages found: 1 to 20, each a key (unique) and a label up to 60. */
+/** The options to send, or null with the messages found: 1 to 20 (50 for a select), each a key (unique) and a label up to 60. */
 function writeOptions(
   options: OptionDraft[],
   errors: FieldErrors,
+  type: FieldType,
 ): { key: string; label: string }[] | null {
-  if (options.length < 1 || options.length > optionLimits.count) {
-    errors.options = `A conditions field has 1 to ${String(optionLimits.count)} options.`
+  const max = type === 'select' ? optionLimits.selectCount : optionLimits.count
+  if (options.length < 1 || options.length > max) {
+    errors.options = `A ${type} field has 1 to ${String(max)} options.`
   }
   const found: Record<number, OptionErrors> = {}
   const written = options.map(({ key, label }, index) => {
@@ -359,9 +374,21 @@ export function writeField(
       continue
     }
     if (name === 'options') {
-      const options = writeOptions(draft.options, errors)
+      const options = writeOptions(draft.options, errors, draft.type)
       if (options !== null) {
         field.options = options
+      }
+      continue
+    }
+    if (name === 'defaultOption') {
+      const chosen = draft.defaultOption.trim()
+      if (chosen === '') {
+        continue
+      }
+      if (draft.options.some((option) => option.key.trim() === chosen)) {
+        field.default = chosen
+      } else {
+        errors.defaultOption = 'Pick one of the options, or none.'
       }
       continue
     }

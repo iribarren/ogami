@@ -23,6 +23,7 @@ import {
   fieldTypes,
   maxModes,
   newOption,
+  optionLimits,
   readField,
   typeProperties,
   writeField,
@@ -100,6 +101,7 @@ const typeLabels: Record<FieldType, string> = {
   list: 'List',
   track: 'Track',
   conditions: 'Conditions',
+  select: 'Select',
   inventory: 'Inventory',
   derived: 'Derived',
 }
@@ -289,8 +291,8 @@ function FieldForm({
           change({
             ...Object.fromEntries(typeProperties.map((name) => [name, blank[name]])),
             type: type as FieldType,
-            // A conditions field needs an option: start with an empty one to fill in.
-            ...(type === 'conditions' ? { options: [newOption()] } : {}),
+            // A conditions or select field needs an option: start with an empty one to fill in.
+            ...(type === 'conditions' || type === 'select' ? { options: [newOption()] } : {}),
           })
         }}
         options={fieldTypes.map((type) => ({ value: type, label: typeLabels[type] }))}
@@ -480,6 +482,38 @@ function TypeFields({
           error={errors.options}
           errors={optionErrors}
         />
+      )
+    case 'select':
+      return (
+        <>
+          <ConditionOptionsEditor
+            options={draft.options}
+            onChange={(options) => {
+              change({ options })
+            }}
+            error={errors.options}
+            errors={optionErrors}
+            max={optionLimits.selectCount}
+            hint="A Character picks one of these, or none; no formula reads it."
+          />
+          <SelectField
+            label="Default option"
+            value={draft.defaultOption}
+            onChange={(defaultOption) => {
+              change({ defaultOption })
+            }}
+            options={[
+              { value: '', label: 'None' },
+              ...draft.options
+                .filter(({ key }) => key.trim() !== '')
+                .map(({ key, label }) => ({
+                  value: key.trim(),
+                  label: label.trim() || key.trim(),
+                })),
+            ]}
+            error={errors.defaultOption}
+          />
+        </>
       )
     case 'inventory':
       return (

@@ -35,6 +35,8 @@ use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\InventoryField;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
+use App\Play\Domain\GameSystem\Sheet\SelectField;
+use App\Play\Domain\GameSystem\Sheet\SelectOption;
 use App\Play\Domain\GameSystem\Sheet\TextField;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
 use App\Play\Domain\GameSystem\Tag;
@@ -85,6 +87,12 @@ final class ReleaseUpgradePlanTest extends TestCase
         yield 'a list that became a conditions field is reset' => [new ListField('f', 'F'), self::conditions('hurt'), ['hurt'], FieldChangeKind::Reset, []];
         yield 'a conditions field that became a list is reset' => [self::conditions('hurt'), new ListField('f', 'F'), ['hurt'], FieldChangeKind::Reset, []];
         yield 'a number that became a conditions field is reset' => [new NumberField('f', 'F'), self::conditions('hurt'), 2, FieldChangeKind::Reset, []];
+        yield 'a select field whose chosen option is kept is kept' => [self::select(null, 'a', 'b'), self::select(null, 'a', 'b', 'c'), 'a', null, 'a'];
+        yield 'a select field whose chosen option is dropped is reset to the new default' => [self::select(null, 'a', 'b'), self::select('c', 'b', 'c'), 'a', FieldChangeKind::Reset, 'c'];
+        yield 'a select field whose chosen option is dropped is reset to none without a default' => [self::select('a', 'a', 'b'), self::select(null, 'b'), 'a', FieldChangeKind::Reset, null];
+        yield 'a select field with none chosen stays so under a new default' => [self::select(null, 'a'), self::select('a', 'a'), null, null, null];
+        yield 'a text that became a select field is reset to its default' => [new TextField('f', 'F'), self::select('b', 'a', 'b'), 'a', FieldChangeKind::Reset, 'b'];
+        yield 'a select field that became a text is reset' => [self::select(null, 'a'), new TextField('f', 'F'), 'a', FieldChangeKind::Reset, ''];
         yield 'a kept inventory with valid stacks is kept' => [self::pack(6), self::pack(6), [['gear' => 'pistol', 'quantity' => 2]], null, [['gear' => 'pistol', 'quantity' => 2]]];
         yield 'an inventory whose stacks no longer fit the lowered capacity drops them from the end' => [self::pack(6), self::pack(1), [['gear' => 'pistol', 'quantity' => 3]], FieldChangeKind::Trimmed, []];
         yield 'an inventory keeps the stacks within the lowered capacity' => [self::pack(6), self::pack(3), [['gear' => 'pistol', 'quantity' => 2], ['gear' => 'jacket', 'quantity' => 2]], FieldChangeKind::Trimmed, [['gear' => 'pistol', 'quantity' => 2]]];
@@ -104,6 +112,11 @@ final class ReleaseUpgradePlanTest extends TestCase
         yield 'an empty inventory that became a list is kept empty' => [self::pack(6), new ListField('f', 'F'), [], null, []];
         yield 'an inventory that became a text is reset' => [self::pack(6), new TextField('f', 'F'), [['gear' => 'pistol', 'quantity' => 1]], FieldChangeKind::Reset, ''];
         yield 'a conditions field that became an inventory is reset' => [self::conditions('hurt'), self::pack(6), ['hurt'], FieldChangeKind::Reset, []];
+    }
+
+    private static function select(?string $default, string ...$options): SelectField
+    {
+        return new SelectField('f', 'F', options: array_values(array_map(static fn (string $key): SelectOption => new SelectOption($key, ucfirst($key)), $options)), default: $default);
     }
 
     private static function pack(?int $capacity): InventoryField

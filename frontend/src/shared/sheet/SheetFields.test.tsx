@@ -243,6 +243,55 @@ describe('SheetFields with a conditions field', () => {
   })
 })
 
+describe('SheetFields with a select field', () => {
+  const stance: SheetFieldView = {
+    ...field('stance', null),
+    label: 'Stance',
+    hint: 'How you fight.',
+    type: 'select',
+    options: [
+      { key: 'guarded', label: 'Guarded' },
+      { key: 'reckless', label: 'Reckless' },
+    ],
+  }
+
+  function renderStance(draft: string, onChange = vi.fn()) {
+    render(
+      <SheetFields
+        template={{ fields: [stance], layout: null }}
+        drafts={{ stance: draft }}
+        derived={{}}
+        onChange={onChange}
+      />,
+    )
+    return onChange
+  }
+
+  it('lists none and the options in declared order, with the chosen one selected', () => {
+    renderStance('reckless')
+
+    const select = screen.getByRole('combobox', { name: 'Stance' })
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['None', 'Guarded', 'Reckless'])
+    expect(select).toHaveValue('reckless')
+    expect(screen.getByText('How you fight.')).toBeInTheDocument()
+  })
+
+  it('changes the draft to the chosen key, and to an empty one for none', async () => {
+    const onChange = renderStance('')
+    const user = userEvent.setup()
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Stance' }), 'Guarded')
+    expect(onChange).toHaveBeenLastCalledWith('stance', 'guarded')
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Stance' }), 'None')
+    expect(onChange).toHaveBeenLastCalledWith('stance', '')
+  })
+})
+
 describe('SheetFields with an inventory field', () => {
   const catalog = [
     { key: 'used-pistol', name: 'Used pistol', slots: 1, category: 'Weapons' },

@@ -71,6 +71,8 @@ use App\Play\Domain\GameSystem\Sheet\InventoryField;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
 use App\Play\Domain\GameSystem\Sheet\PointBudget;
+use App\Play\Domain\GameSystem\Sheet\SelectField;
+use App\Play\Domain\GameSystem\Sheet\SelectOption;
 use App\Play\Domain\GameSystem\Sheet\SheetGroup;
 use App\Play\Domain\GameSystem\Sheet\SheetLayout;
 use App\Play\Domain\GameSystem\Sheet\SheetTemplate;
@@ -125,6 +127,8 @@ final readonly class GameSystemReleaseTranslator
 
     // The conditions field limits of the contract (ADR 0041).
     private const int MAX_CONDITION_OPTIONS = 20;
+    // The select field option limit of the contract (ADR 0048).
+    private const int MAX_SELECT_OPTIONS = 50;
     // The shop offer limit of the contract (ADR 0045).
     private const int MAX_OFFER_GEAR = 100;
 
@@ -143,6 +147,7 @@ final readonly class GameSystemReleaseTranslator
         'track' => ['max', 'startMax'],
         'derived' => ['formula'],
         'conditions' => ['options'],
+        'select' => ['options', 'default'],
         'inventory' => ['capacity', 'maxStacks', 'categories'],
     ];
 
@@ -471,6 +476,7 @@ final readonly class GameSystemReleaseTranslator
             $field instanceof DerivedField => 'derived',
             $field instanceof TextField => 'text',
             $field instanceof InventoryField => 'inventory',
+            $field instanceof SelectField => 'select',
             default => 'list',
         };
         $op = $effect['op'] ?? null;
@@ -1456,7 +1462,7 @@ final readonly class GameSystemReleaseTranslator
 
         return $field instanceof NumberField || $field instanceof TrackField || $field instanceof DerivedField || $field instanceof ConditionsField
             ? null
-            : \sprintf('field "%s" is a text, list or inventory field, a formula reads number, track, conditions and derived fields only', $reference->key);
+            : \sprintf('field "%s" is a text, list, select or inventory field, a formula reads number, track, conditions and derived fields only', $reference->key);
     }
 
     /**
@@ -1848,7 +1854,8 @@ final readonly class GameSystemReleaseTranslator
                 maxItems: $this->optionalInt($view, $field['maxItems'] ?? null, $path.'.maxItems', 1, self::MAX_LIST_FIELD_ITEMS),
             ),
             'derived' => new DerivedField(...$common, formula: $this->fieldFormula($view, $field['formula'] ?? null, $path.'.formula')),
-            'conditions' => new ConditionsField(...$common, options: $this->conditionOptions($view, $field['options'] ?? null, $path.'.options')),
+            'conditions' => new ConditionsField(...$common, options: $this->conditionOptions($view, $field['options'] ?? null, $path.'.options', self::MAX_CONDITION_OPTIONS)),
+            'select' => $this->selectField($view, $common, $field, $path),
             'inventory' => $this->inventoryField($view, $common, $field, $path, $gear),
             default => $this->trackField($view, $common, $field, $path),
         };
@@ -1885,15 +1892,15 @@ final readonly class GameSystemReleaseTranslator
     }
 
     /**
-     * The options of a conditions field (ADR 0041): 1 to 20, each a key and a label, keys unique.
+     * The options of a conditions field (ADR 0041) or a select field (ADR 0048): 1 to $max, each a key and a label, keys unique.
      *
      * @return list<ConditionOption>
      */
-    private function conditionOptions(PublishedReleaseView $view, mixed $value, string $path): array
+    private function conditionOptions(PublishedReleaseView $view, mixed $value, string $path, int $max): array
     {
         $list = $this->list($view, $value, $path);
-        if ([] === $list || \count($list) > self::MAX_CONDITION_OPTIONS) {
-            throw $this->invalid($view, $path, \sprintf('must list between 1 and %d options.', self::MAX_CONDITION_OPTIONS));
+        if ([] === $list || \count($list) > $max) {
+            throw $this->invalid($view, $path, \sprintf('must list between 1 and %d options.', $max));
         }
 
         $options = [];
@@ -1910,6 +1917,30 @@ final readonly class GameSystemReleaseTranslator
         }
 
         return array_values($options);
+    }
+
+    /**
+     * A select field (ADR 0048): its options, and a default that is one of them.
+     *
+     * @param array{0: string, 1: string, 2: ?string, 3: ?string, span: int} $common key, label, hint, group, span
+     * @param array<mixed>                                                   $field
+     */
+    private function selectField(PublishedReleaseView $view, array $common, array $field, string $path): SelectField
+    {
+        $options = array_map(
+            static fn (ConditionOption $option): SelectOption => new SelectOption($option->key, $option->label),
+            $this->conditionOptions($view, $field['options'] ?? null, $path.'.options', self::MAX_SELECT_OPTIONS),
+        );
+
+        try {
+            return new SelectField(
+                ...$common,
+                options: $options,
+                default: null === ($field['default'] ?? null) ? null : $this->key($view, $field['default'], $path.'.default'),
+            );
+        } catch (\InvalidArgumentException $invalid) {
+            throw $this->invalid($view, $path.'.default', $invalid->getMessage());
+        }
     }
 
     private function fieldFormula(PublishedReleaseView $view, mixed $value, string $path): Formula

@@ -11,13 +11,15 @@ use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\InventoryField;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
+use App\Play\Domain\GameSystem\Sheet\SelectField;
+use App\Play\Domain\GameSystem\Sheet\SelectOption;
 use App\Play\Domain\GameSystem\Sheet\TextField;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
 
 /**
- * One field of the pinned release's character sheet. `type` is "number", "text", "list", "track", "conditions", "inventory" or "derived";
+ * One field of the pinned release's character sheet. `type` is "number", "text", "list", "track", "conditions", "select", "inventory" or "derived";
  * the properties of the other types are null. `span` is how many columns of its group the field takes (ADR 0031). A derived field holds its formula in the spelling the release gives it. A number's `roll` is the normalized dice expression the server rolls at creation, a track's `startMax` the formula it starts full at (ADR 0040). Limits are resolved: a number's min and max default to
- * the contract's one million, a text's maxLength and a list's maxItems to their defaults. A conditions field's `options` are its marks in declared order (ADR 0041); its value is the list of the marked option keys. An inventory field's value is a list of stacks (ADR 0045): `capacity` is its slot limit (null: none), `maxStacks` its stack limit and `categories` the gear categories it accepts (null: every entry).
+ * the contract's one million, a text's maxLength and a list's maxItems to their defaults. A conditions field's `options` are its marks in declared order (ADR 0041); its value is the list of the marked option keys. A select field's `options` are its choices in declared order and `defaultOption` the key a Character starts with (null: none); its value is the key of the chosen option or null (ADR 0048). An inventory field's value is a list of stacks (ADR 0045): `capacity` is its slot limit (null: none), `maxStacks` its stack limit and `categories` the gear categories it accepts (null: every entry).
  */
 final readonly class SheetFieldView
 {
@@ -46,6 +48,7 @@ final readonly class SheetFieldView
         public ?int $capacity = null,
         public ?int $maxStacks = null,
         public ?array $categories = null,
+        public ?string $defaultOption = null,
     ) {
     }
 
@@ -59,6 +62,7 @@ final readonly class SheetFieldView
             $field instanceof ListField => new self(...$common, type: 'list', itemLabel: $field->itemLabel, maxItems: $field->limit()),
             $field instanceof TrackField => new self(...$common, type: 'track', max: $field->max, startMax: $field->startMax?->toString()),
             $field instanceof ConditionsField => new self(...$common, type: 'conditions', options: array_map(static fn (ConditionOption $option): ConditionOptionView => new ConditionOptionView($option->key, $option->label), $field->options)),
+            $field instanceof SelectField => new self(...$common, type: 'select', options: array_map(static fn (SelectOption $option): ConditionOptionView => new ConditionOptionView($option->key, $option->label), $field->options), defaultOption: $field->default),
             $field instanceof InventoryField => new self(...$common, type: 'inventory', capacity: $field->capacity, maxStacks: $field->maxStacks, categories: $field->categories),
             $field instanceof DerivedField => new self(...$common, type: 'derived', formula: $field->formula->toString()),
             default => throw new \LogicException(\sprintf('Unknown field type %s.', $field::class)),

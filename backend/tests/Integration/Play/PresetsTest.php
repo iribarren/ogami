@@ -28,6 +28,8 @@ use App\Play\Domain\GameSystem\Sheet\Field;
 use App\Play\Domain\GameSystem\Sheet\InventoryField;
 use App\Play\Domain\GameSystem\Sheet\ListField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
+use App\Play\Domain\GameSystem\Sheet\SelectField;
+use App\Play\Domain\GameSystem\Sheet\SelectOption;
 use App\Play\Domain\GameSystem\Sheet\TextField;
 use App\Play\Domain\GameSystem\Sheet\TrackField;
 use App\Play\Domain\GameSystem\TrackerKind;
@@ -610,6 +612,171 @@ final class PresetsTest extends KernelTestCase
         self::assertInstanceOf(Formula::class, $upTo);
         self::assertSame('{tracker:masquerade}', $upTo->toString());
         self::assertContains('masquerade', array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
+    }
+
+    #[Test]
+    public function westMarchesPublishesOnceWithTheSrdStatementVerbatimAndNoOtherTrademark(): void
+    {
+        $this->assertPublishesOnce('west-marches');
+
+        $snapshot = $this->snapshot('west-marches');
+        self::assertSame(['West Marches', 1, 'parchment'], [$snapshot->name(), $snapshot->releaseVersion(), $snapshot->theme()]);
+
+        // The statement the SRD 5.2.1 requires (CC BY 4.0), word for word, then the note that the rules were adapted (ADR 0021).
+        $statement = 'This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.';
+        $credits = $snapshot->credits();
+        self::assertNotNull($credits);
+        self::assertSame($statement.' Rules summarized and adapted for guided solo play.', $credits->notice);
+        self::assertSame(['CC BY 4.0', 'https://creativecommons.org/licenses/by/4.0/legalcode'], [$credits->license, $credits->url]);
+
+        // The SRD allows "5E compatible" and no other reference to the publisher or the game: not outside the statement.
+        /** @var array{gameSystem: array{description: string, credits: array<string, string>}} $content */
+        $content = json_decode((string) file_get_contents(self::PRESETS.'/west-marches.json'), true, flags: \JSON_THROW_ON_ERROR);
+        unset($content['gameSystem']['credits']['notice']);
+        $rest = json_encode($content, \JSON_THROW_ON_ERROR);
+        foreach (['Dungeons', 'D&D', 'Wizards'] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $rest);
+        }
+
+        self::assertStringContainsString('5E compatible', $content['gameSystem']['description']);
+    }
+
+    #[Test]
+    public function westMarchesSheetHasTheSrdChoicesConditionsAndASingleGoldCurrency(): void
+    {
+        $this->assertPublishesOnce('west-marches');
+        $sheet = $this->snapshot('west-marches')->sheet();
+
+        // Class, species and background are selects of the SRD 5.2.1 lists (ADR 0048).
+        $options = static function (string $key) use ($sheet): array {
+            $field = $sheet->field($key);
+            self::assertInstanceOf(SelectField::class, $field, $key);
+
+            return array_map(static fn (SelectOption $option): string => $option->key, $field->options);
+        };
+        self::assertSame(['barbarian', 'bard', 'cleric', 'druid', 'fighter', 'monk', 'paladin', 'ranger', 'rogue', 'sorcerer', 'warlock', 'wizard'], $options('class'));
+        self::assertSame(['dragonborn', 'dwarf', 'elf', 'gnome', 'goliath', 'halfling', 'human', 'orc', 'tiefling'], $options('species'));
+        self::assertSame(['acolyte', 'criminal', 'sage', 'soldier'], $options('background'));
+
+        // Fourteen conditions; Exhaustion scales, so it is a number from 0 to 6.
+        $conditions = $sheet->field('conditions');
+        self::assertInstanceOf(ConditionsField::class, $conditions);
+        self::assertCount(14, $conditions->options);
+        self::assertContains('poisoned', $conditions->optionKeys());
+        self::assertNotContains('exhaustion', $conditions->optionKeys());
+        $exhaustion = $sheet->field('exhaustion');
+        self::assertInstanceOf(NumberField::class, $exhaustion);
+        self::assertSame([0, 6], [$exhaustion->min, $exhaustion->max]);
+
+        // Ability scores roll 4d6 keep 3 or spend 72 points between 8 and 15, which the standard array fits.
+        $strength = $sheet->field('str');
+        self::assertInstanceOf(NumberField::class, $strength);
+        self::assertSame([3, 20, '4d6kh3'], [$strength->min, $strength->max, $strength->roll?->notation()]);
+        $budget = $sheet->budgets()[0];
+        self::assertSame([72, ['str', 'dex', 'con', 'int', 'wis', 'cha'], 8, 15], [$budget->total, $budget->fields, $budget->min, $budget->max]);
+
+        // Hit points and hit dice start from formulas; the five slot tracks set their own maximum.
+        $hp = $sheet->field('hp');
+        $hitDice = $sheet->field('hit-dice');
+        self::assertInstanceOf(TrackField::class, $hp);
+        self::assertInstanceOf(TrackField::class, $hitDice);
+        self::assertSame(['max(1,{hit-die}+{con-mod})', '{level}'], [$hp->startMax?->toString(), $hitDice->startMax?->toString()]);
+        foreach (range(1, 5) as $level) {
+            $slots = $sheet->field('slots-'.$level);
+            self::assertInstanceOf(TrackField::class, $slots);
+            self::assertNull($slots->max);
+        }
+
+        // Modifiers floor at the SRD's table, and the proficiency bonus steps every four levels.
+        $derived = static fn (string $key): string => $sheet->field($key) instanceof DerivedField ? $sheet->field($key)->formula->toString() : '';
+        self::assertSame(['({str}-10)/2', '({cha}-10)/2', '2+({level}-1)/4'], [$derived('str-mod'), $derived('cha-mod'), $derived('prof')]);
+
+        // Gold is the currency; the pack holds gear, weapons and armor in 30 slots.
+        self::assertSame(['gp', 'GP'], [$sheet->currency()?->field, $sheet->currency()?->unit]);
+        $pack = $sheet->field('pack');
+        self::assertInstanceOf(InventoryField::class, $pack);
+        self::assertSame([30, ['Gear', 'Weapons', 'Armor']], [$pack->capacity, $pack->categories]);
+        $gold = $sheet->field('gp');
+        self::assertInstanceOf(NumberField::class, $gold);
+        self::assertSame([0, 50], [$gold->min, $gold->default]);
+    }
+
+    #[Test]
+    public function westMarchesHasAD20CheckForEveryModeAndAGearCatalogInWholeGold(): void
+    {
+        $this->assertPublishesOnce('west-marches');
+        $snapshot = $this->snapshot('west-marches');
+
+        // Six abilities and three attacks, each in three modes, plus the foe's attack and the death save: 29 checks.
+        $keys = array_map(static fn (\App\Play\Domain\GameSystem\Check\Check $check): string => $check->key, $snapshot->checks());
+        self::assertCount(29, $keys);
+        foreach (['str', 'dex', 'con', 'int', 'wis', 'cha', 'melee', 'ranged', 'spell'] as $base) {
+            self::assertSame(['1d20', '2d20kh1', '2d20kl1'], array_map(static fn (string $key): ?string => $snapshot->check($key)?->dice?->notation(), [$base, $base.'-adv', $base.'-dis']), $base);
+        }
+
+        // Every d20 test carries the exhaustion penalty; a roll below the DC fails.
+        $melee = $snapshot->check('melee');
+        self::assertNotNull($melee);
+        self::assertSame('{str-mod}+{prof}-2*{exhaustion}', $melee->modifier?->toString());
+        self::assertSame(['fail', 'success'], array_map(static fn (\App\Play\Domain\GameSystem\Check\CheckBand $band): string => $band->key, $melee->bands));
+        self::assertSame(12, $melee->difficulty?->default);
+        self::assertSame(['miss', 'hit'], array_map(static fn (\App\Play\Domain\GameSystem\Check\CheckBand $band): string => $band->key, $snapshot->check('defend')->bands ?? []));
+        self::assertSame(['fail', 'success', 'rise'], array_map(static fn (\App\Play\Domain\GameSystem\Check\CheckBand $band): string => $band->key, $snapshot->check('death-save')->bands ?? []));
+
+        // SRD prices rounded up to whole gold; every entry fits the pack's categories.
+        $prices = [];
+        foreach ($snapshot->gear() as $entry) {
+            $prices[$entry->key] = $entry->cost;
+            self::assertContains($entry->category, ['Gear', 'Weapons', 'Armor'], $entry->key);
+        }
+
+        self::assertSame(['potion-of-healing' => 50, 'rope' => 1, 'thieves-tools' => 25, 'longsword' => 15, 'greataxe' => 30, 'longbow' => 50, 'chain-mail' => 75, 'shield' => 10], array_intersect_key($prices, array_flip(['potion-of-healing', 'rope', 'thieves-tools', 'longsword', 'greataxe', 'longbow', 'chain-mail', 'shield'])));
+    }
+
+    #[Test]
+    public function westMarchesHasAFoundingThenAnExpeditionsLoopAndPublishesWithoutAWarning(): void
+    {
+        $display = $this->assertPublishesOnce('west-marches');
+        $snapshot = $this->snapshot('west-marches');
+
+        // The authoring warning would name the flow or a Scene Type; none is printed.
+        self::assertStringNotContainsString('Warning', $display);
+
+        $flow = $snapshot->defaultFlow();
+        self::assertNotNull($flow);
+        self::assertSame(['west-marches', FlowView::Focus, ['away', 'rations', 'torches', 'foe', 'threat']], [$flow->key, $flow->defaultView, $flow->trackers]);
+        self::assertNotEmpty($flow->introduction);
+        $phases = [];
+        foreach ($flow->phases as $phase) {
+            self::assertNotEmpty($phase->description, $phase->key);
+            $phases[$phase->key] = [$phase->mode, $phase->selection->rule, $phase->selection->sceneTypes];
+        }
+
+        self::assertSame([
+            'founding' => [PhaseMode::Once, SelectionRule::Sequence, ['founding-town', 'roster']],
+            'expeditions' => [PhaseMode::Loop, SelectionRule::Player, ['town', 'travel', 'explore-site', 'delve', 'camp', 'return']],
+        ], $phases);
+
+        // The world turn's first two steps guard a fight in progress and one still being settled; the opening picks a thread and a party.
+        $expeditions = $flow->phase('expeditions');
+        self::assertSame(['fight', 'settling', 'in-town', 'wander', 'distance', 'near', 'mid', 'deep'], array_map(static fn (\App\Play\Domain\GameSystem\Flow\Step $step): string => $step->key, $expeditions?->worldTurn->steps ?? []));
+        self::assertSame(['expedition', 'new-rumor', 'party', 'fresh'], array_map(static fn (\App\Play\Domain\GameSystem\Flow\Step $step): string => $step->key, $expeditions?->sessionOpening->steps ?? []));
+
+        // Every Scene Type of the design exists and every table the flow rolls is listed and resolves at both ends.
+        foreach (['founding-town', 'roster', 'town', 'travel', 'explore-site', 'delve', 'camp', 'return', 'encounter', 'combat', 'combat-round', 'victory', 'rest'] as $key) {
+            self::assertNotNull($snapshot->sceneType($key), $key);
+        }
+
+        foreach (['rumors' => 12, 'encounters-near' => 8, 'encounters-mid' => 8, 'encounters-deep' => 8, 'site-features' => 8, 'rooms' => 10, 'stranded' => 6, 'spoils' => 6] as $table => $entries) {
+            self::assertContains($table, $flow->oracles);
+            $this->assertWeightedTableResolves($snapshot, $table, $entries, $snapshot->resolveOracleTable($table, new ScriptedRandomNumberGenerator(1))->steps()[0]->text(), $snapshot->resolveOracleTable($table, new ScriptedRandomNumberGenerator($entries))->steps()[0]->text());
+        }
+
+        self::assertSame(['fate'], $this->likelihoodKeys($snapshot));
+        self::assertSame(['away', 'rations', 'torches', 'foe', 'threat'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
+        self::assertSame(['None', 'Minor', 'Tough', 'Deadly'], array_map(static fn (\App\Play\Domain\GameSystem\TrackerLevel $level): string => $level->label, $snapshot->tracker('threat')->levels ?? []));
+        self::assertSame(['town', 'expedition', 'foe'], array_map(static fn (\App\Play\Domain\GameSystem\FactSlot $slot): string => $slot->key, $snapshot->factSlots()));
+        self::assertSame(['town', 'site', 'near', 'mid', 'deep'], array_values(array_map(static fn (\App\Play\Domain\GameSystem\Tag $tag): string => $tag->key, array_filter($snapshot->tags(), static fn (\App\Play\Domain\GameSystem\Tag $tag): bool => [\App\Play\Domain\GameSystem\Flow\ItemKind::Place] === $tag->appliesTo))));
     }
 
     /**

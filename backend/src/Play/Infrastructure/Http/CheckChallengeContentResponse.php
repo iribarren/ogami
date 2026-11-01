@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace App\Play\Infrastructure\Http;
 
+use App\Play\Domain\Journal\CheckChallengeBurnContent;
 use App\Play\Domain\Journal\CheckChallengeContent;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 
 /**
  * The challenge part of a recorded check: the score, its cap, the momentum that was read, and each
- * challenge die with whether the score beat it. A match is every die showing the same face.
+ * challenge die with whether the score beat it, and the burn once the momentum was burned. A match is every die showing the same face.
  */
-#[OA\Schema(required: ['sides', 'scoreMax', 'score', 'momentum', 'cancelled', 'dice'])]
+#[OA\Schema(required: ['sides', 'scoreMax', 'score', 'momentum', 'cancelled', 'dice', 'burn'])]
 final readonly class CheckChallengeContentResponse
 {
     /**
@@ -35,11 +36,13 @@ final readonly class CheckChallengeContentResponse
             items: new OA\Items(ref: new Model(type: JournalChallengeDieResponse::class)),
         )]
         public array $dice,
+        #[OA\Property(ref: new Model(type: CheckChallengeBurnContentResponse::class), description: 'The burn of the roll; null until the momentum is burned, and for entries recorded before burns. Once burned, the score and each die above stay those of the first roll, and the check\'s total and band are those after the burn.', nullable: true)]
+        public ?CheckChallengeBurnContentResponse $burn,
     ) {
     }
 
     public static function of(CheckChallengeContent $challenge): self
     {
-        return new self($challenge->sides, $challenge->scoreMax, $challenge->score, $challenge->momentum, $challenge->cancelled, array_map(JournalChallengeDieResponse::of(...), $challenge->dice));
+        return new self($challenge->sides, $challenge->scoreMax, $challenge->score, $challenge->momentum, $challenge->cancelled, array_map(JournalChallengeDieResponse::of(...), $challenge->dice), $challenge->burn instanceof CheckChallengeBurnContent ? CheckChallengeBurnContentResponse::of($challenge->burn) : null);
     }
 }

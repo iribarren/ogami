@@ -19,7 +19,6 @@ use App\Tests\Support\Play\FixedClock;
 use App\Tests\Support\Play\ReleaseViews;
 use App\Tests\Support\Play\RescriptableRandomNumberGenerator;
 use App\Tests\Support\Play\UuidSequenceJournalEntryIdGenerator;
-use App\Tests\Support\Studio\ReleaseArrays;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -27,11 +26,11 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
- * Challenge dice over the Play API (ADR 0049), on valid/v2-challenge-dice without its burn: the action
+ * Challenge dice over the Play API (ADR 0049), on valid/v2-challenge-dice (burning is in JournalChallengeBurnApiTest): the action
  * check "edge" (1d6 + {edge} against 2d10, capped at 10, momentum from "momentum") and the progress check
  * "fulfill" ({vow} / 4 against 2d10). A Character has edge 2, momentum 2 and the vow ticks it was given.
  *
- * @phpstan-type Entry array{id: string, content: array{bandKey: string, total: int, expression: string, groups: list<mixed>, diceTotal: int, modifier: int, special: string|null, pool: null, challenge: array{sides: int, scoreMax: int|null, score: int, momentum: int|null, cancelled: bool, dice: list<array{face: int, beaten: bool}>}}}
+ * @phpstan-type Entry array{id: string, content: array{bandKey: string, total: int, expression: string, groups: list<mixed>, diceTotal: int, modifier: int, special: string|null, pool: null, challenge: array{sides: int, scoreMax: int|null, score: int, momentum: int|null, cancelled: bool, dice: list<array{face: int, beaten: bool}>, burn: array<string, mixed>|null}}}
  */
 #[CoversClass(JournalController::class)]
 #[CoversClass(CheckContentResponse::class)]
@@ -54,7 +53,7 @@ final class JournalChallengeDiceApiTest extends WebTestCase
         $this->random = new RescriptableRandomNumberGenerator();
         $container->set(RandomNumberGenerator::class, $this->random);
 
-        $content = ReleaseArrays::without(ReleaseViews::fixtureContent('valid/v2-challenge-dice'), 'checks.0.push');
+        $content = ReleaseViews::fixtureContent('valid/v2-challenge-dice');
         $bus = $container->get(CommandBus::class);
         $bus->dispatch(new PublishGameSystemRelease('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9303', $content, false));
         $bus->dispatch(new CreateUser($container->get(UserIdGenerator::class)->generate()->toString(), 'ada@example.com', self::PASSWORD, ['SOLO_PLAYER']));
@@ -74,9 +73,9 @@ final class JournalChallengeDiceApiTest extends WebTestCase
         self::assertIsArray($campaign['checks'] ?? null);
         /** @var array<string, array{challenge: array<string, mixed>|null, dice: string|null, pool: array<string, mixed>|null}> $checks */
         $checks = array_column($campaign['checks'], null, 'key');
-        self::assertSame(['count' => 2, 'sides' => 10, 'scoreMax' => 10, 'momentumLabel' => 'Momentum'], $checks['edge']['challenge']);
+        self::assertSame(['count' => 2, 'sides' => 10, 'scoreMax' => 10, 'momentumLabel' => 'Momentum', 'momentum' => 'momentum'], $checks['edge']['challenge']);
         self::assertSame('1d6', $checks['edge']['dice']);
-        self::assertSame(['count' => 2, 'sides' => 10, 'scoreMax' => null, 'momentumLabel' => null], $checks['fulfill']['challenge']);
+        self::assertSame(['count' => 2, 'sides' => 10, 'scoreMax' => null, 'momentumLabel' => null, 'momentum' => null], $checks['fulfill']['challenge']);
         self::assertNull($checks['fulfill']['dice']);
         self::assertNull($checks['fulfill']['pool']);
     }
@@ -90,7 +89,7 @@ final class JournalChallengeDiceApiTest extends WebTestCase
 
         $content = $entry['content'];
         self::assertSame(['weak', 1, '1d6', 4, 2, null], [$content['bandKey'], $content['total'], $content['expression'], $content['diceTotal'], $content['modifier'], $content['special']]);
-        self::assertSame(['sides' => 10, 'scoreMax' => 10, 'score' => 6, 'momentum' => 2, 'cancelled' => false, 'dice' => [['face' => 3, 'beaten' => true], ['face' => 9, 'beaten' => false]]], $content['challenge']);
+        self::assertSame(['sides' => 10, 'scoreMax' => 10, 'score' => 6, 'momentum' => 2, 'cancelled' => false, 'dice' => [['face' => 3, 'beaten' => true], ['face' => 9, 'beaten' => false]], 'burn' => null], $content['challenge']);
         self::assertSame($entry, $this->journal($id)[0], 'What was stored reads back as the same entry.');
     }
 
@@ -143,18 +142,6 @@ final class JournalChallengeDiceApiTest extends WebTestCase
         self::assertSame(['match', 4, true, 2], [$entry['content']['special'], $entry['content']['diceTotal'], $entry['content']['challenge']['cancelled'], $entry['content']['challenge']['score']]);
         self::assertSame(0, $entry['content']['total']);
         self::assertSame('miss', $entry['content']['bandKey']);
-    }
-
-    #[Test]
-    public function aChallengeRollCannotBePushed(): void
-    {
-        [$id, $ada] = $this->campaignInAScene();
-        $entry = $this->roll($id, $ada, 'edge', [4, 3, 9]);
-
-        $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/%s/push', $id, $entry['id']), []);
-
-        self::assertResponseStatusCodeSame(409);
-        self::assertSame($entry, $this->journal($id)[0], 'The entry stays as it was rolled.');
     }
 
     /**

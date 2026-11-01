@@ -472,13 +472,13 @@ final class JournalCheckPushApiTest extends WebTestCase
         $dice = $this->entryJson()['id'];
         $this->push($id, $dice);
         self::assertResponseStatusCodeSame(409);
-        self::assertSame(['error' => 'Only the roll of a pool check can be pushed.'], $this->json());
+        self::assertSame(['error' => 'Only the roll of a pool check or of a challenge check can be pushed.'], $this->json());
 
         $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/notes', $id), ['text' => 'A note.']);
         $this->push($id, $this->entryJson()['id']);
 
         self::assertResponseStatusCodeSame(409);
-        self::assertSame(['error' => 'Only the roll of a pool check can be pushed.'], $this->json());
+        self::assertSame(['error' => 'Only the roll of a pool check or of a challenge check can be pushed.'], $this->json());
     }
 
     #[Test]

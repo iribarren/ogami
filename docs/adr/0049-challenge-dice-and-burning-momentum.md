@@ -21,7 +21,7 @@ Momentum itself (a `number` field from −6 to +10), its reset and maximum (deri
 
 ### Additive in schema version 2
 
-`challenge` is an optional property of a check, and `push` gains a second meaning on a check that has it. No release valid before uses either, so every release keeps its content hash, and a `null` is left out of the canonical form. Play's translator refuses `challenge` until the slice that rolls it, and a challenge `push` until the slice that burns, with the path and a message naming this ADR (precedent: ADR 0044). A release using them publishes but cannot start a Campaign until then.
+`challenge` is an optional property of a check, and `push` gains a second meaning on a check that has it. No release valid before uses either, so every release keeps its content hash, and a `null` is left out of the canonical form. Play's translator refused `challenge` until the slice that rolls it, and a challenge `push` until the slice that burns, with the path and a message naming this ADR (precedent: ADR 0044). A release using them published but could not start a Campaign until then; Play now plays both, and its translator accepts a challenge `push` only on a check that names a `momentum`, and refuses `maxDice` on it.
 
 ### The challenge shape
 

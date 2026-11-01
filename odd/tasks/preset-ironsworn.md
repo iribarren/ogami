@@ -120,7 +120,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T15 | 9 | Chrome play pass: swear a vow, a move with a burn, a match, a negative momentum, fulfilling a vow; fixes | | [ ] | |
 | T16 | 9 | Closing: Reviews, roadmap `Done:` line under B16, follow-ups if any | | [ ] | |
 | T17 | 3 | Play API: `challenge` on the check and on its journal content, API tests, `make api`. Drafted on local branch `draft/preset-ironsworn-3-play-api` (`74ec85a8`, `7384cee9`), brought onto the latest `main` | delegated writer (slice 3) | [x] | `3a51fbb1` |
-| T18 | 5 | Burn through the application and the API: `CheckPusher`, the translator accepts a challenge push (needs a momentum, refuses `maxDice`), `burn` and `momentum` on the responses, API tests from the sheet and the pending step, contract doc, `make api`. Drafted on local branch `draft/preset-ironsworn-5-play-burn-api` (`69c73ff2`), whose tree is the end state of slices 4 and 5 | | [ ] | |
+| T18 | 5 | Burn through the application and the API: `CheckPusher`, the translator accepts a challenge push (needs a momentum, refuses `maxDice`), `burn` and `momentum` on the responses, API tests from the sheet and the pending step, contract doc, `make api`. Drafted on local branch `draft/preset-ironsworn-5-play-burn-api` (`69c73ff2`), whose tree is the end state of slices 4 and 5 | delegated writer (slice 5) | [x] | |
 
 ## Progress
 
@@ -138,6 +138,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: Slice 3 review fixes: tests for a progress roll rolled from the form, a situational modifier near `scoreMax` (API and view), and a null push beside a real challenge. All passed at once: the code was right and unproved, so no RED.
 - 2026-11-01: T6 done: the writer built T6 and T18 together and stopped at the size line; the parent split the tree by path. On the split: `backend-qa` and `frontend-qa` pass, `backend-test` OK (8,358 tests, 187 scenarios). The writer's report gave no RED evidence for this code, so none is claimed.
 - 2026-11-01: Slice 4 review fixes: `pushedWith` tests (burned entry, unburned challenge content, plain dice entry; passed at once, no RED); a blank `rolledBandLabel` is refused like a blank key, as published check band labels are never blank. RED: the blank-label case did not throw, GREEN after the check.
+- 2026-11-01: T18 done: restored from the draft tests first. RED: 52 of 229 focused tests failed (a challenge push answered 422 `not played yet`, the old `notAPushableCheck` message); GREEN after restoring the code, `make api` regenerated `burn` and `momentum`. Checklist pass added tests for a Character who left on a burn, from the sheet and from a pending step (passed at once, no RED); contract doc and ADR 0049 now say the burn is played.
 
 ## Reviews
 

@@ -779,6 +779,47 @@ final class PresetsTest extends KernelTestCase
         self::assertSame(['town', 'site', 'near', 'mid', 'deep'], array_values(array_map(static fn (\App\Play\Domain\GameSystem\Tag $tag): string => $tag->key, array_filter($snapshot->tags(), static fn (\App\Play\Domain\GameSystem\Tag $tag): bool => [\App\Play\Domain\GameSystem\Flow\ItemKind::Place] === $tag->appliesTo))));
     }
 
+    #[Test]
+    public function ironswornPublishesOnceWithItsCcByCreditsPointBudgetAndChallengeChecks(): void
+    {
+        $this->assertPublishesOnce('ironsworn');
+
+        $snapshot = $this->snapshot('ironsworn');
+        self::assertSame(['Ironsworn (unofficial)', 1, 'parchment'], [$snapshot->name(), $snapshot->releaseVersion(), $snapshot->theme()]);
+
+        // CC BY 4.0 (ADR 0021): the notice credits the author, names the licence and disclaims an official product; no badge, as the licence covers text only.
+        $credits = $snapshot->credits();
+        self::assertNotNull($credits);
+        self::assertStringContainsString('created by Shawn Tomkin', $credits->notice);
+        self::assertStringContainsString('Creative Commons Attribution 4.0 International License (https://creativecommons.org/licenses/by/4.0/)', $credits->notice);
+        self::assertStringContainsString('not an official Tomkin Press or Ironsworn product', $credits->notice);
+        self::assertSame(['CC BY 4.0', 'https://creativecommons.org/licenses/by/4.0/'], [$credits->license, $credits->url]);
+
+        // The five stats are spent as 9 points of 1 to 3 each.
+        $budgets = $snapshot->sheet()->budgets();
+        self::assertCount(1, $budgets);
+        self::assertSame([9, ['edge', 'heart', 'iron', 'shadow', 'wits'], 1, 3], [$budgets[0]->total, $budgets[0]->fields, $budgets[0]->min, $budgets[0]->max]);
+        self::assertInstanceOf(NumberField::class, $snapshot->sheet()->field('momentum'));
+        self::assertSame([-6, 10], [$snapshot->sheet()->field('momentum')->min, $snapshot->sheet()->field('momentum')->max]);
+
+        // An action roll is an action die against two d10 and can burn the momentum; a progress roll has no action die and no burn (ADR 0049).
+        $edge = $snapshot->check('edge');
+        self::assertSame(['1d6', 2, 10, 10, 'momentum', 'Burn momentum'], [$edge?->dice?->notation(), $edge?->challenge?->count, $edge->challenge->sides, $edge->challenge->scoreMax, $edge->challenge->momentum, $edge->push?->label]);
+        $fulfill = $snapshot->check('fulfill-1');
+        self::assertSame([null, 2, 10, null, null], [$fulfill?->dice, $fulfill?->challenge?->count, $fulfill->challenge->sides, $fulfill->challenge->momentum, $fulfill->push]);
+        foreach ($snapshot->checks() as $check) {
+            self::assertSame(['miss', 'weak', 'strong'], array_map(static fn (\App\Play\Domain\GameSystem\Check\CheckBand $band): string => $band->key, $check->bands), $check->key);
+        }
+        self::assertCount(19, $snapshot->checks());
+
+        // The eight SRD tables are 1d100 with an entry for every roll, and the oracle odds are the five of the SRD.
+        self::assertSame(['action', 'theme', 'combat-action', 'major-plot-twist', 'challenge-rank', 'pay-the-price', 'endure-harm-table', 'endure-stress-table'], $snapshot->oracleTableKeys());
+        $this->assertRangedTableResolves($snapshot, 'challenge-rank', 'Troublesome', 'Epic');
+        $this->assertRangedTableResolves($snapshot, 'action', 'Scheme', 'Summon');
+        self::assertSame(['ask-the-oracle'], $this->likelihoodKeys($snapshot));
+        self::assertSame(['almost-certain' => 90, 'likely' => 75, 'even' => 50, 'unlikely' => 25, 'small-chance' => 10], $this->targets($snapshot->likelihoodOracle('ask-the-oracle')->oracle()->levels()));
+    }
+
     /**
      * @return string what the first publication printed, authoring warnings included
      */

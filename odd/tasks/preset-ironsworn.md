@@ -240,7 +240,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T9 | 8 | Studio sandbox backend and API: challenge roll, match, burn, `challenge` on the test-roll response | delegated writer (slice 8) | [x] | `624a250c` |
 | T10 | 1 | Studio references: `challenge.momentum` blocks a rename or deletion (`DraftReferences`) | delegated writer (slice 1) | [x] | `5df5b214` |
 | T11 | 10 | Read the official licensing page; design the flow in this doc (parent, done before the writer); flow example in `docs/domain/flow-examples.md` | | [ ] | |
-| T12 | 10 | `backend/presets/ironsworn.json` base: credits, sheet, trackers, checks; `PresetsTest` | | [ ] | |
+| T12 | 10 | `backend/presets/ironsworn.json` base: credits, sheet, trackers, checks; `PresetsTest` | delegated writer (slice 10) | [x] | |
 | T13 | 10 | Flow, Scene Types and tables; `IronswornPresetFlowTest` | | [ ] | |
 | T14 | 11 | Slice 10 review fixes; e2e `frontend/e2e/play-ironsworn.spec.ts` | | [ ] | |
 | T15 | 11 | Chrome play pass: swear a vow, a move with a burn, a match, a negative momentum, fulfilling a vow; test roll and burn in the Studio sandbox; fixes | | [ ] | |
@@ -275,6 +275,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: Slice 8 review fixes: `DiceExpression::sidesOfOneDie()` replaces the cast of the notation in `CheckTestRoll::actionDieOf`; burns with a d10 and a percentile die, and an out-of-range situational on a burn, are tested. All passed at once, no RED: the normalized notation already reads `1d%` as `1d100` and `rollsOneDie` excludes selectors, so the finding did not reproduce; the typed accessor removes the fragility.
 - 2026-11-01: T19 done: the guard in `ChecksTab` removed, `RollResult` shows challenge dice, action die, cancelled die, score with its cap and a match, `canBurnTestRoll`/`burnScoreOf` (Studio's copy of Play's rule), "Burn the momentum" through `/push` with the action die then the challenge dice, and the burned card; the momentum was already a sample input and `match` already read "Match" as in Play. Vitest written after the code, all passed at once: no RED.
 - 2026-11-01: Slice 9 review fix: sandbox tests for a burn above the cap (offer and burned card) and for the burn offer's text; passed at once, no RED. Proved by mutation: reading `burn.score` in the cap note failed the burned-cap test, then restored.
+- 2026-11-01: T12 done: `backend/presets/ironsworn.json` with the exact credits, the eight SRD tables as written, `ask-the-oracle`, tags, trackers, fact slots, sheet (point budget 9) and 19 checks; no Scene Type or flow yet. The three table entries that force a scene (face-death, face-desolation, forsake-vow) are added with the Scene Types in T13, since a table cannot name a scene that does not exist. RED: the publish test failed on the missing file; GREEN once the file published (245 assertions).
 
 ## Reviews
 

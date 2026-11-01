@@ -6,6 +6,7 @@ namespace App\Studio\Application;
 
 use App\Randomness\Application\RollView;
 use App\Randomness\Domain\Roll;
+use App\Studio\Domain\Check\CheckTestChallengeRoll;
 use App\Studio\Domain\Check\CheckTestPoolRoll;
 use App\Studio\Domain\Check\CheckTestRollResult;
 use App\Studio\Domain\Check\CheckTestSpecialResult;
@@ -15,7 +16,8 @@ use App\Studio\Domain\Check\CheckTestSpecialResult;
  * the difficulty that applied (none for a check without one), the total (the successes of a pool),
  * every band with its bound and the key of the band the total falls in. A pool check tells the label
  * of its push and its cap, and the special result of the roll (ADR 0044). A pushed roll tells the
- * total and the special result it had before.
+ * total and the special result it had before. A challenge check tells its challenge dice (ADR 0049),
+ * and a burned roll the total it had before the burn.
  */
 final readonly class CheckTestRollView
 {
@@ -36,6 +38,7 @@ final readonly class CheckTestRollView
         public ?int $pushMaxDice = null,
         public ?CheckTestSpecialResult $special = null,
         public ?CheckTestSpecialResult $rolledSpecial = null,
+        public ?CheckTestChallengeView $challenge = null,
     ) {
     }
 
@@ -60,6 +63,7 @@ final readonly class CheckTestRollView
             $result->push?->maxDice,
             $result->special,
             $result->rolledSpecial,
+            $result->challenge instanceof CheckTestChallengeRoll ? CheckTestChallengeView::fromChallengeRoll($result->challenge) : null,
         );
     }
 }

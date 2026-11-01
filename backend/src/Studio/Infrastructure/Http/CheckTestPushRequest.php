@@ -22,7 +22,7 @@ final readonly class CheckTestPushRequest
      * @param list<int> $faces
      */
     public function __construct(
-        #[OA\Property(description: 'The face of each die of the roll to push, in roll order: as many as the pool\'s size for these samples and situational modifier, each from 1 to the pool\'s sides (422 otherwise).', type: 'array', items: new OA\Items(type: 'integer'), example: [1, 5, 6, 2])]
+        #[OA\Property(description: 'The face of each die of the roll to push, in roll order: as many as the pool\'s size for these samples and situational modifier, each from 1 to the pool\'s sides (422 otherwise). To burn a challenge check, the action die first (1 to the sides of its one die), then each challenge die (1 to its sides).', type: 'array', items: new OA\Items(type: 'integer'), example: [1, 5, 6, 2])]
         public array $faces,
         #[OA\Property(description: 'The sample value of each number and track field by key, as sent to the test roll.', type: 'object', example: ['hands' => 6], nullable: true, additionalProperties: new OA\AdditionalProperties(type: 'integer'))]
         public ?\stdClass $sheet,

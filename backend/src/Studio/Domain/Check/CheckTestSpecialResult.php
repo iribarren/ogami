@@ -15,6 +15,8 @@ enum CheckTestSpecialResult: string
     case Critical = 'critical';
     case MessyCritical = 'messyCritical';
     case BestialFailure = 'bestialFailure';
+    /** Every challenge die shows the same face (ADR 0049). */
+    case Match = 'match';
 
     /**
      * The special result of a roll, from the facts of its dice (ADR 0044). A roll that failed with a

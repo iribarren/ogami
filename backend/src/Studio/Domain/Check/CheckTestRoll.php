@@ -8,19 +8,25 @@ use App\Formula\Domain\Formula;
 use App\Formula\Domain\FormulaEvaluationFailed;
 use App\Formula\Domain\InvalidFormula;
 use App\Formula\Domain\ValueResolver;
+use App\Randomness\Domain\ChallengeDice;
+use App\Randomness\Domain\ChallengeRoll;
 use App\Randomness\Domain\DiceExpression;
+use App\Randomness\Domain\InvalidChallengeDice;
 use App\Randomness\Domain\InvalidDiceExpression;
 use App\Randomness\Domain\InvalidDicePool;
 use App\Randomness\Domain\PoolRoll;
 use App\Randomness\Domain\PoolRollNotPushable;
 use App\Randomness\Domain\RandomNumberGenerator;
+use App\Randomness\Domain\Roll;
 
 /**
  * A saved check as a test roll evaluates it, in the order of Play's Check::perform (ADR 0024, 0032):
  * the effective difficulty, the situational modifier, the modifier, the band bounds, the dice, the
  * overflow guard, the band. Studio cannot import Play, so it composes the same shared-kernel pieces
  * itself. A check rolls dice or a pool (ADR 0041), never both; a pool check may declare a push, which
- * the sandbox applies to the faces of an earlier roll. The saved draft already passed the item rules,
+ * the sandbox applies to the faces of an earlier roll. It may instead score its dice against challenge
+ * dice (ADR 0049): an action roll with dice, a progress roll without; its push is then a burn of the
+ * momentum on the sample sheet. The saved draft already passed the item rules,
  * so nothing here enforces them again: bounds that do not increase for the samples are returned as
  * they are.
  */
@@ -32,7 +38,7 @@ final readonly class CheckTestRoll
     /**
      * @param non-empty-list<OutcomeBand> $bands in band order
      *
-     * @throws \InvalidArgumentException when the check rolls both or neither of dice and a pool, a pool has a modifier, or a push has no pool
+     * @throws \InvalidArgumentException when the check rolls both or neither of dice and a pool (a challenge replaces the pool and may add dice), a pool has a modifier, a challenge has a difficulty or a pool beside it, a momentum is not read beside exactly one action die, or a push has neither a pool nor a challenge with a momentum
      */
     public function __construct(
         public string $key,
@@ -42,8 +48,11 @@ final readonly class CheckTestRoll
         public array $bands,
         public ?CheckTestPool $pool = null,
         public ?CheckTestPush $push = null,
+        public ?CheckTestChallenge $challenge = null,
     ) {
-        if ($dice instanceof DiceExpression === $pool instanceof CheckTestPool) {
+        if ($challenge instanceof CheckTestChallenge) {
+            $this->assertChallenge($key, $challenge, $dice, $pool, $difficulty);
+        } elseif ($dice instanceof DiceExpression === $pool instanceof CheckTestPool) {
             throw new \InvalidArgumentException(\sprintf('Check "%s" rolls dice or a pool, exactly one of them.', $key));
         }
 
@@ -51,8 +60,8 @@ final readonly class CheckTestRoll
             throw new \InvalidArgumentException(\sprintf('Check "%s" rolls a pool, which takes no modifier.', $key));
         }
 
-        if ($push instanceof CheckTestPush && !$pool instanceof CheckTestPool) {
-            throw new \InvalidArgumentException(\sprintf('Check "%s" declares a push without a pool.', $key));
+        if ($push instanceof CheckTestPush && !$pool instanceof CheckTestPool && null === $challenge?->momentum) {
+            throw new \InvalidArgumentException(\sprintf('Check "%s" declares a push without a pool or a challenge with a momentum.', $key));
         }
     }
 
@@ -76,20 +85,25 @@ final readonly class CheckTestRoll
         $pool = $check['pool'] ?? null;
         $modifier = $check['modifier'] ?? null;
         $push = $check['push'] ?? null;
+        $challenge = $check['challenge'] ?? null;
+        if (null !== $challenge && null !== $pool) {
+            throw CheckTestRollFailed::unreadable($where.' has both a challenge and a pool');
+        }
+
         if (null !== $dice && null !== $pool) {
             throw CheckTestRollFailed::unreadable($where.' has both dice and a pool');
         }
 
-        if (null === $dice && null === $pool) {
-            throw CheckTestRollFailed::unreadable($where.' has neither dice nor a pool');
+        if (null === $dice && null === $pool && null === $challenge) {
+            throw CheckTestRollFailed::unreadable($where.' has neither dice, a pool nor a challenge');
         }
 
         if (null !== $pool && null !== $modifier) {
             throw CheckTestRollFailed::unreadable($where.' has a modifier with a pool');
         }
 
-        if (null !== $push && null === $pool) {
-            throw CheckTestRollFailed::unreadable($where.' has a push without a pool');
+        if (null !== $push && null === $pool && null === $challenge) {
+            throw CheckTestRollFailed::unreadable($where.' has a push without a pool or a challenge');
         }
 
         try {
@@ -101,10 +115,11 @@ final readonly class CheckTestRoll
                 self::bands($check['bands'] ?? null, $where),
                 null === $pool ? null : self::readPool($pool, $where),
                 null === $push ? null : self::readPush($push, $where),
+                null === $challenge ? null : self::readChallenge($challenge, $where),
             );
         } catch (InvalidDiceExpression|InvalidFormula $invalid) {
             throw CheckTestRollFailed::unreadable(\sprintf('%s has %s that does not parse: %s', $where, $invalid instanceof InvalidDiceExpression ? 'dice' : 'a formula', rtrim($invalid->getMessage(), '.')), $invalid);
-        } catch (\InvalidArgumentException $invalid) {
+        } catch (\InvalidArgumentException|InvalidChallengeDice $invalid) {
             // Whatever invariant of the check or its parts a stored draft breaks: unreadable, never a 500.
             throw CheckTestRollFailed::unreadable(\sprintf('%s breaks the contract: %s', $where, rtrim($invalid->getMessage(), '.')), $invalid);
         }
@@ -129,7 +144,9 @@ final readonly class CheckTestRoll
             $count = $this->countOf($sheet);
             $hunger = $this->hungerOf($sheet);
             $bounds = $this->boundsOf($sheet, $effective);
+            $momentum = $this->momentumOf($sheet);
             $roll = $this->dice?->roll($random);
+            $challengeRoll = $this->challenge?->dice->roll($random);
             $poolRoll = $this->pool?->pool($this->pool->sizeFor($count, $situational), $hunger)->roll($random);
         } catch (FormulaEvaluationFailed|InvalidDiceExpression $failed) {
             throw CheckTestRollFailed::evaluation($this->key, $failed);
@@ -142,14 +159,13 @@ final readonly class CheckTestRoll
             return new CheckTestRollResult(null, 0, $situational, $effective, $total, $this->bands, $bounds, $band, $this->poolRollOf($poolRoll, $count), $this->push, null, $this->specialOf($poolRoll, $total, $effective, $band));
         }
 
-        $roll ?? throw new \LogicException(\sprintf('Check "%s" rolls neither dice nor a pool.', $this->key));
-
-        // The dice total can be close to PHP_INT_MAX, so adding the modifiers can leave the integers (as in the dice kernel).
-        if (abs((float) $roll->total() + $modifier + $situational) >= (float) \PHP_INT_MAX) {
-            throw CheckTestRollFailed::evaluation($this->key, new \OverflowException('the total of the check overflows.'));
+        if ($this->challenge instanceof CheckTestChallenge && $challengeRoll instanceof ChallengeRoll) {
+            return $this->challengeResult($this->challenge, $challengeRoll, $roll, $modifier, $situational, $momentum, $bounds);
         }
 
-        $total = $roll->total() + $modifier + $situational;
+        $roll ?? throw new \LogicException(\sprintf('Check "%s" rolls neither dice nor a pool.', $this->key));
+
+        $total = $this->scoreOf($roll->total(), $modifier, $situational);
 
         return new CheckTestRollResult($roll, $modifier, $situational, $effective, $total, $this->bands, $bounds, $this->bandFor($bounds, $total));
     }
@@ -161,14 +177,23 @@ final readonly class CheckTestRoll
      * the special result are picked again for the pushed roll. The cost is not applied: a test roll
      * has no campaign.
      *
-     * @param list<int> $faces the face of each die of the roll as it was shown, in roll order, Hunger dice last
+     * A challenge check's push is a burn instead (ADR 0049): no dice are rolled, so the generator is not
+     * used. The faces are the action die, then the challenge dice. The score is rebuilt from the action
+     * die and the samples, and the burn is refused unless the momentum, capped, beats more dice than it.
+     * The special result stays as rolled and the bands are read again on the burned total.
      *
-     * @throws CheckTestRollNotPushable when the check declares no push, or no regular die of the roll failed
+     * @param list<int> $faces the face of each die of the roll as it was shown, in roll order, Hunger dice last; a challenge roll's action die first
+     *
+     * @throws CheckTestRollNotPushable when the check declares no push, a challenge roll is a progress roll or its momentum beats no more dice than its score, or no regular die of the roll failed
      * @throws InvalidTestRoll          when the difficulty or the situational modifier is not accepted, or the faces are not the roll of this pool
      * @throws CheckTestRollFailed      when the pool count or a band bound cannot be evaluated; nothing is re-rolled
      */
     public function push(RandomNumberGenerator $random, ValueResolver $sheet, ?int $difficulty, int $situational, array $faces): CheckTestRollResult
     {
+        if ($this->challenge instanceof CheckTestChallenge) {
+            return $this->burn($this->challenge, $sheet, $difficulty, $situational, $faces);
+        }
+
         if (!$this->pool instanceof CheckTestPool || !$this->push instanceof CheckTestPush) {
             throw CheckTestRollNotPushable::noPush($this->key);
         }
@@ -200,6 +225,125 @@ final readonly class CheckTestRoll
         $band = $this->bandFor($bounds, $pushed->total());
 
         return new CheckTestRollResult(null, 0, $situational, $effective, $pushed->total(), $this->bands, $bounds, $band, $this->poolRollOf($pushed, $count), $this->push, $rolled->total(), $this->specialOf($pushed, $pushed->total(), $effective, $band), $this->specialOf($rolled, $rolled->total(), $effective, $rolledBand));
+    }
+
+    /**
+     * A challenge roll (ADR 0049): the score is the action die (0 when negative momentum cancels it), the
+     * modifier and the situational modifier, capped at the challenge's score cap; the total is the dice it beats.
+     *
+     * @param list<?int> $bounds the evaluated upper bounds, in band order
+     */
+    private function challengeResult(CheckTestChallenge $challenge, ChallengeRoll $challengeRoll, ?Roll $roll, int $modifier, int $situational, ?int $momentum, array $bounds): CheckTestRollResult
+    {
+        $actionDie = $roll?->total();
+        [$score, $cancelled] = $this->firstScore($challenge, $actionDie, $momentum, $modifier, $situational);
+        $total = $challengeRoll->beatenBy($score);
+
+        return new CheckTestRollResult($roll, $modifier, $situational, null, $total, $this->bands, $bounds, $this->bandFor($bounds, $total), null, $this->push, null, $challengeRoll->isMatch() ? CheckTestSpecialResult::Match : null, null, new CheckTestChallengeRoll($challengeRoll, $actionDie, $score, $challenge->scoreMax, $momentum, $challenge->momentum, $cancelled));
+    }
+
+    /**
+     * Burns the momentum of a challenge roll the client holds: no dice are rolled.
+     *
+     * @param list<int> $faces the action die, then the challenge dice
+     */
+    private function burn(CheckTestChallenge $challenge, ValueResolver $sheet, ?int $difficulty, int $situational, array $faces): CheckTestRollResult
+    {
+        if (!$this->push instanceof CheckTestPush || null === $challenge->momentum || !$this->dice instanceof DiceExpression) {
+            throw CheckTestRollNotPushable::noPush($this->key);
+        }
+
+        $this->effectiveDifficulty($difficulty);
+        $this->assertSituational($situational);
+
+        try {
+            $modifier = $this->modifier?->evaluate(new CheckFormulaValues($sheet, null)) ?? 0;
+            $bounds = $this->boundsOf($sheet, null);
+            $momentum = $this->momentumOf($sheet) ?? throw new \LogicException('A burn reads a momentum.');
+        } catch (FormulaEvaluationFailed $failed) {
+            throw CheckTestRollFailed::evaluation($this->key, $failed);
+        }
+
+        $actionDie = $this->actionDieOf($faces, $challenge, $this->dice);
+        try {
+            $rolled = ChallengeRoll::ofFaces($challenge->dice, \array_slice($faces, 1));
+        } catch (InvalidChallengeDice $invalid) {
+            throw InvalidTestRoll::at('faces', rtrim($invalid->getMessage(), '.'));
+        }
+
+        [$first, $cancelled] = $this->firstScore($challenge, $actionDie, $momentum, $modifier, $situational);
+        $score = $challenge->burnScore($momentum);
+        if ($rolled->beatenBy($score) <= $rolled->beatenBy($first)) {
+            throw CheckTestRollNotPushable::noBetterBurn($this->key);
+        }
+
+        $total = $rolled->beatenBy($score);
+        $match = $rolled->isMatch() ? CheckTestSpecialResult::Match : null;
+
+        return new CheckTestRollResult(null, $modifier, $situational, null, $total, $this->bands, $bounds, $this->bandFor($bounds, $total), null, $this->push, $rolled->beatenBy($first), $match, $match, new CheckTestChallengeRoll($rolled, $actionDie, $score, $challenge->scoreMax, $momentum, $challenge->momentum, $cancelled, new CheckTestBurn($momentum, $score)));
+    }
+
+    /**
+     * The action die of the faces of a burned roll: the first, in 1..the sides of the one die.
+     *
+     * @param list<int> $faces
+     *
+     * @throws InvalidTestRoll when there are not as many faces as the action die and the challenge dice, or the action die is outside its sides
+     */
+    private function actionDieOf(array $faces, CheckTestChallenge $challenge, DiceExpression $dice): int
+    {
+        if (\count($faces) !== 1 + $challenge->dice->count) {
+            throw InvalidTestRoll::at('faces', \sprintf('must be %d faces, the action die then the challenge dice, got %d', 1 + $challenge->dice->count, \count($faces)));
+        }
+
+        $sides = (int) substr($dice->notation(), 2);
+        if ($faces[0] < 1 || $faces[0] > $sides) {
+            throw InvalidTestRoll::at('faces', \sprintf('the action die must be 1 to %d, got %d', $sides, $faces[0]));
+        }
+
+        return $faces[0];
+    }
+
+    /**
+     * The score before any burn and whether negative momentum cancelled the action die: the die (0 when
+     * cancelled), the modifier and the situational modifier, capped at the score cap.
+     *
+     * @return array{int, bool}
+     */
+    private function firstScore(CheckTestChallenge $challenge, ?int $actionDie, ?int $momentum, int $modifier, int $situational): array
+    {
+        $dice = $actionDie ?? 0;
+        $cancelled = null !== $momentum && $momentum < 0 && -$momentum === $dice;
+        $score = $this->scoreOf($cancelled ? 0 : $dice, $modifier, $situational);
+
+        return [null === $challenge->scoreMax ? $score : min($score, $challenge->scoreMax), $cancelled];
+    }
+
+    /**
+     * The dice total plus the modifiers.
+     *
+     * @throws CheckTestRollFailed when the sum leaves the integers
+     */
+    private function scoreOf(int $dice, int $modifier, int $situational): int
+    {
+        // The dice total can be close to PHP_INT_MAX, so adding the modifiers can leave the integers (as in the dice kernel).
+        if (abs((float) $dice + $modifier + $situational) >= (float) \PHP_INT_MAX) {
+            throw CheckTestRollFailed::evaluation($this->key, new \OverflowException('the total of the check overflows.'));
+        }
+
+        return $dice + $modifier + $situational;
+    }
+
+    /**
+     * What the challenge's momentum field reads for the samples; null when the check names none.
+     *
+     * @throws FormulaEvaluationFailed
+     */
+    private function momentumOf(ValueResolver $sheet): ?int
+    {
+        $reference = $this->challenge?->momentumReference();
+
+        return $reference instanceof \App\Formula\Domain\Reference ? new CheckFormulaValues($sheet, null)->value($reference) : null;
     }
 
     private function assertSituational(int $situational): void
@@ -382,6 +526,55 @@ final readonly class CheckTestRoll
         $formula = $stored['formula'] ?? null;
 
         return Formula::fromString(\is_string($formula) ? $formula : throw CheckTestRollFailed::unreadable(\sprintf('%s has a %s without a formula', $where, $what)));
+    }
+
+    /**
+     * @throws \InvalidArgumentException when the challenge breaks the shape of ADR 0049
+     */
+    private function assertChallenge(string $key, CheckTestChallenge $challenge, ?DiceExpression $dice, ?CheckTestPool $pool, ?CheckDifficultyRange $difficulty): void
+    {
+        if ($pool instanceof CheckTestPool) {
+            throw new \InvalidArgumentException(\sprintf('Check "%s" rolls challenge dice or a pool, not both.', $key));
+        }
+
+        if ($difficulty instanceof CheckDifficultyRange) {
+            throw new \InvalidArgumentException(\sprintf('Check "%s" rolls challenge dice and has no difficulty, the dice are the difficulty.', $key));
+        }
+
+        if (null !== $challenge->momentum && !$dice?->rollsOneDie()) {
+            throw new \InvalidArgumentException(\sprintf('Check "%s" names a momentum and needs dice that roll exactly one die.', $key));
+        }
+    }
+
+    /**
+     * @throws CheckTestRollFailed       when the challenge is not an object with integer count and sides, and an integer cap and a string momentum if it has them
+     * @throws \InvalidArgumentException when the cap is outside its bounds
+     * @throws InvalidChallengeDice      when the dice are outside the kernel's bounds
+     * @throws InvalidFormula            when the momentum is not a field key
+     */
+    private static function readChallenge(mixed $stored, string $where): CheckTestChallenge
+    {
+        if (!\is_array($stored) || array_is_list($stored)) {
+            throw CheckTestRollFailed::unreadable($where.' has a challenge that is not an object');
+        }
+
+        $count = $stored['count'] ?? null;
+        $sides = $stored['sides'] ?? null;
+        $scoreMax = $stored['scoreMax'] ?? null;
+        $momentum = $stored['momentum'] ?? null;
+        if (!\is_int($count) || !\is_int($sides)) {
+            throw CheckTestRollFailed::unreadable($where.' has challenge dice without an integer count and sides');
+        }
+
+        if (null !== $scoreMax && !\is_int($scoreMax)) {
+            throw CheckTestRollFailed::unreadable($where.' has a challenge score cap that is not an integer');
+        }
+
+        if (null !== $momentum && !\is_string($momentum)) {
+            throw CheckTestRollFailed::unreadable($where.' has a challenge momentum that is not a string');
+        }
+
+        return new CheckTestChallenge(new ChallengeDice($count, $sides), $scoreMax, $momentum);
     }
 
     private static function readPush(mixed $stored, string $where): CheckTestPush

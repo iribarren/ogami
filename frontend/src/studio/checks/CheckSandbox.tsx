@@ -340,6 +340,7 @@ const specialLabels: Record<NonNullable<CheckTestRoll['special']>, string> = {
   critical: 'Critical',
   messyCritical: 'Messy critical',
   bestialFailure: 'Bestial failure',
+  match: 'Match',
 }
 
 /** How many regular dice failed: the only ones a push re-rolls, never the Hunger dice. */

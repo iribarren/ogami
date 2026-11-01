@@ -488,6 +488,7 @@ describe('JournalEntryView icon tile', () => {
         throw new Error('The fixture is no challenge roll.')
       }
       // 4 + 4 = 8 is below the cap of 10; the situational modifier of +3 takes it to 11.
+      const { challenge } = content
       const capped = (situational: number) => (
         <JournalEntryView
           entry={{
@@ -496,7 +497,7 @@ describe('JournalEntryView icon tile', () => {
               ...content,
               modifier: 4,
               situational,
-              challenge: { ...content.challenge, score: Math.min(10, 8 + situational) },
+              challenge: { ...challenge, score: Math.min(10, 8 + situational) },
             },
           }}
         />

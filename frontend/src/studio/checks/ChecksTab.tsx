@@ -1149,10 +1149,7 @@ function CheckEditor({
           </Button>
         </div>
       </form>
-      {original !== null && draft.challenge !== null && (
-        <p className="hint">Test rolls of challenge dice are not available yet.</p>
-      )}
-      {original !== null && draft.challenge === null && (
+      {original !== null && (
         <CheckSandbox
           gameSystemKey={gameSystemKey}
           catalog={start}

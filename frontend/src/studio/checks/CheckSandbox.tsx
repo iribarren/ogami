@@ -13,7 +13,14 @@ import { useGameSystemSheet } from '../sheet/useGameSystemSheet'
 import type { SampleValues } from '../sheet/useSheetSamples'
 import { useRollHistory } from '../oracles/useRollHistory'
 import type { BandDraft, DifficultyDraft, PoolDraft } from './checkDraft'
-import { resolveSandbox, type Bound, type SandboxInput, type SandboxRequest } from './checkSandbox'
+import {
+  burnScoreOf,
+  canBurnTestRoll,
+  resolveSandbox,
+  type Bound,
+  type SandboxInput,
+  type SandboxRequest,
+} from './checkSandbox'
 import {
   useTestPushCheck,
   useTestRollCheck,
@@ -39,7 +46,9 @@ function boundText(bound: Bound) {
  * the form and the samples as they are typed, computed here; the roll itself is the server's, on
  * the saved check, so unsaved edits are saved first (`ensureSaved`). The last 5 results are kept.
  * A pool check's result can be pushed when its check declares a push and a die failed: the same
- * samples go back with the faces, and the pushed roll joins the results.
+ * samples go back with the faces, and the pushed roll joins the results. A challenge check's result
+ * can burn its momentum when that beats more challenge dice: the same samples go back with the
+ * action die and the challenge dice, and the burned roll joins the results.
  */
 export function CheckSandbox({
   gameSystemKey,
@@ -117,15 +126,24 @@ export function CheckSandbox({
     }
   }
 
-  /** Pushes a pool roll with the samples it was rolled with, sending back the face of each die. */
+  /**
+   * Pushes a pool roll or burns a challenge roll with the samples it was rolled with, sending back
+   * the face of each die: the pool's dice, or the action die then the challenge dice.
+   */
   async function push({ check, request, result }: SandboxRoll) {
-    if (result.pool === null) {
+    const { challenge } = result
+    let faces: number[] | null = null
+    if (result.pool !== null) {
+      faces = result.pool.dice.map(({ face }) => face)
+    } else if (challenge?.actionDie != null) {
+      faces = [challenge.actionDie, ...challenge.dice.map(({ face }) => face)]
+    }
+    if (faces === null) {
       return
     }
     setBusy(true)
     setError(null)
     try {
-      const faces = result.pool.dice.map(({ face }) => face)
       history.add({
         check,
         request,
@@ -133,7 +151,13 @@ export function CheckSandbox({
         before: result,
       })
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Pushing the roll failed.')
+      setError(
+        failure instanceof Error
+          ? failure.message
+          : challenge === null
+            ? 'Pushing the roll failed.'
+            : 'Burning the momentum failed.',
+      )
     } finally {
       setBusy(false)
     }
@@ -334,8 +358,9 @@ interface SandboxRoll {
 }
 
 type TestPool = NonNullable<CheckTestRoll['pool']>
+type TestChallenge = NonNullable<CheckTestRoll['challenge']>
 
-/** The special results of a pool roll (ADR 0044), as the person reads them. */
+/** The special results of a roll (ADR 0044, 0049), as the person reads them: Play's words. */
 const specialLabels: Record<NonNullable<CheckTestRoll['special']>, string> = {
   critical: 'Critical',
   messyCritical: 'Messy critical',
@@ -361,7 +386,8 @@ function RollResult({
   busy: boolean
   onPush: () => void
 }) {
-  const { dice, pool, push } = result
+  const { dice, pool, push, challenge } = result
+  const burn = challenge?.burn ?? null
   const reached = result.bands.find((band) => band.key === result.band)
   // The band the roll reached before the push, as the server rolled it.
   const rolled = before?.bands.find((band) => band.key === before.band)
@@ -372,14 +398,17 @@ function RollResult({
     push !== null &&
     result.rolledSuccesses === null &&
     failedRegularDice(pool) > 0
+  const burnable = !pushed && push !== null && challenge !== null && canBurnTestRoll(result)
 
   return (
     <div className="space-y-2 text-sm">
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
         <p className="text-[28px] font-bold tracking-[-0.02em] tabular-nums">
-          {pool === null
-            ? `Total ${String(result.total)}`
-            : `${String(result.total)} ${result.total === 1 ? 'success' : 'successes'}`}
+          {pool !== null
+            ? `${String(result.total)} ${result.total === 1 ? 'success' : 'successes'}`
+            : challenge !== null
+              ? `${String(result.total)} ${result.total === 1 ? 'die' : 'dice'} beaten`
+              : `Total ${String(result.total)}`}
         </p>
         {reached && <p className="text-[13px] font-[550]">{reached.label}</p>}
       </div>
@@ -388,7 +417,27 @@ function RollResult({
           <span>Special result:</span> <strong>{specialLabels[result.special]}</strong>
         </p>
       )}
-      {push !== null && result.rolledSuccesses !== null && (
+      {push !== null && burn !== null && challenge !== null && (
+        <p>
+          <strong>Burned: {push.label}</strong>
+          {rolled && reached && result.rolledSuccesses !== null && (
+            <>
+              {' · '}
+              <span>
+                {`Rolled ${rolled.label} (${String(result.rolledSuccesses)} of ${String(challenge.dice.length)} beaten), `}
+                {rolled.key === reached.key
+                  ? `still ${reached.label}`
+                  : `burned to ${reached.label}`}
+              </span>
+            </>
+          )}
+          <span className="block text-muted-foreground">
+            Burned {burn.momentum} momentum for a score of {burn.score}. The cost is not applied in
+            a test roll.
+          </span>
+        </p>
+      )}
+      {push !== null && challenge === null && result.rolledSuccesses !== null && (
         <p>
           <strong>Pushed: {push.label}</strong>
           {rolled && reached && (
@@ -408,6 +457,7 @@ function RollResult({
         </p>
       )}
       {pool !== null && <PoolDice pool={pool} />}
+      {challenge !== null && <ChallengeDice challenge={challenge} />}
       <p className="flex flex-wrap items-baseline gap-x-3 font-mono text-xs text-muted-foreground">
         {dice !== null && (
           <>
@@ -437,6 +487,7 @@ function RollResult({
             {pool.criticalsBonus > 0 && <span>Critical pairs +{pool.criticalsBonus} each</span>}
           </>
         )}
+        {challenge !== null && <ChallengeFacts challenge={challenge} result={result} />}
         {pool === null && <span>Modifier {result.modifier}</span>}
         <span>Situational {result.situational}</span>
         {result.difficulty !== null && <span>Difficulty {result.difficulty}</span>}
@@ -452,6 +503,18 @@ function RollResult({
               ? 'Re-roll every failed regular die.'
               : `Re-roll up to ${String(push.maxDice)} failed ${push.maxDice === 1 ? 'die' : 'dice'}.`}
             {pool.hunger > 0 && ' Hunger dice are never re-rolled.'}
+          </span>
+        </div>
+      )}
+      {burnable && (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" variant="outline" size="sm" disabled={busy} onClick={onPush}>
+            Burn the momentum
+          </Button>
+          <span className="text-muted-foreground">Cost: {push.label}</span>
+          <span className="text-muted-foreground">
+            The score becomes {burnScoreOf(challenge.momentum ?? 0, challenge.scoreMax)}, from{' '}
+            {challenge.score}.
           </span>
         </div>
       )}
@@ -503,6 +566,65 @@ function PoolDice({ pool }: { pool: TestPool }) {
           <span className="sr-only">{die.success ? ' (success)' : ' (no success)'}</span>
           {die.group === 'hunger' && <span className="block text-xs font-normal">Hunger die</span>}
           {die.rerolled && <span className="block text-xs font-normal">re-rolled</span>}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * The action die, the score and what changed it, of a challenge roll. A progress roll has no action
+ * die. A burned roll shows the burned score, which is the momentum capped at the check's cap.
+ */
+function ChallengeFacts({
+  challenge,
+  result,
+}: {
+  challenge: TestChallenge
+  result: CheckTestRoll
+}) {
+  const { actionDie, burn, scoreMax } = challenge
+  const uncapped = burn
+    ? burn.momentum
+    : (challenge.cancelled ? 0 : (actionDie ?? 0)) + result.modifier + result.situational
+
+  return (
+    <>
+      {actionDie !== null && <span>Action die {actionDie}</span>}
+      {challenge.cancelled && (
+        <span>
+          Cancelled: momentum {challenge.momentum ?? 0} cancelled the action die, which counts 0
+        </span>
+      )}
+      <span>
+        Score {challenge.score}
+        {scoreMax !== null && uncapped > scoreMax && ` (capped at ${String(scoreMax)})`}
+      </span>
+    </>
+  )
+}
+
+/**
+ * Every challenge die of a challenge roll and whether the score beat it (`beaten`, against the
+ * burned score after a burn: a tie goes to the die). Told by text for assistive tech and by weight
+ * and a border, as a pool success is, not by colour alone.
+ */
+function ChallengeDice({ challenge }: { challenge: TestChallenge }) {
+  return (
+    <ul aria-label="Challenge dice" className="flex flex-wrap gap-1.5">
+      {challenge.dice.map((die, index) => (
+        <li
+          // Two challenge dice can show the same face; the position is the identity.
+          key={index}
+          className={cn(
+            'min-w-8 rounded-md px-1.5 py-0.5 text-center',
+            die.beaten
+              ? 'border-2 border-foreground font-bold'
+              : 'border border-dashed border-muted-foreground text-muted-foreground',
+          )}
+        >
+          {die.face}
+          <span className="sr-only">{die.beaten ? ' (beaten)' : ' (not beaten)'}</span>
         </li>
       ))}
     </ul>

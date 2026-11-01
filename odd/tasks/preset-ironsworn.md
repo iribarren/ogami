@@ -1,7 +1,7 @@
 # Feature: preset-ironsworn
 
 - **Locator:** `odd/tasks/preset-ironsworn.md` · Engram topic `odd/preset-ironsworn/tasks`
-- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-8-sandbox` · **Status:** in progress
+- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-9-sandbox-ui` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-west-marches` (PRs #338–#339)
@@ -121,17 +121,17 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T6 | 4 | Burn domain: `Check::burn`, `BurnResult`, the offer rule, `FlowRun::pushable`, a pending challenge roll, journal `challenge.burn`, the `savePush` guard. The translator still refuses a challenge push | delegated writer (slice 4), split inline by the parent | [x] | `bbf1879f` |
 | T7 | 6 | Play UI: burn offer on the sheet and the pending step, burned entry in the journal | delegated writer (slice 6) | [x] | `5957328f` |
 | T8 | 7 | Studio check editor: challenge mode, action or progress, momentum select, burn | delegated writer (slice 7) | [x] | `429b0518` |
-| T9 | 8 | Studio sandbox backend and API: challenge roll, match, burn, `challenge` on the test-roll response | delegated writer (slice 8) | [x] | |
+| T9 | 8 | Studio sandbox backend and API: challenge roll, match, burn, `challenge` on the test-roll response | delegated writer (slice 8) | [x] | `624a250c` |
 | T10 | 1 | Studio references: `challenge.momentum` blocks a rename or deletion (`DraftReferences`) | delegated writer (slice 1) | [x] | `5df5b214` |
 | T11 | 10 | Read the official licensing page; design the flow in this doc; flow example in `docs/domain/flow-examples.md` | | [ ] | |
 | T12 | 10 | `backend/presets/ironsworn.json` base: credits, sheet, trackers, checks; `PresetsTest` | | [ ] | |
 | T13 | 10 | Flow, Scene Types and tables; `IronswornPresetFlowTest` | | [ ] | |
 | T14 | 11 | Slice 10 review fixes; e2e `frontend/e2e/play-ironsworn.spec.ts` | | [ ] | |
-| T15 | 11 | Chrome play pass: swear a vow, a move with a burn, a match, a negative momentum, fulfilling a vow; fixes | | [ ] | |
+| T15 | 11 | Chrome play pass: swear a vow, a move with a burn, a match, a negative momentum, fulfilling a vow; test roll and burn in the Studio sandbox; fixes | | [ ] | |
 | T16 | 11 | Closing: Reviews, roadmap `Done:` line under B16, follow-ups if any | | [ ] | |
 | T17 | 3 | Play API: `challenge` on the check and on its journal content, API tests, `make api`. Drafted on local branch `draft/preset-ironsworn-3-play-api` (`74ec85a8`, `7384cee9`), brought onto the latest `main` | delegated writer (slice 3) | [x] | `3a51fbb1` |
 | T18 | 5 | Burn through the application and the API: `CheckPusher`, the translator accepts a challenge push (needs a momentum, refuses `maxDice`), `burn` and `momentum` on the responses, API tests from the sheet and the pending step, contract doc, `make api`. Drafted on local branch `draft/preset-ironsworn-5-play-burn-api` (`69c73ff2`), whose tree is the end state of slices 4 and 5 | delegated writer (slice 5) | [x] | `ed3c1993` |
-| T19 | 9 | Studio sandbox UI: challenge result, match, cancelled die, burn offer and burned result; the guard in `ChecksTab` removed, so the sandbox shows for challenge checks | | [ ] | |
+| T19 | 9 | Studio sandbox UI: challenge result, match, cancelled die, burn offer and burned result; the guard in `ChecksTab` removed, so the sandbox shows for challenge checks | delegated writer (slice 9) | [x] | |
 
 ## Progress
 
@@ -156,6 +156,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: T8 done: `ChallengeDraft`, `challenge` mode with action or progress roll, momentum select (number fields), the burn through `PushEditor burn`, client limits and `challenge.*` error paths, `challenge: null` kept as stored, `GameSystemCheck` OpenAPI `challenge`, `make api` (the spec is `frontend/src/shared/api/openapi.json`), a story. The sandbox is hidden for a challenge check until T9 (RED: the sandbox was still shown; GREEN after the guard). RED for the draft and error-path tests: 17 of 19 and 4 of 48 failed before the implementation. The editor UI was written before its `ChecksTab` tests, which passed once their own mistakes were fixed (no RED claimed for them).
 - 2026-11-01: Slice 7 review fixes (`checkDraft.ts`): a save writes back a stored null `challenge` on a pool check, a null `scoreMax` or `momentum` inside a challenge, and a null `push` through an unrelated edit (`editChallenge` gives it up only when that edit empties the momentum); `readCheck` returns null for a challenge check with a difficulty, a burn with no momentum or a burn with `maxDice`. RED: 6 of 9 new tests failed (the three refusals and the pool, cap-and-momentum and push write-backs); the two give-up cases (a given cap, an emptied momentum) passed at once. The third finding (the sandbox guard reads the draft) is settled by T19, which removes the guard.
 - 2026-11-01: T9 done (backend and API; the UI is T19): `CheckTestChallenge`, `CheckTestChallengeRoll`, `CheckTestBurn`, `CheckTestRoll` rolls action and progress challenge checks in Play's order and burns statelessly (no randomness used), `CheckTestSpecialResult::Match`, `challenge` on `CheckTestRollResponse`, `make api` (own commit), a `match` label so the frontend compiles. RED: 30 of 52 unit tests failed (class and property errors) and 7 API tests failed before the code; GREEN after: `tests/Unit/Studio` and `tests/Integration/Studio` pass (3,304 tests), PHPStan clean. The overflow test passed only after scripting the challenge dice (the guard runs after the dice, as in Play).
+- 2026-11-01: Slice 8 review fixes: `DiceExpression::sidesOfOneDie()` replaces the cast of the notation in `CheckTestRoll::actionDieOf`; burns with a d10 and a percentile die, and an out-of-range situational on a burn, are tested. All passed at once, no RED: the normalized notation already reads `1d%` as `1d100` and `rollsOneDie` excludes selectors, so the finding did not reproduce; the typed accessor removes the fragility.
+- 2026-11-01: T19 done: the guard in `ChecksTab` removed, `RollResult` shows challenge dice, action die, cancelled die, score with its cap and a match, `canBurnTestRoll`/`burnScoreOf` (Studio's copy of Play's rule), "Burn the momentum" through `/push` with the action die then the challenge dice, and the burned card; the momentum was already a sample input and `match` already read "Match" as in Play. Vitest written after the code, all passed at once: no RED.
 
 ## Reviews
 
@@ -168,7 +170,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 5 | `review-53a4035203b7f132` | `c3c98cb3`, `ed3c1993`, `2f550834` | Approved. A suggestion, fixed in slice 6: no test exercises the guard in `CheckPusher` that refuses a stored roll with another number of challenge dice than the pinned check. User decision, also in slice 6: `CheckContent` refuses a blank `bandLabel`, as `CheckChallengeBurnContent` does. No stored row can hold one: the translator has refused a blank check band label since checks were first read (`7f84f68d`) | [#346](https://github.com/iribarren/ogami/pull/346) |
 | 6 | `review-dfb24acc6e74c150` | `972396ea`, `5957328f` | Approved. Two suggestions, fixed in slice 7: the burned view recomputes each die inline, with no test of a die that ties or stays above the burned score; `canBurn` offers a burn the API refuses when the stored roll's dice count, sides or cap differ from the pinned check | [#347](https://github.com/iribarren/ogami/pull/347) |
 | 7 | `review-b98fdd8ece7c9b1b` | `f02ac2c3`, `429b0518` | Approved. A warning and two suggestions, fixed in slice 8: the sandbox guard reads the draft, so it reappears when a saved challenge check is switched to dice or pool unsaved (a dirty draft is saved before rolling, so no wrong roll; T9 removes the guard); stored nulls are not always written back (a null `challenge` on a pool check, a null `scoreMax` or `momentum`, a null `push` cleared by an unrelated edit while the momentum is empty); `readCheck` accepts shapes the form cannot hold (a stored difficulty, a push without momentum, a push with `maxDice`) | [#348](https://github.com/iribarren/ogami/pull/348) |
+| 8 | `review-6e3b0d283d0c32e6` | `589f48ce`, `c1de4ff2`, `624a250c` | Approved. Two suggestions, fixed in slice 9: the burn reads the action die's sides by casting the notation after its first two characters, so a percentile die refuses every face and a suffix is ignored, with no test of another die than a d6; the situational range guard on the burn path has no test, as the existing case sends a difficulty and stops there | [#349](https://github.com/iribarren/ogami/pull/349) |
 
 ## Next step
 
-Slice 8: slice 7 fixes and the sandbox backend and API (T9), then its native review and PR. Then slice 9: the sandbox UI (T19), which also removes the guard of slice 7's first finding. Then slice 10: the release (T11, T12, T13).
+Slice 9: slice 8 fixes and the sandbox UI (T19), which also removes the guard of slice 7's first finding, then its native review and PR. Then slice 10: the release (T11, T12, T13).

@@ -2,7 +2,14 @@ import type { SheetFieldView } from '@/shared/sheet/types'
 
 import type { Sample } from '../sheet/useSheetSamples'
 import type { BandDraft, DifficultyDraft } from './checkDraft'
-import { resolveSandbox, sampleDefaults, type SandboxState } from './checkSandbox'
+import {
+  burnScoreOf,
+  canBurnTestRoll,
+  resolveSandbox,
+  sampleDefaults,
+  type SandboxState,
+} from './checkSandbox'
+import type { CheckTestRoll } from './useGameSystemChecks'
 
 const field = (key: string, extra: Partial<SheetFieldView> = {}): SheetFieldView => ({
   key,
@@ -409,5 +416,96 @@ describe('sampleDefaults', () => {
         field('bonus', { type: 'derived', formula: '{pow} + 1' }),
       ]),
     ).toEqual({ pow: 2, dex: 10, low: 3 })
+  })
+})
+
+describe('the sample of a momentum', () => {
+  const withMomentum = {
+    ...catalog,
+    fields: [
+      ...catalog.fields,
+      { key: 'momentum', label: 'Momentum', type: 'number' as const, max: null },
+    ],
+  }
+
+  it('is an input of its own even when no formula names it, and is sent when typed', () => {
+    const empty = resolveSandbox(state({ catalog: withMomentum }))
+    expect(empty.fields.map(({ key }) => key)).toContain('momentum')
+    expect(empty.request?.sheet).toEqual({})
+
+    const typedIn = resolveSandbox(
+      state({ catalog: withMomentum, samples: { momentum: typed('-3') } }),
+    )
+    expect(typedIn.request?.sheet).toEqual({ momentum: -3 })
+  })
+
+  it('has no difficulty for a challenge check: none is shown or sent', () => {
+    const sandbox = resolveSandbox(state({ catalog: withMomentum, difficulty: null }))
+
+    expect(sandbox.difficulty).toBeNull()
+    expect(sandbox.request).not.toHaveProperty('difficulty')
+  })
+})
+
+describe('the burn offer of a test roll', () => {
+  const push = { label: 'Burn momentum', maxDice: null, rolledSpecial: null }
+  const challenge = (changes: Partial<NonNullable<CheckTestRoll['challenge']>> = {}) => ({
+    actionDie: 3,
+    sides: 10,
+    scoreMax: 10,
+    score: 5,
+    momentum: 9,
+    momentumField: 'momentum',
+    cancelled: false,
+    dice: [
+      { face: 4, beaten: true },
+      { face: 8, beaten: false },
+    ],
+    burn: null,
+    ...changes,
+  })
+  const roll = (
+    changes: Partial<NonNullable<CheckTestRoll['challenge']>> = {},
+    withPush = true,
+  ) => ({ push: withPush ? push : null, challenge: challenge(changes) })
+
+  it('is offered when the momentum beats more dice than the score', () => {
+    expect(canBurnTestRoll(roll())).toBe(true)
+  })
+
+  it('is not offered when the momentum ties the die the score missed', () => {
+    // Momentum 8 does not beat the 8: a tie goes to the die.
+    expect(canBurnTestRoll(roll({ momentum: 8 }))).toBe(false)
+  })
+
+  it('is not offered when the momentum beats no more dice than the score', () => {
+    expect(canBurnTestRoll(roll({ score: 9 }))).toBe(false)
+    expect(canBurnTestRoll(roll({ momentum: 4 }))).toBe(false)
+  })
+
+  it('reads the momentum as the check caps it', () => {
+    // Momentum 10 would beat the 8, but a cap of 8 ties it.
+    expect(canBurnTestRoll(roll({ momentum: 10, scoreMax: 8 }))).toBe(false)
+    expect(canBurnTestRoll(roll({ momentum: 10, scoreMax: 9 }))).toBe(true)
+    expect(burnScoreOf(10, 9)).toBe(9)
+    expect(burnScoreOf(7, 9)).toBe(7)
+    expect(burnScoreOf(10, null)).toBe(10)
+  })
+
+  it('is not offered for a momentum at 0 or below', () => {
+    expect(canBurnTestRoll(roll({ momentum: 0 }))).toBe(false)
+    expect(canBurnTestRoll(roll({ momentum: -2 }))).toBe(false)
+  })
+
+  it('is not offered for a progress roll, a check with no push or a roll that was burned', () => {
+    expect(canBurnTestRoll(roll({ actionDie: null, momentum: null, momentumField: null }))).toBe(
+      false,
+    )
+    expect(canBurnTestRoll(roll({}, false))).toBe(false)
+    expect(canBurnTestRoll(roll({ burn: { momentum: 9, score: 9 } }))).toBe(false)
+  })
+
+  it('is not offered for a dice or a pool check', () => {
+    expect(canBurnTestRoll({ push, challenge: null })).toBe(false)
   })
 })

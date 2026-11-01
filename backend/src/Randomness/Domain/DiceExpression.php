@@ -81,7 +81,20 @@ final readonly class DiceExpression implements \Stringable
      */
     public function rollsOneDie(): bool
     {
-        return 1 === preg_match('/^1d\d+$/', $this->notation());
+        return null !== $this->sidesOfOneDie();
+    }
+
+    /**
+     * The sides of the die when the expression is exactly one die (see rollsOneDie), null otherwise.
+     * A percentile die has 100 sides, as the normalized notation says.
+     */
+    public function sidesOfOneDie(): ?int
+    {
+        if (1 !== preg_match('/^1d(\d+)$/', $this->notation(), $matches)) {
+            return null;
+        }
+
+        return (int) $matches[1];
     }
 
     /**

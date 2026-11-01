@@ -12,7 +12,122 @@
   },
   "theme": "parchment",
   "oracles": {
-    "tables": [],
+    "tables": [
+      {
+        "key": "rumors",
+        "name": "Rumors",
+        "entries": [
+          {"text": "A tower lit again after fifty years"},
+          {"text": "Wolves that walk upright near the ford"},
+          {"text": "A caravan that never arrived"},
+          {"text": "Gold in the old mine"},
+          {"text": "A shrine that answers prayers"},
+          {"text": "A map sold cheap at the inn"},
+          {"text": "A bell ringing under the lake"},
+          {"text": "A knight's tomb split open by roots"},
+          {"text": "Lights over the barrow after dusk"},
+          {"text": "A ferryman who will not cross at night"},
+          {"text": "Smoke from the abandoned abbey"},
+          {"text": "A miller's son back from the hills, changed"}
+        ]
+      },
+      {
+        "key": "encounters-near",
+        "name": "Encounters near town",
+        "entries": [
+          {"text": "Shepherds with bad news", "effects": [{"kind": "nextScene", "sceneType": "encounter"}]},
+          {"text": "A lost traveler asking the way", "effects": [{"kind": "nextScene", "sceneType": "encounter"}]},
+          {"text": "Bandits at the bridge (Bandit)", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "Giant rats in a ditch (Giant Rat)", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "A wolf shadowing the road (Wolf)", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "A goblin scouting party (Goblin Warrior)", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "A peddler with odd wares", "effects": [{"kind": "nextScene", "sceneType": "encounter"}]},
+          {"text": "Farmers hunting something in the reeds", "effects": [{"kind": "nextScene", "sceneType": "encounter"}]}
+        ]
+      },
+      {
+        "key": "encounters-mid",
+        "name": "Encounters in the hills",
+        "entries": [
+          {"text": "A hermit who trades in secrets", "effects": [{"kind": "nextScene", "sceneType": "encounter"}]},
+          {"text": "A goblin patrol (Goblin Warrior)", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "An ogre demanding a toll (Ogre)", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "Pilgrims on the wrong road", "effects": [{"kind": "nextScene", "sceneType": "encounter"}]},
+          {"text": "A pack of worgs (Worg)", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "Hobgoblins marching under a banner (Hobgoblin Warrior)", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "A brown bear guarding its kill (Brown Bear)", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "A wandering knight sworn to a lost cause", "effects": [{"kind": "nextScene", "sceneType": "encounter"}]}
+        ]
+      },
+      {
+        "key": "encounters-deep",
+        "name": "Encounters in the deep wilds",
+        "entries": [
+          {"text": "A wyvern on the hunt (Wyvern)", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "An elf who knows your names", "effects": [{"kind": "nextScene", "sceneType": "encounter"}]},
+          {"text": "The dead walking in the fog (Zombie)", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "A troll under a broken bridge (Troll)", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "An owlbear in a collapsed barn (Owlbear)", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "A rival party, battered", "effects": [{"kind": "nextScene", "sceneType": "encounter"}]},
+          {"text": "Ghouls circling a barrow (Ghoul)", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]},
+          {"text": "A hill giant hurling boulders (Hill Giant)", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]}
+        ]
+      },
+      {
+        "key": "site-features",
+        "name": "Site features",
+        "entries": [
+          {"text": "A collapsed bridge"},
+          {"text": "Old standing stones"},
+          {"text": "A burned farmstead"},
+          {"text": "A cave with fresh tracks"},
+          {"text": "A ruined watchtower"},
+          {"text": "An overgrown well"},
+          {"text": "An abandoned mill"},
+          {"text": "A hollow tree hung with offerings"}
+        ]
+      },
+      {
+        "key": "rooms",
+        "name": "Rooms",
+        "entries": [
+          {"text": "An empty guard room with a cold hearth", "key": "guard-room"},
+          {"text": "A shrine to a forgotten god", "key": "shrine"},
+          {"text": "A flooded passage with something in the water", "key": "flooded"},
+          {"text": "A trapped chest", "key": "chest"},
+          {"text": "A locked door with a poisoned needle", "key": "needle"},
+          {"text": "A giant spider's larder (Giant Spider)", "key": "lair-spider"},
+          {"text": "Stairs going down", "key": "stairs"},
+          {"text": "A collapsed library of waterlogged books", "key": "library"},
+          {"text": "Skeletons rising from their niches (Skeleton)", "key": "lair-skeletons"},
+          {"text": "A rusted armory", "key": "armory"}
+        ]
+      },
+      {
+        "key": "stranded",
+        "name": "Stranded",
+        "entries": [
+          {"text": "A cold night: a ration spoils", "effects": [{"kind": "tracker", "tracker": "rations", "op": "add", "value": -1}]},
+          {"text": "You lose the trail: one more day out", "effects": [{"kind": "tracker", "tracker": "away", "op": "add", "value": 1}]},
+          {"text": "Something follows you"},
+          {"text": "A storm drenches your torches", "effects": [{"kind": "tracker", "tracker": "torches", "op": "add", "value": 1}]},
+          {"text": "A farmer shares his barn and asks for news"},
+          {"text": "A fever keeps you in your blankets"}
+        ]
+      },
+      {
+        "key": "spoils",
+        "name": "Spoils",
+        "entries": [
+          {"text": "A purse of old coins sewn into a lining"},
+          {"text": "A dented silver locket"},
+          {"text": "A map scrap with a mark on it"},
+          {"text": "A pouch of strange herbs"},
+          {"text": "A well-kept dagger with a crest"},
+          {"text": "Nothing but a good story"}
+        ]
+      }
+    ],
     "likelihood": [
       {"key": "fate", "name": "Fate question", "sides": 100, "levels": [{"key": "unlikely", "label": "Unlikely", "target": 30}, {"key": "even", "label": "50/50", "target": 50}, {"key": "likely", "label": "Likely", "target": 70}], "exceptionalPercent": 20}
     ]
@@ -40,8 +155,279 @@
     {"key": "expedition", "label": "Expedition", "type": "thread", "hint": "Renewed each session"},
     {"key": "foe", "label": "Foe", "type": "npc", "hint": "The monster you are fighting"}
   ],
-  "sceneTypes": [],
-  "flows": [],
+  "sceneTypes": [
+    {
+      "key": "founding-town",
+      "name": "Founding town",
+      "purpose": "Found the town the adventurers call home.",
+      "tips": "Think small: a village at the edge of the map with an inn and a notice board. The rumors you roll are the first reasons to leave it.",
+      "oracles": ["rumors"],
+      "setup": [
+        {"key": "name", "kind": "prompt", "title": "What is the town called?", "mandatory": true, "effects": [{"kind": "createPlace", "name": "{answer}", "tags": ["town"]}, {"kind": "fillFact", "slot": "town"}]},
+        {"key": "feel", "kind": "prompt", "title": "What is it like?", "tip": "A trade, a tavern, a lord, a smell."},
+        {"key": "rumor-1", "kind": "table", "title": "What rumor is going around?", "table": "rumors", "effects": [{"kind": "createThread", "name": "{answer}"}]},
+        {"key": "rumor-2", "kind": "table", "title": "What other rumor?", "table": "rumors", "effects": [{"kind": "createThread", "name": "{answer}"}]}
+      ],
+      "play": [],
+      "closing": []
+    },
+    {
+      "key": "roster",
+      "name": "Roster",
+      "purpose": "Make the adventurers who might go out.",
+      "tips": "Make three adventurers now and up to two more. Every session sends a few of them out, so give them different classes. Build each on the sheet: roll abilities or spend the points, then set hit points and the kit.",
+      "oracles": [],
+      "setup": [
+        {"key": "first", "kind": "character", "title": "Who is the first adventurer?", "mandatory": true},
+        {"key": "second", "kind": "character", "title": "Who is the second?", "mandatory": true},
+        {"key": "third", "kind": "character", "title": "And the third?", "mandatory": true},
+        {"key": "fourth", "kind": "character", "title": "Is there a fourth?"},
+        {"key": "fifth", "kind": "character", "title": "And a fifth?"},
+        {"key": "patron", "kind": "prompt", "title": "Who else stands out?", "tip": "Someone who pays for the wilds to be explored, or who always wants more.", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["patron"]}]}
+      ],
+      "play": [],
+      "closing": []
+    },
+    {
+      "key": "town",
+      "name": "Town",
+      "purpose": "Supply up, hire help and heal.",
+      "tips": "Spend the money you earned. Stock up on rations and torches, then visit the outfitter and the smith. Anyone with enough XP can level up.",
+      "oracles": ["rumors"],
+      "setup": [
+        {"key": "news", "kind": "prompt", "title": "What news does {fact:town} have?", "inspiration": ["rumors"]},
+        {"key": "hire", "kind": "prompt", "title": "Does anyone offer to join you?", "tip": "A hireling is an NPC who may follow you out.", "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["hireling"]}]}
+      ],
+      "play": [
+        {"key": "level-up", "kind": "prompt", "title": "Is anyone ready to level up?", "tip": "XP needed: level 2 at 300, 3 at 900, 4 at 2,700, 5 at 6,500, 6 at 14,000, 7 at 23,000, 8 at 34,000, 9 at 48,000 and 10 at 64,000. Raise Level on the sheet, then the maximum of Hit points and Hit dice."},
+        {"key": "stock-up", "kind": "choice", "title": "Stock up on rations and torches?", "tip": "5 rations and a fresh set of torches for 3 GP.", "options": [{"key": "buy", "label": "Buy supplies (3 GP)", "effects": [{"kind": "sheet", "field": "gp", "op": "subtract", "value": 3}, {"kind": "tracker", "tracker": "rations", "op": "add", "value": 5}, {"kind": "tracker", "tracker": "torches", "op": "set", "value": 0}]}, {"key": "no", "label": "Not now"}], "skip": "no"},
+        {"key": "outfitter", "kind": "shop", "title": "What does the outfitter sell?", "offer": {"categories": ["Gear"]}, "stock": {"dice": "1d4+2"}, "sellRate": 50},
+        {"key": "smith", "kind": "shop", "title": "What does the smith sell?", "offer": {"categories": ["Weapons", "Armor"]}, "stock": {"dice": "1d4+2"}, "sellRate": 50}
+      ],
+      "closing": [
+        {"key": "inn", "kind": "choice", "title": "Rest at the inn?", "tip": "1 GP buys a night of safe rest for one adventurer.", "options": [{"key": "rest", "label": "Rest at the inn (1 GP)", "effects": [{"kind": "sheet", "field": "gp", "op": "subtract", "value": 1}, {"kind": "nextScene", "sceneType": "rest"}]}, {"key": "no", "label": "No"}], "skip": "no"}
+      ]
+    },
+    {
+      "key": "travel",
+      "name": "Travel",
+      "purpose": "Cross the wilds toward your goal.",
+      "tips": "Each leg takes a day and a ration. The farther you go, the nastier the encounters. Getting back to town is its own scene: Return.",
+      "oracles": [],
+      "setup": [
+        {"key": "march", "kind": "prompt", "title": "Where to?", "tip": "The next landmark, or a direction.", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "away", "op": "add", "value": 1}, {"kind": "tracker", "tracker": "rations", "op": "add", "value": -1}, {"kind": "tracker", "tracker": "foe", "op": "set", "value": 0}]}
+      ],
+      "play": [
+        {"key": "look", "kind": "prompt", "title": "What do you see on the road?"}
+      ],
+      "closing": [
+        {"key": "hunger", "kind": "condition", "title": "Is there food left?", "tracker": "rations", "bands": [{"upTo": 0, "next": "hungry"}, {"next": "end"}]},
+        {"key": "hungry", "kind": "prompt", "title": "The rations are gone. Who goes hungry?", "tip": "Exhaustion +1 for the adventurer you pick.", "mandatory": true, "effects": [{"kind": "sheet", "field": "exhaustion", "op": "add", "value": 1}]}
+      ]
+    },
+    {
+      "key": "explore-site",
+      "name": "Explore site",
+      "purpose": "Look over a place in the wilds.",
+      "tips": "Return to a known site, or find a new one and name it. It is kept as a Place near town, in the hills or deep in the wilds by how far out you are.",
+      "oracles": ["site-features", "fate"],
+      "setup": [
+        {"key": "known", "kind": "pick", "title": "Do you return to a known site?", "of": "place", "tags": ["site"], "mode": "choose", "branches": {"found": {"next": "end"}}},
+        {"key": "feature", "kind": "table", "title": "What is here?", "table": "site-features"},
+        {"key": "name", "kind": "prompt", "title": "What is this place called?", "mandatory": true},
+        {"key": "mark", "kind": "condition", "title": "How far out is it?", "tracker": "away", "bands": [{"upTo": 1, "label": "Near town", "effects": [{"kind": "createPlace", "name": "{step:name}", "tags": ["site", "near"]}]}, {"upTo": 3, "label": "In the hills", "effects": [{"kind": "createPlace", "name": "{step:name}", "tags": ["site", "mid"]}]}, {"label": "Deep wilds", "effects": [{"kind": "createPlace", "name": "{step:name}", "tags": ["site", "deep"]}]}]}
+      ],
+      "play": [
+        {"key": "test", "kind": "choice", "title": "Roll with…", "tip": "A test fits a search, a climb or a talk. Pick advantage or disadvantage by the situation.", "options": [{"key": "normal", "label": "Normal", "next": "test-normal"}, {"key": "advantage", "label": "Advantage", "next": "test-adv"}, {"key": "disadvantage", "label": "Disadvantage", "next": "test-dis"}, {"key": "none", "label": "No ability test"}], "skip": "none", "next": "end"},
+        {"key": "test-normal", "kind": "check", "title": "Roll the test", "tip": "Pick the ability on the roll and set the DC.", "checks": ["str", "dex", "con", "int", "wis", "cha"], "next": "end"},
+        {"key": "test-adv", "kind": "check", "title": "Roll the test with advantage", "tip": "Pick the ability on the roll and set the DC.", "checks": ["str-adv", "dex-adv", "con-adv", "int-adv", "wis-adv", "cha-adv"], "next": "end"},
+        {"key": "test-dis", "kind": "check", "title": "Roll the test with disadvantage", "tip": "Pick the ability on the roll and set the DC.", "checks": ["str-dis", "dex-dis", "con-dis", "int-dis", "wis-dis", "cha-dis"], "next": "end"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "delve",
+      "name": "Delve",
+      "purpose": "Explore one room of a dungeon.",
+      "tips": "Each room burns a torch. A trap or a poison needle asks for a test, and a lair brings a fight. Add a room with Next room, or leave.",
+      "oracles": ["rooms"],
+      "setup": [
+        {"key": "room", "kind": "table", "title": "What is in this room?", "table": "rooms", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "torches", "op": "add", "value": 1}], "branches": [{"entry": "chest", "next": "trap"}, {"entry": "needle", "next": "needle"}, {"entry": "lair-spider", "next": "torch", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]}, {"entry": "lair-skeletons", "next": "torch", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]}], "otherwise": {"next": "torch"}},
+        {"key": "trap", "kind": "check", "title": "A trap springs", "tip": "Roll Dexterity in the mode that fits. A failure costs 2d6 hit points.", "checks": ["dex", "dex-adv", "dex-dis"], "difficulty": 13, "next": "torch", "outcomes": [{"band": "fail", "effects": [{"kind": "sheet", "field": "hp", "op": "subtract", "value": {"dice": "2d6"}}]}]},
+        {"key": "needle", "kind": "check", "title": "A needle pricks the lock", "tip": "Roll Constitution in the mode that fits. A failure costs 1d6 hit points and poisons you.", "checks": ["con", "con-adv", "con-dis"], "difficulty": 12, "next": "torch", "outcomes": [{"band": "fail", "effects": [{"kind": "sheet", "field": "hp", "op": "subtract", "value": {"dice": "1d6"}}, {"kind": "sheet", "field": "conditions", "op": "mark", "value": "poisoned"}]}]},
+        {"key": "torch", "kind": "condition", "title": "Is the light holding?", "tracker": "torches", "bands": [{"upTo": 5, "next": "end"}, {}]},
+        {"key": "gutters", "kind": "prompt", "title": "The last torch gutters", "tip": "Light another if you can, or press on in the dark: disadvantage on checks that need sight. Stock up in town to reset the clock."}
+      ],
+      "play": [
+        {"key": "explore", "kind": "prompt", "title": "What do you do in the room?"}
+      ],
+      "closing": [
+        {"key": "pending", "kind": "condition", "title": "Is a fight waiting?", "tracker": "foe", "bands": [{"upTo": 0}, {"next": "end"}]},
+        {"key": "onward", "kind": "choice", "title": "Next room, or leave?", "mandatory": true, "options": [{"key": "next", "label": "Next room", "effects": [{"kind": "nextScene", "sceneType": "delve"}]}, {"key": "leave", "label": "Leave", "effects": [{"kind": "nextScene", "sceneType": "travel"}]}]}
+      ]
+    },
+    {
+      "key": "camp",
+      "name": "Camp",
+      "purpose": "Make camp in the wilds.",
+      "tips": "Camping costs a ration and the night may be disturbed. Each adventurer rests in turn.",
+      "oracles": [],
+      "setup": [
+        {"key": "fire", "kind": "prompt", "title": "Where do you make camp?", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "rations", "op": "add", "value": -1}, {"kind": "nextScene", "sceneType": "rest"}]}
+      ],
+      "play": [],
+      "closing": []
+    },
+    {
+      "key": "rest",
+      "name": "Rest",
+      "purpose": "One adventurer takes a short or a long rest.",
+      "tips": "A short rest spends one hit die. A long rest restores hit points, spell slots and half the hit dice, and removes a level of exhaustion.",
+      "oracles": [],
+      "setup": [],
+      "play": [
+        {"key": "rest", "kind": "choice", "title": "Which rest?", "tip": "Choose an adventurer with each answer.", "mandatory": true, "options": [{"key": "short", "label": "Short rest", "effects": [{"kind": "sheet", "field": "hit-dice", "op": "subtract", "value": 1}, {"kind": "sheet", "field": "hp", "op": "add", "value": {"formula": "max(1,{hit-die}/2+1+{con-mod})"}}]}, {"key": "long", "label": "Long rest", "effects": [{"kind": "sheet", "field": "hp", "op": "set", "value": {"formula": "{hp.max}"}}, {"kind": "sheet", "field": "slots-1", "op": "set", "value": {"formula": "{slots-1.max}"}}, {"kind": "sheet", "field": "slots-2", "op": "set", "value": {"formula": "{slots-2.max}"}}, {"kind": "sheet", "field": "slots-3", "op": "set", "value": {"formula": "{slots-3.max}"}}, {"kind": "sheet", "field": "slots-4", "op": "set", "value": {"formula": "{slots-4.max}"}}, {"kind": "sheet", "field": "slots-5", "op": "set", "value": {"formula": "{slots-5.max}"}}, {"kind": "sheet", "field": "hit-dice", "op": "add", "value": {"formula": "max(1,{level}/2)"}}, {"kind": "sheet", "field": "death-saves", "op": "set", "value": 0}, {"kind": "sheet", "field": "exhaustion", "op": "subtract", "value": 1}]}]},
+        {"key": "recover", "kind": "choice", "title": "Who recovers?", "tip": "Clears every condition of the adventurer you pick.", "options": [{"key": "yes", "label": "Recover from every condition", "effects": [{"kind": "sheet", "field": "conditions", "op": "clear"}]}, {"key": "no", "label": "No one"}], "skip": "no"}
+      ],
+      "closing": [
+        {"key": "another", "kind": "choice", "title": "Another adventurer rests?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "nextScene", "sceneType": "rest"}]}, {"key": "no", "label": "No"}], "skip": "no"}
+      ]
+    },
+    {
+      "key": "return",
+      "name": "Return",
+      "purpose": "Come back to town.",
+      "tips": "Getting home takes the rest of the day. The wilds let go of you.",
+      "oracles": [],
+      "setup": [
+        {"key": "bring", "kind": "prompt", "title": "What did you bring home?", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "away", "op": "set", "value": 0}]}
+      ],
+      "play": [],
+      "closing": []
+    },
+    {
+      "key": "encounter",
+      "name": "Encounter",
+      "purpose": "Meet someone or something on the way.",
+      "tips": "Decide what they want. A test settles a talk, and a fight is always an option.",
+      "oracles": ["fate"],
+      "setup": [
+        {"key": "meet", "kind": "prompt", "title": "Who do you meet, and what do they want?", "tip": "Use the Fate question when you do not know how they react."}
+      ],
+      "play": [
+        {"key": "test", "kind": "choice", "title": "Roll with…", "tip": "A social test or a read of the room. Pick advantage or disadvantage by the situation.", "options": [{"key": "normal", "label": "Normal", "next": "test-normal"}, {"key": "advantage", "label": "Advantage", "next": "test-adv"}, {"key": "disadvantage", "label": "Disadvantage", "next": "test-dis"}, {"key": "none", "label": "No social test"}], "skip": "none", "next": "end"},
+        {"key": "test-normal", "kind": "check", "title": "Roll the test", "tip": "Pick the ability on the roll and set the DC.", "checks": ["str", "dex", "con", "int", "wis", "cha"], "next": "end"},
+        {"key": "test-adv", "kind": "check", "title": "Roll the test with advantage", "tip": "Pick the ability on the roll and set the DC.", "checks": ["str-adv", "dex-adv", "con-adv", "int-adv", "wis-adv", "cha-adv"], "next": "end"},
+        {"key": "test-dis", "kind": "check", "title": "Roll the test with disadvantage", "tip": "Pick the ability on the roll and set the DC.", "checks": ["str-dis", "dex-dis", "con-dis", "int-dis", "wis-dis", "cha-dis"], "next": "end"}
+      ],
+      "closing": [
+        {"key": "fight", "kind": "choice", "title": "Does it come to blows?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 1}, {"kind": "nextScene", "sceneType": "combat"}]}, {"key": "no", "label": "No"}], "skip": "no"}
+      ]
+    },
+    {
+      "key": "combat",
+      "name": "Combat",
+      "purpose": "Face the foe.",
+      "tips": "Fights are abstract: the foe has a number of hits, and the threat sets the damage you take each round.",
+      "oracles": [],
+      "setup": [
+        {"key": "name", "kind": "prompt", "title": "Which monster do you face?", "tip": "Name it as the encounter said, for example Goblin Warrior.", "mandatory": true, "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["monster"]}, {"kind": "fillFact", "slot": "foe"}]},
+        {"key": "danger", "kind": "condition", "title": "How dangerous is it out here?", "tracker": "away", "bands": [{"upTo": 1, "label": "Near town", "effects": [{"kind": "tracker", "tracker": "threat", "op": "set", "value": 1}, {"kind": "tracker", "tracker": "foe", "op": "set", "value": 2}, {"kind": "nextScene", "sceneType": "combat-round"}]}, {"upTo": 3, "label": "In the hills", "effects": [{"kind": "tracker", "tracker": "threat", "op": "set", "value": 2}, {"kind": "tracker", "tracker": "foe", "op": "set", "value": 3}, {"kind": "nextScene", "sceneType": "combat-round"}]}, {"label": "Deep wilds", "effects": [{"kind": "tracker", "tracker": "threat", "op": "set", "value": 3}, {"kind": "tracker", "tracker": "foe", "op": "set", "value": 5}, {"kind": "nextScene", "sceneType": "combat-round"}]}]}
+      ],
+      "play": [
+        {"key": "begin", "kind": "prompt", "title": "How does the fight begin?"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "combat-round",
+      "name": "Combat round",
+      "purpose": "One round of the fight.",
+      "tips": "Each round: strike, then take the foe's blow. A spell uses a slot, and a potion heals in open play. Scenes of rounds repeat until the foe falls or you flee.",
+      "oracles": [],
+      "setup": [
+        {"key": "attack", "kind": "check", "title": "Attack {fact:foe}", "prompt": "The {fact:foe} has {tracker:foe} hits left.", "tip": "Roll melee, ranged or spell in the mode that fits and set the foe's Armor Class. A success is one hit.", "checks": ["melee", "melee-adv", "melee-dis", "ranged", "ranged-adv", "ranged-dis", "spell", "spell-adv", "spell-dis"], "outcomes": [{"band": "success", "effects": [{"kind": "tracker", "tracker": "foe", "op": "add", "value": -1}]}]},
+        {"key": "down", "kind": "condition", "title": "Is the foe down?", "tracker": "foe", "bands": [{"upTo": 0, "label": "It falls", "effects": [{"kind": "nextScene", "sceneType": "victory"}], "next": "end"}, {}]},
+        {"key": "defend", "kind": "check", "title": "{fact:foe} strikes back", "prompt": "The threat is {tracker:threat}.", "tip": "Set the foe's attack bonus, then roll. A hit costs threat × 4 hit points.", "check": "defend", "outcomes": [{"band": "hit", "effects": [{"kind": "sheet", "field": "hp", "op": "subtract", "value": {"formula": "{tracker:threat}*4"}}]}]},
+        {"key": "death-save", "kind": "check", "title": "Death saving throw?", "tip": "Roll for an adventurer at 0 hit points. Three failures and it dies; three successes and it is stable (count them by hand).", "check": "death-save", "outcomes": [{"band": "fail", "effects": [{"kind": "sheet", "field": "death-saves", "op": "add", "value": 1}]}, {"band": "rise", "effects": [{"kind": "sheet", "field": "hp", "op": "set", "value": 1}, {"kind": "sheet", "field": "death-saves", "op": "set", "value": 0}]}]}
+      ],
+      "play": [
+        {"key": "slot", "kind": "choice", "title": "Spend a spell slot?", "tip": "Pick the slot level of the spell you cast. Cantrips cost nothing.", "options": [{"key": "slot-1", "label": "Level 1 slot", "effects": [{"kind": "sheet", "field": "slots-1", "op": "subtract", "value": 1}]}, {"key": "slot-2", "label": "Level 2 slot", "effects": [{"kind": "sheet", "field": "slots-2", "op": "subtract", "value": 1}]}, {"key": "slot-3", "label": "Level 3 slot", "effects": [{"kind": "sheet", "field": "slots-3", "op": "subtract", "value": 1}]}, {"key": "slot-4", "label": "Level 4 slot", "effects": [{"kind": "sheet", "field": "slots-4", "op": "subtract", "value": 1}]}, {"key": "slot-5", "label": "Level 5 slot", "effects": [{"kind": "sheet", "field": "slots-5", "op": "subtract", "value": 1}]}, {"key": "none", "label": "No slot"}], "skip": "none"},
+        {"key": "potion", "kind": "choice", "title": "Drink a Potion of Healing?", "tip": "Heals 2d4+2. Remove the potion from the pack by hand.", "options": [{"key": "drink", "label": "Drink it", "effects": [{"kind": "sheet", "field": "hp", "op": "add", "value": {"dice": "2d4+2"}}]}, {"key": "no", "label": "No"}], "skip": "no"}
+      ],
+      "closing": [
+        {"key": "foe-down", "kind": "condition", "title": "Is the foe down?", "tracker": "foe", "bands": [{"upTo": 0, "next": "end"}, {}]},
+        {"key": "again", "kind": "choice", "title": "Fight on or flee?", "mandatory": true, "options": [{"key": "fight", "label": "Fight on", "effects": [{"kind": "nextScene", "sceneType": "combat-round"}]}, {"key": "flee", "label": "Flee", "effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "threat", "op": "set", "value": 0}]}]}
+      ]
+    },
+    {
+      "key": "victory",
+      "name": "Victory",
+      "purpose": "Count the spoils.",
+      "tips": "Threat sets the reward: 10 GP and 100 XP at Minor, 20 GP and 400 XP at Tough, 30 GP and 900 XP at Deadly.",
+      "oracles": ["spoils"],
+      "setup": [
+        {"key": "loot", "kind": "table", "title": "What did the foe carry?", "table": "spoils"}
+      ],
+      "play": [
+        {"key": "spoils", "kind": "prompt", "title": "Who takes the spoils?", "tip": "Gold and XP go to the adventurer you pick.", "effects": [{"kind": "sheet", "field": "gp", "op": "add", "value": {"formula": "{tracker:threat}*10"}}, {"kind": "sheet", "field": "xp", "op": "add", "value": {"formula": "{tracker:threat}*{tracker:threat}*100"}}]}
+      ],
+      "closing": [
+        {"key": "settle", "kind": "condition", "title": "Is the fight settled?", "tracker": "threat", "bands": [{"effects": [{"kind": "tracker", "tracker": "foe", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "threat", "op": "set", "value": 0}]}]}
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "key": "west-marches",
+      "name": "West Marches",
+      "description": "A town, a roster of adventurers and one expedition per session, with rations, torches and encounters by distance.",
+      "introduction": "Solo play means you are the whole table: you describe what happens, roll the dice and make the calls. This guide gives you the questions so you can keep the story moving.\n\nYou play a West Marches campaign. First found the town and make a roster of adventurers; that is the first session. Then every session is one expedition: pick a rumor, choose who goes, travel out, explore and try to be back in town when the session ends. The farther you go, the nastier the encounters. Rations run low and torches burn down.\n\nThe rules come from the SRD 5.2.1: build your adventurers on the sheet, roll the d20 tests and fight with the abstract combat (the foe has a number of hits, the threat sets the damage). A few rules are hints, not automation: natural 20 criticals, conditions that give advantage, and the powers of your class.",
+      "default": true,
+      "defaultView": "focus",
+      "oracles": ["fate", "rumors", "encounters-near", "encounters-mid", "encounters-deep", "site-features", "rooms", "stranded", "spoils"],
+      "trackers": ["away", "rations", "torches", "foe", "threat"],
+      "phases": [
+        {
+          "key": "founding",
+          "name": "Founding",
+          "description": "Found the town and make the roster. Done when the roster scene ends.",
+          "mode": "once",
+          "selection": {"rule": "sequence", "sceneTypes": ["founding-town", "roster"]}
+        },
+        {
+          "key": "expeditions",
+          "name": "Expeditions",
+          "description": "One expedition per session. Done when you move on.",
+          "mode": "loop",
+          "selection": {"rule": "player", "sceneTypes": ["town", "travel", "explore-site", "delve", "camp", "return"]},
+          "sessionOpening": [
+            {"key": "expedition", "kind": "pick", "title": "Which rumor do you chase this session?", "of": "thread", "mode": "choose", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "expedition"}], "branches": {"found": {"next": "party"}}},
+            {"key": "new-rumor", "kind": "table", "title": "A fresh rumor reaches the inn. What is it?", "tip": "Every thread is closed out, so a new one starts the expedition.", "table": "rumors", "effects": [{"kind": "createThread", "name": "{answer}"}, {"kind": "fillFact", "slot": "expedition"}]},
+            {"key": "party", "kind": "pick", "title": "Who goes on this expedition?", "of": "character", "mode": "choose", "count": {"min": 1, "max": 5}, "mandatory": true},
+            {"key": "fresh", "kind": "condition", "title": "Heading out", "tip": "Starts the day count at zero.", "tracker": "away", "bands": [{"effects": [{"kind": "tracker", "tracker": "away", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "foe", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "threat", "op": "set", "value": 0}]}]}
+          ],
+          "sessionClosing": [
+            {"key": "where", "kind": "condition", "title": "Where are you?", "tracker": "away", "bands": [{"upTo": 0, "next": "safe"}, {"next": "stranded"}]},
+            {"key": "safe", "kind": "prompt", "title": "Safe in town.", "next": "resolved"},
+            {"key": "stranded", "kind": "table", "title": "What happens out in the wilds?", "table": "stranded"},
+            {"key": "resolved", "kind": "choice", "title": "Is {fact:expedition} resolved?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "closeThread", "fact": "expedition"}]}, {"key": "no", "label": "No"}], "skip": "no"},
+            {"key": "new-rumor", "kind": "table", "title": "What new rumor reaches town?", "table": "rumors", "effects": [{"kind": "createThread", "name": "{answer}"}]}
+          ],
+          "worldTurn": [
+            {"key": "fight", "kind": "condition", "title": "Is a fight under way?", "tip": "A fight in progress is never replaced by a wandering monster.", "tracker": "foe", "bands": [{"upTo": 0}, {"next": "end"}]},
+            {"key": "settling", "kind": "condition", "title": "Is a fight still being settled?", "tracker": "threat", "bands": [{"upTo": 0}, {"next": "end"}]},
+            {"key": "in-town", "kind": "condition", "title": "Are you in town?", "tracker": "away", "bands": [{"upTo": 0, "next": "end"}, {}]},
+            {"key": "wander", "kind": "roll", "title": "Does something find you?", "tip": "Roll 1d6. On a 1 the wilds answer.", "dice": "1d6", "bands": [{"upTo": 1}, {"next": "end"}]},
+            {"key": "distance", "kind": "condition", "title": "How far out are you?", "tracker": "away", "bands": [{"upTo": 1, "next": "near"}, {"upTo": 3, "next": "mid"}, {"next": "deep"}]},
+            {"key": "near", "kind": "table", "title": "Who is near town?", "table": "encounters-near", "next": "end"},
+            {"key": "mid", "kind": "table", "title": "Who is in the hills?", "table": "encounters-mid", "next": "end"},
+            {"key": "deep", "kind": "table", "title": "What is in the deep wilds?", "table": "encounters-deep"}
+          ]
+        }
+      ]
+    }
+  ],
   "sheet": {
     "columns": 2,
     "groups": [{"name": "Adventurer", "span": 2}, {"name": "Abilities", "columns": 3, "span": 2}, {"name": "Combat", "columns": 2}, {"name": "Spellcasting"}, {"name": "Kit", "span": 2}],

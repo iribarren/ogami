@@ -108,7 +108,7 @@
         "name": "Stranded",
         "entries": [
           {"text": "A cold night: a ration spoils", "effects": [{"kind": "tracker", "tracker": "rations", "op": "add", "value": -1}]},
-          {"text": "You lose the trail: one more day out", "effects": [{"kind": "tracker", "tracker": "away", "op": "add", "value": 1}]},
+          {"text": "You lose the trail: the long way home costs two rations", "effects": [{"kind": "tracker", "tracker": "rations", "op": "add", "value": -2}]},
           {"text": "Something follows you"},
           {"text": "A storm drenches your torches", "effects": [{"kind": "tracker", "tracker": "torches", "op": "add", "value": 1}]},
           {"text": "A farmer shares his barn and asks for news"},
@@ -148,7 +148,8 @@
     {"key": "rations", "name": "Rations", "hint": "Each leg of travel eats one. At 0 someone goes hungry.", "kind": "counter", "min": 0, "max": 20, "initial": 5},
     {"key": "torches", "name": "Torches burned", "hint": "Each room burns some light. A full clock means the last torch gutters.", "kind": "clock", "segments": 6},
     {"key": "foe", "name": "Foe's hits", "hint": "Hits left before the foe falls", "kind": "counter", "min": 0, "max": 10, "initial": 0},
-    {"key": "threat", "name": "Threat", "hint": "How dangerous the fight is: it sets the damage you take", "kind": "counter", "min": 0, "max": 3, "initial": 0, "levels": [{"upTo": 0, "label": "None"}, {"upTo": 1, "label": "Minor"}, {"upTo": 2, "label": "Tough"}, {"label": "Deadly"}]}
+    {"key": "threat", "name": "Threat", "hint": "How dangerous the fight is: it sets the damage you take", "kind": "counter", "min": 0, "max": 3, "initial": 0, "levels": [{"upTo": 0, "label": "None"}, {"upTo": 1, "label": "Minor"}, {"upTo": 2, "label": "Tough"}, {"label": "Deadly"}]},
+    {"key": "expeditions", "name": "Expeditions", "hint": "Sessions spent on an expedition; the founding is not one", "kind": "counter", "min": 0, "max": 99, "initial": 0}
   ],
   "factSlots": [
     {"key": "town", "label": "Town", "type": "place"},
@@ -282,11 +283,11 @@
       "key": "rest",
       "name": "Rest",
       "purpose": "One adventurer takes a short or a long rest.",
-      "tips": "A short rest spends one hit die. A long rest restores hit points, spell slots and half the hit dice, and removes a level of exhaustion.",
+      "tips": "A short rest spends one hit die; an adventurer with none left takes a long rest instead. A long rest restores hit points, spell slots and half the hit dice, and removes a level of exhaustion.",
       "oracles": [],
       "setup": [],
       "play": [
-        {"key": "rest", "kind": "choice", "title": "Which rest?", "tip": "Choose an adventurer with each answer.", "mandatory": true, "options": [{"key": "short", "label": "Short rest", "effects": [{"kind": "sheet", "field": "hit-dice", "op": "subtract", "value": 1}, {"kind": "sheet", "field": "hp", "op": "add", "value": {"formula": "max(1,{hit-die}/2+1+{con-mod})"}}]}, {"key": "long", "label": "Long rest", "effects": [{"kind": "sheet", "field": "hp", "op": "set", "value": {"formula": "{hp.max}"}}, {"kind": "sheet", "field": "slots-1", "op": "set", "value": {"formula": "{slots-1.max}"}}, {"kind": "sheet", "field": "slots-2", "op": "set", "value": {"formula": "{slots-2.max}"}}, {"kind": "sheet", "field": "slots-3", "op": "set", "value": {"formula": "{slots-3.max}"}}, {"kind": "sheet", "field": "slots-4", "op": "set", "value": {"formula": "{slots-4.max}"}}, {"kind": "sheet", "field": "slots-5", "op": "set", "value": {"formula": "{slots-5.max}"}}, {"kind": "sheet", "field": "hit-dice", "op": "add", "value": {"formula": "max(1,{level}/2)"}}, {"kind": "sheet", "field": "death-saves", "op": "set", "value": 0}, {"kind": "sheet", "field": "exhaustion", "op": "subtract", "value": 1}]}]},
+        {"key": "rest", "kind": "choice", "title": "Which rest?", "tip": "Choose an adventurer with each answer. Short rest needs a hit die: with none left, take a long rest.", "mandatory": true, "options": [{"key": "short", "label": "Short rest (spend a hit die)", "effects": [{"kind": "sheet", "field": "hit-dice", "op": "subtract", "value": 1}, {"kind": "sheet", "field": "hp", "op": "add", "value": {"formula": "max(1,{hit-die}/2+1+{con-mod})"}}]}, {"key": "long", "label": "Long rest", "effects": [{"kind": "sheet", "field": "hp", "op": "set", "value": {"formula": "{hp.max}"}}, {"kind": "sheet", "field": "slots-1", "op": "set", "value": {"formula": "{slots-1.max}"}}, {"kind": "sheet", "field": "slots-2", "op": "set", "value": {"formula": "{slots-2.max}"}}, {"kind": "sheet", "field": "slots-3", "op": "set", "value": {"formula": "{slots-3.max}"}}, {"kind": "sheet", "field": "slots-4", "op": "set", "value": {"formula": "{slots-4.max}"}}, {"kind": "sheet", "field": "slots-5", "op": "set", "value": {"formula": "{slots-5.max}"}}, {"kind": "sheet", "field": "hit-dice", "op": "add", "value": {"formula": "max(1,{level}/2)"}}, {"kind": "sheet", "field": "death-saves", "op": "set", "value": 0}, {"kind": "sheet", "field": "exhaustion", "op": "subtract", "value": 1}]}]},
         {"key": "recover", "kind": "choice", "title": "Who recovers?", "tip": "Clears every condition of the adventurer you pick.", "options": [{"key": "yes", "label": "Recover from every condition", "effects": [{"kind": "sheet", "field": "conditions", "op": "clear"}]}, {"key": "no", "label": "No one"}], "skip": "no"}
       ],
       "closing": [
@@ -346,10 +347,10 @@
       "tips": "Each round: strike, then take the foe's blow. A spell uses a slot, and a potion heals in open play. Scenes of rounds repeat until the foe falls or you flee.",
       "oracles": [],
       "setup": [
-        {"key": "attack", "kind": "check", "title": "Attack {fact:foe}", "prompt": "The {fact:foe} has {tracker:foe} hits left.", "tip": "Roll melee, ranged or spell in the mode that fits and set the foe's Armor Class. A success is one hit.", "checks": ["melee", "melee-adv", "melee-dis", "ranged", "ranged-adv", "ranged-dis", "spell", "spell-adv", "spell-dis"], "outcomes": [{"band": "success", "effects": [{"kind": "tracker", "tracker": "foe", "op": "add", "value": -1}]}]},
+        {"key": "attack", "kind": "check", "title": "Attack {fact:foe}", "prompt": "Hits left on {fact:foe}: {tracker:foe}.", "tip": "Roll melee, ranged or spell in the mode that fits and set the foe's Armor Class. A success is one hit.", "checks": ["melee", "melee-adv", "melee-dis", "ranged", "ranged-adv", "ranged-dis", "spell", "spell-adv", "spell-dis"], "outcomes": [{"band": "success", "effects": [{"kind": "tracker", "tracker": "foe", "op": "add", "value": -1}]}]},
         {"key": "down", "kind": "condition", "title": "Is the foe down?", "tracker": "foe", "bands": [{"upTo": 0, "label": "It falls", "effects": [{"kind": "nextScene", "sceneType": "victory"}], "next": "end"}, {}]},
         {"key": "defend", "kind": "check", "title": "{fact:foe} strikes back", "prompt": "The threat is {tracker:threat}.", "tip": "Set the foe's attack bonus, then roll. A hit costs threat × 4 hit points.", "check": "defend", "outcomes": [{"band": "hit", "effects": [{"kind": "sheet", "field": "hp", "op": "subtract", "value": {"formula": "{tracker:threat}*4"}}]}]},
-        {"key": "death-save", "kind": "check", "title": "Death saving throw?", "tip": "Roll for an adventurer at 0 hit points. Three failures and it dies; three successes and it is stable (count them by hand).", "check": "death-save", "outcomes": [{"band": "fail", "effects": [{"kind": "sheet", "field": "death-saves", "op": "add", "value": 1}]}, {"band": "rise", "effects": [{"kind": "sheet", "field": "hp", "op": "set", "value": 1}, {"kind": "sheet", "field": "death-saves", "op": "set", "value": 0}]}]}
+        {"key": "death-save", "kind": "check", "title": "Death saving throw?", "tip": "Roll for an adventurer at 0 hit points. Three failures and it dies; three successes and it is stable (count them by hand). A natural 1 counts as two failures: add one more to Failed death saves by hand. A situational modifier does not apply.", "check": "death-save", "outcomes": [{"band": "fail", "effects": [{"kind": "sheet", "field": "death-saves", "op": "add", "value": 1}]}, {"band": "rise", "effects": [{"kind": "sheet", "field": "hp", "op": "set", "value": 1}, {"kind": "sheet", "field": "death-saves", "op": "set", "value": 0}]}]}
       ],
       "play": [
         {"key": "slot", "kind": "choice", "title": "Spend a spell slot?", "tip": "Pick the slot level of the spell you cast. Cantrips cost nothing.", "options": [{"key": "slot-1", "label": "Level 1 slot", "effects": [{"kind": "sheet", "field": "slots-1", "op": "subtract", "value": 1}]}, {"key": "slot-2", "label": "Level 2 slot", "effects": [{"kind": "sheet", "field": "slots-2", "op": "subtract", "value": 1}]}, {"key": "slot-3", "label": "Level 3 slot", "effects": [{"kind": "sheet", "field": "slots-3", "op": "subtract", "value": 1}]}, {"key": "slot-4", "label": "Level 4 slot", "effects": [{"kind": "sheet", "field": "slots-4", "op": "subtract", "value": 1}]}, {"key": "slot-5", "label": "Level 5 slot", "effects": [{"kind": "sheet", "field": "slots-5", "op": "subtract", "value": 1}]}, {"key": "none", "label": "No slot"}], "skip": "none"},
@@ -386,7 +387,7 @@
       "default": true,
       "defaultView": "focus",
       "oracles": ["fate", "rumors", "encounters-near", "encounters-mid", "encounters-deep", "site-features", "rooms", "stranded", "spoils"],
-      "trackers": ["away", "rations", "torches", "foe", "threat"],
+      "trackers": ["away", "rations", "torches", "foe", "threat", "expeditions"],
       "phases": [
         {
           "key": "founding",
@@ -403,14 +404,15 @@
           "selection": {"rule": "player", "sceneTypes": ["town", "travel", "explore-site", "delve", "camp", "return"]},
           "sessionOpening": [
             {"key": "expedition", "kind": "pick", "title": "Which rumor do you chase this session?", "of": "thread", "mode": "choose", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "expedition"}], "branches": {"found": {"next": "party"}}},
-            {"key": "new-rumor", "kind": "table", "title": "A fresh rumor reaches the inn. What is it?", "tip": "Every thread is closed out, so a new one starts the expedition.", "table": "rumors", "effects": [{"kind": "createThread", "name": "{answer}"}, {"kind": "fillFact", "slot": "expedition"}]},
-            {"key": "party", "kind": "pick", "title": "Who goes on this expedition?", "of": "character", "mode": "choose", "count": {"min": 1, "max": 5}, "mandatory": true},
-            {"key": "fresh", "kind": "condition", "title": "Heading out", "tip": "Starts the day count at zero.", "tracker": "away", "bands": [{"effects": [{"kind": "tracker", "tracker": "away", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "foe", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "threat", "op": "set", "value": 0}]}]}
+            {"key": "new-rumor", "kind": "table", "title": "A fresh rumor reaches the inn. What is it?", "tip": "Every thread is closed out, so a new one starts the expedition.", "table": "rumors", "mandatory": true, "effects": [{"kind": "createThread", "name": "{answer}"}, {"kind": "fillFact", "slot": "expedition"}]},
+            {"key": "party", "kind": "pick", "title": "Who joins this expedition?", "tip": "Last session's party is still with you. Pick anyone new; whoever stays home is removed in the Party panel.", "of": "character", "mode": "choose", "count": {"min": 1, "max": 5}, "mandatory": true},
+            {"key": "fresh", "kind": "condition", "title": "Heading out", "tip": "Starts the day count at zero.", "tracker": "away", "bands": [{"effects": [{"kind": "tracker", "tracker": "away", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "expeditions", "op": "add", "value": 1}, {"kind": "tracker", "tracker": "foe", "op": "set", "value": 0}, {"kind": "tracker", "tracker": "threat", "op": "set", "value": 0}]}]}
           ],
           "sessionClosing": [
             {"key": "where", "kind": "condition", "title": "Where are you?", "tracker": "away", "bands": [{"upTo": 0, "next": "safe"}, {"next": "stranded"}]},
-            {"key": "safe", "kind": "prompt", "title": "Safe in town.", "next": "resolved"},
+            {"key": "safe", "kind": "prompt", "title": "Safe in town. Anything worth noting?", "next": "first"},
             {"key": "stranded", "kind": "table", "title": "What happens out in the wilds?", "table": "stranded"},
+            {"key": "first", "kind": "condition", "title": "Was this an expedition?", "tip": "The founding session sets no expedition, so there is nothing to resolve.", "tracker": "expeditions", "bands": [{"upTo": 0, "next": "end"}, {}]},
             {"key": "resolved", "kind": "choice", "title": "Is {fact:expedition} resolved?", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "closeThread", "fact": "expedition"}]}, {"key": "no", "label": "No"}], "skip": "no"},
             {"key": "new-rumor", "kind": "table", "title": "What new rumor reaches town?", "table": "rumors", "effects": [{"kind": "createThread", "name": "{answer}"}]}
           ],
@@ -418,7 +420,7 @@
             {"key": "fight", "kind": "condition", "title": "Is a fight under way?", "tip": "A fight in progress is never replaced by a wandering monster.", "tracker": "foe", "bands": [{"upTo": 0}, {"next": "end"}]},
             {"key": "settling", "kind": "condition", "title": "Is a fight still being settled?", "tracker": "threat", "bands": [{"upTo": 0}, {"next": "end"}]},
             {"key": "in-town", "kind": "condition", "title": "Are you in town?", "tracker": "away", "bands": [{"upTo": 0, "next": "end"}, {}]},
-            {"key": "wander", "kind": "roll", "title": "Does something find you?", "tip": "Roll 1d6. On a 1 the wilds answer.", "dice": "1d6", "bands": [{"upTo": 1}, {"next": "end"}]},
+            {"key": "wander", "kind": "roll", "title": "Does something find you?", "tip": "Roll 1d6. On a 1 the wilds answer.", "dice": "1d6", "mandatory": true, "bands": [{"upTo": 1}, {"next": "end"}]},
             {"key": "distance", "kind": "condition", "title": "How far out are you?", "tracker": "away", "bands": [{"upTo": 1, "next": "near"}, {"upTo": 3, "next": "mid"}, {"next": "deep"}]},
             {"key": "near", "kind": "table", "title": "Who is near town?", "table": "encounters-near", "next": "end"},
             {"key": "mid", "kind": "table", "title": "Who is in the hills?", "table": "encounters-mid", "next": "end"},
@@ -500,7 +502,7 @@
     {"key": "spell", "label": "Spell attack", "hint": "d20 + spellcasting modifier + proficiency.", "dice": "1d20", "modifier": "{casting-mod}+{prof}-2*{exhaustion}", "difficulty": {"label": "Foe's Armor Class", "default": 12, "min": 5, "max": 30}, "bands": [{"key": "fail", "label": "Failed", "upTo": {"formula": "{check:difficulty}-1"}}, {"key": "success", "label": "Success"}]},
     {"key": "spell-adv", "label": "Spell attack (advantage)", "hint": "d20 + spellcasting modifier + proficiency.", "dice": "2d20kh1", "modifier": "{casting-mod}+{prof}-2*{exhaustion}", "difficulty": {"label": "Foe's Armor Class", "default": 12, "min": 5, "max": 30}, "bands": [{"key": "fail", "label": "Failed", "upTo": {"formula": "{check:difficulty}-1"}}, {"key": "success", "label": "Success"}]},
     {"key": "spell-dis", "label": "Spell attack (disadvantage)", "hint": "d20 + spellcasting modifier + proficiency.", "dice": "2d20kl1", "modifier": "{casting-mod}+{prof}-2*{exhaustion}", "difficulty": {"label": "Foe's Armor Class", "default": 12, "min": 5, "max": 30}, "bands": [{"key": "fail", "label": "Failed", "upTo": {"formula": "{check:difficulty}-1"}}, {"key": "success", "label": "Success"}]},
-    {"key": "defend", "label": "Foe's attack", "hint": "The foe rolls d20 plus its attack bonus against your Armor Class.", "dice": "1d20", "difficulty": {"label": "Foe's attack bonus", "default": 4, "min": 0, "max": 15}, "bands": [{"key": "miss", "label": "Miss", "upTo": {"formula": "{ac}-1-{check:difficulty}"}}, {"key": "hit", "label": "Hit"}]},
+    {"key": "defend", "label": "Foe's attack", "hint": "The foe rolls d20 plus its attack bonus against your Armor Class. The outcome is what counts: the log shows the die against the bonus.", "dice": "1d20", "difficulty": {"label": "Foe's attack bonus", "default": 4, "min": 0, "max": 15}, "bands": [{"key": "miss", "label": "Miss", "upTo": {"formula": "{ac}-1-{check:difficulty}"}}, {"key": "hit", "label": "Hit"}]},
     {"key": "death-save", "label": "Death saving throw", "hint": "Plain d20: 9 or less fails, 10 to 19 succeeds, 20 puts you back on your feet.", "dice": "1d20", "bands": [{"key": "fail", "label": "Failed", "upTo": 9}, {"key": "success", "label": "Success", "upTo": 19}, {"key": "rise", "label": "Natural 20"}]}
   ],
   "gear": [

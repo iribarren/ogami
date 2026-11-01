@@ -74,7 +74,67 @@ final class WestMarchesPresetFlowTest extends FlowRunTestCase
 
         self::assertSame('A bell ringing under the lake', $campaign->factValues($this->release)['expedition']);
         self::assertSame([[null, null], 0, 0], [self::position($campaign), $this->tracker($campaign, 'foe'), $this->tracker($campaign, 'away')], 'Heading out clears a foe left over.');
-        self::assertSame(['ada', 'bo'], array_values(array_map(static fn (CharacterId $id): string => $id->toString(), array_filter($campaign->currentSession()?->party() ?? [], static fn (CharacterId $id): bool => 'cy' !== $id->toString()))));
+        self::assertSame(['ada', 'bo', 'cy'], $this->party($campaign), 'The pick adds to the inherited party; nobody is dropped or repeated.');
+    }
+
+    #[Test]
+    public function pickingPeopleAlreadyInThePartyNeitherBlocksTheOpeningNorRepeatsThem(): void
+    {
+        $campaign = $this->expedition();
+        $campaign->endSession(self::at(), null, $this->release);
+        foreach (['safe', 'resolved', 'new-rumor'] as $key) {
+            $campaign->skipFlowStep($key, $this->release, self::at());
+        }
+
+        $campaign->startSession(self::at(), $this->release);
+        $thread = $campaign->threads()[0];
+        $campaign->completeFlowStep('expedition', StepResult::pick(ItemKind::Thread, [new PickedItem($thread->id()->toString(), $thread->name())]), $this->release, self::at());
+        self::assertSame(['ada', 'bo', 'cy'], $this->party($campaign), 'The new session inherits the whole party.');
+
+        $campaign->completeFlowStep('party', StepResult::pick(ItemKind::Character, [new PickedItem('ada', 'Ada')]), $this->release, self::at());
+
+        self::assertSame([[null, null], ['ada', 'bo', 'cy']], [self::position($campaign), $this->party($campaign)]);
+    }
+
+    #[Test]
+    public function theFoundingSessionRaisesNoExpeditionSoItsClosingAsksNothingAndTheNextOneDoes(): void
+    {
+        $founding = $this->founded();
+        self::assertSame(0, $this->tracker($founding, 'expeditions'));
+        $founding->endSession(self::at(), null, $this->release);
+        self::assertSame([null, 'safe'], self::position($founding));
+        $founding->skipFlowStep('safe', $this->release, self::at());
+        self::assertSame([null, null], self::position($founding), 'No "Is the expedition resolved?" and no new rumor after the founding.');
+
+        $expedition = $this->expedition();
+        self::assertSame(1, $this->tracker($expedition, 'expeditions'));
+        $expedition->endSession(self::at(), null, $this->release);
+        $expedition->skipFlowStep('safe', $this->release, self::at());
+        self::assertSame([null, 'resolved'], self::position($expedition));
+    }
+
+    #[Test]
+    public function aPlayerWhoTravelsInTheFoundingSessionIsStillStrandedFarFromTown(): void
+    {
+        $campaign = $this->founded();
+        $this->setTracker($campaign, 'away', 2);
+
+        $campaign->endSession(self::at(), null, $this->release);
+
+        self::assertSame([null, 'stranded'], self::position($campaign));
+    }
+
+    #[Test]
+    public function theFallbackRumorCannotBeSkippedBecauseTheExpeditionWouldStayUnfilled(): void
+    {
+        $campaign = $this->founded(rumors: false);
+        $campaign->endSession(self::at(), null, $this->release);
+        $this->endClosing($campaign);
+        $campaign->startSession(self::at(), $this->release);
+        $campaign->completeFlowStep('expedition', StepResult::pick(ItemKind::Thread, []), $this->release, self::at());
+
+        $this->expectException(\App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped::class);
+        $campaign->skipFlowStep('new-rumor', $this->release, self::at());
     }
 
     #[Test]
@@ -437,12 +497,211 @@ final class WestMarchesPresetFlowTest extends FlowRunTestCase
         self::assertSame([false, true], [$bell?->isOpen(), $wolves?->isOpen()]);
     }
 
+    #[Test]
+    public function aColdNightSpoilsARationAndLosingTheTrailCostsTwo(): void
+    {
+        $campaign = $this->expedition();
+        $this->setTracker($campaign, 'away', 3);
+        $campaign->endSession(self::at(), null, $this->release);
+
+        $campaign->completeFlowStep('stranded', $this->rolled('stranded', 2), $this->release, self::at());
+
+        self::assertSame([3, 3], [$this->tracker($campaign, 'rations'), $this->tracker($campaign, 'away')], 'The next opening resets the days, so the cost is paid in rations.');
+    }
+
+    #[Test]
+    public function aShortRestWithNoHitDiceLeftStillHealsAndLeavesTheTrackAtZero(): void
+    {
+        $campaign = $this->expedition();
+        $this->setTracker($campaign, 'away', 1);
+        $new = new CampaignEffects($campaign, $this->release);
+        $new->applySheetEffect(new \App\Play\Domain\GameSystem\Flow\SheetEffect('hp', \App\Play\Domain\GameSystem\Flow\SheetOperation::Subtract, 9), 'bo');
+        $campaign->pickSceneType('camp', $this->release, self::at());
+        $campaign->completeFlowStep('fire', self::prompt('By the ford'), $this->release, self::at());
+        $this->endScene($campaign);
+        $campaign->completeFlowStep('wander', self::roll('1d6', 6), $this->release, self::at());
+
+        // A level 1 adventurer has one hit die: the first short rest spends it, the second finds none.
+        foreach ([2 => 9, 1 => 11] as $expectedHp) {
+            $campaign->pickSceneType('rest', $this->release, self::at());
+            $campaign->completeFlowStep('rest', StepResult::choice('short', 'bo'), $this->release, self::at());
+            $this->endScene($campaign, skipping: ['recover']);
+            self::assertSame([$expectedHp, 0], [$this->hp($campaign, 'bo'), $this->track($campaign, 'bo', 'hit-dice')]);
+            $campaign->completeFlowStep('another', StepResult::choice('yes'), $this->release, self::at());
+            $campaign->completeFlowStep('wander', self::roll('1d6', 6), $this->release, self::at());
+        }
+    }
+
+    #[Test]
+    public function aForcedCombatRoundSurvivesTheEndOfTheSessionAndPlaysOnAfterTheOpeningResetsTheFight(): void
+    {
+        $campaign = $this->encounter(0, 'near', 'encounters-near', 4);
+        $campaign->pickSceneType('combat', $this->release, self::at());
+        $campaign->completeFlowStep('name', self::prompt('Giant Rat'), $this->release, self::at());
+        $this->endScene($campaign, skipping: ['begin']);
+        self::assertSame(['combat-round', 2], [self::flowRunOf($campaign)->forcedNextSceneType(), $this->tracker($campaign, 'foe')]);
+
+        // The session ends mid-fight, one day out: the stranded table, then the question about the expedition.
+        $campaign->endSession(self::at(), null, $this->release);
+        $campaign->completeFlowStep('stranded', $this->rolled('stranded', 6), $this->release, self::at());
+        $campaign->skipFlowStep('resolved', $this->release, self::at());
+        $campaign->skipFlowStep('new-rumor', $this->release, self::at());
+        $campaign->startSession(self::at(), $this->release);
+        $thread = $campaign->threads()[0];
+        $campaign->completeFlowStep('expedition', StepResult::pick(ItemKind::Thread, [new PickedItem($thread->id()->toString(), $thread->name())]), $this->release, self::at());
+        $campaign->completeFlowStep('party', StepResult::pick(ItemKind::Character, [new PickedItem('ada', 'Ada')]), $this->release, self::at());
+        self::assertSame([0, 0, 0], [$this->tracker($campaign, 'foe'), $this->tracker($campaign, 'threat'), $this->tracker($campaign, 'away')]);
+        self::assertSame('combat-round', self::flowRunOf($campaign)->forcedNextSceneType(), 'The forced scene survives the new session.');
+
+        // The round plays to its end: a hit fells the foe that is already down, and the fight settles.
+        $campaign->pickSceneType('combat-round', $this->release, self::at());
+        $campaign->completeFlowStep('attack', $this->check($campaign, 'ada', 'melee', 20), $this->release, self::at());
+        $this->endScene($campaign, skipping: ['slot', 'potion']);
+        self::assertSame(['victory', [null, null]], [self::flowRunOf($campaign)->forcedNextSceneType(), self::position($campaign)]);
+
+        // Victory with threat 0 pays nothing, settles the fight and leaves open play.
+        $campaign->pickSceneType('victory', $this->release, self::at());
+        $campaign->completeFlowStep('loot', $this->rolled('spoils', 1), $this->release, self::at());
+        $campaign->completeFlowStep('spoils', StepResult::prompt('Ada takes them', 'ada'), $this->release, self::at());
+        $this->endScene($campaign);
+        self::assertSame([50, null, [null, null]], [$this->character($campaign, 'ada')['gp'], self::flowRunOf($campaign)->forcedNextSceneType(), self::position($campaign)]);
+    }
+
+    /**
+     * @return iterable<string, array{int, int, int}> the die, the death saves after it and the hit points after it
+     */
+    public static function deathSavingThrows(): iterable
+    {
+        yield 'a 1 fails' => [1, 3, 0];
+        yield 'a 9 fails' => [9, 3, 0];
+        yield 'a 10 succeeds with no change' => [10, 2, 0];
+        yield 'a 19 succeeds with no change' => [19, 2, 0];
+        yield 'a natural 20 rises with 1 hit point and clears the failures' => [20, 0, 1];
+    }
+
+    #[Test]
+    #[DataProvider('deathSavingThrows')]
+    public function aDeathSavingThrowCountsAFailureOnlyBelowTenAndRisesOnATwenty(int $die, int $saves, int $hp): void
+    {
+        $campaign = $this->encounter(0, 'near', 'encounters-near', 4);
+        $campaign->pickSceneType('combat', $this->release, self::at());
+        $campaign->completeFlowStep('name', self::prompt('Giant Rat'), $this->release, self::at());
+        $this->endScene($campaign, skipping: ['begin']);
+        $effects = new CampaignEffects($campaign, $this->release);
+        $effects->applySheetEffect(new \App\Play\Domain\GameSystem\Flow\SheetEffect('hp', \App\Play\Domain\GameSystem\Flow\SheetOperation::Set, 0), 'ada');
+        $effects->applySheetEffect(new \App\Play\Domain\GameSystem\Flow\SheetEffect('death-saves', \App\Play\Domain\GameSystem\Flow\SheetOperation::Set, 2), 'ada');
+        $campaign->pickSceneType('combat-round', $this->release, self::at());
+        $campaign->skipFlowStep('attack', $this->release, self::at());
+        $campaign->completeFlowStep('defend', $this->check($campaign, 'ada', 'defend', 1), $this->release, self::at());
+
+        $campaign->completeFlowStep('death-save', $this->check($campaign, 'ada', 'death-save', $die), $this->release, self::at());
+
+        self::assertSame([$saves, $hp], [$this->character($campaign, 'ada')['death-saves'], $this->hp($campaign, 'ada')]);
+    }
+
+    #[Test]
+    public function aPotionHealsTwoD4PlusTwoAndASpentSlotLowersItsTrack(): void
+    {
+        $campaign = $this->encounter(0, 'near', 'encounters-near', 4);
+        $campaign->pickSceneType('combat', $this->release, self::at());
+        $campaign->completeFlowStep('name', self::prompt('Giant Rat'), $this->release, self::at());
+        $this->endScene($campaign, skipping: ['begin']);
+        $effects = new CampaignEffects($campaign, $this->release);
+        $effects->applySheetEffect(new \App\Play\Domain\GameSystem\Flow\SheetEffect('hp', \App\Play\Domain\GameSystem\Flow\SheetOperation::Subtract, 9), 'ada');
+        $campaign->pickSceneType('combat-round', $this->release, self::at());
+        $campaign->skipFlowStep('attack', $this->release, self::at());
+        $campaign->completeFlowStep('defend', $this->check($campaign, 'ada', 'defend', 1), $this->release, self::at());
+        $campaign->skipFlowStep('death-save', $this->release, self::at());
+
+        $campaign->completeFlowStep('slot', StepResult::choice('slot-1', 'ada'), $this->release, self::at());
+        self::assertSame(1, $this->track($campaign, 'ada', 'slots-1'), 'A level 1 slot of two is spent.');
+        $campaign->completeFlowStep('potion', StepResult::choice('drink', 'ada'), $this->release, self::at(), new ScriptedRandomNumberGenerator(3, 4));
+
+        self::assertSame(11, $this->hp($campaign, 'ada'), '2 + (3 + 4 + 2) = 11, the maximum.');
+    }
+
+    #[Test]
+    public function aMeetingThatComesToBlowsSetsTheFoeAndForcesTheCombat(): void
+    {
+        foreach (['yes' => [1, 'combat'], 'no' => [0, null]] as $answer => [$foe, $scene]) {
+            $campaign = $this->encounter(0, 'near', 'encounters-near', 1);
+            self::assertSame('encounter', self::flowRunOf($campaign)->forcedNextSceneType());
+            $campaign->pickSceneType('encounter', $this->release, self::at());
+            $campaign->completeFlowStep('meet', self::prompt('Shepherds'), $this->release, self::at());
+            $this->endScene($campaign, skipping: ['test']);
+
+            $campaign->completeFlowStep('fight', StepResult::choice($answer), $this->release, self::at());
+
+            self::assertSame([$foe, $scene], [$this->tracker($campaign, 'foe'), self::flowRunOf($campaign)->forcedNextSceneType()]);
+        }
+    }
+
+    #[Test]
+    public function theWanderingRollCannotBeSkippedBecauseASkipWouldDrawAnEncounterTable(): void
+    {
+        $campaign = $this->expedition();
+        $this->setTracker($campaign, 'away', 1);
+        $this->travel($campaign);
+
+        $this->expectException(\App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped::class);
+        $campaign->skipFlowStep('wander', $this->release, self::at());
+    }
+
+    #[Test]
+    public function skippingTheModePromptOfAGenericTestAsksForNoRoll(): void
+    {
+        $site = $this->expedition();
+        $site->pickSceneType('explore-site', $this->release, self::at());
+        $site->completeFlowStep('known', StepResult::pick(ItemKind::Place, []), $this->release, self::at());
+        $site->skipFlowStep('feature', $this->release, self::at());
+        $site->completeFlowStep('name', self::prompt('Ashwatch'), $this->release, self::at());
+        $site->skipFlowStep('test', $this->release, self::at());
+        self::assertSame(['open', null], self::position($site), 'No normal test is asked for after the skip.');
+
+        $meeting = $this->encounter(0, 'near', 'encounters-near', 1);
+        $meeting->pickSceneType('encounter', $this->release, self::at());
+        $meeting->completeFlowStep('meet', self::prompt('Shepherds'), $this->release, self::at());
+        $meeting->skipFlowStep('test', $this->release, self::at());
+        self::assertSame(['open', null], self::position($meeting));
+    }
+
+    /**
+     * @return iterable<string, array{int, int}> the ability score and its modifier
+     */
+    public static function abilityModifiers(): iterable
+    {
+        yield 'a score of 8' => [8, -1];
+        yield 'a score of 9 rounds down' => [9, -1];
+        yield 'a score of 10' => [10, 0];
+        yield 'a score of 11' => [11, 0];
+        yield 'a score of 14' => [14, 2];
+        yield 'a score of 15 rounds down' => [15, 2];
+        yield 'a score of 20' => [20, 5];
+    }
+
+    #[Test]
+    #[DataProvider('abilityModifiers')]
+    public function anAbilityModifierFloorsTheHalfDistanceFromTen(int $score, int $modifier): void
+    {
+        $values = SheetValues::of($this->release->sheet(), ['str' => $score, 'dex' => $score, 'con' => $score, 'int' => $score, 'wis' => $score, 'cha' => $score], []);
+
+        self::assertSame(array_fill_keys(['str-mod', 'dex-mod', 'con-mod', 'int-mod', 'wis-mod', 'cha-mod'], $modifier), array_intersect_key($values->derived(), array_flip(['str-mod', 'dex-mod', 'con-mod', 'int-mod', 'wis-mod', 'cha-mod'])));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function party(Campaign $campaign): array
+    {
+        return array_map(static fn (CharacterId $id): string => $id->toString(), $campaign->currentSession()?->party() ?? []);
+    }
+
     private function founded(bool $rumors = true): Campaign
     {
         $campaign = self::guided($this->release, 'west-marches');
         $campaign->startSession(self::at(), $this->release);
         foreach (['ada', 'bo', 'cy'] as $id) {
-            $campaign->addCharacter(CharacterId::fromString($id), ucfirst($id), [], [], ['str' => 15, 'dex' => 14, 'con' => 13, 'int' => 12, 'wis' => 10, 'cha' => 8, 'hit-die' => 10, 'ac' => 15], $this->release, CreationMethod::Points);
+            $campaign->addCharacter(CharacterId::fromString($id), ucfirst($id), [], [], ['str' => 15, 'dex' => 14, 'con' => 13, 'int' => 12, 'wis' => 10, 'cha' => 8, 'hit-die' => 10, 'ac' => 15, 'slots-1' => ['current' => 2, 'max' => 2]], $this->release, CreationMethod::Points);
         }
 
         $campaign->pickSceneType('founding-town', $this->release, self::at());
@@ -497,13 +756,11 @@ final class WestMarchesPresetFlowTest extends FlowRunTestCase
     }
 
     /**
-     * The closing of the session that ended after the founding: in town, nothing to resolve.
+     * The closing of the session that ended after the founding: in town, and the founding is no expedition, so it ends at once.
      */
     private function endClosing(Campaign $campaign): void
     {
         $campaign->skipFlowStep('safe', $this->release, self::at());
-        $campaign->skipFlowStep('resolved', $this->release, self::at());
-        $campaign->skipFlowStep('new-rumor', $this->release, self::at());
     }
 
     /**

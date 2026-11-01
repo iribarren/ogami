@@ -462,8 +462,9 @@ The roster holds Characters, so the party is picked from them. A `character` ste
 sessionOpening
   pick Thread, mode choose → fillFact expedition
     none → table rumors → createThread, fillFact expedition   (a closed-out campaign never stalls)
-  pick Characters, mode choose, count {min 1, max 5} → the Session party
-  → away, foe and threat set 0
+  pick Characters, mode choose, count {min 1, max 5} → added to the Session party (a session inherits the last one's party;
+                              the player removes whoever stays home in the Party editor)
+  → away, foe and threat set 0, expeditions +1
 
 Town          prompts for news and hirelings (createNpc [hireling], suggested)
               level-up prompt with the XP thresholds
@@ -504,6 +505,7 @@ worldTurn
 
 sessionClosing
   condition away: upTo 0 → prompt "Safe in town."; rest → table stranded
+  condition expeditions: upTo 0 → end   (the founding session was no expedition: nothing to resolve)
   choice "Is {fact:expedition} resolved?"  yes → closeThread {fact: expedition}; no → —
   table rumors → createThread (suggested)
 ```
@@ -525,4 +527,4 @@ sessionClosing
 - Places: a Places list beside NPCs and Threads, sites created from tables, regions as Tags and distance as tracker bands ([ADR 0047](../adr/0047-places.md)).
 - A dungeon, a rest and a fight repeat only through a `nextScene` chain (accepted limit). Only the last `nextScene` of a scene counts, so the world turn guards a pending chain, and a step that forces a scene is not followed by one that forces another.
 - Combat is abstract: a tracker effect takes no typed damage and a foe has no sheet, so `foe` counts hits and `threat` sets the damage. Encounter entries name SRD monsters for flavor.
-- **Rules gaps** (each stays a hint, no code change): natural 20 criticals on a modified roll; a condition that imposes advantage or disadvantage (the player picks the mode); item effects (a Potion of Healing is drunk by an option, and the player removes the stack); proficiency and spell slots by class (a `select` is not readable by formulas, [ADR 0048](../adr/0048-select-sheet-fields.md)); the point-buy cost table (the ability budget fits the standard array only); levels above 10.
+- **Rules gaps** (each stays a hint, no code change): natural 20 criticals on a modified roll; a condition that imposes advantage or disadvantage (the player picks the mode); item effects (a Potion of Healing is drunk by an option, and the player removes the stack); proficiency and spell slots by class (a `select` is not readable by formulas, [ADR 0048](../adr/0048-select-sheet-fields.md)); the point-buy cost table (the ability budget fits the standard array only); levels above 10; a short rest for an adventurer with no hit dice left (a condition step reads trackers, not sheet values, so the option stays offered and still heals: the tip says to take a long rest instead).

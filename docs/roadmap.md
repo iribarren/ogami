@@ -100,6 +100,7 @@ Items here come after every feature defined above. Build them in this order: fix
 | B15 | `preset-west-marches` | Preset | B8, B11, B14 | A West Marches preset on D&D 5e under SRD 5.2 (CC BY 4.0) ([example 5](domain/flow-examples.md#5-west-marches)): conditions from B8, shops from B11, places and a class `select` field from B14; HP and spell slots as sheet effects ([ADR 0027](adr/0027-sheet-effects.md)) |
 | B16 | `preset-ironsworn` | Preset | B7 | Optional. Ironsworn under CC BY 4.0: challenge dice (an action score against two d10), momentum below zero and vow progress tracks |
 | B17 | `e2e-studio-flow-editor-timeout` ([#321](https://github.com/iribarren/ogami/issues/321)) | Tooling | — | `studio-flow-editor.spec.ts` times out on a `page.goto` load in the local full e2e suite (passes in CI and alone): mark it slow and wait on the page's state instead of `load`. Found while closing `play-items-economy` |
+| B18 | `play-sheet-display-polish` ([#340](https://github.com/iribarren/ogami/issues/340)) | Play | — | Journal shows raw sheet field keys and no-op changes, the Character form shows raw `startMax` formulas, plain checks offer a situational modifier, and the header says "No session yet" between sessions. Found in the `preset-west-marches` Chrome pass |
 
 ## Starter prompts
 
@@ -547,6 +548,8 @@ Done: `play-places`, #330 in six slices (PRs #331–#336). [ADR 0047](adr/0047-p
 ```text
 Start feature `preset-west-marches` (ODD). Author a West Marches preset on D&D 5e under SRD 5.2 (CC BY 4.0), following example 5 of docs/domain/flow-examples.md: a founding phase with a town and a roster of adventurers; an expeditions loop where each session picks a rumor and a party, travels, explores and returns to town before the session ends; encounter tables by distance. Uses places and a class `select` field (`play-places`), conditions (`rules-dice-pools`), shops (`play-items-economy`), and HP and spell slots as sheet effects (ADR 0027). Credits carry the CC BY 4.0 attribution (ADR 0021).
 ```
+
+Done: `preset-west-marches`, #337 in two slices (PRs #338–#339). A West Marches preset, 5E compatible, on SRD 5.2.1 (CC BY 4.0), capped at level 10: a founding phase with a town and a roster of Characters; an expeditions loop with rumors, a party, travel, sites, delves, abstract combat, rests and shops; encounter tables by distance. Rules the contract cannot express stay as hints. Follow-up: [#340](https://github.com/iribarren/ogami/issues/340) (B18).
 
 **B16. preset-ironsworn**
 

@@ -744,7 +744,7 @@ final class PresetsTest extends KernelTestCase
 
         $flow = $snapshot->defaultFlow();
         self::assertNotNull($flow);
-        self::assertSame(['west-marches', FlowView::Focus, ['away', 'rations', 'torches', 'foe', 'threat']], [$flow->key, $flow->defaultView, $flow->trackers]);
+        self::assertSame(['west-marches', FlowView::Focus, ['away', 'rations', 'torches', 'foe', 'threat', 'expeditions']], [$flow->key, $flow->defaultView, $flow->trackers]);
         self::assertNotEmpty($flow->introduction);
         $phases = [];
         foreach ($flow->phases as $phase) {
@@ -773,7 +773,7 @@ final class PresetsTest extends KernelTestCase
         }
 
         self::assertSame(['fate'], $this->likelihoodKeys($snapshot));
-        self::assertSame(['away', 'rations', 'torches', 'foe', 'threat'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
+        self::assertSame(['away', 'rations', 'torches', 'foe', 'threat', 'expeditions'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
         self::assertSame(['None', 'Minor', 'Tough', 'Deadly'], array_map(static fn (\App\Play\Domain\GameSystem\TrackerLevel $level): string => $level->label, $snapshot->tracker('threat')->levels ?? []));
         self::assertSame(['town', 'expedition', 'foe'], array_map(static fn (\App\Play\Domain\GameSystem\FactSlot $slot): string => $slot->key, $snapshot->factSlots()));
         self::assertSame(['town', 'site', 'near', 'mid', 'deep'], array_values(array_map(static fn (\App\Play\Domain\GameSystem\Tag $tag): string => $tag->key, array_filter($snapshot->tags(), static fn (\App\Play\Domain\GameSystem\Tag $tag): bool => [\App\Play\Domain\GameSystem\Flow\ItemKind::Place] === $tag->appliesTo))));

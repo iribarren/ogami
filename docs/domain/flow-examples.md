@@ -421,64 +421,90 @@ Month's end
 
 ## 5. West Marches
 
-Light old-school fantasy on the 5e SRD or Knave. A town, a roster of adventurers, and one expedition per session. Every session should end back in town.
+Light old-school fantasy on the 5e SRD or Knave. A town, a roster of adventurers, and one expedition per session. Every session should end back in town. The shipped preset `west-marches` plays this flow on the SRD 5.2.1 ([`backend/presets/west-marches.json`](../../backend/presets/west-marches.json)).
 
 ### Release
 
 | Part | Content |
 |---|---|
-| Trackers | `away` counter 0–10, hint "End the session in town, or the wilds keep you"; `rations` counter; `torches` clock 6 |
-| Fact slots | `town` (text); `expedition` (thread, hint "Renewed each session") |
-| Tags | `adventurer`, `hireling`, `patron`, `rival`, `monster` |
-| Scene Types | Town, Roster, Travel, Explore site, Delve (one room), Encounter, Combat, Return |
-| Tables | `rumors`, `encounters-near`, `encounters-mid`, `encounters-deep`, `site-features`, `rooms`, `stranded` |
+| Trackers | `away` counter 0–10, hint "End the session in town, or the wilds keep you"; `rations` counter; `torches` clock 6; `foe` counter 0–10 (hits to fell the foe); `threat` counter 0–3 (None, Minor, Tough, Deadly) |
+| Fact slots | `town` (place); `expedition` (thread, hint "Renewed each session"); `foe` (npc) |
+| Tags | NPCs: `hireling`, `patron`, `rival`, `monster`. Places: `town`, `site`, `near`, `mid`, `deep` |
+| Scene Types | Founding town, Roster, Town, Travel, Explore site, Delve (one room), Camp, Return, Encounter, Combat, Combat round, Victory, Rest |
+| Tables | `rumors`, `encounters-near`, `encounters-mid`, `encounters-deep`, `site-features`, `rooms`, `stranded`, `spoils` |
+| Sheet | `class`, `species` and `background` selects, `level`, ability scores with derived modifiers, `hp`, hit dice and spell slots as tracks, `conditions`, `gp` as the currency, a `pack` inventory |
+| Checks | d20 tests, advantage and disadvantage as separate checks, attacks, `defend` and `death-save` |
 
 ### Flow `west-marches`
 
 | Phase | Mode | Selection | Scene Types |
 |---|---|---|---|
-| `founding` | once | sequence | Town → Roster |
-| `expeditions` | loop | player | Town, Travel, Explore site, Delve, Return (Encounter and Combat through `nextScene`) |
+| `founding` | once | sequence | Founding town → Roster |
+| `expeditions` | loop | player | Town, Travel, Explore site, Delve, Camp, Return (Encounter, Combat, Combat round, Victory and Rest through `nextScene`) |
 
 **Founding**
 
 ```
-Town     prompt "What is the town like?" → fillFact town
-         table rumors → createThread
-         table rumors → createThread
-Roster   prompt "Who is in the roster?" (mandatory, three times) → createNpc [adventurer]
-         prompt "Anyone else?" (suggested, twice)               → createNpc [adventurer]
+Founding town  prompt "What is the town called?" (mandatory) → createPlace [town], fillFact town
+               prompt "What is it like?"
+               table rumors → createThread
+               table rumors → createThread
+Roster         character (mandatory, three times)
+               character (suggested, twice)
+               prompt "Who else stands out?" (suggested) → createNpc [patron]
 ```
 
-The roster holds tagged NPCs in M2 and Characters in M3 (10).
+The roster holds Characters, so the party is picked from them. A `character` step gives a Character no release Tags, so the party pick names none.
 
 **Expeditions**
 
 ```
 sessionOpening
   pick Thread, mode choose → fillFact expedition
-  pick Characters [adventurer], mode choose, count {min 1, max 5} → the Session party
-  → away set 0
+    none → table rumors → createThread, fillFact expedition   (a closed-out campaign never stalls)
+  pick Characters, mode choose, count {min 1, max 5} → the Session party
+  → away, foe and threat set 0
 
-Town          supplies and hirelings (createNpc [hireling], suggested)
-Travel        → away +1, rations −1
-Explore site  table site-features
-Delve         table rooms → torches +1
+Town          prompts for news and hirelings (createNpc [hireling], suggested)
+              level-up prompt with the XP thresholds
+              choice "Stock up?" → gp −3, rations +5, torches set 0 (suggested; refused when broke)
+              shops: outfitter (Gear), smith (Weapons, Armor)
+              closing: choice "Rest at the inn?" → gp −1, nextScene Rest (suggested)
+Travel        → away +1, rations −1; at 0 rations "Who goes hungry?" (exhaustion +1)
+Explore site  pick Place [site]: found → done; none → table site-features, a name,
+              createPlace [site, near | mid | deep] by `away`; then a generic ability test
+Delve         table rooms → torches +1; a trap or a poison needle asks one ability test (three modes)
+              and may mark Poisoned; a lair sets foe 1 and goes to Combat;
+              a full torch clock prompts "The last torch gutters"
               closing: choice "Next room, or leave?"  next → nextScene Delve; leave → nextScene Travel
+Camp          → rations −1, nextScene Rest
+Rest          choice short or long rest (sheet effects for one adventurer), "Who recovers?",
+              closing: "Another adventurer rests?" → nextScene Rest
 Return        → away set 0
 
+Encounter     prompt, a generic social test; closing "Fight?" yes → foe 1, nextScene Combat
+Combat        name the monster → createNpc [monster], fillFact foe; condition away sets
+              threat and foe (near 1 and 2, mid 2 and 3, deep 3 and 5) → nextScene Combat round
+Combat round  attack check (melee, ranged or spell, three modes) → foe −1 on a success;
+              foe at 0 → nextScene Victory; else `defend` → hp −threat×4 on a hit; death save;
+              optional spell slot and potion; closing: "Fight on or flee?"
+              fight → nextScene Combat round; flee → foe and threat set 0
+Victory       table spoils; "Who takes the spoils?" → gp and xp by threat; closing sets foe and threat to 0
+
 worldTurn
-  condition away: upTo 0 → —   (in town)
-    rest → roll 1d6: upTo 1 → condition away:
-                                 upTo 1 → table encounters-near
-                                 upTo 3 → table encounters-mid
-                                 rest   → table encounters-deep
-                               (entry effects: nextScene Encounter or Combat)
-             rest → —
+  condition foe:    upTo 0 → —  rest → end    (a fight in progress)
+  condition threat: upTo 0 → —  rest → end    (a won fight still being settled)
+  condition away: upTo 0 → end   (in town)
+  roll 1d6: upTo 1 → condition away:
+                        upTo 1 → table encounters-near
+                        upTo 3 → table encounters-mid
+                        rest   → table encounters-deep
+                      (entry effects: nextScene Encounter, or foe 1 and nextScene Combat)
+            rest → end
 
 sessionClosing
   condition away: upTo 0 → prompt "Safe in town."; rest → table stranded
-  choice "Is {fact:expedition} resolved?"  yes → closeThread; no → —
+  choice "Is {fact:expedition} resolved?"  yes → closeThread {fact: expedition}; no → —
   table rumors → createThread (suggested)
 ```
 
@@ -491,9 +517,12 @@ sessionClosing
 | "End session" between scenes runs the session closing | 14 |
 | Bands on a tracker choose the encounter table | 2, 3 |
 | Table entries with a `nextScene` effect | 5 |
-| Scene chains for travel and delving | 1 |
+| Scene chains for travel, delving, resting and a fight | 1 |
+| A world turn guard on trackers keeps a chain from being replaced | 1, 2, 5 |
+| Places, class `select`, conditions, shops and sheet effects in one release | [ADR 0047](../adr/0047-places.md), [0048](../adr/0048-select-sheet-fields.md), [0041](../adr/0041-dice-pools-pushes-and-conditions.md), [0045](../adr/0045-gear-inventories-currency-and-shops.md), [0027](../adr/0027-sheet-effects.md) |
 
 **Notes**
-- Places: a Places list beside NPCs and Threads, sites created from tables, regions as Tags and distance as tracker bands ([ADR 0047](../adr/0047-places.md)). Until `play-places` lands they are free Campaign facts.
-- A dungeon repeats rooms only through a `nextScene` chain (accepted limit).
-- Picking Characters needs feature 10; in M2 the party is chosen from NPCs tagged `adventurer`.
+- Places: a Places list beside NPCs and Threads, sites created from tables, regions as Tags and distance as tracker bands ([ADR 0047](../adr/0047-places.md)).
+- A dungeon, a rest and a fight repeat only through a `nextScene` chain (accepted limit). Only the last `nextScene` of a scene counts, so the world turn guards a pending chain, and a step that forces a scene is not followed by one that forces another.
+- Combat is abstract: a tracker effect takes no typed damage and a foe has no sheet, so `foe` counts hits and `threat` sets the damage. Encounter entries name SRD monsters for flavor.
+- **Rules gaps** (each stays a hint, no code change): natural 20 criticals on a modified roll; a condition that imposes advantage or disadvantage (the player picks the mode); item effects (a Potion of Healing is drunk by an option, and the player removes the stack); proficiency and spell slots by class (a `select` is not readable by formulas, [ADR 0048](../adr/0048-select-sheet-fields.md)); the point-buy cost table (the ability budget fits the standard array only); levels above 10.

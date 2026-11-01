@@ -1,7 +1,7 @@
 # Feature: preset-ironsworn
 
 - **Locator:** `odd/tasks/preset-ironsworn.md` · Engram topic `odd/preset-ironsworn/tasks`
-- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-5-play-burn-api` · **Status:** in progress
+- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-6-play-burn-ui` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-west-marches` (PRs #338–#339)
@@ -120,7 +120,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T15 | 9 | Chrome play pass: swear a vow, a move with a burn, a match, a negative momentum, fulfilling a vow; fixes | | [ ] | |
 | T16 | 9 | Closing: Reviews, roadmap `Done:` line under B16, follow-ups if any | | [ ] | |
 | T17 | 3 | Play API: `challenge` on the check and on its journal content, API tests, `make api`. Drafted on local branch `draft/preset-ironsworn-3-play-api` (`74ec85a8`, `7384cee9`), brought onto the latest `main` | delegated writer (slice 3) | [x] | `3a51fbb1` |
-| T18 | 5 | Burn through the application and the API: `CheckPusher`, the translator accepts a challenge push (needs a momentum, refuses `maxDice`), `burn` and `momentum` on the responses, API tests from the sheet and the pending step, contract doc, `make api`. Drafted on local branch `draft/preset-ironsworn-5-play-burn-api` (`69c73ff2`), whose tree is the end state of slices 4 and 5 | delegated writer (slice 5) | [x] | |
+| T18 | 5 | Burn through the application and the API: `CheckPusher`, the translator accepts a challenge push (needs a momentum, refuses `maxDice`), `burn` and `momentum` on the responses, API tests from the sheet and the pending step, contract doc, `make api`. Drafted on local branch `draft/preset-ironsworn-5-play-burn-api` (`69c73ff2`), whose tree is the end state of slices 4 and 5 | delegated writer (slice 5) | [x] | `ed3c1993` |
 
 ## Progress
 
@@ -139,6 +139,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: T6 done: the writer built T6 and T18 together and stopped at the size line; the parent split the tree by path. On the split: `backend-qa` and `frontend-qa` pass, `backend-test` OK (8,358 tests, 187 scenarios). The writer's report gave no RED evidence for this code, so none is claimed.
 - 2026-11-01: Slice 4 review fixes: `pushedWith` tests (burned entry, unburned challenge content, plain dice entry; passed at once, no RED); a blank `rolledBandLabel` is refused like a blank key, as published check band labels are never blank. RED: the blank-label case did not throw, GREEN after the check.
 - 2026-11-01: T18 done: restored from the draft tests first. RED: 52 of 229 focused tests failed (a challenge push answered 422 `not played yet`, the old `notAPushableCheck` message); GREEN after restoring the code, `make api` regenerated `burn` and `momentum`. Checklist pass added tests for a Character who left on a burn, from the sheet and from a pending step (passed at once, no RED); contract doc and ADR 0049 now say the burn is played.
+- 2026-11-01: Slice 5 review fixes: a burn API case for another number of challenge dice (passed at once; proved by removing the comparison in `CheckPusher`, which failed with 200 instead of 409, then restored); `CheckContent::of` refuses a blank `bandLabel` (stored rows cannot hold one). RED: the blank-label case did not throw, GREEN after the check.
 
 ## Reviews
 
@@ -148,7 +149,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 2 | `review-4b6a6a1688d15960` | `d61231dd`, `5e375728`, `7226d202` | Approved. Three warnings, fixed in slice 3: the translator probably refuses a challenge check with an explicit `push: null`, which Studio accepts, with a misleading message; the overflow test scripts one random value where an action roll needs three; no test drives a challenge roll through the API (a progress roll, a match) | [#343](https://github.com/iribarren/ogami/pull/343) |
 | 3 | `review-b9631babc081be6b` | `d5426a99`, `3a51fbb1`, `5cd305d2` | Approved. Two warnings and a suggestion, fixed in slice 4: no test rolls a challenge check from the roll form; `scoreWasCapped` counts the situational modifier with no test where it alone decides the cap; `aNullPushReadsAsNoPush` also passes if the check is missing | [#344](https://github.com/iribarren/ogami/pull/344) |
 | 4 | `review-49d6f083bf0372ca` | `5c1c300c`, `38a8a9a6`, `bbf1879f` | Approved. A warning and a suggestion, fixed in slice 5: no test calls `JournalEntry::pushedWith` on a burned entry, with unburned content on a challenge entry or on a plain dice entry; a blank `rolledBandLabel` is accepted where a blank `rolledBandKey` is refused | [#345](https://github.com/iribarren/ogami/pull/345) |
+| 5 | `review-53a4035203b7f132` | `c3c98cb3`, `ed3c1993`, `2f550834` | Approved. A suggestion, fixed in slice 6: no test exercises the guard in `CheckPusher` that refuses a stored roll with another number of challenge dice than the pinned check. User decision, also in slice 6: `CheckContent` refuses a blank `bandLabel`, as `CheckChallengeBurnContent` does. No stored row can hold one: the translator has refused a blank check band label since checks were first read (`7f84f68d`) | [#346](https://github.com/iribarren/ogami/pull/346) |
 
 ## Next step
 
-Slice 5 in progress: slice 4 review fixes, then the rest of `draft/preset-ironsworn-5-play-burn-api` onto the latest `main` (T18). Then slice 6: the burn UI (T7).
+Slice 6 in progress: slice 5 review fixes, then the burn UI (T7). Then slice 7: the Studio check editor and sandbox (T8, T9).

@@ -238,7 +238,7 @@ final readonly class CheckContent implements JournalEntryContent
         ?CheckPoolContent $pool = null,
         ?CheckChallengeContent $challenge = null,
     ): self {
-        foreach (['A Character id' => $characterId, 'A check key' => $checkKey, 'A band key' => $bandKey] as $what => $value) {
+        foreach (['A Character id' => $characterId, 'A check key' => $checkKey, 'A band key' => $bandKey, 'A band label' => $bandLabel] as $what => $value) {
             if ('' === trim($value)) {
                 throw InvalidJournalEntryContent::blank($what);
             }

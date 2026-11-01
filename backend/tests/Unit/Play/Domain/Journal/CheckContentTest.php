@@ -199,6 +199,7 @@ final class CheckContentTest extends TestCase
         yield 'blank character id' => [['characterId' => ' '] + $valid, 'A Character id must not be blank.'];
         yield 'blank check key' => [['checkKey' => ''] + $valid, 'A check key must not be blank.'];
         yield 'blank band key' => [['bandKey' => ''] + $valid, 'A band key must not be blank.'];
+        yield 'blank band label' => [['bandLabel' => ' '] + $valid, 'A band label must not be blank.'];
         yield 'total that is not the dice plus the modifiers' => [['total' => 12] + $valid, '"total" must be the dice total plus the modifier and the situational modifier'];
         yield 'total that overflows' => [['diceTotal' => \PHP_INT_MAX, 'modifier' => 1, 'total' => \PHP_INT_MAX] + $valid, '"total" must be the dice total plus the modifier and the situational modifier'];
     }

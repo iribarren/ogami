@@ -1,7 +1,7 @@
 # Feature: preset-ironsworn
 
 - **Locator:** `odd/tasks/preset-ironsworn.md` · Engram topic `odd/preset-ironsworn/tasks`
-- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-1-contract` · **Status:** in progress
+- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-2-play-roll` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-west-marches` (PRs #338–#339)
@@ -52,6 +52,14 @@ Out of scope: asset cards as data (a `list` field holds their names; the player 
 
 ## Design
 
+### Play challenge rolls (slice 2)
+
+- **Kernel:** `Randomness\Domain\ChallengeDice { count 2..10, sides 2..1000 }` rolls a `ChallengeRoll`, built like `DicePool` and `PoolRoll`: faces, `beatenBy(score)`, `isMatch()`, `ofFaces()`. Action die first, then challenge dice.
+- **Domain:** `Check` gains `?CheckChallenge { count, sides, scoreMax, momentum }`. Exactly one of `dice` and `pool`, or `challenge` with or without `dice`. Everything is evaluated before anything rolls. `scoreMax` applies to action and progress rolls alike (slice 1 finding).
+- **Result:** `CheckResult` gains `?ChallengeResult { roll, score, momentum, cancelled }`, its total is the dice beaten, and its special is `match` or null. `SpecialResult::Match` is refused as a step outcome, by `canProduce` and in the translator.
+- **Journal:** a `challenge` part beside the check content: `sides`, `scoreMax`, `score`, `momentum`, `cancelled`, `dice [{face, beaten}]`. The match is derived from the faces, never stored. A progress roll stores `expression` `NdS` of the challenge dice, `diceTotal` 0 and no groups. A row without the part reads as before.
+- **Dialog:** stays open on a match or a cancelled die, for the player to read; otherwise it closes as a dice roll does.
+
 ### Preset sketch (detailed before slice 5)
 
 - **Sheet:** `edge`, `heart`, `iron`, `shadow`, `wits` number 1–3 with a point budget of 9 (the 3, 2, 2, 1, 1 array fits); `momentum` number −6..10, start 2; `health`, `spirit`, `supply` tracks 0–5, start 5; conditions fields `conditions` (wounded, shaken, unprepared, encumbered), `banes` (maimed, corrupted), `burdens` (cursed, tormented); derived `debilities`, `momentum-reset`, `momentum-max`; `experience` number; `assets` list.
@@ -82,8 +90,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Docs: ADR 0049 and its index, amendments noted on ADR 0024 and ADR 0044, `docs/contracts/gamesystem-release.md`, glossary | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Schema `v2.schema.json`, Studio validation in `Checks.php`, Play translator refuses `challenge`, valid and invalid fixtures, contract tests | delegated writer (slice 1) | [x] | |
+| T1 | 1 | Docs: ADR 0049 and its index, amendments noted on ADR 0024 and ADR 0044, `docs/contracts/gamesystem-release.md`, glossary | delegated writer (slice 1) | [x] | `02afb8aa` |
+| T2 | 1 | Schema `v2.schema.json`, Studio validation in `Checks.php`, Play translator refuses `challenge`, valid and invalid fixtures, contract tests | delegated writer (slice 1) | [x] | `4b493539` |
 | T3 | 2 | Randomness: challenge roll kernel. Play domain: action and progress rolls, score cap, hits, negative momentum, `match` | | [ ] | |
 | T4 | 2 | Journal content and legacy read, Play API, `make api` | | [ ] | |
 | T5 | 2 | Play UI: roll dialog and journal show the score, each challenge die, the cancelled die and a match | | [ ] | |
@@ -91,7 +99,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T7 | 3 | Play UI: burn offer on the sheet and the pending step | | [ ] | |
 | T8 | 4 | Studio check editor: challenge mode, action or progress, momentum select, burn | | [ ] | |
 | T9 | 4 | Studio sandbox: challenge roll, match, burn | | [ ] | |
-| T10 | 1 | Studio references: `challenge.momentum` blocks a rename or deletion (`DraftReferences`) | delegated writer (slice 1) | [x] | |
+| T10 | 1 | Studio references: `challenge.momentum` blocks a rename or deletion (`DraftReferences`) | delegated writer (slice 1) | [x] | `5df5b214` |
 | T11 | 5 | Read the official licensing page; design the flow in this doc; flow example in `docs/domain/flow-examples.md` | | [ ] | |
 | T12 | 5 | `backend/presets/ironsworn.json` base: credits, sheet, trackers, checks; `PresetsTest` | | [ ] | |
 | T13 | 5 | Flow, Scene Types and tables; `IronswornPresetFlowTest` | | [ ] | |
@@ -111,7 +119,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-fac7148035c23430` | `02afb8aa`, `4b493539`, `5df5b214` | Approved. Two suggestions, fixed in slice 2: `scoreMax` on a progress roll unstated in the contract; no test of a multi-die action roll without `momentum` | [#342](https://github.com/iribarren/ogami/pull/342) |
 
 ## Next step
 
-Slice 1: contract.
+Slice 2: Play challenge rolls (T3, T4, T5), then slice 3: burning momentum.

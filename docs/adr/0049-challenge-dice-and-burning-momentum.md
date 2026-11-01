@@ -41,7 +41,7 @@ A check with `dice` and `challenge` is an action roll. The score is `dice + modi
 
 ### Progress roll
 
-A check with `challenge` and no `dice` is a progress roll. `modifier` is required and is the score (with the situational modifier). It has no action die, so it cannot name `momentum`: the SRD ignores momentum on a progress move.
+A check with `challenge` and no `dice` is a progress roll. `modifier` is required and is the score (with the situational modifier), capped at `scoreMax` as an action roll's is. It has no action die, so it cannot name `momentum`: the SRD ignores momentum on a progress move.
 
 ### Refused shapes
 

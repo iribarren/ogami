@@ -63,7 +63,7 @@ final readonly class CheckChallengeBurnContent
     /**
      * @param list<array<mixed>> $changes
      *
-     * @throws InvalidJournalEntryContent when the label is blank or too long, a band key is blank, or a change is malformed
+     * @throws InvalidJournalEntryContent when the label is blank or too long, a rolled band key or label is blank, or a change is malformed
      */
     private static function of(string $label, int $momentum, int $score, string $rolledBandKey, string $rolledBandLabel, array $changes): self
     {
@@ -73,6 +73,11 @@ final readonly class CheckChallengeBurnContent
 
         if ('' === trim($rolledBandKey)) {
             throw InvalidJournalEntryContent::blank('A rolled band key');
+        }
+
+        // A published check band always has a label (the translator refuses a blank one).
+        if ('' === trim($rolledBandLabel)) {
+            throw InvalidJournalEntryContent::blank('A rolled band label');
         }
 
         return new self($label, $momentum, $score, $rolledBandKey, $rolledBandLabel, SheetChangeContent::checkedChanges($changes));

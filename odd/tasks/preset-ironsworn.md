@@ -1,7 +1,7 @@
 # Feature: preset-ironsworn
 
 - **Locator:** `odd/tasks/preset-ironsworn.md` · Engram topic `odd/preset-ironsworn/tasks`
-- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-4-play-burn` · **Status:** in progress
+- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-5-play-burn-api` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-west-marches` (PRs #338–#339)
@@ -108,7 +108,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T3 | 2 | Randomness: challenge roll kernel. Play domain: action and progress rolls, score cap, hits, negative momentum, `match` | delegated writer (slice 2) | [x] | `5e375728` |
 | T4 | 2 | Journal content and legacy read | delegated writer (slice 2) | [x] | `7226d202` |
 | T5 | 3 | Play UI: roll dialog and journal show the score, each challenge die, the cancelled die and a match | delegated writer (slice 3) | [x] | `5cd305d2` |
-| T6 | 4 | Burn domain: `Check::burn`, `BurnResult`, the offer rule, `FlowRun::pushable`, a pending challenge roll, journal `challenge.burn`, the `savePush` guard. The translator still refuses a challenge push | delegated writer (slice 4), split inline by the parent | [x] | |
+| T6 | 4 | Burn domain: `Check::burn`, `BurnResult`, the offer rule, `FlowRun::pushable`, a pending challenge roll, journal `challenge.burn`, the `savePush` guard. The translator still refuses a challenge push | delegated writer (slice 4), split inline by the parent | [x] | `bbf1879f` |
 | T7 | 6 | Play UI: burn offer on the sheet and the pending step | | [ ] | |
 | T8 | 7 | Studio check editor: challenge mode, action or progress, momentum select, burn | | [ ] | |
 | T9 | 7 | Studio sandbox: challenge roll, match, burn | | [ ] | |
@@ -137,6 +137,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: T5 done: `ChallengeDice`, `Score`/`Beaten`/`Momentum` details, no `Dice` row on a progress roll, the dialog stays open on a match or a cancelled die; the flow step renders `JournalEntryView`, so it needed no change; `canPush` needs a pool, so a challenge roll offers no push. RED: 7 Vitest failures (journal and dialog), GREEN after the view and the dialog.
 - 2026-11-01: Slice 3 review fixes: tests for a progress roll rolled from the form, a situational modifier near `scoreMax` (API and view), and a null push beside a real challenge. All passed at once: the code was right and unproved, so no RED.
 - 2026-11-01: T6 done: the writer built T6 and T18 together and stopped at the size line; the parent split the tree by path. On the split: `backend-qa` and `frontend-qa` pass, `backend-test` OK (8,358 tests, 187 scenarios). The writer's report gave no RED evidence for this code, so none is claimed.
+- 2026-11-01: Slice 4 review fixes: `pushedWith` tests (burned entry, unburned challenge content, plain dice entry; passed at once, no RED); a blank `rolledBandLabel` is refused like a blank key, as published check band labels are never blank. RED: the blank-label case did not throw, GREEN after the check.
 
 ## Reviews
 
@@ -145,7 +146,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 1 | `review-fac7148035c23430` | `02afb8aa`, `4b493539`, `5df5b214` | Approved. Two suggestions, fixed in slice 2: `scoreMax` on a progress roll unstated in the contract; no test of a multi-die action roll without `momentum` | [#342](https://github.com/iribarren/ogami/pull/342) |
 | 2 | `review-4b6a6a1688d15960` | `d61231dd`, `5e375728`, `7226d202` | Approved. Three warnings, fixed in slice 3: the translator probably refuses a challenge check with an explicit `push: null`, which Studio accepts, with a misleading message; the overflow test scripts one random value where an action roll needs three; no test drives a challenge roll through the API (a progress roll, a match) | [#343](https://github.com/iribarren/ogami/pull/343) |
 | 3 | `review-b9631babc081be6b` | `d5426a99`, `3a51fbb1`, `5cd305d2` | Approved. Two warnings and a suggestion, fixed in slice 4: no test rolls a challenge check from the roll form; `scoreWasCapped` counts the situational modifier with no test where it alone decides the cap; `aNullPushReadsAsNoPush` also passes if the check is missing | [#344](https://github.com/iribarren/ogami/pull/344) |
+| 4 | `review-49d6f083bf0372ca` | `5c1c300c`, `38a8a9a6`, `bbf1879f` | Approved. A warning and a suggestion, fixed in slice 5: no test calls `JournalEntry::pushedWith` on a burned entry, with unburned content on a challenge entry or on a plain dice entry; a blank `rolledBandLabel` is accepted where a blank `rolledBandKey` is refused | [#345](https://github.com/iribarren/ogami/pull/345) |
 
 ## Next step
 
-Slice 4 in review. Then slice 5: restore the rest of `draft/preset-ironsworn-5-play-burn-api` onto the latest `main` (T18), then slice 6: the burn UI (T7).
+Slice 5 in progress: slice 4 review fixes, then the rest of `draft/preset-ironsworn-5-play-burn-api` onto the latest `main` (T18). Then slice 6: the burn UI (T7).

@@ -717,6 +717,31 @@ describe('a burned challenge roll (ADR 0049)', () => {
     expect(dice()).toEqual(['3 (beaten)', '7 (beaten)'])
   })
 
+  it('leaves a die that ties the burned score or stays above it as not beaten', () => {
+    const { content, challenge, burn } = challengeOf(burnedEntry)
+    render(
+      <JournalEntryView
+        entry={{
+          ...burnedEntry,
+          content: {
+            ...content,
+            challenge: {
+              ...challenge,
+              dice: [
+                { face: 8, beaten: false },
+                { face: 9, beaten: false },
+              ],
+              burn,
+            },
+          },
+        }}
+      />,
+    )
+
+    // The burned score is 8: a tie goes to the dice, as does a die above it.
+    expect(dice()).toEqual(['8 (not beaten)', '9 (not beaten)'])
+  })
+
   it('lists the change of the cost', () => {
     render(<JournalEntryView entry={burnedEntry} sheet={[...fixtureSheet, momentumField]} />)
 

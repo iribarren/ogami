@@ -540,6 +540,8 @@ Done: `play-campaign-transfer`, #326 in two slices (PRs #327–#328). [ADR 0046]
 Start feature `play-places` (ODD). Settle the vision question "How are places modeled (a map, regions, sites)?" for `preset-west-marches` and record it as an ADR: Campaign facts with a `place` slot, a places list beside NPCs and Threads, or regions with distance for encounter tables. Add a `select` sheet field type (options declared by the release) for a class or background. Every layer for both: contract, anti-corruption layer, Play, Studio and the release upgrade planner. Out of scope: a drawn map.
 ```
 
+Done: `play-places`, #330 in six slices (PRs #331–#336). [ADR 0047](adr/0047-places.md): a Places list beside NPCs and Threads (name, Tags, notes, open or closed), `place` fact slots and links, `createPlace`, pick and count `of: place`, `appliesTo: place`, and `closeThread` by Thread fact slot, in the contract, Play (Places panel), Studio, transfer and the upgrade planner. [ADR 0048](adr/0048-select-sheet-fields.md): a `select` sheet field (1–50 options, optional default) that holds one option key or none, not readable by formulas or effects; an upgrade that drops the chosen option resets it.
+
 **B15. preset-west-marches**
 
 ```text

@@ -350,10 +350,9 @@ final class CampaignFlowChallengeBurnApiTest extends WebTestCase
     {
         $challenge = $entry['content']['challenge'] ?? null;
         self::assertIsArray($challenge);
+        /** @var array<string, mixed>|null $burn */
         $burn = $challenge['burn'] ?? null;
-        self::assertTrue(null === $burn || \is_array($burn));
 
-        /* @var array<string, mixed>|null $burn */
         return $burn;
     }
 

@@ -296,7 +296,7 @@ final readonly class CheckTestRoll
             throw InvalidTestRoll::at('faces', \sprintf('must be %d faces, the action die then the challenge dice, got %d', 1 + $challenge->dice->count, \count($faces)));
         }
 
-        $sides = (int) substr($dice->notation(), 2);
+        $sides = $dice->sidesOfOneDie() ?? throw CheckTestRollNotPushable::noPush($this->key);
         if ($faces[0] < 1 || $faces[0] > $sides) {
             throw InvalidTestRoll::at('faces', \sprintf('the action die must be 1 to %d, got %d', $sides, $faces[0]));
         }

@@ -279,6 +279,49 @@ final class CheckTestRollChallengeTest extends TestCase
     }
 
     #[Test]
+    public function aBurnWithAnOutOfRangeSituationalModifierAndNoDifficultyIsRefused(): void
+    {
+        try {
+            $this->edge()->push(new ScriptedRandomNumberGenerator(), $this->sheet(momentum: 9), null, 101, [2, 5, 3]);
+            self::fail('The situational modifier was accepted.');
+        } catch (InvalidTestRoll $invalid) {
+            self::assertStringStartsWith('situational: ', $invalid->getMessage());
+        }
+    }
+
+    /**
+     * @return iterable<string, array{string, int}>
+     */
+    public static function actionDice(): iterable
+    {
+        yield 'a d10' => ['1d10', 10];
+        yield 'a percentile die' => ['1d%', 100];
+        yield 'a d6 written with spaces and capitals' => [' 1D6 ', 6];
+    }
+
+    #[Test]
+    #[DataProvider('actionDice')]
+    public function aBurnAcceptsEveryFaceOfTheActionDieWhateverItsSides(string $dice, int $sides): void
+    {
+        // The modifier keeps the first score low whatever the face, so the burn of momentum 9 always beats more dice.
+        $check = $this->edge('{edge} - 100', dice: $dice);
+
+        $result = $check->push(new ScriptedRandomNumberGenerator(), $this->sheet(momentum: 9), null, 0, [$sides, 5, 3]);
+        self::assertSame($sides, $result->challenge?->actionDie);
+        $result = $check->push(new ScriptedRandomNumberGenerator(), $this->sheet(momentum: 9), null, 0, [1, 5, 3]);
+        self::assertSame(1, $result->challenge?->actionDie);
+
+        foreach ([0, $sides + 1] as $face) {
+            try {
+                $check->push(new ScriptedRandomNumberGenerator(), $this->sheet(momentum: 9), null, 0, [$face, 5, 3]);
+                self::fail('The action die was accepted.');
+            } catch (InvalidTestRoll $invalid) {
+                self::assertSame(\sprintf('faces: the action die must be 1 to %d, got %d', $sides, $face), $invalid->getMessage());
+            }
+        }
+    }
+
+    #[Test]
     public function aBurnThatCannotBeEvaluatedBurnsNothing(): void
     {
         $this->expectException(CheckTestRollFailed::class);
@@ -449,9 +492,9 @@ final class CheckTestRollChallengeTest extends TestCase
     /**
      * @param ?non-empty-list<OutcomeBand> $bands
      */
-    private function edge(string $modifier = '{edge}', ?int $scoreMax = 10, string $momentum = 'momentum', ?array $bands = null): CheckTestRoll
+    private function edge(string $modifier = '{edge}', ?int $scoreMax = 10, string $momentum = 'momentum', ?array $bands = null, string $dice = '1d6'): CheckTestRoll
     {
-        return new CheckTestRoll('edge', DiceExpression::fromString('1d6'), Formula::fromString($modifier), null, $bands ?? $this->bands(), null, new CheckTestPush('Burn momentum'), new CheckTestChallenge(new ChallengeDice(2, 10), $scoreMax, $momentum));
+        return new CheckTestRoll('edge', DiceExpression::fromString($dice), Formula::fromString($modifier), null, $bands ?? $this->bands(), null, new CheckTestPush('Burn momentum'), new CheckTestChallenge(new ChallengeDice(2, 10), $scoreMax, $momentum));
     }
 
     private function progress(string $modifier): CheckTestRoll

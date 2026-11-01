@@ -87,7 +87,7 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: this feature doc; example 5 in `docs/domain/flow-examples.md` amended (places, roster of Characters, `foe` guard, rests, stale "until `play-places`" note, rules gaps); README preset list if it has one | delegated writer (slice 1) | [x] | |
-| T2 | 1 | `backend/presets/west-marches.json` base: credits, tags, facts, trackers, sheet, checks, gear; `PresetsTest` (publishes once, credits verbatim, select options, conditions, currency, shops' categories, checks) | delegated writer (slice 1) | [ ] | |
+| T2 | 1 | `backend/presets/west-marches.json` base: credits, tags, facts, trackers, sheet, checks, gear; `PresetsTest` (publishes once, credits verbatim, select options, conditions, currency, shops' categories, checks) | delegated writer (slice 1) | [x] | |
 | T3 | 1 | Flow, Scene Types and tables; `WestMarchesPresetFlowTest` playing founding, a session opening with no open Thread, travel with a world turn encounter by distance, a combat to victory, the `foe` guard, a trap with a condition, a rest chain, a shop purchase, a stranded closing and `closeThread` | delegated writer (slice 1) | [ ] | |
 | T4 | 2 | Slice 1 review fixes; e2e `frontend/e2e/play-west-marches.spec.ts`: founding, session opening, a town purchase | delegated writer (slice 2) | [ ] | |
 | T5 | 2 | Chrome play pass: founding, one full expedition, a fight, a rest; fixes | parent Chrome pass + delegated writer (slice 2) | [ ] | |
@@ -97,6 +97,7 @@ Forecasts include tests and docs (no generated files: no API change). Hard ceili
 
 - 2026-11-01: Exploration: every element of example 5 exists in schema version 2. Gaps are rules, not flow: natural-20 criticals, conditions imposing advantage, item effects, values by class. Decided hints, no code change. SRD Legal Information page read: the 5.2.1 statement is verbatim and exclusive.
 - 2026-11-01: T1 done: feature doc and flow example 5 amended (README lists two of seven presets, so it is left alone).
+- 2026-11-01: T2 done: release base publishes with no flow until T3. RED: three `PresetsTest` cases failed on the missing file; GREEN with the JSON (112 assertions).
 
 ## Reviews
 

@@ -92,6 +92,83 @@ describe('reading a challenge check', () => {
   })
 })
 
+describe('what the form cannot hold in a challenge check', () => {
+  it('is not editable with a stored difficulty', () => {
+    const difficulty = { label: 'Difficulty', default: 3 }
+
+    expect(readCheck({ ...action, difficulty })).toBeNull()
+    expect(readCheck({ ...progress, difficulty })).toBeNull()
+    expect(readCheck({ ...action, difficulty: null })).not.toBeNull()
+  })
+
+  it('is not editable with a burn and no momentum', () => {
+    const noMomentum = { count: 2, sides: 10, scoreMax: 10 }
+
+    expect(readCheck({ ...action, challenge: noMomentum })).toBeNull()
+    expect(readCheck({ ...action, challenge: { ...noMomentum, momentum: null } })).toBeNull()
+    expect(readCheck({ ...action, challenge: noMomentum, push: null })).not.toBeNull()
+  })
+
+  it('is not editable with a burn that has a cap on dice', () => {
+    expect(readCheck({ ...action, push: { label: 'Burn', maxDice: 2 } })).toBeNull()
+    expect(readCheck({ ...action, push: { label: 'Burn' } })).not.toBeNull()
+  })
+})
+
+describe('writing back what was stored', () => {
+  function roundTrips(check: StoredCheck, edit: (draft: CheckDraft) => CheckDraft) {
+    const result = writeCheck(edit(drafted(check)))
+
+    return 'check' in result ? result.check : result
+  }
+
+  it('writes a null challenge back on a pool check', () => {
+    const check = {
+      key: 'pool',
+      label: 'Pool',
+      pool: { count: 2, sides: 6, successAt: 5 },
+      challenge: null,
+      bands: [{ key: 'win', label: 'Win' }],
+    }
+
+    expect(roundTrips(check, (draft) => draft)).toEqual(check)
+  })
+
+  it('writes a null cap and a null momentum back inside a challenge', () => {
+    const check = {
+      ...progress,
+      challenge: { count: 2, sides: 10, scoreMax: null, momentum: null },
+    }
+
+    expect(roundTrips(check, (draft) => draft)).toEqual(check)
+  })
+
+  it('drops a stored null cap once the author gives one', () => {
+    const check = { ...progress, challenge: { count: 2, sides: 10, scoreMax: null } }
+
+    expect(roundTrips(check, (draft) => editChallenge(draft, { scoreMax: '8' }))).toHaveProperty(
+      'challenge.scoreMax',
+      8,
+    )
+  })
+
+  it('keeps a null push through an edit that leaves the momentum alone', () => {
+    const check = { ...action, challenge: { count: 2, sides: 10 }, push: null }
+
+    expect(roundTrips(check, (draft) => editChallenge(draft, { count: '3' }))).toEqual({
+      ...check,
+      challenge: { count: 3, sides: 10 },
+    })
+  })
+
+  it('gives up a null push when the edit empties the momentum', () => {
+    const check = { ...action, push: null }
+    const result = roundTrips(check, (draft) => editChallenge(draft, { momentum: '' }))
+
+    expect(result).not.toHaveProperty('push')
+  })
+})
+
 describe('writing a challenge check', () => {
   it('round trips an action roll with a burn and a progress roll unchanged', () => {
     for (const check of [action, progress]) {

@@ -1,7 +1,7 @@
 # Feature: preset-ironsworn
 
 - **Locator:** `odd/tasks/preset-ironsworn.md` · Engram topic `odd/preset-ironsworn/tasks`
-- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-7-studio` · **Status:** in progress
+- **Issue:** [#341](https://github.com/iribarren/ogami/issues/341) · **Branch:** `feat/preset-ironsworn-8-sandbox` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-west-marches` (PRs #338–#339)
@@ -119,7 +119,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T5 | 3 | Play UI: roll dialog and journal show the score, each challenge die, the cancelled die and a match | delegated writer (slice 3) | [x] | `5cd305d2` |
 | T6 | 4 | Burn domain: `Check::burn`, `BurnResult`, the offer rule, `FlowRun::pushable`, a pending challenge roll, journal `challenge.burn`, the `savePush` guard. The translator still refuses a challenge push | delegated writer (slice 4), split inline by the parent | [x] | `bbf1879f` |
 | T7 | 6 | Play UI: burn offer on the sheet and the pending step, burned entry in the journal | delegated writer (slice 6) | [x] | `5957328f` |
-| T8 | 7 | Studio check editor: challenge mode, action or progress, momentum select, burn | delegated writer (slice 7) | [x] | |
+| T8 | 7 | Studio check editor: challenge mode, action or progress, momentum select, burn | delegated writer (slice 7) | [x] | `429b0518` |
 | T9 | 8 | Studio sandbox: challenge roll, match, burn; shown again for challenge checks | | [ ] | |
 | T10 | 1 | Studio references: `challenge.momentum` blocks a rename or deletion (`DraftReferences`) | delegated writer (slice 1) | [x] | `5df5b214` |
 | T11 | 9 | Read the official licensing page; design the flow in this doc; flow example in `docs/domain/flow-examples.md` | | [ ] | |
@@ -152,6 +152,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: T7 done: `canBurn`/`burnScore`/`diceBeatenBy` in `pushing.ts` (`canPush` includes a burn), `PushOffer` burn mode (momentum now, score, dice against the roll; no Burn and a line when it no longer improves or cannot be read), `usePushCheck` reads the campaign again on a refusal (the flow command already did on a 409), `JournalEntryView` burned block with each die against the new score, fixtures and a story. Implementation was written before its tests; RED then shown by reverting each source file: 6 view failures, 7 dialog failures (the stale-sheet refresh alone fails with the old `usePushCheck`), 5 pending-step failures, and `pushing.test.ts` failed on the missing exports. GREEN with the code restored.
 - 2026-11-01: Slice 6 review fixes: the burned view tells each die by `isBeatenBy` (view test of a die tying the burned score and one above it passed at once: no RED); `canBurn` compares the stored roll's dice count, sides and cap with the pinned check. RED: the pinned-shape test offered a burn for 3 dice (expected false); one existing dialog test pinned another cap than its roll and was fixed.
 - 2026-11-01: T8 done: `ChallengeDraft`, `challenge` mode with action or progress roll, momentum select (number fields), the burn through `PushEditor burn`, client limits and `challenge.*` error paths, `challenge: null` kept as stored, `GameSystemCheck` OpenAPI `challenge`, `make api` (the spec is `frontend/src/shared/api/openapi.json`), a story. The sandbox is hidden for a challenge check until T9 (RED: the sandbox was still shown; GREEN after the guard). RED for the draft and error-path tests: 17 of 19 and 4 of 48 failed before the implementation. The editor UI was written before its `ChecksTab` tests, which passed once their own mistakes were fixed (no RED claimed for them).
+- 2026-11-01: Slice 7 review fixes (`checkDraft.ts`): a save writes back a stored null `challenge` on a pool check, a null `scoreMax` or `momentum` inside a challenge, and a null `push` through an unrelated edit (`editChallenge` gives it up only when that edit empties the momentum); `readCheck` returns null for a challenge check with a difficulty, a burn with no momentum or a burn with `maxDice`. RED: 6 of 9 new tests failed (the three refusals and the pool, cap-and-momentum and push write-backs); the two give-up cases (a given cap, an emptied momentum) passed at once. The third finding (the sandbox guard reads the draft) is settled by T9, which removes the guard.
 
 ## Reviews
 
@@ -163,7 +164,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 4 | `review-49d6f083bf0372ca` | `5c1c300c`, `38a8a9a6`, `bbf1879f` | Approved. A warning and a suggestion, fixed in slice 5: no test calls `JournalEntry::pushedWith` on a burned entry, with unburned content on a challenge entry or on a plain dice entry; a blank `rolledBandLabel` is accepted where a blank `rolledBandKey` is refused | [#345](https://github.com/iribarren/ogami/pull/345) |
 | 5 | `review-53a4035203b7f132` | `c3c98cb3`, `ed3c1993`, `2f550834` | Approved. A suggestion, fixed in slice 6: no test exercises the guard in `CheckPusher` that refuses a stored roll with another number of challenge dice than the pinned check. User decision, also in slice 6: `CheckContent` refuses a blank `bandLabel`, as `CheckChallengeBurnContent` does. No stored row can hold one: the translator has refused a blank check band label since checks were first read (`7f84f68d`) | [#346](https://github.com/iribarren/ogami/pull/346) |
 | 6 | `review-dfb24acc6e74c150` | `972396ea`, `5957328f` | Approved. Two suggestions, fixed in slice 7: the burned view recomputes each die inline, with no test of a die that ties or stays above the burned score; `canBurn` offers a burn the API refuses when the stored roll's dice count, sides or cap differ from the pinned check | [#347](https://github.com/iribarren/ogami/pull/347) |
+| 7 | `review-b98fdd8ece7c9b1b` | `f02ac2c3`, `429b0518` | Approved. A warning and two suggestions, fixed in slice 8: the sandbox guard reads the draft, so it reappears when a saved challenge check is switched to dice or pool unsaved (a dirty draft is saved before rolling, so no wrong roll; T9 removes the guard); stored nulls are not always written back (a null `challenge` on a pool check, a null `scoreMax` or `momentum`, a null `push` cleared by an unrelated edit while the momentum is empty); `readCheck` accepts shapes the form cannot hold (a stored difficulty, a push without momentum, a push with `maxDice`) | [#348](https://github.com/iribarren/ogami/pull/348) |
 
 ## Next step
 
-Slice 7: slice 6 fixes and the editor (T8) are committed; next its native review, then its PR. Then slice 8: the sandbox (T9), with slice 7's review fixes first. Then slice 9: the release (T11, T12, T13).
+Slice 8: slice 7 fixes and the sandbox (T9), then its native review and PR. Then slice 9: the release (T11, T12, T13).

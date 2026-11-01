@@ -78,6 +78,10 @@ export interface ChallengeDraft {
   /** The key of a `number` field of the sheet, or empty. Action rolls only. */
   momentum: string
   kind: 'action' | 'progress'
+  /** The stored challenge had `scoreMax: null`, which a save writes back while the cap is empty. */
+  storedNullScoreMax?: boolean
+  /** The stored challenge had `momentum: null`, which a save writes back while the momentum is empty. */
+  storedNullMomentum?: boolean
 }
 
 /**
@@ -318,11 +322,15 @@ export function editChallenge(draft: CheckDraft, changes: Partial<ChallengeDraft
   if (progress) {
     challenge.momentum = ''
   }
+  // A stored `push: null` is only given up when this edit is what empties the momentum.
+  const emptied = challenge.momentum !== draft.challenge.momentum
   return {
     ...draft,
     challenge,
     dice: progress ? '' : draft.dice,
-    ...(challenge.momentum === '' ? { push: null, storedNullPush: false } : {}),
+    ...(challenge.momentum === ''
+      ? { push: null, ...(emptied ? { storedNullPush: false } : {}) }
+      : {}),
   }
 }
 
@@ -463,6 +471,8 @@ function readChallenge(challenge: unknown, action: boolean): ChallengeDraft | nu
     scoreMax: typeof scoreMax === 'number' ? String(scoreMax) : '',
     momentum: typeof momentum === 'string' ? momentum : '',
     kind: action ? 'action' : 'progress',
+    ...(scoreMax === null ? { storedNullScoreMax: true } : {}),
+    ...(momentum === null ? { storedNullMomentum: true } : {}),
   }
 }
 
@@ -522,6 +532,14 @@ export function readCheck(stored: StoredCheck): CheckDraft | null {
   }
   const readPushed = push === undefined || push === null ? null : readPush(push)
   if (push !== undefined && push !== null && readPushed === null) {
+    return null
+  }
+  // The form hides the difficulty of a challenge check, and a burn needs a momentum and takes no cap.
+  if (
+    readChallenged !== null &&
+    ((difficulty !== undefined && difficulty !== null) ||
+      (readPushed !== null && (readChallenged.momentum === '' || readPushed.maxDice !== undefined)))
+  ) {
     return null
   }
   const optionalText = (value: unknown) =>
@@ -649,8 +667,6 @@ export function writeCheck(draft: CheckDraft): { check: StoredCheck } | { errors
       } else if (draft.storedNullPush === true) {
         check.push = null
       }
-    } else if (draft.storedNullChallenge === true) {
-      check.challenge = null
     }
   } else {
     const pool = writePool(draft.pool, errors)
@@ -658,6 +674,9 @@ export function writeCheck(draft: CheckDraft): { check: StoredCheck } | { errors
       check.pool = pool
     }
     writeBurn(draft.push, draft.storedNullPush === true, check, errors)
+  }
+  if (draft.challenge === null && draft.storedNullChallenge === true) {
+    check.challenge = null
   }
 
   // A challenge check has no difficulty: the challenge dice are the difficulty.
@@ -757,11 +776,15 @@ function writeChallenge(
     } else {
       written.scoreMax = value
     }
+  } else if (challenge.storedNullScoreMax === true) {
+    written.scoreMax = null
   }
 
   const momentum = challenge.momentum.trim()
   if (momentum !== '') {
     written.momentum = momentum
+  } else if (challenge.storedNullMomentum === true) {
+    written.momentum = null
   }
 
   return errors.challengeCount === undefined &&

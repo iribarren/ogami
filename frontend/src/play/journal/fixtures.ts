@@ -549,6 +549,61 @@ export const vowProgressEntry: JournalEntry = recordedEntry(
   '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7202',
 )
 
+/**
+ * The same roll with a momentum of 8 on the sheet: the score of 6 beats the 3 only, the momentum
+ * would beat the 7 too. A burn is offered.
+ */
+export const burnableRollEntry: JournalEntry = recordedEntry(
+  edgeContent({
+    challenge: {
+      sides: 10,
+      scoreMax: 10,
+      score: 6,
+      momentum: 8,
+      cancelled: false,
+      dice: [
+        { face: 3, beaten: true },
+        { face: 7, beaten: false },
+      ],
+      burn: null,
+    },
+  }),
+  '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7205',
+)
+
+/**
+ * `burnableRollEntry` burned: the momentum of 8 is the new score, which beats both dice (a strong
+ * hit; the first roll was a weak hit), and the momentum went back to 2. The dice and the first
+ * score stay those of the roll.
+ */
+export const burnedEntry: JournalEntry = recordedEntry(
+  edgeContent({
+    total: 2,
+    bandKey: 'strong',
+    bandLabel: 'Strong',
+    challenge: {
+      sides: 10,
+      scoreMax: 10,
+      score: 6,
+      momentum: 8,
+      cancelled: false,
+      dice: [
+        { face: 3, beaten: true },
+        { face: 7, beaten: false },
+      ],
+      burn: {
+        label: 'Burn momentum',
+        momentum: 8,
+        score: 8,
+        rolledBandKey: 'weak',
+        rolledBandLabel: 'Weak',
+        changes: [{ field: 'momentum', before: 8, after: 2, dice: null }],
+      },
+    },
+  }),
+  '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7206',
+)
+
 /** Momentum -4 equals the action die: it counts 0, so the score is the Edge 2, below both dice (a miss). */
 export const cancelledDieEntry: JournalEntry = recordedEntry(
   edgeContent({

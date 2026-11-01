@@ -408,6 +408,46 @@ export const fulfillCheck: CampaignCheck = {
   challenge: { count: 2, sides: 10, scoreMax: null, momentumLabel: null, momentum: null },
 }
 
+/** A number field for momentum (ADR 0049): from -6 to 10, starting at 2. */
+export const momentumField: Campaign['pinnedRelease']['sheet'][number] = {
+  key: 'momentum',
+  label: 'Momentum',
+  hint: null,
+  group: null,
+  type: 'number',
+  min: -6,
+  max: 10,
+  default: 2,
+  multiline: null,
+  maxLength: null,
+  itemLabel: null,
+  maxItems: null,
+  formula: null,
+  roll: null,
+  startMax: null,
+  span: 1,
+  options: null,
+  capacity: null,
+  maxStacks: null,
+  categories: null,
+  defaultOption: null,
+}
+
+/**
+ * An action roll of "Edge" (ADR 0049): 1d6 + Edge against two d10, the score capped at 10 and the
+ * momentum burnable; the burn costs nothing to pick.
+ */
+export const edgeCheck: CampaignCheck = {
+  key: 'edge',
+  label: 'Edge',
+  hint: null,
+  dice: '1d6',
+  pool: null,
+  push: { label: 'Burn momentum', picks: [], maxDice: null },
+  difficulty: null,
+  challenge: { count: 2, sides: 10, scoreMax: 10, momentumLabel: 'Momentum', momentum: 'momentum' },
+}
+
 /**
  * A Hunger pool check: 5d10, a success on 6+, against a difficulty of 3 by default; the push costs
  * nothing to pick and re-rolls at most 3 failed regular dice (ADR 0044).

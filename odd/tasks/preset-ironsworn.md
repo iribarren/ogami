@@ -109,7 +109,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T4 | 2 | Journal content and legacy read | delegated writer (slice 2) | [x] | `7226d202` |
 | T5 | 3 | Play UI: roll dialog and journal show the score, each challenge die, the cancelled die and a match | delegated writer (slice 3) | [x] | `5cd305d2` |
 | T6 | 4 | Burn domain: `Check::burn`, `BurnResult`, the offer rule, `FlowRun::pushable`, a pending challenge roll, journal `challenge.burn`, the `savePush` guard. The translator still refuses a challenge push | delegated writer (slice 4), split inline by the parent | [x] | `bbf1879f` |
-| T7 | 6 | Play UI: burn offer on the sheet and the pending step | | [ ] | |
+| T7 | 6 | Play UI: burn offer on the sheet and the pending step, burned entry in the journal | delegated writer (slice 6) | [x] | |
 | T8 | 7 | Studio check editor: challenge mode, action or progress, momentum select, burn | | [ ] | |
 | T9 | 7 | Studio sandbox: challenge roll, match, burn | | [ ] | |
 | T10 | 1 | Studio references: `challenge.momentum` blocks a rename or deletion (`DraftReferences`) | delegated writer (slice 1) | [x] | `5df5b214` |
@@ -140,6 +140,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: Slice 4 review fixes: `pushedWith` tests (burned entry, unburned challenge content, plain dice entry; passed at once, no RED); a blank `rolledBandLabel` is refused like a blank key, as published check band labels are never blank. RED: the blank-label case did not throw, GREEN after the check.
 - 2026-11-01: T18 done: restored from the draft tests first. RED: 52 of 229 focused tests failed (a challenge push answered 422 `not played yet`, the old `notAPushableCheck` message); GREEN after restoring the code, `make api` regenerated `burn` and `momentum`. Checklist pass added tests for a Character who left on a burn, from the sheet and from a pending step (passed at once, no RED); contract doc and ADR 0049 now say the burn is played.
 - 2026-11-01: Slice 5 review fixes: a burn API case for another number of challenge dice (passed at once; proved by removing the comparison in `CheckPusher`, which failed with 200 instead of 409, then restored); `CheckContent::of` refuses a blank `bandLabel` (stored rows cannot hold one). RED: the blank-label case did not throw, GREEN after the check.
+- 2026-11-01: T7 done: `canBurn`/`burnScore`/`diceBeatenBy` in `pushing.ts` (`canPush` includes a burn), `PushOffer` burn mode (momentum now, score, dice against the roll; no Burn and a line when it no longer improves or cannot be read), `usePushCheck` reads the campaign again on a refusal (the flow command already did on a 409), `JournalEntryView` burned block with each die against the new score, fixtures and a story. Implementation was written before its tests; RED then shown by reverting each source file: 6 view failures, 7 dialog failures (the stale-sheet refresh alone fails with the old `usePushCheck`), 5 pending-step failures, and `pushing.test.ts` failed on the missing exports. GREEN with the code restored.
 
 ## Reviews
 
@@ -153,4 +154,4 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 ## Next step
 
-Slice 6 in progress: slice 5 review fixes, then the burn UI (T7). Then slice 7: the Studio check editor and sandbox (T8, T9).
+Slice 6 written: slice 5 review fixes and the burn UI (T7); next the native review of the slice, then its PR. Then slice 7: the Studio check editor and sandbox (T8, T9).

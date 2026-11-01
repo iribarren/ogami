@@ -199,6 +199,8 @@ face-desolation  the same with tormented, and a lost prompt
 epilogue       setup: prompts for what you hope and what you fear; roll: check bonds
 ```
 
+As built (T13): the Scene Types follow the list above, with these differences. `resupply`'s roll has `next: end`, so a strong hit does not fall into `scavenge`. The table entries that force `face-death`, `face-desolation` and `forsake-vow` were added with the Scene Types, since a table cannot name a scene before it exists. The sheet has field groups (Stats, Meters, Debilities, Progress) but no declared layout. `epilogue`'s bonds roll has no outcomes. `closeThread` on a slot with no Thread, or one whose Thread is already closed, changes nothing and is not refused, so forsaking a free or fulfilled slot costs no spirit (its rank is 0) and still goes to `endure-stress`. Publishing prints three authoring warnings on `fight-round` (its guard on `fight-rank` sits beside `nextScene` effects that no scene lowers it for); the consequences come from rolls, not from the rank, so they are accepted and `PresetsTest` pins their number.
+
 Accepted limits: a slot can be overwritten by hand while it is in use (the prompt lists the slots, and a sixth vow is refused); a fulfilled slot's Fact keeps the old name until a new vow fills it, while its rank reads Free; the wounded block on health gains is a tip; `{health}` at 0 cannot branch, since a condition reads trackers only, so the step asks.
 
 ## Constraints
@@ -241,7 +243,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T10 | 1 | Studio references: `challenge.momentum` blocks a rename or deletion (`DraftReferences`) | delegated writer (slice 1) | [x] | `5df5b214` |
 | T11 | 10 | Read the official licensing page; design the flow in this doc (parent, done before the writer); flow example in `docs/domain/flow-examples.md` | | [ ] | |
 | T12 | 10 | `backend/presets/ironsworn.json` base: credits, sheet, trackers, checks; `PresetsTest` | delegated writer (slice 10) | [x] | |
-| T13 | 10 | Flow, Scene Types and tables; `IronswornPresetFlowTest` | | [ ] | |
+| T13 | 10 | Flow, Scene Types and tables; `IronswornPresetFlowTest` | delegated writer (slice 10) | [x] | |
 | T14 | 11 | Slice 10 review fixes; e2e `frontend/e2e/play-ironsworn.spec.ts` | | [ ] | |
 | T15 | 11 | Chrome play pass: swear a vow, a move with a burn, a match, a negative momentum, fulfilling a vow; test roll and burn in the Studio sandbox; fixes | | [ ] | |
 | T16 | 11 | Closing: Reviews, roadmap `Done:` line under B16, follow-ups if any | | [ ] | |
@@ -276,6 +278,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: T19 done: the guard in `ChecksTab` removed, `RollResult` shows challenge dice, action die, cancelled die, score with its cap and a match, `canBurnTestRoll`/`burnScoreOf` (Studio's copy of Play's rule), "Burn the momentum" through `/push` with the action die then the challenge dice, and the burned card; the momentum was already a sample input and `match` already read "Match" as in Play. Vitest written after the code, all passed at once: no RED.
 - 2026-11-01: Slice 9 review fix: sandbox tests for a burn above the cap (offer and burned card) and for the burn offer's text; passed at once, no RED. Proved by mutation: reading `burn.score` in the cap note failed the burned-cap test, then restored.
 - 2026-11-01: T12 done: `backend/presets/ironsworn.json` with the exact credits, the eight SRD tables as written, `ask-the-oracle`, tags, trackers, fact slots, sheet (point budget 9) and 19 checks; no Scene Type or flow yet. The three table entries that force a scene (face-death, face-desolation, forsake-vow) are added with the Scene Types in T13, since a table cannot name a scene that does not exist. RED: the publish test failed on the missing file; GREEN once the file published (245 assertions).
+- 2026-11-01: T13 done: 25 Scene Types and the `ironsworn` flow (prologue, adventure loop of twenty moves, epilogue), the three table entries that force a scene, `IronswornPresetFlowTest` (32 tests: prologue, milestones by rank, sixth vow, fulfilling by rank, recommit, forsaking, Face Danger, momentum cap, burn on a pending step, journey, fight, Endure Harm, tables) and a `PresetsTest` flow test. No RED against the preset: it was generated from the design before the tests, and every first failure was a test mistake (cast, scene offers, step keys). Proved by mutation instead: dropping the momentum cap, the free-slot guard of the ticks formula and a `closeThread` each failed the suite (1, 1 and 6 tests), then restored.
 
 ## Reviews
 

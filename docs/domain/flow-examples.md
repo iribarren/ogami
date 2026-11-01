@@ -1,6 +1,6 @@
 # Flow examples
 
-Five worked examples of the NarrativeFlow model of [ADR 0017](../adr/0017-narrativeflow-model.md), as amended by [ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md). Feature 6c `flow-model-examples` mapped them to find the model's limits.
+Six worked examples of the NarrativeFlow model of [ADR 0017](../adr/0017-narrativeflow-model.md), as amended by [ADR 0018](../adr/0018-narrativeflow-control-flow-and-cast.md). Feature 6c `flow-model-examples` mapped them to find the model's limits.
 
 **Fixtures:** [`backend/tests/Fixtures/Studio/releases/examples/`](../../backend/tests/Fixtures/Studio/releases/examples/README.md) holds them as schema version 2 releases, with what each leaves out until features 10 and M3 (features 8 and 8b have shipped).
 
@@ -528,3 +528,65 @@ sessionClosing
 - A dungeon, a rest and a fight repeat only through a `nextScene` chain (accepted limit). Only the last `nextScene` of a scene counts, so the world turn guards a pending chain, and a step that forces a scene is not followed by one that forces another.
 - Combat is abstract: a tracker effect takes no typed damage and a foe has no sheet, so `foe` counts hits and `threat` sets the damage. Encounter entries name SRD monsters for flavor.
 - **Rules gaps** (each stays a hint, no code change): natural 20 criticals on a modified roll; a condition that imposes advantage or disadvantage (the player picks the mode); item effects (a Potion of Healing is drunk by an option, and the player removes the stack); proficiency and spell slots by class (a `select` is not readable by formulas, [ADR 0048](../adr/0048-select-sheet-fields.md)); the point-buy cost table (the ability budget fits the standard array only); levels above 10; a short rest for an adventurer with no hit dice left (a condition step reads trackers, not sheet values, so the option stays offered and still heals: the tip says to take a long rest instead).
+
+## 6. Ironsworn (unofficial)
+
+A solo saga of vows, one move per scene, on the Ironsworn SRD (CC BY 4.0). It leans on challenge dice and burning momentum ([ADR 0049](../adr/0049-challenge-dice-and-burning-momentum.md)). The shipped preset `ironsworn` plays this flow ([`backend/presets/ironsworn.json`](../../backend/presets/ironsworn.json)).
+
+### Release
+
+| Part | Content |
+|---|---|
+| Trackers | `vow-1`…`vow-5` counters 0–40 (ticks) with `vow-1-rank`…`vow-5-rank` counters 0–5 (levels Free to Epic); `new-rank`; `journey` and `journey-rank`; `fight` and `fight-rank`; `initiative` 0–1 (Foe, You); `bonds` |
+| Fact slots | `vow-1`…`vow-5` (thread); `destination` (text); `foe` (npc) |
+| Tags | Threads: `vow`. NPCs: `bond`, `foe`. Places: `home` |
+| Scene Types | The Ironlands, Ironsworn, Swear a vow, Milestone, Fulfill, Forsake, 12 moves, Fight, Battle, Advance, Pay the price, Endure harm and stress, Face death and desolation, Epilogue |
+| Tables | The SRD's `action`, `theme`, `combat-action`, `major-plot-twist`, `challenge-rank`, `pay-the-price`, `endure-harm-table`, `endure-stress-table`, and the `ask-the-oracle` odds |
+| Sheet | Five stats on a 9-point budget, `momentum` −6 to 10, `health`, `spirit` and `supply` tracks, three `conditions` fields of debilities, derived `momentum-reset` and `momentum-max`, `experience`, `assets` |
+| Checks | One action check per stat or meter and one per suffer move, each a d6 against two d10 with a burn; eight progress checks (five vows, journey, fight, bonds) |
+
+### Flow `ironsworn`
+
+| Phase | Mode | Selection | Scene Types |
+|---|---|---|---|
+| `prologue` | once | sequence | The Ironlands → Ironsworn → Swear a vow → Swear a vow |
+| `adventure` | loop | player | twenty moves (the suffer and death moves through `nextScene`) |
+| `epilogue` | once | sequence | Epilogue |
+
+```
+Swear a vow    condition count thread [vow]: upTo 4 → vow; rest → "All five vows are sworn" → end
+               prompt the vow → sceneTitle; choice rank → new-rank; choice slot Vow 1…5 →
+               createThread [vow], fillFact vow-N, vow-N 0, vow-N-rank new-rank
+               check heart (suggested): strong momentum +2; weak +1; miss → choice press on −2 | give up → nextScene Forsake
+Milestone      choice Vow 1…5 → vow-N + ticks of its rank   (12, 8, 4, 2, 1 for Troublesome…Epic; 0 on a free slot)
+Fulfill        choice Vow 1…5 → condition rank 0 → end; else progress check
+               strong: experience + rank, closeThread, vow-N and its rank set 0; weak: one less
+               miss → recommit (keep 4 ticks, rank +1) | give up → nextScene Forsake
+Forsake        choice Vow 1…5 → spirit − rank, closeThread, vow-N reset, nextScene Endure stress
+Face danger    prompt → sceneTitle; check 5 stats: strong momentum +1; weak → cost choice; miss → nextScene Pay the price
+Journey        condition journey-rank 0 → where, rank; else leg: check wits, ticks by rank, supply −1
+               arrived → progress check: strong resets the journey and gives a boon; miss → astray
+Fight          condition fight-rank 0 → "start with Enter the fray"; condition initiative → strike | clash
+               strike or clash: ticks by rank (twice on a strong strike); strong strike → decisive → End the fight
+Endure harm    choice health −1…−5; check max(health, iron): miss → momentum −1 and, at 0, mark a debility or roll the table
+               (1–10 → nextScene Face death)
+```
+
+The other moves follow the same shapes: a stat check, a band per outcome, a choice for the cost or the gain, and `nextScene` for the rest.
+
+### What it shows
+
+| Model part | Decisions |
+|---|---|
+| Challenge dice, a match and burning momentum | [ADR 0049](../adr/0049-challenge-dice-and-burning-momentum.md) |
+| Five fixed vow slots: a thread Fact beside two counters | 8b |
+| One formula turns a rank into ticks for vows, journeys and fights | [ADR 0023](../adr/0023-formula-kernel-and-derived-values.md) |
+| A choice of five options writes the slot it names | [ADR 0042](../adr/0042-flow-choices-check-sets-and-scene-tables.md) |
+| Table entries force `nextScene` into the death and desolation chains | 5 |
+| Derived momentum maximum and reset from three conditions fields | [ADR 0041](../adr/0041-dice-pools-pushes-and-conditions.md) |
+
+**Notes**
+- Vows: five slots, not an open list (user's decision). A vow shows as ticks out of 40, and a fulfilled slot's Fact keeps the old name until a new vow fills it, while its rank reads Free.
+- **Rules gaps** (each stays a hint): asset cards (a `list` holds the names; the player applies them); a flow branch on a match (a tip points at Major Plot Twist); the rare moves Draw the Circle, Aid Your Ally, Turn the Tide, Companion Endure Harm, Out of Supply and Face a Setback (rolled from the sheet); the wounded block on health gains; a fight against several foes (one track); a bond marks one tick, as the SRD text says, not a full box.
+- A condition reads trackers only, so "no fight under way" reads `fight-rank`, and at 0 health the table step asks instead of branching on the sheet.
+- Publishing prints three authoring warnings on Fight: the guard on `fight-rank` sits beside `nextScene` effects (the price and the suffer moves) that no scene lowers it for. They come from rolls, not from the rank, so they are accepted.

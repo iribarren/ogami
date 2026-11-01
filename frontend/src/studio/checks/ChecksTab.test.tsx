@@ -1622,11 +1622,27 @@ describe('the challenge mode of the check editor (ADR 0049)', () => {
     expect(screen.getByRole('button', { name: 'Edit edge' }).closest('li')).toHaveTextContent('1d6')
   })
 
-  it('offers no test roll for a challenge check, as the sandbox cannot roll one yet', async () => {
+  it('offers a test roll for a challenge check, as for any saved check', async () => {
     await editCheck('edge')
 
+    expect(screen.getByRole('region', { name: 'Test roll sandbox' })).toBeVisible()
+    expect(screen.queryByText(/not available yet/)).not.toBeInTheDocument()
+  })
+
+  it('offers a test roll for a progress roll, with no difficulty', async () => {
+    await editCheck('fulfill')
+
+    const sandbox = within(screen.getByRole('region', { name: 'Test roll sandbox' }))
+    expect(sandbox.getByRole('button', { name: 'Roll the check' })).toBeVisible()
+    expect(sandbox.queryByLabelText('Test difficulty')).toBeNull()
+  })
+
+  it('offers no test roll for a check not saved yet', async () => {
+    const { user } = await editCheck('edge')
+
+    await user.click(screen.getByRole('button', { name: 'New check' }))
+
     expect(screen.queryByRole('region', { name: 'Test roll sandbox' })).not.toBeInTheDocument()
-    expect(screen.getByText('Test rolls of challenge dice are not available yet.')).toBeVisible()
   })
 
   it('opens an action roll with its challenge, momentum and burn, and no difficulty', async () => {

@@ -10,7 +10,7 @@ import type { SheetFieldView, TrackerReading } from '@/shared/sheet/types'
 
 import type { Sample } from '../sheet/useSheetSamples'
 import type { BandDraft, DifficultyDraft, PoolDraft } from './checkDraft'
-import type { CheckTestRollRequest, GameSystemChecks } from './useGameSystemChecks'
+import type { CheckTestRoll, CheckTestRollRequest, GameSystemChecks } from './useGameSystemChecks'
 
 /** The most a track without a declared max may hold in a test roll, as the server. */
 const openTrackMax = 999
@@ -400,4 +400,30 @@ function nonIncreasing(bounds: Bound[]): string | null {
     before = { position, value: bound.value }
   }
   return null
+}
+
+/** The score a burn gives: the momentum, at most `scoreMax` when the check has one (ADR 0049). */
+export function burnScoreOf(momentum: number, scoreMax: number | null): number {
+  return scoreMax === null ? momentum : Math.min(momentum, scoreMax)
+}
+
+/** How many challenge dice a score beats: the die must show strictly less, as a tie goes to the die. */
+function diceBeatenBy(dice: readonly { face: number }[], score: number): number {
+  return dice.filter(({ face }) => face < score).length
+}
+
+/**
+ * Whether a test roll offers a burn: its check declares a push, it is a challenge roll that names a
+ * momentum and was not burned yet, and the momentum (capped as the check caps it) beats strictly
+ * more challenge dice than the score did. It mirrors the server's rule on purpose: Studio never
+ * imports Play. A progress roll names no momentum, so it never offers one.
+ */
+export function canBurnTestRoll(result: Pick<CheckTestRoll, 'push' | 'challenge'>): boolean {
+  const { push, challenge } = result
+  const momentum = challenge?.momentum ?? null
+  if (push === null || challenge === null || momentum === null || challenge.burn !== null) {
+    return false
+  }
+  const burned = burnScoreOf(momentum, challenge.scoreMax)
+  return diceBeatenBy(challenge.dice, burned) > diceBeatenBy(challenge.dice, challenge.score)
 }

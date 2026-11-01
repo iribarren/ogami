@@ -16,6 +16,7 @@ function json(body: unknown, status = 200): FakeHandler {
 /** A test roll of `skill` the way the API answers it. */
 const rolled = {
   pool: null,
+  challenge: null,
   push: null,
   rolledSuccesses: null,
   special: null,
@@ -443,6 +444,7 @@ const die = (face: number, success: boolean, rerolled = false, group = 'pool') =
 
 const poolRolled = {
   dice: null,
+  challenge: null,
   pool: {
     size: 4,
     sides: 6,
@@ -847,5 +849,307 @@ describe('the test roll sandbox with Hunger dice, critical pairs and a capped pu
     await user.click(await sandbox.findByRole('button', { name: 'Push the roll' }))
 
     expect(await sandbox.findByText('Rolled Fail (bestial failure), pushed to Win')).toBeVisible()
+  })
+})
+
+/** An action roll with a momentum and a burn, and a progress roll, as the editor saved them (ADR 0049). */
+const edge = {
+  key: 'edge',
+  label: 'Edge',
+  dice: '1d6',
+  modifier: '{pow}',
+  challenge: { count: 2, sides: 10, scoreMax: 10, momentum: 'momentum' },
+  push: { label: 'Burn momentum' },
+  bands: [
+    { key: 'miss', label: 'Miss', upTo: 0 },
+    { key: 'weak', label: 'Weak hit', upTo: 1 },
+    { key: 'strong', label: 'Strong hit' },
+  ],
+}
+const fulfill = {
+  key: 'fulfill',
+  label: 'Fulfill a vow',
+  modifier: '{pow}',
+  challenge: { count: 2, sides: 10 },
+  bands: [
+    { key: 'miss', label: 'Miss', upTo: 0 },
+    { key: 'hit', label: 'Hit' },
+  ],
+}
+const challengeBands = [
+  { key: 'miss', label: 'Miss', bound: 0 },
+  { key: 'weak', label: 'Weak hit', bound: 1 },
+  { key: 'strong', label: 'Strong hit', bound: null },
+]
+const challengeHandlers = (extra: Record<string, FakeHandler> = {}) => ({
+  [`GET ${base}/checks`]: json({
+    ...checks,
+    checks: [edge, fulfill],
+    fields: [...checks.fields, { key: 'momentum', label: 'Momentum', type: 'number', max: 10 }],
+  }),
+  ...extra,
+})
+const challenge = {
+  actionDie: 4,
+  sides: 10,
+  scoreMax: 10,
+  score: 6,
+  momentum: 9,
+  momentumField: 'momentum',
+  cancelled: false,
+  dice: [
+    { face: 5, beaten: true },
+    { face: 8, beaten: false },
+  ],
+  burn: null,
+}
+/** The first score is 4 + 2 = 6: it beats the 5 only, so the momentum of 9 would beat both. */
+const challengeRolled = {
+  dice: {
+    expression: '1d6',
+    total: 4,
+    groups: [{ notation: '1d6', sides: 6, dice: [{ value: 4, kept: true }], subtotal: 4 }],
+  },
+  pool: null,
+  push: { label: 'Burn momentum', maxDice: null, rolledSpecial: null },
+  challenge,
+  rolledSuccesses: null,
+  special: null,
+  modifier: 2,
+  situational: 0,
+  difficulty: null,
+  total: 1,
+  bands: challengeBands,
+  band: 'weak',
+}
+const challengeBurned = {
+  ...challengeRolled,
+  dice: null,
+  challenge: {
+    ...challenge,
+    score: 9,
+    dice: [
+      { face: 5, beaten: true },
+      { face: 8, beaten: true },
+    ],
+    burn: { momentum: 9, score: 9 },
+  },
+  rolledSuccesses: 1,
+  total: 2,
+  band: 'strong',
+}
+const edgeRoll = `POST ${base}/checks/edge/test-rolls`
+const burnPath = `POST ${base}/checks/edge/test-rolls/push`
+
+describe('the test roll sandbox of a challenge check (ADR 0049)', () => {
+  it('is beside a saved challenge check, with no difficulty and a sample for the momentum', async () => {
+    const { sandbox } = await editCheck('edge', challengeHandlers())
+
+    expect(sandbox.queryByLabelText('Test difficulty')).toBeNull()
+    expect(sandbox.getByLabelText('Momentum')).toBeVisible()
+    expect(sandbox.getByLabelText('Situational modifier')).toBeVisible()
+    expect(roll(sandbox)).toBeEnabled()
+  })
+
+  it('rolls an action roll with the samples, without a difficulty, and shows its dice, score and band', async () => {
+    const { sent, record } = calls()
+    const { user, sandbox } = await editCheck(
+      'edge',
+      challengeHandlers({ [edgeRoll]: record('roll', Response.json(challengeRolled)) }),
+    )
+    await user.type(sandbox.getByLabelText('Power'), '2')
+    await user.type(sandbox.getByLabelText('Momentum'), '9')
+
+    await user.click(roll(sandbox))
+
+    const results = within(await sandbox.findByRole('list', { name: 'Test roll results' }))
+    expect(sent[0]?.body).toEqual({ sheet: { pow: 2, momentum: 9 }, trackers: {}, situational: 0 })
+    const dice = within(results.getByRole('list', { name: 'Challenge dice' })).getAllByRole(
+      'listitem',
+    )
+    expect(dice.map((item) => item.textContent)).toEqual(['5 (beaten)', '8 (not beaten)'])
+    expect(results.getByText('1 die beaten')).toBeVisible()
+    expect(results.getByText('Weak hit', { selector: 'p' })).toBeVisible()
+    expect(results.getByText('Action die 4')).toBeVisible()
+    expect(results.getByText('Score 6')).toBeVisible()
+    expect(results.queryByText(/Cancelled/)).toBeNull()
+    expect(results.queryByText(/Special result/)).toBeNull()
+    expect(results.getByRole('button', { name: 'Burn the momentum' })).toBeVisible()
+  })
+
+  it('rolls a progress roll with no action die, no burn and no dice of its own', async () => {
+    const { user, sandbox } = await editCheck(
+      'fulfill',
+      challengeHandlers({
+        [`POST ${base}/checks/fulfill/test-rolls`]: json({
+          ...challengeRolled,
+          dice: null,
+          push: null,
+          modifier: 6,
+          challenge: {
+            ...challenge,
+            actionDie: null,
+            momentum: null,
+            momentumField: null,
+            score: 6,
+          },
+        }),
+      }),
+    )
+
+    await user.click(roll(sandbox))
+
+    const results = within(await sandbox.findByRole('list', { name: 'Test roll results' }))
+    expect(results.getByText('Score 6')).toBeVisible()
+    expect(results.getByText('Modifier 6')).toBeVisible()
+    expect(results.queryByText(/Action die/)).toBeNull()
+    expect(results.queryByRole('button', { name: 'Burn the momentum' })).toBeNull()
+    expect(sandbox.queryByLabelText('Momentum')).toBeVisible()
+  })
+
+  it('tells that negative momentum cancelled the action die, which counts 0', async () => {
+    const { user, sandbox } = await editCheck(
+      'edge',
+      challengeHandlers({
+        [edgeRoll]: json({
+          ...challengeRolled,
+          push: null,
+          challenge: { ...challenge, momentum: -4, cancelled: true, score: 2 },
+        }),
+      }),
+    )
+
+    await user.click(roll(sandbox))
+
+    const results = within(await sandbox.findByRole('list', { name: 'Test roll results' }))
+    expect(results.getByText('Action die 4')).toBeVisible()
+    expect(
+      results.getByText('Cancelled: momentum -4 cancelled the action die, which counts 0'),
+    ).toBeVisible()
+    expect(results.getByText('Score 2')).toBeVisible()
+  })
+
+  it('says when the score was capped, and shows a match as a special result', async () => {
+    const { user, sandbox } = await editCheck(
+      'edge',
+      challengeHandlers({
+        [edgeRoll]: json({
+          ...challengeRolled,
+          push: null,
+          special: 'match',
+          challenge: {
+            ...challenge,
+            actionDie: 6,
+            scoreMax: 7,
+            score: 7,
+            dice: [
+              { face: 3, beaten: true },
+              { face: 3, beaten: true },
+            ],
+          },
+        }),
+      }),
+    )
+
+    await user.click(roll(sandbox))
+
+    const results = within(await sandbox.findByRole('list', { name: 'Test roll results' }))
+    expect(results.getByText('Score 7 (capped at 7)')).toBeVisible()
+    expect(results.getByText('Match', { selector: 'strong' })).toBeVisible()
+  })
+
+  it('offers no burn when the momentum cannot beat more dice', async () => {
+    const { user, sandbox } = await editCheck(
+      'edge',
+      challengeHandlers({
+        [edgeRoll]: json({ ...challengeRolled, challenge: { ...challenge, momentum: 2 } }),
+      }),
+    )
+
+    await user.click(roll(sandbox))
+
+    expect(await sandbox.findByText('1 die beaten')).toBeVisible()
+    expect(sandbox.queryByRole('button', { name: 'Burn the momentum' })).toBeNull()
+  })
+
+  it('burns with the same samples and the action die then the challenge dice, and shows the burned roll', async () => {
+    const { sent, record } = calls()
+    const { user, sandbox } = await editCheck(
+      'edge',
+      challengeHandlers({
+        [edgeRoll]: record('roll', Response.json(challengeRolled)),
+        [burnPath]: record('burn', Response.json(challengeBurned)),
+      }),
+    )
+    await user.type(sandbox.getByLabelText('Momentum'), '9')
+    await user.click(roll(sandbox))
+
+    await user.click(await sandbox.findByRole('button', { name: 'Burn the momentum' }))
+
+    expect(await sandbox.findByText(/Burned: Burn momentum/)).toBeVisible()
+    expect(sent.map(({ call }) => call)).toEqual(['roll', 'burn'])
+    expect(sent[1]?.body).toEqual({ ...sent[0]?.body, faces: [4, 5, 8] })
+    const [burned, first] = sandbox.getByRole('list', { name: 'Test roll results' }).children
+    expect(burned).toHaveTextContent('Rolled Weak hit (1 of 2 beaten), burned to Strong hit')
+    expect(burned).toHaveTextContent('Burned 9 momentum for a score of 9.')
+    expect(burned).toHaveTextContent('The cost is not applied in a test roll.')
+    expect(burned).toHaveTextContent('2 dice beaten')
+    expect(burned).toHaveTextContent('Score 9')
+    expect(burned).toHaveTextContent('5 (beaten)8 (beaten)')
+    // The burned card needs no dice of its own, and offers nothing more.
+    expect(burned).not.toHaveTextContent('1d6')
+    expect(sandbox.queryByRole('button', { name: 'Burn the momentum' })).toBeNull()
+    // The roll stays in the history as it was.
+    expect(first).toHaveTextContent('1 die beaten')
+  })
+
+  it('keeps a match on the burned roll and says still when the burn keeps the band', async () => {
+    const { user, sandbox } = await editCheck(
+      'edge',
+      challengeHandlers({
+        [edgeRoll]: json(challengeRolled),
+        [burnPath]: json({ ...challengeBurned, special: 'match', band: 'weak', total: 1 }),
+      }),
+    )
+    await user.click(roll(sandbox))
+
+    await user.click(await sandbox.findByRole('button', { name: 'Burn the momentum' }))
+
+    expect(
+      await sandbox.findByText(/Rolled Weak hit \(1 of 2 beaten\), still Weak hit/),
+    ).toBeVisible()
+    expect(sandbox.getByText('Match', { selector: 'strong' })).toBeVisible()
+  })
+
+  it.each([
+    [409, 'Edge cannot burn momentum: it beats no more challenge dice than the score does.'],
+    [422, 'faces: the action die must be 1 to 6, got 7'],
+  ])('shows a burn refused with %i in the alert and keeps the roll', async (status, message) => {
+    const { user, sandbox } = await editCheck(
+      'edge',
+      challengeHandlers({
+        [edgeRoll]: json(challengeRolled),
+        [burnPath]: json({ error: message }, status),
+      }),
+    )
+    await user.click(roll(sandbox))
+
+    await user.click(await sandbox.findByRole('button', { name: 'Burn the momentum' }))
+
+    expect(await sandbox.findByRole('alert')).toHaveTextContent(message)
+    expect(sandbox.getByRole('button', { name: 'Burn the momentum' })).toBeEnabled()
+    expect(sandbox.getByRole('list', { name: 'Test roll results' }).children).toHaveLength(1)
+  })
+
+  it('shows a dice check as before, with no challenge', async () => {
+    const { user, sandbox } = await editCheck('skill', {
+      [rollPath]: json(rolled),
+    })
+
+    await user.click(roll(sandbox))
+
+    expect(await sandbox.findByText('Total 13')).toBeVisible()
+    expect(sandbox.queryByRole('list', { name: 'Challenge dice' })).toBeNull()
+    expect(sandbox.queryByRole('button', { name: 'Burn the momentum' })).toBeNull()
   })
 })

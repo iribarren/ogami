@@ -426,7 +426,7 @@ A check may compare a score against **challenge dice**, as Ironsworn does. Addit
 | `challenge` | `{count, sides, scoreMax?, momentum?}`, no other property | `count` is an integer from 2 to 10 and `sides` from 2 to 1,000. `scoreMax` (1–1,000) caps the score. `momentum` is the key of a `number` sheet field |
 
 - **Action roll** (`dice` and `challenge`): score = `dice + modifier + situational modifier`, capped at `scoreMax`. The total is the number of challenge dice showing a face strictly below the score (ties go to the dice).
-- **Progress roll** (`challenge` alone): `modifier` is required and is the score. It refuses `challenge.momentum`.
+- **Progress roll** (`challenge` alone): `modifier` is required and is the score, capped at `scoreMax` as an action roll's is. It refuses `challenge.momentum`.
 - **Negative momentum**: when the field's value is below 0 and its absolute value equals the action die, that die counts 0.
 - **Burn**: `push` on a challenge check burns momentum. No dice are rolled; the score becomes the momentum value (capped at `scoreMax`), and the push cost is applied after it. Offered only when momentum beats more challenge dice than the score.
 - **Match**: when every challenge die shows the same face the roll has the special result `match`. It is shown only: a step `outcomes` entry cannot name it, and the band's outcome still applies.

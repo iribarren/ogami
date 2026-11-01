@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace App\Play\Domain\Journal;
 
 use App\Play\Domain\Campaign\FlowRun\SheetChange;
+use App\Play\Domain\GameSystem\Check\ChallengeResult;
 use App\Play\Domain\GameSystem\Check\Check;
+use App\Play\Domain\GameSystem\Check\CheckChallenge;
 use App\Play\Domain\GameSystem\Check\CheckPool;
 use App\Play\Domain\GameSystem\Check\CheckResult;
 use App\Play\Domain\GameSystem\Check\ModifierTerm;
 use App\Play\Domain\GameSystem\Check\PoolResult;
 use App\Play\Domain\GameSystem\Check\PushResult;
 use App\Play\Domain\GameSystem\Check\ReferenceLabels;
+use App\Play\Domain\GameSystem\Check\SpecialResult;
 
 /**
  * A Check of the pinned release performed for a Character (ADR 0024): the Character and the check
@@ -26,12 +29,18 @@ use App\Play\Domain\GameSystem\Check\ReferenceLabels;
  * successes, the count and the size rolled; the dice total and the total are its successes. Entries
  * of dice checks, those stored before pools included, have no pool part and store the same array.
  *
+ * A challenge check (ADR 0049) has a challenge part: its dice, the score they were compared against and
+ * the total is the number of dice beaten. An action roll keeps its action die as a dice check does; a
+ * progress roll has no action die, so its expression is the challenge dice (such as "2d10"), with no
+ * groups and a dice total of 0. Entries of other checks have no challenge part and store the same array.
+ *
  * A pool check can be pushed once (ADR 0041): the push completes this content, the only change a
  * journal entry's content can take. The pool part keeps the first roll and gains the push part; the
  * dice total, the total and the band are those after the push.
  *
  * @phpstan-import-type DiceGroupData from RollContent
  * @phpstan-import-type PoolData from CheckPoolContent
+ * @phpstan-import-type ChallengeData from CheckChallengeContent
  *
  * @phpstan-type ModifierTermData array{reference: string, label: string, value: int}
  */
@@ -48,6 +57,7 @@ final readonly class CheckContent implements JournalEntryContent
      * @param ?string                $modifierFormula null when the check has no modifier
      * @param list<ModifierTermData> $modifierTerms   what each reference of the formula read; empty without a formula
      * @param ?CheckPoolContent      $pool            null for a dice check
+     * @param ?CheckChallengeContent $challenge       null unless the check rolled challenge dice
      */
     private function __construct(
         private string $characterId,
@@ -67,6 +77,7 @@ final readonly class CheckContent implements JournalEntryContent
         private ?string $modifierFormula,
         private array $modifierTerms,
         private ?CheckPoolContent $pool = null,
+        private ?CheckChallengeContent $challenge = null,
     ) {
     }
 
@@ -79,6 +90,10 @@ final readonly class CheckContent implements JournalEntryContent
             $pool = CheckPoolContent::fromResult($check->pool, $result->pool, $result->situational, $labels, $result->special);
 
             return self::of($characterId, $characterName, $check->key, $check->label, \sprintf('%dd%d', $pool->size, $pool->sides), [], $result->total, 0, $result->situational, $result->difficulty, $result->total, $result->band->key, $result->band->label, $check->hint, null, [], $pool);
+        }
+
+        if ($check->challenge instanceof CheckChallenge && $result->challenge instanceof ChallengeResult) {
+            return self::ofChallenge($characterId, $characterName, $check, $check->challenge, $result, $labels);
         }
 
         $roll = $result->roll ?? throw new \LogicException(\sprintf('The result of dice check "%s" has no roll.', $check->key));
@@ -99,8 +114,46 @@ final readonly class CheckContent implements JournalEntryContent
             $result->band->label,
             $check->hint,
             $check->modifier?->toString(),
-            array_map(static fn (ModifierTerm $term): array => ['reference' => $term->token(), 'label' => $labels->label($term->reference), 'value' => $term->value], $result->modifierTerms),
+            self::termsOf($result, $labels),
         );
+    }
+
+    /**
+     * A challenge roll (ADR 0049): an action roll keeps its action die, a progress roll has none and
+     * stores the challenge dice as its expression.
+     */
+    private static function ofChallenge(string $characterId, string $characterName, Check $check, CheckChallenge $challenge, CheckResult $result, ReferenceLabels $labels): self
+    {
+        $roll = $result->roll;
+
+        return self::of(
+            $characterId,
+            $characterName,
+            $check->key,
+            $check->label,
+            $roll?->expression()->notation() ?? \sprintf('%dd%d', $challenge->count, $challenge->sides),
+            $roll instanceof \App\Randomness\Domain\Roll ? RollContent::groupsOf($roll) : [],
+            $roll?->total() ?? 0,
+            $result->modifier,
+            $result->situational,
+            null,
+            $result->total,
+            $result->band->key,
+            $result->band->label,
+            $check->hint,
+            $check->modifier?->toString(),
+            self::termsOf($result, $labels),
+            null,
+            CheckChallengeContent::fromResult($challenge, $result->challenge ?? throw new \LogicException('A challenge result is missing.')),
+        );
+    }
+
+    /**
+     * @return list<ModifierTermData>
+     */
+    private static function termsOf(CheckResult $result, ReferenceLabels $labels): array
+    {
+        return array_map(static fn (ModifierTerm $term): array => ['reference' => $term->token(), 'label' => $labels->label($term->reference), 'value' => $term->value], $result->modifierTerms);
     }
 
     /**
@@ -112,6 +165,7 @@ final readonly class CheckContent implements JournalEntryContent
     {
         $situational = ContentData::int($data, 'situational');
         $pool = ContentData::optionalArray($data, 'pool');
+        $challenge = ContentData::optionalArray($data, 'challenge');
 
         return self::of(
             ContentData::string($data, 'characterId'),
@@ -131,6 +185,7 @@ final readonly class CheckContent implements JournalEntryContent
             ContentData::optionalString($data, 'modifierFormula'),
             self::termsFromArray($data),
             null === $pool ? null : CheckPoolContent::fromArray($pool, $situational),
+            null === $challenge ? null : CheckChallengeContent::fromArray($challenge),
         );
     }
 
@@ -155,7 +210,8 @@ final readonly class CheckContent implements JournalEntryContent
      * @param list<ModifierTermData> $modifierTerms
      *
      * @throws InvalidJournalEntryContent when an id, key or formula is blank, there are terms without a formula, the total is not the dice plus the modifiers,
-     *                                    or a pool check has dice groups or a modifier, an expression that is not its size and sides, or a total that is not its successes plus the bonus of its critical pairs
+     *                                    or a pool check has dice groups or a modifier, an expression that is not its size and sides, or a total that is not its successes plus the bonus of its critical pairs,
+     *                                    or a challenge check has a pool or a difficulty, a total that is not the dice beaten, or a score, a cancelled die or a progress roll that contradicts the dice and the modifiers
      */
     private static function of(
         string $characterId,
@@ -175,6 +231,7 @@ final readonly class CheckContent implements JournalEntryContent
         ?string $modifierFormula,
         array $modifierTerms,
         ?CheckPoolContent $pool = null,
+        ?CheckChallengeContent $challenge = null,
     ): self {
         foreach (['A Character id' => $characterId, 'A check key' => $checkKey, 'A band key' => $bandKey] as $what => $value) {
             if ('' === trim($value)) {
@@ -205,12 +262,55 @@ final readonly class CheckContent implements JournalEntryContent
             }
         }
 
+        if ($challenge instanceof CheckChallengeContent) {
+            self::assertChallenge($challenge, $pool, $expression, $groups, $diceTotal, $modifier, $situational, $difficulty, $total);
+        }
+
         // A sum that overflows the integers is a float, and never equals the total.
-        if (!$pool instanceof CheckPoolContent && $diceTotal + $modifier + $situational !== $total) {
+        if (!$pool instanceof CheckPoolContent && !$challenge instanceof CheckChallengeContent && $diceTotal + $modifier + $situational !== $total) {
             throw InvalidJournalEntryContent::malformed('total', 'the dice total plus the modifier and the situational modifier');
         }
 
-        return new self($characterId, $characterName, $checkKey, $checkLabel, $expression, $groups, $diceTotal, $modifier, $situational, $difficulty, $total, $bandKey, $bandLabel, $hint, $modifierFormula, $modifierTerms, $pool);
+        return new self($characterId, $characterName, $checkKey, $checkLabel, $expression, $groups, $diceTotal, $modifier, $situational, $difficulty, $total, $bandKey, $bandLabel, $hint, $modifierFormula, $modifierTerms, $pool, $challenge);
+    }
+
+    /**
+     * What a challenge part says about the rest of the entry (ADR 0049). A progress roll is the one with no
+     * dice groups and the challenge dice as its expression.
+     *
+     * @param list<DiceGroupData> $groups
+     *
+     * @throws InvalidJournalEntryContent
+     */
+    private static function assertChallenge(CheckChallengeContent $challenge, ?CheckPoolContent $pool, string $expression, array $groups, int $diceTotal, int $modifier, int $situational, ?int $difficulty, int $total): void
+    {
+        if ($pool instanceof CheckPoolContent) {
+            throw InvalidJournalEntryContent::malformed('pool', 'absent: a challenge check rolls no pool');
+        }
+
+        if (null !== $difficulty) {
+            throw InvalidJournalEntryContent::malformed('difficulty', 'null: a challenge check has no difficulty');
+        }
+
+        if ($total !== $challenge->beaten()) {
+            throw InvalidJournalEntryContent::malformed('total', 'the number of challenge dice the score beat');
+        }
+
+        $progress = [] === $groups && \sprintf('%dd%d', \count($challenge->dice), $challenge->sides) === $expression;
+        if ($progress && (0 !== $diceTotal || null !== $challenge->momentum)) {
+            throw InvalidJournalEntryContent::malformed(null !== $challenge->momentum ? 'momentum' : 'diceTotal', 'absent: a progress roll has no action die');
+        }
+
+        $cancelled = null !== $challenge->momentum && $challenge->momentum < 0 && -$challenge->momentum === $diceTotal;
+        if (!$progress && $challenge->cancelled !== $cancelled) {
+            throw InvalidJournalEntryContent::malformed('cancelled', 'true when a negative momentum equals the action die, else false');
+        }
+
+        // A sum that overflows the integers is a float, and never equals the score.
+        $sum = ($challenge->cancelled ? 0 : $diceTotal) + $modifier + $situational;
+        if ($challenge->score !== (null === $challenge->scoreMax ? $sum : min($challenge->scoreMax, $sum))) {
+            throw InvalidJournalEntryContent::malformed('score', 'the action die (0 when cancelled) plus the modifier and the situational modifier, at most the score cap');
+        }
     }
 
     /**
@@ -328,17 +428,23 @@ final readonly class CheckContent implements JournalEntryContent
         return $this->pool;
     }
 
-    /**
-     * The special result of the roll as it stands (ADR 0044): critical, messyCritical or bestialFailure;
-     * null for none, for a dice check and for entries stored before special results.
-     */
-    public function special(): ?string
+    public function challenge(): ?CheckChallengeContent
     {
-        return $this->pool?->currentSpecial();
+        return $this->challenge;
     }
 
     /**
-     * @return array{kind: string, characterId: string, characterName: string, checkKey: string, checkLabel: string, expression: string, groups: list<DiceGroupData>, diceTotal: int, modifier: int, situational: int, difficulty: ?int, total: int, bandKey: string, bandLabel: string, hint: ?string, modifierFormula: ?string, modifierTerms: list<ModifierTermData>, pool?: PoolData}
+     * The special result of the roll as it stands (ADR 0044, ADR 0049): critical, messyCritical or bestialFailure
+     * for a pool, match for challenge dice that all show the same face; null for none, for a dice check
+     * and for entries stored before special results.
+     */
+    public function special(): ?string
+    {
+        return $this->challenge?->isMatch() ? SpecialResult::Match->value : $this->pool?->currentSpecial();
+    }
+
+    /**
+     * @return array{kind: string, characterId: string, characterName: string, checkKey: string, checkLabel: string, expression: string, groups: list<DiceGroupData>, diceTotal: int, modifier: int, situational: int, difficulty: ?int, total: int, bandKey: string, bandLabel: string, hint: ?string, modifierFormula: ?string, modifierTerms: list<ModifierTermData>, pool?: PoolData, challenge?: ChallengeData}
      */
     public function toArray(): array
     {
@@ -360,6 +466,6 @@ final readonly class CheckContent implements JournalEntryContent
             'hint' => $this->hint,
             'modifierFormula' => $this->modifierFormula,
             'modifierTerms' => $this->modifierTerms,
-        ] + ($this->pool instanceof CheckPoolContent ? ['pool' => $this->pool->toArray()] : []);
+        ] + ($this->pool instanceof CheckPoolContent ? ['pool' => $this->pool->toArray()] : []) + ($this->challenge instanceof CheckChallengeContent ? ['challenge' => $this->challenge->toArray()] : []);
     }
 }

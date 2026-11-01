@@ -86,6 +86,17 @@ final class ReleaseContentChallengeDiceTest extends TestCase
         }
     }
 
+    #[Test]
+    public function aMultiDieActionRollWithoutMomentumOrPushIsValid(): void
+    {
+        $release = ReleaseArrays::fixture(self::FIXTURE);
+        $release = ReleaseArrays::with($release, 'checks.0.dice', '2d6');
+        $release = ReleaseArrays::with($release, 'checks.0.challenge.momentum', null);
+        $release = ReleaseArrays::with($release, 'checks.0.push', null);
+
+        self::assertNotSame('', ReleaseContent::fromArray($release)->hash());
+    }
+
     /**
      * @return iterable<string, array{string, mixed, string}> the path changed in valid/v2-challenge-dice, its new value and the message
      */

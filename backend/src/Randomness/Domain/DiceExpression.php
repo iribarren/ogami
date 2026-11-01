@@ -77,6 +77,14 @@ final readonly class DiceExpression implements \Stringable
     }
 
     /**
+     * Whether the expression is exactly one die: "1dN", with no selector and no arithmetic.
+     */
+    public function rollsOneDie(): bool
+    {
+        return 1 === preg_match('/^1d\d+$/', $this->notation());
+    }
+
+    /**
      * @throws InvalidDiceExpression when evaluation divides by zero or overflows
      */
     public function roll(RandomNumberGenerator $random): Roll

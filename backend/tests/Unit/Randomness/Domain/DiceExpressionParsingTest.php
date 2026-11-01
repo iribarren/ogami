@@ -105,4 +105,26 @@ final class DiceExpressionParsingTest extends TestCase
 
         DiceExpression::fromString($notation);
     }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function singleDice(): iterable
+    {
+        yield 'd6' => ['d6', true];
+        yield '1d10 with spaces and capitals' => [' 1D10 ', true];
+        yield 'percentile' => ['d%', true];
+        yield 'two dice' => ['2d6', false];
+        yield 'a die and a number' => ['1d6+1', false];
+        yield 'a number' => ['5', false];
+        yield 'a selector' => ['1d6kh1', false];
+        yield 'two single dice' => ['1d6+1d4', false];
+    }
+
+    #[Test]
+    #[DataProvider('singleDice')]
+    public function itKnowsWhetherItRollsExactlyOneDie(string $notation, bool $single): void
+    {
+        self::assertSame($single, DiceExpression::fromString($notation)->rollsOneDie());
+    }
 }

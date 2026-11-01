@@ -14,6 +14,9 @@ use App\Randomness\Domain\Roll;
  * A pool check rolls no dice expression: it has a pool result and no roll, its total is the number
  * of successes plus the bonus of critical pairs, and it has no modifier (the situational modifier
  * changed the size of the pool). A pool roll can have a special result (ADR 0044).
+ *
+ * A challenge check (ADR 0049) has a challenge result, its total is the number of challenge dice the
+ * score beat, and its special result is a match. A progress roll has no action die, so no roll.
  */
 final readonly class CheckResult
 {
@@ -30,6 +33,7 @@ final readonly class CheckResult
         public array $modifierTerms = [],
         public ?PoolResult $pool = null,
         public ?SpecialResult $special = null,
+        public ?ChallengeResult $challenge = null,
     ) {
     }
 }

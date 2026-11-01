@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {"key": "minimal", "name": "Minimal"},
+  "oracles": {"tables": [], "likelihood": []},
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [],
+  "flows": [],
+  "sheet": {"fields": [{"key": "momentum", "label": "Momentum", "type": "number", "min": -6, "max": 10}, {"key": "bonus", "label": "Bonus", "type": "derived", "formula": "1"}]},
+  "checks": [{"key": "edge", "label": "Edge", "challenge": {"count": 2, "sides": 10}, "bands": [{"key": "miss", "label": "Miss"}]}]
+}

@@ -337,7 +337,7 @@ A release may define **checks** ([ADR 0024](../adr/0024-structured-checks-withou
 | Part | Shape | Rules |
 |---|---|---|
 | `checks` | list of Check | At most 50; keys unique (domain check) |
-| Check | `{key, label (1–100), hint? (≤500), dice?, pool?, modifier?, difficulty?, push?, bands}` | Exactly one of `dice` and `pool`. `dice` is dice notation (≤100), parsed by the Randomness kernel (domain check). `modifier` is a sheet [formula](#formulas-adr-0023) of 1–200 characters, refused with a `pool`. See [Pool and push](#pool-and-push-adr-0041) |
+| Check | `{key, label (1–100), hint? (≤500), dice?, pool?, challenge?, modifier?, difficulty?, push?, bands}` | Exactly one of `dice`, `pool` and `challenge` alone; `dice` with `challenge` is an action roll ([challenge dice](#challenge-dice-adr-0049)). `dice` is dice notation (≤100), parsed by the Randomness kernel (domain check). `modifier` is a sheet [formula](#formulas-adr-0023) of 1–200 characters, refused with a `pool`. See [Pool and push](#pool-and-push-adr-0041) |
 | `difficulty` | `{label (1–60), default, min?, max?}` | Integers from −1,000 to 1,000; `min ≤ default ≤ max` (domain check). The player sets it at roll time; band formulas read it as `{check:difficulty}` |
 | `bands` | list of `{key, label (1–100), upTo?: int \| {tracker: key} \| {formula: string}}` | 1–10; keys unique in the check; ordered as a [band](#bands-and-effects): every band but the last has `upTo`, the last omits it, literal `upTo` values strictly increase. A `{tracker}` names a tracker of the release; a `{formula}` is a sheet formula that may also read `{check:difficulty}` |
 
@@ -371,7 +371,7 @@ A check may roll a **pool** instead of a dice expression, and a pool check may b
 | `pool` | `{count, sides, successAt, criticals?, hunger?}`, no other property | `count` is an integer from 1 to 100 or a `{formula}` (1–200 characters) in the sheet scope of a `modifier`. `sides` is an integer from 2 to 1,000. `successAt` is an integer from 1 to `sides`: a die succeeds when its face is at least `successAt`. The check total is the number of successes; bands and difficulty work on it as before |
 | `pool.criticals` | `{bonus}` | `bonus` is an integer from 1 to 10. Every pair of dice showing the top face (`sides`), in any group, adds `bonus` successes ([ADR 0044](../adr/0044-hunger-dice-criticals-and-special-results.md)) |
 | `pool.hunger` | `{count}` | `count` is an integer from 0 to 100 or a `{formula}` in the scope of `pool.count`. That many dice of the sized pool, clamped to 0..size, are Hunger dice: same `successAt`, never pushed ([ADR 0044](../adr/0044-hunger-dice-criticals-and-special-results.md)) |
-| `push` | `{label (1–100), effects? (0–10), maxDice?}` | Only on a check with a `pool`. `label` names the cost. `effects` are `sheet` and `tracker` effects, applied with the push; sheet effects there follow the [sheet effect](#sheet-effects-adr-0027) rules (the rolling Character, the sheet formula scope) and may `mark` without an option. A push re-rolls failed regular dice, never Hunger dice. `maxDice` (1–100) caps them at the first N failed regular dice in roll order; without it every failed regular die re-rolls |
+| `push` | `{label (1–100), effects? (0–10), maxDice?}` | Only on a check with a `pool`, or on a check with `challenge.momentum`, where it burns momentum ([ADR 0049](../adr/0049-challenge-dice-and-burning-momentum.md); `maxDice` is refused there). `label` names the cost. `effects` are `sheet` and `tracker` effects, applied with the push; sheet effects there follow the [sheet effect](#sheet-effects-adr-0027) rules (the rolling Character, the sheet formula scope) and may `mark` without an option. A push re-rolls failed regular dice, never Hunger dice. `maxDice` (1–100) caps them at the first N failed regular dice in roll order; without it every failed regular die re-rolls |
 
 Domain checks, each failing with its path, such as `checks[0].pool.successAt` or `checks[0].push.effects[1].value`:
 
@@ -416,6 +416,36 @@ A roll **fails** when its total is below its difficulty, for a check that declar
 ```
 
 The fixture `valid/v2-hunger-dice.json` has the whole release. Play's translator reads `criticals`, `hunger` and `maxDice` and plays them (`preset-vtm-chronicle` slice 2), and reads `special` outcomes too (slice 3): a roll with a special result takes the outcome that names it ahead of the band's, also after Keep or Push on a pending step, where a push recomputes the special result with the band. The translator fails closed with the entry's path on an unknown `special`, a `special` named twice, an entry naming both or neither of `band` and `special`, and a `special` the step's check cannot produce (every check of a check set must be able to).
+
+#### Challenge dice (ADR 0049)
+
+A check may compare a score against **challenge dice**, as Ironsworn does. Additive in schema version 2: every release valid before keeps its hash, and a `null` is left out of the canonical form ([ADR 0049](../adr/0049-challenge-dice-and-burning-momentum.md)).
+
+| Part | Shape | Rules |
+|---|---|---|
+| `challenge` | `{count, sides, scoreMax?, momentum?}`, no other property | `count` is an integer from 2 to 10 and `sides` from 2 to 1,000. `scoreMax` (1–1,000) caps the score. `momentum` is the key of a `number` sheet field |
+
+- **Action roll** (`dice` and `challenge`): score = `dice + modifier + situational modifier`, capped at `scoreMax`. The total is the number of challenge dice showing a face strictly below the score (ties go to the dice).
+- **Progress roll** (`challenge` alone): `modifier` is required and is the score. It refuses `challenge.momentum`.
+- **Negative momentum**: when the field's value is below 0 and its absolute value equals the action die, that die counts 0.
+- **Burn**: `push` on a challenge check burns momentum. No dice are rolled; the score becomes the momentum value (capped at `scoreMax`), and the push cost is applied after it. Offered only when momentum beats more challenge dice than the score.
+- **Match**: when every challenge die shows the same face the roll has the special result `match`. It is shown only: a step `outcomes` entry cannot name it, and the band's outcome still applies.
+
+Domain checks, each failing with its path, such as `checks[0].challenge.momentum`:
+
+- `pool` with `challenge`, and `difficulty` on a challenge check, are errors.
+- A progress roll without `modifier` (`checks[0].modifier`) or with `challenge.momentum` is an error.
+- `challenge.momentum` needs `dice` to roll exactly one die (`1dN`, no selectors, no arithmetic) and the key of a `number` field.
+- `push` on a challenge check needs `challenge.momentum`; `push.maxDice` is an error there.
+- A step `special` outcome on a challenge check is an error: it cannot produce `critical`, `messyCritical` or `bestialFailure`.
+
+```json
+"dice": "1d6", "modifier": "{edge}",
+"challenge": {"count": 2, "sides": 10, "scoreMax": 10, "momentum": "momentum"},
+"push": {"label": "Burn momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "{momentum-reset}"}}]}
+```
+
+The fixture `valid/v2-challenge-dice.json` has the whole release. Play's translator refuses `challenge` with the path and a message naming the ADR until it plays them (`preset-ironsworn` slices 2 and 3).
 
 ### Gear and shops (ADR 0045)
 

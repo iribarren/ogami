@@ -1,6 +1,6 @@
 # 0041. Dice pools, pushed rolls and conditions
 
-- **Status:** Accepted
+- **Status:** Accepted, amended by [0049](0049-challenge-dice-and-burning-momentum.md) (`push` was pool only: a challenge check pushes by burning momentum)
 - **Date:** 2026-10-25
 
 ## Context

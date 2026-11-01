@@ -52,6 +52,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0046 | [Campaign transfer](0046-campaign-transfer.md) | Accepted |
 | 0047 | [Places](0047-places.md) | Accepted |
 | 0048 | [Select sheet fields](0048-select-sheet-fields.md) | Accepted |
+| 0049 | [Challenge dice and burning momentum](0049-challenge-dice-and-burning-momentum.md) | Accepted |
 
 ## Template
 

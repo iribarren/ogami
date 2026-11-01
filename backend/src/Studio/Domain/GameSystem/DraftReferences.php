@@ -260,6 +260,10 @@ final class DraftReferences
             $count = \is_array($check['pool'] ?? null) ? $check['pool']['count'] ?? null : null;
             $paths += self::sheetFormulaPaths(\is_array($count) ? $count['formula'] ?? null : null, $key, $path.'.pool.count.formula');
             $paths += self::sheetFormulaPaths(self::hungerFormula($check), $key, $path.'.pool.hunger.count.formula');
+            if (\is_array($check['challenge'] ?? null) && $key === ($check['challenge']['momentum'] ?? null)) {
+                $paths[$path.'.challenge.momentum'] = true;
+            }
+
             foreach (self::objects($check['bands'] ?? null) as $bandIndex => $band) {
                 $upTo = $band['upTo'] ?? null;
                 $paths += self::sheetFormulaPaths(\is_array($upTo) ? $upTo['formula'] ?? null : null, $key, \sprintf('%s.bands[%d].upTo.formula', $path, $bandIndex));

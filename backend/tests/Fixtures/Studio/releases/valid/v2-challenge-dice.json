@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {
+    "key": "challenge-dice", "name": "Challenge dice", "description": "An action roll with a burn and a progress roll against challenge dice (ADR 0049).",
+    "credits": {"notice": "Unofficial fan content.", "license": "CC BY 4.0", "url": "https://creativecommons.org/licenses/by/4.0/"}
+  },
+  "oracles": {"tables": [], "likelihood": []},
+  "trackers": [],
+  "factSlots": [],
+  "sceneTypes": [
+    {
+      "key": "journey", "name": "Journey", "purpose": "Swear a vow and strike out.", "oracles": [],
+      "setup": [],
+      "play": [
+        {
+          "key": "strike", "kind": "check", "title": "Strike out", "check": "edge",
+          "outcomes": [
+            {"band": "miss", "effects": [{"kind": "sheet", "field": "momentum", "op": "subtract", "value": 1}]},
+            {"band": "strong", "effects": [{"kind": "sheet", "field": "momentum", "op": "add", "value": 1}]}
+          ]
+        },
+        {"key": "fulfil", "kind": "check", "title": "Fulfil the vow", "check": "fulfill"}
+      ],
+      "closing": []
+    }
+  ],
+  "flows": [],
+  "sheet": {
+    "fields": [
+      {"key": "edge", "label": "Edge", "type": "number", "min": 1, "max": 3, "default": 2},
+      {"key": "momentum", "label": "Momentum", "type": "number", "min": -6, "max": 10, "default": 2},
+      {"key": "vow", "label": "Vow ticks", "type": "number", "min": 0, "max": 40, "default": 0},
+      {"key": "momentum-reset", "label": "Momentum reset", "type": "derived", "formula": "2"}
+    ]
+  },
+  "checks": [
+    {
+      "key": "edge", "label": "Edge",
+      "dice": "1d6", "modifier": "{edge}",
+      "challenge": {"count": 2, "sides": 10, "scoreMax": 10, "momentum": "momentum"},
+      "push": {"label": "Burn momentum", "effects": [{"kind": "sheet", "field": "momentum", "op": "set", "value": {"formula": "{momentum-reset}"}}]},
+      "bands": [
+        {"key": "miss", "label": "Miss", "upTo": 0},
+        {"key": "weak", "label": "Weak hit", "upTo": 1},
+        {"key": "strong", "label": "Strong hit"}
+      ]
+    },
+    {
+      "key": "fulfill", "label": "Fulfill a vow",
+      "modifier": "{vow} / 4",
+      "challenge": {"count": 2, "sides": 10},
+      "bands": [
+        {"key": "miss", "label": "Miss", "upTo": 0},
+        {"key": "weak", "label": "Weak hit", "upTo": 1},
+        {"key": "strong", "label": "Strong hit"}
+      ]
+    }
+  ]
+}

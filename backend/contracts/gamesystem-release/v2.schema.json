@@ -806,7 +806,7 @@
       }
     },
     "check": {
-      "description": "A named rule: dice or a pool, an optional formula modifier over sheet values (never with a pool), an optional difficulty, an optional push for a pool and outcome bands (ADR 0024, 0041). Dice notation, formulas, band keys and order, the difficulty range and successAt <= sides are checked by the domain.",
+      "description": "A named rule: dice, a pool or challenge dice, an optional formula modifier over sheet values (never with a pool), an optional difficulty (never with challenge dice), an optional push for a pool or a burn for challenge dice and outcome bands (ADR 0024, 0041, 0049). Dice notation, formulas, band keys and order, the difficulty range, successAt <= sides and the rules of a challenge check (a progress roll needs a modifier, momentum needs exactly one action die and a number field) are checked by the domain.",
       "type": "object",
       "required": ["key", "label", "bands"],
       "additionalProperties": false,
@@ -814,9 +814,13 @@
         "key": { "$ref": "#/$defs/key" },
         "label": { "$ref": "#/$defs/label" },
         "hint": { "type": ["string", "null"], "maxLength": 500 },
-        "dice": { "description": "Dice notation, e.g. 1d10. Exactly one of dice or pool.", "type": ["string", "null"], "minLength": 1, "maxLength": 100 },
+        "dice": { "description": "Dice notation, e.g. 1d10. One of dice or pool; beside challenge it is the action die of an action roll.", "type": ["string", "null"], "minLength": 1, "maxLength": 100 },
         "pool": {
           "anyOf": [{ "$ref": "#/$defs/checkPool" }, { "type": "null" }]
+        },
+        "challenge": {
+          "description": "Challenge dice the score is compared against, each on its own (ADR 0049). With dice it is an action roll; alone, a progress roll.",
+          "anyOf": [{ "$ref": "#/$defs/checkChallenge" }, { "type": "null" }]
         },
         "modifier": {
           "description": "A formula over sheet values, added to the dice total. A pool check refuses it (checked by the domain).",
@@ -826,7 +830,7 @@
           "anyOf": [{ "$ref": "#/$defs/checkDifficulty" }, { "type": "null" }]
         },
         "push": {
-          "description": "Only with a pool (checked by the domain).",
+          "description": "Only with a pool, or with challenge.momentum where it burns momentum (checked by the domain).",
           "anyOf": [{ "$ref": "#/$defs/checkPush" }, { "type": "null" }]
         },
         "bands": {
@@ -841,17 +845,39 @@
           "required": ["dice"],
           "properties": {
             "dice": { "type": "string" },
-            "pool": { "type": "null" }
+            "pool": { "type": "null" },
+            "challenge": { "type": "null" }
           }
         },
         {
           "required": ["pool"],
           "properties": {
             "pool": { "$ref": "#/$defs/checkPool" },
-            "dice": { "type": "null" }
+            "dice": { "type": "null" },
+            "challenge": { "type": "null" }
+          }
+        },
+        {
+          "required": ["challenge"],
+          "properties": {
+            "challenge": { "$ref": "#/$defs/checkChallenge" },
+            "dice": { "type": ["string", "null"] },
+            "pool": { "type": "null" }
           }
         }
       ]
+    },
+    "checkChallenge": {
+      "description": "Challenge dice (ADR 0049): the check total is how many of them show a face strictly below the score. scoreMax caps the score; momentum names a number sheet field a push burns (checked by the domain).",
+      "type": "object",
+      "required": ["count", "sides"],
+      "additionalProperties": false,
+      "properties": {
+        "count": { "type": "integer", "minimum": 2, "maximum": 10 },
+        "sides": { "type": "integer", "minimum": 2, "maximum": 1000 },
+        "scoreMax": { "type": ["integer", "null"], "minimum": 1, "maximum": 1000 },
+        "momentum": { "anyOf": [{ "$ref": "#/$defs/key" }, { "type": "null" }] }
+      }
     },
     "checkPool": {
       "description": "A pool of dice that each succeed at or above successAt (ADR 0041); the check total is the number of successes, plus the bonus of critical pairs. Some of its dice may be Hunger dice (ADR 0044). successAt <= sides is checked by the domain; count formulas read the sheet like a modifier.",

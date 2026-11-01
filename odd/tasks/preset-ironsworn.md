@@ -91,7 +91,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T7 | 3 | Play UI: burn offer on the sheet and the pending step | | [ ] | |
 | T8 | 4 | Studio check editor: challenge mode, action or progress, momentum select, burn | | [ ] | |
 | T9 | 4 | Studio sandbox: challenge roll, match, burn | | [ ] | |
-| T10 | 1 | Studio references: `challenge.momentum` blocks a rename or deletion (`DraftReferences`) | delegated writer (slice 1) | [ ] | |
+| T10 | 1 | Studio references: `challenge.momentum` blocks a rename or deletion (`DraftReferences`) | delegated writer (slice 1) | [x] | |
 | T11 | 5 | Read the official licensing page; design the flow in this doc; flow example in `docs/domain/flow-examples.md` | | [ ] | |
 | T12 | 5 | `backend/presets/ironsworn.json` base: credits, sheet, trackers, checks; `PresetsTest` | | [ ] | |
 | T13 | 5 | Flow, Scene Types and tables; `IronswornPresetFlowTest` | | [ ] | |
@@ -105,6 +105,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - 2026-11-01: T1 done: ADR 0049, index, amendments on ADR 0024/0041/0044, contract doc and glossary. Docs only: no RED.
 - 2026-11-01: T2 done: schema `challenge` and its oneOf, Studio `Checks` refusals, Play translator refuses `challenge` (ADR 0049), fixtures and tests. RED: 32 refusal cases and 41-test class failed (`challenge: unknown property`), GREEN after `Checks.php`; translator RED `unknown property`, GREEN after `refuseUnplayed`.
+- 2026-11-01: T10 done: `challenge.momentum` counts in `DraftReferences::sheetFieldPathsTo`. RED: expected the momentum path, got the push effect only; GREEN after the edit.
 
 ## Reviews
 

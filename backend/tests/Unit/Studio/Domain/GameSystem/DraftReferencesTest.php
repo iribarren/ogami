@@ -449,6 +449,27 @@ final class DraftReferencesTest extends TestCase
     }
 
     #[Test]
+    public function aSheetFieldIsReferencedByTheMomentumOfAChallenge(): void
+    {
+        $document = $this->sheetDocument();
+        $document['sheet'] = [];
+        $document['sceneTypes'] = [];
+        $document['checks'] = [
+            ['key' => 'plain', 'dice' => '1d6'],
+            ['key' => 'strike', 'dice' => '1d6', 'modifier' => '{edge}', 'challenge' => ['count' => 2, 'sides' => 10, 'momentum' => 'momentum'], 'push' => ['label' => 'Burn', 'effects' => [
+                ['kind' => 'sheet', 'field' => 'momentum', 'op' => 'set', 'value' => ['formula' => '{reset}']],
+            ]]],
+            ['key' => 'fulfill', 'modifier' => '{vow} / 4', 'challenge' => ['count' => 2, 'sides' => 10]],
+            ['key' => 'rush', 'dice' => '1d6', 'challenge' => ['count' => 2, 'sides' => 10, 'momentum' => 'edge']],
+        ];
+
+        self::assertSame(['checks[1].challenge.momentum', 'checks[1].push.effects[0]'], DraftReferences::sheetFieldPathsTo($document, 'momentum'));
+        self::assertSame(['checks[1].modifier', 'checks[3].challenge.momentum'], DraftReferences::sheetFieldPathsTo($document, 'edge'));
+        self::assertSame(['checks[2].modifier'], DraftReferences::sheetFieldPathsTo($document, 'vow'));
+        self::assertSame([], DraftReferences::sheetFieldPathsTo($document, 'ghost'));
+    }
+
+    #[Test]
     public function aConditionOptionIsReferencedByTheMarksAndClearsThatNameItAnywhere(): void
     {
         $document = $this->sheetDocument();

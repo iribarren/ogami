@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Studio\Domain\Release\Version2;
 
 use App\Formula\Domain\Formula;
+use App\Randomness\Domain\DiceExpression;
 use App\Studio\Domain\Release\InvalidReleaseContent;
 use App\Studio\Domain\Release\ReleaseFields;
 
@@ -12,7 +13,8 @@ use App\Studio\Domain\Release\ReleaseFields;
  * The checks of a schema version 2 release (ADR 0024): a dice expression or a pool (ADR 0041) that
  * counts the dice at or above a threshold, with optional critical pairs and Hunger dice (ADR 0044),
  * an optional formula modifier over the sheet (never with a pool), an optional push a pool check
- * may take once with its cost and cap, an optional difficulty the player sets at roll time, and outcome bands
+ * may take once with its cost and cap, challenge dice a score is compared against (ADR 0049) with an
+ * optional momentum field a push burns, an optional difficulty the player sets at roll time, and outcome bands
  * whose bounds are integers, trackers or formulas over the sheet (plus {check:difficulty} when the
  * check declares a difficulty). Returns the canonical checks and what check steps may name of each.
  *
@@ -32,6 +34,9 @@ final class Checks
     public const int MIN_POOL_SIDES = 2;
     public const int MAX_POOL_SIDES = 1000;
     public const int MAX_CRITICALS_BONUS = 10;
+    public const int MIN_CHALLENGE_COUNT = 2;
+    public const int MAX_CHALLENGE_COUNT = 10;
+    public const int MAX_SCORE = 1000;
 
     /** The special results of a pool roll (ADR 0044), in contract order. */
     public const array SPECIALS = ['critical', 'messyCritical', 'bestialFailure'];
@@ -39,10 +44,11 @@ final class Checks
     /** A check step outcome names a band or a special result, each once. */
     public const int MAX_OUTCOMES = self::MAX_BANDS + 3;
 
-    private const array CHECK = ['key' => true, 'label' => true, 'hint' => false, 'dice' => false, 'pool' => false, 'modifier' => false, 'difficulty' => false, 'push' => false, 'bands' => true];
+    private const array CHECK = ['key' => true, 'label' => true, 'hint' => false, 'dice' => false, 'pool' => false, 'challenge' => false, 'modifier' => false, 'difficulty' => false, 'push' => false, 'bands' => true];
     private const array POOL = ['count' => true, 'sides' => true, 'successAt' => true, 'criticals' => false, 'hunger' => false];
     private const array CRITICALS = ['bonus' => true];
     private const array HUNGER = ['count' => true];
+    private const array CHALLENGE = ['count' => true, 'sides' => true, 'scoreMax' => false, 'momentum' => false];
     private const array PUSH = ['label' => true, 'effects' => false, 'maxDice' => false];
     private const array DIFFICULTY = ['label' => true, 'default' => true, 'min' => false, 'max' => false];
     private const array BAND = ['key' => true, 'label' => true, 'upTo' => false];
@@ -72,11 +78,17 @@ final class Checks
             }
 
             $trackerKeys = array_keys($catalog->trackers);
+            $challenge = isset($check['challenge']) ? self::challenge($check['challenge'], $path.'.challenge', $fieldTypes) : null;
+            if (null !== $challenge && isset($check['pool'])) {
+                throw InvalidReleaseContent::at($path.'.challenge', 'a challenge check has no pool, its challenge dice replace it');
+            }
+
             if (isset($check['dice']) && isset($check['pool'])) {
                 throw InvalidReleaseContent::at($path, 'give either dice or pool, not both');
             }
 
             $pool = null;
+            $dice = null;
             if (isset($check['pool'])) {
                 $pool = self::pool($check['pool'], $path.'.pool', $fieldTypes, $trackerKeys);
                 $check['pool'] = $pool;
@@ -84,17 +96,22 @@ final class Checks
                     throw InvalidReleaseContent::at($path.'.modifier', 'a pool check has no modifier, its count formula sizes the pool');
                 }
             } elseif (isset($check['dice'])) {
-                Steps::dice($check['dice'], $path.'.dice');
-            } else {
-                throw InvalidReleaseContent::at($path.'.dice', 'required unless the check declares a pool');
+                $dice = Steps::dice($check['dice'], $path.'.dice');
+            } elseif (null === $challenge) {
+                throw InvalidReleaseContent::at($path.'.dice', 'required unless the check declares a pool or a challenge');
+            }
+
+            if (null !== $challenge) {
+                $check['challenge'] = $challenge;
+                self::assertChallengeCheck($check, $challenge, $dice, $path);
             }
 
             if (isset($check['push'])) {
-                if (!isset($check['pool'])) {
-                    throw InvalidReleaseContent::at($path.'.push', 'only a check with a pool can be pushed');
+                if (!isset($check['pool']) && !isset($challenge['momentum'])) {
+                    throw InvalidReleaseContent::at($path.'.push', null === $challenge ? 'only a check with a pool can be pushed, or one with challenge.momentum can burn' : 'burning momentum needs challenge.momentum');
                 }
 
-                $check['push'] = self::push($check['push'], $path.'.push', $catalog);
+                $check['push'] = self::push($check['push'], $path.'.push', $catalog, null !== $challenge);
             }
 
             if (isset($check['modifier'])) {
@@ -181,6 +198,71 @@ final class Checks
     }
 
     /**
+     * {count, sides, scoreMax?, momentum?}: the dice a score is compared against, each on its own
+     * (ADR 0049). The momentum is a number field of the sheet, read when the roll is made.
+     *
+     * @param array<string, string> $fieldTypes
+     *
+     * @return array{count: int, sides: int, scoreMax?: int, momentum?: string}
+     */
+    private static function challenge(mixed $value, string $path, array $fieldTypes): array
+    {
+        $challenge = ReleaseFields::object($value, $path, self::CHALLENGE);
+        $checked = [
+            'count' => ReleaseFields::integer($challenge['count'], $path.'.count', self::MIN_CHALLENGE_COUNT, self::MAX_CHALLENGE_COUNT),
+            'sides' => ReleaseFields::integer($challenge['sides'], $path.'.sides', self::MIN_POOL_SIDES, self::MAX_POOL_SIDES),
+        ];
+        if (isset($challenge['scoreMax'])) {
+            $checked['scoreMax'] = ReleaseFields::integer($challenge['scoreMax'], $path.'.scoreMax', 1, self::MAX_SCORE);
+        }
+
+        if (isset($challenge['momentum'])) {
+            $momentum = ReleaseFields::key($challenge['momentum'], $path.'.momentum');
+            $type = $fieldTypes[$momentum] ?? throw InvalidReleaseContent::at($path.'.momentum', \sprintf('unknown sheet field "%s"', $momentum));
+            if ('number' !== $type) {
+                throw InvalidReleaseContent::at($path.'.momentum', \sprintf('field "%s" is a %s field, momentum must be a number field', $momentum, $type));
+            }
+
+            $checked['momentum'] = $momentum;
+        }
+
+        return $checked;
+    }
+
+    /**
+     * What a challenge check refuses beside the shape of its challenge (ADR 0049): a difficulty (the
+     * challenge dice are the difficulty), a progress roll (no dice) without the modifier that is its
+     * score or with a momentum, and a momentum when the dice are not exactly one action die.
+     *
+     * @param array<string, mixed> $check
+     * @param array<string, mixed> $challenge
+     * @param ?string              $dice      the validated dice notation, null for a progress roll
+     */
+    private static function assertChallengeCheck(array $check, array $challenge, ?string $dice, string $path): void
+    {
+        if (isset($check['difficulty'])) {
+            throw InvalidReleaseContent::at($path.'.difficulty', 'a challenge check has no difficulty, the challenge dice are the difficulty');
+        }
+
+        if (null === $dice) {
+            if (!isset($check['modifier'])) {
+                throw InvalidReleaseContent::at($path.'.modifier', 'required, it is the score of a progress roll');
+            }
+
+            if (isset($challenge['momentum'])) {
+                throw InvalidReleaseContent::at($path.'.challenge.momentum', 'a progress roll ignores momentum, give dice to make it an action roll');
+            }
+
+            return;
+        }
+
+        // The notation is normalized (lower case, no whitespace, "d" as "1d"), so one die is exactly "1dN".
+        if (isset($challenge['momentum']) && 1 !== preg_match('/^1d\d+$/', DiceExpression::fromString($dice)->notation())) {
+            throw InvalidReleaseContent::at($path.'.challenge.momentum', \sprintf('needs dice that rolls exactly one die, "%s" given', $dice));
+        }
+    }
+
+    /**
      * The special results a check can produce (ADR 0044): a critical needs critical pairs, a bestial
      * failure Hunger dice, and a messy critical both. A dice check produces none. A literal Hunger
      * count of 0 rolls no Hunger dice, so it enables none of the Hunger results (a formula might).
@@ -199,13 +281,18 @@ final class Checks
 
     /**
      * {label, effects?, maxDice?}: the cost of the push, applied by sheet and tracker effects
-     * (ADR 0041), and the most failed regular dice it re-rolls (ADR 0044).
+     * (ADR 0041), and the most failed regular dice it re-rolls (ADR 0044). A burn of momentum
+     * (ADR 0049) re-rolls nothing, so it has no cap.
      *
      * @return array{label: string, effects?: list<array<string, mixed>>, maxDice?: int}
      */
-    private static function push(mixed $value, string $path, Catalog $catalog): array
+    private static function push(mixed $value, string $path, Catalog $catalog, bool $burn): array
     {
         $push = ReleaseFields::object($value, $path, self::PUSH);
+        if ($burn && isset($push['maxDice'])) {
+            throw InvalidReleaseContent::at($path.'.maxDice', 'a burn re-rolls no dice, a push cap is for a pool');
+        }
+
         $checked = ['label' => ReleaseFields::text($push['label'], $path.'.label', 1, self::MAX_LABEL_LENGTH)];
         $effects = Effects::list($push['effects'] ?? null, $path.'.effects', $catalog, push: true);
         if ([] !== $effects) {

@@ -1490,7 +1490,8 @@ final readonly class GameSystemReleaseTranslator
         foreach ($list as $index => $item) {
             $path = \sprintf('checks[%d]', $index);
             $check = $this->object($view, $item, $path);
-            $this->assertProperties($view, $check, $path, ['key', 'label', 'hint', 'dice', 'modifier', 'pool', 'push', 'difficulty', 'bands']);
+            $this->assertProperties($view, $check, $path, ['key', 'label', 'hint', 'dice', 'modifier', 'pool', 'challenge', 'push', 'difficulty', 'bands']);
+            $this->refuseUnplayed($view, $check, $path, 'challenge', 'challenge dice are');
             $key = $this->key($view, $check['key'] ?? null, $path.'.key');
             if (isset($checks[$key])) {
                 throw $this->invalid($view, $path.'.key', \sprintf('duplicate check key "%s".', $key));
@@ -1789,6 +1790,19 @@ final readonly class GameSystemReleaseTranslator
         }
 
         return $formula;
+    }
+
+    /**
+     * Refuses a part of ADR 0049 Studio publishes but Play does not play yet (preset-ironsworn slices
+     * 2 and 3), present even as null, so a release using it fails closed instead of playing without it.
+     *
+     * @param array<array-key, mixed> $object
+     */
+    private function refuseUnplayed(PublishedReleaseView $view, array $object, string $path, string $name, string $what): void
+    {
+        if (\array_key_exists($name, $object)) {
+            throw $this->invalid($view, $path.'.'.$name, $what.' not played yet (ADR 0049).');
+        }
     }
 
     /**

@@ -83,7 +83,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Docs: ADR 0049 and its index, amendments noted on ADR 0024 and ADR 0044, `docs/contracts/gamesystem-release.md`, glossary | delegated writer (slice 1) | [x] | |
-| T2 | 1 | Schema `v2.schema.json`, Studio validation in `Checks.php`, Play translator refuses `challenge`, valid and invalid fixtures, contract tests | delegated writer (slice 1) | [ ] | |
+| T2 | 1 | Schema `v2.schema.json`, Studio validation in `Checks.php`, Play translator refuses `challenge`, valid and invalid fixtures, contract tests | delegated writer (slice 1) | [x] | |
 | T3 | 2 | Randomness: challenge roll kernel. Play domain: action and progress rolls, score cap, hits, negative momentum, `match` | | [ ] | |
 | T4 | 2 | Journal content and legacy read, Play API, `make api` | | [ ] | |
 | T5 | 2 | Play UI: roll dialog and journal show the score, each challenge die, the cancelled die and a match | | [ ] | |
@@ -104,6 +104,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-01: Exploration: five contract gaps named, vows fit as fixed slots (user's decision). Rules read from a copy of the SRD; the official licensing page refused the fetch.
 
 - 2026-11-01: T1 done: ADR 0049, index, amendments on ADR 0024/0041/0044, contract doc and glossary. Docs only: no RED.
+- 2026-11-01: T2 done: schema `challenge` and its oneOf, Studio `Checks` refusals, Play translator refuses `challenge` (ADR 0049), fixtures and tests. RED: 32 refusal cases and 41-test class failed (`challenge: unknown property`), GREEN after `Checks.php`; translator RED `unknown property`, GREEN after `refuseUnplayed`.
 
 ## Reviews
 

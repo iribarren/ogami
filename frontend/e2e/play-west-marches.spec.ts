@@ -83,7 +83,7 @@ test('a solo player founds the town and a roster, opens the next session with a 
 
   // The founding was the first session: it closes in town with nothing to resolve.
   await page.getByRole('button', { name: 'End session' }).click()
-  await step('Safe in town.').getByRole('button', { name: 'Skip' }).click()
+  await step('Safe in town. Anything worth noting?').getByRole('button', { name: 'Skip' }).click()
 
   // Session two opens with a rumor and a party. The party is added to the one the session
   // inherits, so everyone is still in it.

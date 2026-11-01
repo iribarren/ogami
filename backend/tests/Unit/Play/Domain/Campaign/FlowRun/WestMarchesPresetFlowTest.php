@@ -636,6 +636,35 @@ final class WestMarchesPresetFlowTest extends FlowRunTestCase
         }
     }
 
+    #[Test]
+    public function theWanderingRollCannotBeSkippedBecauseASkipWouldDrawAnEncounterTable(): void
+    {
+        $campaign = $this->expedition();
+        $this->setTracker($campaign, 'away', 1);
+        $this->travel($campaign);
+
+        $this->expectException(\App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped::class);
+        $campaign->skipFlowStep('wander', $this->release, self::at());
+    }
+
+    #[Test]
+    public function skippingTheModePromptOfAGenericTestAsksForNoRoll(): void
+    {
+        $site = $this->expedition();
+        $site->pickSceneType('explore-site', $this->release, self::at());
+        $site->completeFlowStep('known', StepResult::pick(ItemKind::Place, []), $this->release, self::at());
+        $site->skipFlowStep('feature', $this->release, self::at());
+        $site->completeFlowStep('name', self::prompt('Ashwatch'), $this->release, self::at());
+        $site->skipFlowStep('test', $this->release, self::at());
+        self::assertSame(['open', null], self::position($site), 'No normal test is asked for after the skip.');
+
+        $meeting = $this->encounter(0, 'near', 'encounters-near', 1);
+        $meeting->pickSceneType('encounter', $this->release, self::at());
+        $meeting->completeFlowStep('meet', self::prompt('Shepherds'), $this->release, self::at());
+        $meeting->skipFlowStep('test', $this->release, self::at());
+        self::assertSame(['open', null], self::position($meeting));
+    }
+
     /**
      * @return iterable<string, array{int, int}> the ability score and its modifier
      */

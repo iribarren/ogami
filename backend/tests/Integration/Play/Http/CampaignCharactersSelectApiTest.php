@@ -77,11 +77,15 @@ final class CampaignCharactersSelectApiTest extends WebTestCase
         $this->client->jsonRequest('PUT', \sprintf('/api/campaigns/%s/characters/%s', $id, $characterId), ['name' => 'Vi', 'values' => ['stance' => 'reckless', 'origin' => 'coast']]);
         self::assertResponseStatusCodeSame(200);
         self::assertSame('reckless', $this->value($this->characters($id)[0], 'stance'));
+        self::assertSame('coast', $this->value($this->characters($id)[0], 'origin'));
 
         $this->client->jsonRequest('PUT', \sprintf('/api/campaigns/%s/characters/%s', $id, $characterId), ['name' => 'Vi', 'values' => ['stance' => null, 'origin' => null]]);
         self::assertResponseStatusCodeSame(200);
-        self::assertNull($this->value($this->characters($id)[0], 'stance'));
-        self::assertNull($this->value($this->characters($id)[0], 'origin'));
+        $values = (array) ($this->characters($id)[0]['values'] ?? null);
+        self::assertArrayHasKey('stance', $values);
+        self::assertNull($values['stance']);
+        self::assertArrayHasKey('origin', $values);
+        self::assertNull($values['origin']);
     }
 
     /**

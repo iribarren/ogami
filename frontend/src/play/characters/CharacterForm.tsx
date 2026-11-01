@@ -5,7 +5,13 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { computeDerived } from '@/shared/sheet/derivedValues'
 import { SheetFields } from '@/shared/sheet/SheetFields'
-import { fromDraft, storedFields, toDraft, type Draft } from '@/shared/sheet/sheetValues'
+import {
+  fromDraft,
+  storedFields,
+  storedValue,
+  toDraft,
+  type Draft,
+} from '@/shared/sheet/sheetValues'
 import type { SheetFieldView, SheetTemplateView } from '@/shared/sheet/types'
 
 import {
@@ -82,7 +88,10 @@ export function CharacterForm({
           field.key,
           character === null && budget !== undefined
             ? startingDraft(field, budget)
-            : toDraft(field, character?.values[field.key]),
+            : toDraft(
+                field,
+                character === null ? undefined : storedValue(field, character.values[field.key]),
+              ),
         ]
       }),
     ),

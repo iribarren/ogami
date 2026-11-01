@@ -9,6 +9,7 @@ import {
   initiativeField,
   inventoryField,
   oldCharacter,
+  selectField,
   sheet,
   viCharacter,
 } from './fixtures'
@@ -173,5 +174,36 @@ describe('CharacterSheetDialog', () => {
     await user.click(screen.getByRole('button', { name: 'View sheet of Vi' }))
 
     expect(await screen.findByText('This release has no sheet fields.')).toBeInTheDocument()
+  })
+
+  it('shows a select value as its option label, the raw key when undeclared, and None for null', async () => {
+    const user = userEvent.setup()
+    const withStance = (stance: string | null | undefined) => (
+      <CharacterSheetDialog
+        character={{ ...viCharacter, values: stance === undefined ? {} : { stance } }}
+        sheet={[selectField]}
+      />
+    )
+    const { rerender } = render(withStance('reckless'))
+    const open = async () => {
+      await user.click(screen.getByRole('button', { name: 'View sheet of Vi' }))
+      return within(await screen.findByRole('dialog', { name: 'Vi' }))
+    }
+
+    expect((await open()).getByText('Reckless')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+
+    rerender(withStance('gone'))
+    expect((await open()).getByText('gone')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+
+    rerender(withStance(null))
+    const none = await open()
+    expect(none.getByText('None')).toBeInTheDocument()
+    expect(none.queryByText('null')).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+
+    rerender(withStance(undefined))
+    expect((await open()).getByText('None')).toBeInTheDocument()
   })
 })

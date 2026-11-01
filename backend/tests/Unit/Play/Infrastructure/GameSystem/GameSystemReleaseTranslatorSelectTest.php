@@ -81,7 +81,7 @@ final class GameSystemReleaseTranslatorSelectTest extends TestCase
     }
 
     #[Test]
-    public function itRefusesAFormulaAndASheetEffectOnASelectField(): void
+    public function itRefusesAFormulaReadingASelectField(): void
     {
         $release = ReleaseViews::fixtureContent('valid/v2-select-field');
         $release = ReleaseArrays::with($release, 'sheet.fields.3', ['key' => 'power', 'label' => 'Power', 'type' => 'derived', 'formula' => '{stance}']);
@@ -90,5 +90,29 @@ final class GameSystemReleaseTranslatorSelectTest extends TestCase
         $this->expectExceptionMessageIsOrContains('field "stance" is a text, list, select or inventory field');
 
         $this->translate($release);
+    }
+
+    #[Test]
+    public function itRefusesASheetEffectOnASelectField(): void
+    {
+        $release = ReleaseViews::fixtureContent('valid/v2-sheet-effects');
+        $release = ReleaseArrays::with($release, 'sheet.fields.4', ['key' => 'mood', 'label' => 'Mood', 'type' => 'select', 'options' => [['key' => 'calm', 'label' => 'Calm']]]);
+        $release = ReleaseArrays::with($release, 'sceneTypes.0.play.0.outcomes.0.effects.0.field', 'mood');
+
+        $this->expectException(InvalidGameSystemRelease::class);
+        $this->expectExceptionMessageIsOrContains('field "mood" is a select field, a sheet effect changes number and track fields only.');
+
+        $this->translate($release);
+    }
+
+    #[Test]
+    public function aNullDefaultIsNoDefault(): void
+    {
+        $release = ReleaseArrays::with(ReleaseViews::fixtureContent('valid/v2-minimal'), 'sheet', ['fields' => [['key' => 'stance', 'label' => 'Stance', 'type' => 'select', 'options' => [['key' => 'guarded', 'label' => 'Guarded']], 'default' => null]]]);
+
+        self::assertEquals(
+            new SelectField('stance', 'Stance', options: [new SelectOption('guarded', 'Guarded')]),
+            $this->translate($release)->sheet()->field('stance'),
+        );
     }
 }

@@ -43,6 +43,17 @@ export function valueOrDefault(field: SheetFieldView, stored: SheetValue | undef
   }
 }
 
+/**
+ * What an existing Character holds for `field`: the stored value, except that a select field with
+ * none stored reads as none (null), not as its default (ADR 0048). The default is only for a new Character.
+ */
+export function storedValue(
+  field: SheetFieldView,
+  stored: SheetValue | undefined,
+): SheetValue | undefined {
+  return field.type === 'select' && stored === undefined ? null : stored
+}
+
 export function toDraft(field: SheetFieldView, stored: SheetValue | undefined): Draft {
   const value = valueOrDefault(field, stored)
   if (value === null) {

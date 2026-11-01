@@ -359,7 +359,7 @@
           "maxItems": 50,
           "items": { "$ref": "#/$defs/conditionOption" }
         },
-        "default": { "$ref": "#/$defs/key" }
+        "default": { "oneOf": [{ "$ref": "#/$defs/key" }, { "type": "null" }] }
       }
     },
     "conditionOption": {

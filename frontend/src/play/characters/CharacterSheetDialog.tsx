@@ -3,6 +3,7 @@ import {
   slotsUsed,
   stacksOf,
   stackText,
+  storedValue,
   valueOrDefault,
   withUnit,
 } from '@/shared/sheet/sheetValues'
@@ -32,7 +33,7 @@ function FieldValue({
   if (field.type === 'derived') {
     return String(character.derived[field.key] ?? '—')
   }
-  const value = valueOrDefault(field, character.values[field.key])
+  const value = valueOrDefault(field, storedValue(field, character.values[field.key]))
   if (field.type === 'inventory') {
     const gear = economy?.gear ?? []
     const stacks = stacksOf(value)

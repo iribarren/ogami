@@ -48,6 +48,19 @@ export const conditionsField: SheetField = {
   ],
 }
 
+/** A select field (ADR 0048) defaulting to its first option. */
+export const selectField: SheetField = {
+  ...base,
+  key: 'stance',
+  label: 'Stance',
+  type: 'select',
+  options: [
+    { key: 'guarded', label: 'Guarded' },
+    { key: 'reckless', label: 'Reckless' },
+  ],
+  defaultOption: 'guarded',
+}
+
 /** An inventory field (ADR 0045) in its own group, with room for ten slots. */
 export const inventoryField: SheetField = {
   ...base,

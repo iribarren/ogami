@@ -888,10 +888,12 @@ final class ReleaseSchemaAgreementTest extends TestCase
         $select = static fn (array $override = []): array => array_filter(['key' => 'stance', 'label' => 'Stance', 'type' => 'select', 'options' => [$option('guarded'), $option('reckless')], ...$override], static fn (mixed $property): bool => null !== $property);
         $build = static fn (array $override = []): string => json_encode([...self::minimalReleaseV2(), 'sheet' => ['fields' => [$select($override)]]], \JSON_THROW_ON_ERROR);
         $options = static fn (int $count): array => array_map(static fn (int $i): array => $option('o'.$i), range(1, $count));
+        // array_filter drops a null property, so this one is encoded with the null kept.
+        $nullDefault = json_encode([...self::minimalReleaseV2(), 'sheet' => ['fields' => [[...$select(), 'default' => null]]]], \JSON_THROW_ON_ERROR);
 
         $valid = [
             'v2-select-field-default' => $build(['default' => 'reckless']),
-            'v2-select-field-null-default' => $build(['default' => null]),
+            'v2-select-field-null-default' => $nullDefault,
             'v2-select-field-50-options' => $build(['options' => $options(50)]),
         ];
 

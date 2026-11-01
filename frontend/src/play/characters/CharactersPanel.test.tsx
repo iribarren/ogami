@@ -20,6 +20,7 @@ import {
   lostMineWithCharacters,
   nightJobCampaign,
   oldCharacter,
+  selectField,
   sheet,
   viCharacter,
 } from './fixtures'
@@ -387,6 +388,48 @@ describe('the Characters panel', () => {
           },
         },
       ])
+    })
+  })
+
+  describe('a select field (ADR 0048)', () => {
+    const withStance: Campaign = {
+      ...nightJobCampaign,
+      pinnedRelease: { ...nightJobCampaign.pinnedRelease, sheet: [...sheet, selectField] },
+    }
+
+    it('starts a new Character at the default option', async () => {
+      const user = userEvent.setup()
+      const sent: unknown[] = []
+      renderCharacters(
+        { ...withStance, characters: [] },
+        { [`POST ${path}/characters`]: () => Response.json(oldCharacter, { status: 201 }) },
+        sent,
+      )
+
+      const panel = await characters()
+      await user.click(panel.getByRole('button', { name: 'Add Character' }))
+      expect(panel.getByLabelText('Stance')).toHaveValue('guarded')
+    })
+
+    it('edits a stored Character without the value as none, not as the default', async () => {
+      const user = userEvent.setup()
+      const sent: unknown[] = []
+      renderCharacters(
+        { ...withStance, characters: [oldCharacter] },
+        { [`PUT ${path}/characters/${oldCharacter.id}`]: () => Response.json(oldCharacter) },
+        sent,
+      )
+
+      const panel = await characters()
+      expect(panel.queryByText(/Stance:/)).not.toBeInTheDocument()
+      await user.click(panel.getByRole('button', { name: 'Edit Old hand' }))
+      expect(panel.getByLabelText('Stance')).toHaveValue('')
+      await user.click(panel.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => {
+        expect(sent).toHaveLength(1)
+      })
+      expect((sent[0] as { values: Record<string, unknown> }).values.stance).toBeNull()
     })
   })
 

@@ -3,6 +3,7 @@ import {
   markedLabels,
   slotsUsed,
   stackText,
+  storedValue,
   summarize,
   toDraft,
   valueOrDefault,
@@ -118,6 +119,14 @@ describe('a select field (ADR 0048)', () => {
     expect(valueOrDefault(stance, null)).toBeNull()
     expect(toDraft(stance, null)).toBe('')
     expect(valueOrDefault(stance, 3)).toBeNull()
+  })
+
+  it('reads a stored Character with no value as none, not as the default', () => {
+    expect(storedValue(stance, undefined)).toBeNull()
+    expect(valueOrDefault(stance, storedValue(stance, undefined))).toBeNull()
+    expect(toDraft(stance, storedValue(stance, undefined))).toBe('')
+    expect(summarize(stance, storedValue(stance, undefined))).toBeNull()
+    expect(storedValue(stance, 'reckless')).toBe('reckless')
   })
 
   it('sends the chosen key, and null for none', () => {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Play\Domain\Campaign;
 
+use App\Formula\Domain\ValueResolver;
 use App\Play\Domain\Campaign\Characters\Character;
 use App\Play\Domain\Campaign\Characters\CharacterAlreadyExists;
 use App\Play\Domain\Campaign\Characters\CharacterCreation;
@@ -11,6 +12,7 @@ use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\CharacterValues;
 use App\Play\Domain\Campaign\Characters\CreationMethod;
 use App\Play\Domain\Campaign\Characters\InvalidCharacter;
+use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\Characters\UnknownCharacter;
 use App\Play\Domain\Campaign\Facts\Fact;
 use App\Play\Domain\Campaign\Facts\FactAlreadyExists;
@@ -1803,7 +1805,7 @@ final class Campaign
      */
     public function flowRunView(GameSystemSnapshot $release): ?FlowRunView
     {
-        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number(), $this->trackerValuesOf($release), $this->factValues($release), $this->pickedNames(), fn (PickStep $step): PickCandidates => $this->pickCandidates($step->of, $step->tags), fn (bool $inScene): array => $this->namedCharacters($inScene ? $this->currentScene()?->characters() : $this->currentSession()?->party()));
+        return $this->flowRun?->view($release, $this->playedFlow($release), $this->currentSession()?->number(), $this->trackerValuesOf($release), $this->factValues($release), $this->pickedNames(), fn (PickStep $step): PickCandidates => $this->pickCandidates($step->of, $step->tags), fn (bool $inScene): array => $this->namedCharacters($inScene ? $this->currentScene()?->characters() : $this->currentSession()?->party()), fn (string $id): ?ValueResolver => ($character = $this->character(CharacterId::fromString($id))) instanceof Character ? SheetValues::of($release->sheet(), $character->values(), $this->trackerValuesOf($release)) : null);
     }
 
     /**

@@ -93,9 +93,26 @@ final class CampaignFlowChecksApiTest extends WebTestCase
         $step = self::at($this->campaign(), 'flowRun', 'step');
 
         self::assertSame(
-            ['roll-it', 'check', $check, $difficulty, $difficultyFixed, [['id' => 'char-ada', 'name' => 'Ada']], null, null],
+            ['roll-it', 'check', $check, $difficulty, $difficultyFixed, [['id' => 'char-ada', 'name' => 'Ada', 'poolSize' => null]], null, null],
             array_map(static fn (string $key): mixed => self::at($step, $key), ['key', 'kind', 'check', 'difficulty', 'difficultyFixed', 'characters', 'dice', 'oracle']),
         );
+    }
+
+    #[Test]
+    public function aPoolCheckStepShowsTheDiceEachCharacterWouldRollBeforeTheRoll(): void
+    {
+        $this->inScene('pooled');
+
+        // Ada has the default hands (4) and the pool is {hands} dice; the roll below uses the same 4.
+        self::assertSame([['id' => 'char-ada', 'name' => 'Ada', 'poolSize' => 4]], self::at($this->campaign(), 'flowRun', 'step', 'characters'));
+    }
+
+    #[Test]
+    public function aPoolThatCannotBeEvaluatedShowsNoPoolSizeAndTheViewStillRenders(): void
+    {
+        $this->inScene('poolbroken');
+
+        self::assertSame([['id' => 'char-ada', 'name' => 'Ada', 'poolSize' => null]], self::at($this->campaign(), 'flowRun', 'step', 'characters'));
     }
 
     #[Test]

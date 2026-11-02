@@ -46,7 +46,8 @@ export function CheckForm({
   onSubmit,
 }: {
   checks: CampaignCheck[]
-  characters?: { id: string; name: string }[]
+  /** `poolSize` is the dice the Character would roll now, as the server worked it out (a pool check step). */
+  characters?: { id: string; name: string; poolSize?: number | null }[]
   fixedDifficulty?: number | null
   /** Whether the player must choose among `checks`, none being preselected. */
   pickCheck?: boolean
@@ -63,6 +64,9 @@ export function CheckForm({
   const [character, setCharacter] = useState(
     characters?.length === 1 ? (characters[0]?.id ?? '') : '',
   )
+
+  const selected = characters?.find(({ id: characterId }) => characterId === character)
+  const selectedPoolSize = selected?.poolSize
 
   function chooseCheck(key: string) {
     setCheckKey(key)
@@ -132,7 +136,16 @@ export function CheckForm({
           <p className="font-medium">{check?.label}</p>
         )}
         {check?.hint != null && <p className="text-sm text-muted-foreground">{check.hint}</p>}
-        {check?.pool != null && <p className="text-sm">{describePool(check.pool)}</p>}
+        {check?.pool != null && (
+          <p className="text-sm">
+            {describePool(check.pool)}
+            {selectedPoolSize != null && (
+              <strong className="ml-2 font-medium">
+                {selected?.name} rolls {selectedPoolSize} {selectedPoolSize === 1 ? 'die' : 'dice'}
+              </strong>
+            )}
+          </p>
+        )}
         {check?.difficulty != null &&
           (fixedDifficulty === null ? (
             <div className="space-y-1">

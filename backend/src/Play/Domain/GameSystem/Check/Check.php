@@ -163,6 +163,24 @@ final readonly class Check
     }
 
     /**
+     * The number of dice a roll of this pool check would roll for the sheet without a situational
+     * modifier, worked out as the roll does (count evaluated, then kept in 1..100); null when the
+     * check rolls no pool or the count cannot be evaluated now.
+     */
+    public function poolSize(ValueResolver $sheet): ?int
+    {
+        if (!$this->pool instanceof CheckPool) {
+            return null;
+        }
+
+        try {
+            return CheckPool::sizeFor($this->countOf($this->pool, new CheckValues($sheet, null)), 0);
+        } catch (FormulaEvaluationFailed) {
+            return null;
+        }
+    }
+
+    /**
      * A challenge roll (ADR 0049): the score is the action die (0 when negative momentum cancels it), the
      * modifier and the situational modifier, capped at the challenge's score cap; the total is the dice it beats.
      *

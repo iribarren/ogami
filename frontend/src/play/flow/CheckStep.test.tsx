@@ -12,8 +12,8 @@ import type { FlowStep } from './useFlowRun'
 
 const path = `/api/campaigns/${lostMineCampaign.id}`
 const afterStep = guidedWithChecks(atStep(promptStep))
-const ada = { id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9003', name: 'Ada' }
-const vi = { id: viCharacter.id, name: viCharacter.name }
+const ada = { id: '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9003', name: 'Ada', poolSize: null }
+const vi = { id: viCharacter.id, name: viCharacter.name, poolSize: null }
 
 /** The Play screen with the FlowRun waiting on `step`; `sent` collects the answers. */
 function renderStep(step: FlowStep, campaign: Campaign = guidedWithChecks(atStep(step))) {

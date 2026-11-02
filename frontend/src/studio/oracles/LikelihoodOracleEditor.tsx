@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type SubmitEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Plus, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react'
 
 import { Button } from '@/shared/ui/button'
 import { IconButton } from '@/shared/ui/icon-button'
@@ -14,6 +14,7 @@ import { StudioError } from '../useGameSystems'
 import {
   chaosRange,
   draftProblems,
+  moveLevel,
   toDraft,
   toLevelDraft,
   toOracle,
@@ -170,14 +171,18 @@ function LevelRow({
   index,
   problem,
   canRemove,
+  last,
   onChange,
+  onMove,
   onRemove,
 }: {
   level: LevelDraft
   index: number
   problem: string | null
   canRemove: boolean
+  last: boolean
   onChange: (level: LevelDraft) => void
+  onMove: (to: number) => void
   onRemove: () => void
 }) {
   const label = `Level ${String(index + 1)}`
@@ -209,6 +214,26 @@ function LevelRow({
             onChange({ ...level, target: event.target.value })
           }}
         />
+        <IconButton
+          label={`Move up ${label.toLowerCase()}`}
+          dense
+          disabled={index === 0}
+          onClick={() => {
+            onMove(index - 1)
+          }}
+        >
+          <ArrowUp />
+        </IconButton>
+        <IconButton
+          label={`Move down ${label.toLowerCase()}`}
+          dense
+          disabled={last}
+          onClick={() => {
+            onMove(index + 1)
+          }}
+        >
+          <ArrowDown />
+        </IconButton>
         <IconButton
           label={`Remove ${label.toLowerCase()}`}
           dense
@@ -428,6 +453,10 @@ export function LikelihoodOracleEditor({
                 index={index}
                 problem={levelProblems[index] ?? null}
                 canRemove={draft.levels.length > 1}
+                last={index === draft.levels.length - 1}
+                onMove={(to) => {
+                  edit({ ...draft, levels: moveLevel(draft.levels, index, to) })
+                }}
                 onChange={(changed) => {
                   edit({
                     ...draft,

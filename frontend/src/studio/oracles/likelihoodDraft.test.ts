@@ -2,6 +2,7 @@ import { oracles } from '../fixtures'
 import {
   chaosRange,
   draftProblems,
+  moveLevel,
   toDraft,
   toLevelDraft,
   toOracle,
@@ -154,5 +155,26 @@ describe('chaosRange', () => {
         }),
       ),
     ).toBeNull()
+  })
+})
+
+describe('moveLevel', () => {
+  const levels = ['a', 'b', 'c'].map((key, id) => toLevelDraft({ key }, id))
+  const order = (list: LevelDraft[]) => list.map(({ key }) => key)
+
+  it('moves a level to a position, the others keeping their order', () => {
+    expect(order(moveLevel(levels, 2, 0))).toEqual(['c', 'a', 'b'])
+    expect(order(moveLevel(levels, 0, 1))).toEqual(['b', 'a', 'c'])
+  })
+
+  it('keeps the level objects, so their ids stay stable', () => {
+    expect(moveLevel(levels, 0, 2)[2]).toBe(levels[0])
+  })
+
+  it('returns the same list for a move out of range or to the same place', () => {
+    expect(moveLevel(levels, 0, -1)).toBe(levels)
+    expect(moveLevel(levels, 2, 3)).toBe(levels)
+    expect(moveLevel(levels, 1, 1)).toBe(levels)
+    expect(moveLevel(levels, 5, 0)).toBe(levels)
   })
 })

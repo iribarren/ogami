@@ -277,6 +277,26 @@ describe('the likelihood oracle editor', () => {
     expect(screen.getByRole('list', { name: 'Problems' })).toHaveTextContent(problem)
   })
 
+  it('moves a level up or down, offering neither past the ends, and saves the new order', async () => {
+    const bodies: unknown[] = []
+    const { user } = await openEditor('fate', { [put]: recording(bodies, saved([])) })
+    const keys = fate.definition.levels.map(({ key }) => key)
+
+    expect(screen.getByRole('button', { name: 'Move up level 1' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Move down level 2' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Move down level 1' }))
+    expect(screen.getByLabelText('Level 1 key')).toHaveValue(keys[1])
+    expect(screen.getByLabelText('Level 2 key')).toHaveValue(keys[0])
+    await user.click(save())
+
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1)
+    })
+    expect(bodies[0]).toMatchObject({
+      oracle: { levels: [{ key: keys[1] }, { key: keys[0] }] },
+    })
+  })
+
   it('adds levels empty at the end and removes them, keeping the order and the last one', async () => {
     const bodies: unknown[] = []
     const { user } = await openEditor('fate', { [put]: recording(bodies, saved([])) })

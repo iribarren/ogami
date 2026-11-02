@@ -91,7 +91,7 @@ describe('the Scene Types tab', () => {
 })
 
 describe('creating a Scene Type', () => {
-  it('sends the smallest Scene Type the publisher accepts and stays on the list with it selected', async () => {
+  it('sends the smallest Scene Type the publisher accepts and opens its editor', async () => {
     const sent: unknown[] = []
     const created = {
       key: 'heist',
@@ -125,14 +125,58 @@ describe('creating a Scene Type', () => {
     await typeText(user, inDialog().getByLabelText('Purpose'), 'Steal it.')
     await user.click(inDialog().getByRole('button', { name: 'Create Scene Type' }))
 
-    const row = (await screen.findByRole('link', { name: 'Heist' })).closest('li')
-    expect(row).toHaveAttribute('aria-current', 'true')
-    expect(screen.getByRole('link', { name: 'Quiet' }).closest('li')).not.toHaveAttribute(
-      'aria-current',
-    )
-    expect(screen.queryByRole('form', { name: 'Scene Type' })).not.toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+    expect(await screen.findByRole('form', { name: 'Scene Type' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/scene-types/heist')
     expect(sent).toEqual([{ expectedVersion: 5, item: created }])
+  })
+
+  it('stays on the list, saved, when the router refuses to open the editor', async () => {
+    const created = {
+      key: 'heist',
+      name: 'Heist',
+      purpose: 'Steal it.',
+      oracles: [],
+      setup: [],
+      play: [],
+      closing: [],
+    }
+    const { user, router } = await openTab({
+      [`POST ${base}/narrative/scene-types`]: () =>
+        Response.json(
+          {
+            ...narrativeScenes,
+            version: 6,
+            sceneTypes: [
+              ...narrativeScenes.sceneTypes,
+              { key: 'heist', definition: created, usedBy: [] },
+            ],
+          },
+          { status: 201 },
+        ),
+    })
+    // Not a `vi.spyOn`: it reads the promise it returns, which would count as handling it.
+    let refused = false
+    router.navigate = () => {
+      refused = true
+      return Promise.reject(new Error('refused'))
+    }
+    const unhandled = vi.fn()
+    process.on('unhandledRejection', unhandled)
+
+    await user.click(await screen.findByRole('button', { name: 'New Scene Type' }))
+    await typeText(user, inDialog().getByLabelText('Key'), 'heist')
+    await typeText(user, inDialog().getByLabelText('Name'), 'Heist')
+    await typeText(user, inDialog().getByLabelText('Purpose'), 'Steal it.')
+    await user.click(inDialog().getByRole('button', { name: 'Create Scene Type' }))
+
+    expect(await screen.findByText('Heist')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(refused).toBe(true)
+    })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    process.off('unhandledRejection', unhandled)
+    expect(unhandled).not.toHaveBeenCalled()
+    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
   })
 
   it('says the key is taken in the dialog and stays there', async () => {

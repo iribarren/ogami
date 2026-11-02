@@ -79,7 +79,9 @@ function useNarrativeWrite<Variables>(
 
   return useMutation({
     mutationFn: write,
-    onSuccess: (narrative) => {
+    onSuccess: async (narrative) => {
+      // A read in flight was asked for before this write; its answer would replace the saved narrative.
+      await queryClient.cancelQueries({ queryKey: narrativeKey(key), exact: true })
       queryClient.setQueryData(narrativeKey(key), narrative)
       invalidateOtherDraftReads(queryClient, key, narrativeKey(key), narrative.version)
     },

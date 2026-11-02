@@ -24,6 +24,9 @@ export function SceneTypeEditorPage({
     version: number
   } | null>(null)
 
+  // The last rename save: the editor is remounted on the new key, so the page keeps its "Saved at".
+  const [renamed, setRenamed] = useState<{ key: string; at: Date } | null>(null)
+
   const backLink = (
     <Link
       to="/studio/game-systems/$key"
@@ -49,11 +52,18 @@ export function SceneTypeEditorPage({
   }
 
   const { data } = narrative
+  // Cached data older than the stale time is being read again: wait for it rather than fill the
+  // form from what may lack steps saved elsewhere. If that read fails, `isFetching` ends and the
+  // form opens from the cache; a save then answers with a conflict. A form already open stays.
+  if (narrative.isFetching && opened?.key !== sceneType) {
+    return <p className="text-muted-foreground">Loading the Scene Type…</p>
+  }
   const found = data.sceneTypes.find((item) => item.key === sceneType)
   const draft = found === undefined ? null : sceneTypeToDraft(found.definition)
-  // The form is filled once, from what was read when it opened; later reads (a save, a refetch)
-  // must not take it from under the person, nor make it vanish when the Scene Type has gone or
-  // changed shape elsewhere: a save then says so, and a reload explains why it cannot replace it.
+  // The form is filled once, from what was read when it opened (after any refetch in flight, see
+  // above); later reads (a save, a refetch) must not take it from under the person, nor make it
+  // vanish when the Scene Type has gone or changed shape elsewhere: a save then says so, and a
+  // reload explains why it cannot replace it.
   if (found !== undefined && draft !== null && opened?.item !== found) {
     setOpened({ key: sceneType, item: found, draft, version: data.version })
   }
@@ -91,6 +101,10 @@ export function SceneTypeEditorPage({
           original={open.item.key}
           initial={open.draft}
           version={open.version}
+          savedAt={renamed?.key === sceneType ? renamed.at : null}
+          onRenamed={(key, at) => {
+            setRenamed({ key, at })
+          }}
         />
       )}
     </EditorFrame>

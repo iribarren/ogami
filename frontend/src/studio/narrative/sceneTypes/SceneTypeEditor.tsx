@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type SubmitEvent } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type SubmitEvent } from 'react'
 import { BookOpen, List, RotateCcw } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 
@@ -8,6 +8,7 @@ import { IconTile } from '@/shared/ui/icon-tile'
 import { SaveState, type SaveStateValue } from '@/shared/ui/save-state'
 
 import { StudioError } from '../../useGameSystems'
+import { UnsavedChangesGuard } from '../../UnsavedChangesGuard'
 import { useGameSystemChecks } from '../../checks/useGameSystemChecks'
 import { useGameSystemSheet } from '../../sheet/useGameSystemSheet'
 import { TextField } from '../TextField'
@@ -40,6 +41,8 @@ export function SceneTypeEditor({
   original,
   initial,
   version,
+  savedAt: initialSavedAt = null,
+  onRenamed,
 }: {
   gameSystemKey: string
   narrative: GameSystemNarrative
@@ -47,6 +50,10 @@ export function SceneTypeEditor({
   original: string
   initial: SceneTypeDraft
   version: number
+  /** When a rename save made this form: the page remounts it on the new key, which would lose it. */
+  savedAt?: Date | null
+  /** Told the new key and when a save renamed the Scene Type, before the editor is opened anew. */
+  onRenamed?: (key: string, at: Date) => void
 }) {
   const id = useId()
   const [draft, setDraft] = useState(initial)
@@ -54,7 +61,7 @@ export function SceneTypeEditor({
   const [current, setCurrent] = useState(original)
   // The draft as last saved or loaded, to tell unsaved changes from a saved form; `savedAt` is null until a save.
   const [baseline, setBaseline] = useState(() => JSON.stringify(initial))
-  const [savedAt, setSavedAt] = useState<Date | null>(null)
+  const [savedAt, setSavedAt] = useState<Date | null>(initialSavedAt)
   const [answer, setAnswer] = useState<SceneTypeAnswer>(noAnswer)
   // Why a reload did not replace the draft; the old version is kept then, so a save still conflicts.
   const [reloadNote, setReloadNote] = useState<string | null>(null)
@@ -63,6 +70,15 @@ export function SceneTypeEditor({
   const save = useSaveNarrativeItem(gameSystemKey)
   const latest = useGameSystemNarrative(gameSystemKey)
   const navigate = useNavigate()
+  // False once the editor is gone: a save still pending then must not navigate the person back here.
+  const mounted = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  const dirty = JSON.stringify(draft) !== baseline
   // Kept while the narrative is the same, so the step cards below can skip renders.
   // The checks say which special results a check step may branch on; until they load, none is offered.
   const checks = useGameSystemChecks(gameSystemKey)
@@ -98,7 +114,11 @@ export function SceneTypeEditor({
       setReadAt(saved.version)
       setCurrent(key)
       setBaseline(JSON.stringify(draft))
-      setSavedAt(new Date())
+      const at = new Date()
+      setSavedAt(at)
+      if (key !== current) {
+        onRenamed?.(key, at)
+      }
     } catch (error) {
       const index = narrative.sceneTypes.findIndex((item) => item.key === current)
       const message = error instanceof Error ? error.message : 'Saving the item failed.'
@@ -108,12 +128,14 @@ export function SceneTypeEditor({
       })
       return
     }
-    if (key !== current) {
+    if (key !== current && mounted.current) {
       try {
         await navigate({
           to: '/studio/game-systems/$key/scene-types/$sceneType',
           params: { key: gameSystemKey, sceneType: key },
           replace: true,
+          // The blocker may still see the draft as unsaved right after the save.
+          ignoreBlocker: true,
         })
       } catch {
         // The save went through; if the router refuses, the URL decides what the page shows.
@@ -129,7 +151,7 @@ export function SceneTypeEditor({
     ? { kind: 'saving' }
     : errors > 0
       ? { kind: 'failed', errors }
-      : JSON.stringify(draft) !== baseline
+      : dirty
         ? { kind: 'unsaved' }
         : savedAt === null
           ? null
@@ -156,6 +178,8 @@ export function SceneTypeEditor({
     setDraft(reloaded)
     setBaseline(JSON.stringify(reloaded))
     setReadAt(result.data.version)
+    // The replaced draft was not saved by this person, so the old "Saved at" no longer describes it.
+    setSavedAt(null)
     setReloadNote(null)
     setAnswer(noAnswer)
     setGeneration((count) => count + 1)
@@ -170,6 +194,7 @@ export function SceneTypeEditor({
         void submit(event)
       }}
     >
+      <UnsavedChangesGuard dirty={dirty} />
       <section aria-labelledby={`${id}-details`} className="panel">
         <div className="panel-head">
           <IconTile size="sm">
@@ -270,16 +295,21 @@ export function SceneTypeEditor({
         <div className="action-bar">
           {saveState && <SaveState state={saveState} />}
           {answer.conflict && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                void reload()
-              }}
-            >
-              <RotateCcw aria-hidden="true" />
-              Reload the latest version
-            </Button>
+            <>
+              <p className="text-sm text-destructive">
+                Reloading replaces your unsaved edits with the latest stored Scene Type.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  void reload()
+                }}
+              >
+                <RotateCcw aria-hidden="true" />
+                Reload the latest version
+              </Button>
+            </>
           )}
           <Button type="submit" disabled={save.isPending}>
             Save

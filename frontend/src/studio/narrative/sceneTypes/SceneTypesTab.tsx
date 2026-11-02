@@ -1,6 +1,6 @@
 import { Clapperboard, Plus } from 'lucide-react'
-import { useId, useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { useId } from 'react'
+import { Link, useNavigate } from '@tanstack/react-router'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
@@ -14,12 +14,11 @@ import { useGameSystemNarrative, type NarrativeItem } from '../useGameSystemNarr
 import { useNames, type LocatorNames } from '../../validationLocation'
 import { sceneTypeToDraft, scenePartNames } from './sceneTypeDraft'
 
-/** The Scene Types of a draft in stored order, with where each is used; each opens its editor page. */
+/** The Scene Types of a draft in stored order, with where each is used; each opens its editor page, as does a new one. */
 export function SceneTypesTab({ gameSystemKey }: { gameSystemKey: string }) {
   const narrative = useGameSystemNarrative(gameSystemKey)
   const names = useNames(gameSystemKey)
-  // The Scene Type just created: it stays selected on the list, like other creates.
-  const [selected, setSelected] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   return (
     <NarrativeGate narrative={narrative}>
@@ -43,8 +42,19 @@ export function SceneTypesTab({ gameSystemKey }: { gameSystemKey: string }) {
                     New Scene Type
                   </Button>
                 }
+                // `ItemDialog` tells this only while the tab is mounted: the save's callbacks do
+                // not run once it is gone, so there is no mounted check as in the editor.
                 onSaved={(item) => {
-                  setSelected(String(item.key))
+                  void (async () => {
+                    try {
+                      await navigate({
+                        to: '/studio/game-systems/$key/scene-types/$sceneType',
+                        params: { key: gameSystemKey, sceneType: String(item.key) },
+                      })
+                    } catch {
+                      // The Scene Type is saved; if the router refuses, the list stays and shows it.
+                    }
+                  })()
                 }}
               />
             </div>
@@ -67,7 +77,6 @@ export function SceneTypesTab({ gameSystemKey }: { gameSystemKey: string }) {
                   gameSystemKey={gameSystemKey}
                   item={item}
                   version={data.version}
-                  selected={item.key === selected}
                   names={names}
                 />
               ))}
@@ -83,13 +92,11 @@ function SceneTypeRow({
   gameSystemKey,
   item,
   version,
-  selected,
   names,
 }: {
   gameSystemKey: string
   item: NarrativeItem
   version: number
-  selected: boolean
   names: LocatorNames
 }) {
   const reasonId = useId()
@@ -98,7 +105,7 @@ function SceneTypeRow({
   const title = typeof name === 'string' && name !== '' ? name : item.key
 
   return (
-    <li className="list-row" aria-current={selected ? 'true' : undefined}>
+    <li className="list-row">
       <div className="min-w-0 flex-1 space-y-1">
         <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           {draft === null ? (

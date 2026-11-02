@@ -10,6 +10,7 @@ import { narrative } from '../fixtures'
 import { sheetKey } from '../sheet/useGameSystemSheet'
 import {
   NarrativeError,
+  narrativeKey,
   useDeleteNarrativeItem,
   useGameSystemNarrative,
   useSaveNarrativeItem,
@@ -161,6 +162,57 @@ describe('useSaveNarrativeItem', () => {
     })
 
     expect(versions).toEqual([5, 6])
+  })
+})
+
+describe('a save while a read is in flight', () => {
+  it('keeps the saved narrative when the older read answers afterwards', async () => {
+    let reads = 0
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const saved = { ...narrative, version: 6 }
+    const { client, wrapper } = setup({
+      [`GET ${base}/narrative`]: async () => {
+        if (++reads === 2) {
+          await gate
+        }
+        return Response.json(narrative)
+      },
+      [`POST ${base}/narrative/tags`]: () => Response.json(saved, { status: 201 }),
+      [`GET ${base}`]: gameSystem,
+      [`GET ${base}/validation`]: validation,
+    })
+    const { result } = renderHook(
+      () => ({
+        narrative: useGameSystemNarrative('my-draft'),
+        save: useSaveNarrativeItem('my-draft'),
+      }),
+      { wrapper },
+    )
+    await waitFor(() => {
+      expect(result.current.narrative.data?.version).toBe(5)
+    })
+    // A refetch whose answer is held: it was asked for before the save and carries version 5.
+    void result.current.narrative.refetch()
+    await waitFor(() => {
+      expect(reads).toBe(2)
+    })
+
+    result.current.save.mutate({
+      expectedVersion: 5,
+      section: 'tags',
+      original: null,
+      item: { key: 'one', label: 'one' },
+    })
+    await waitFor(() => {
+      expect(result.current.save.isSuccess).toBe(true)
+    })
+    release()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(client.getQueryData(narrativeKey('my-draft'))).toEqual(saved)
   })
 })
 

@@ -1,7 +1,7 @@
 # Feature: night-court-followups
 
 - **Locator:** `odd/tasks/night-court-followups.md` · Engram topic `odd/night-court-followups/tasks`
-- **Issue:** [#309](https://github.com/iribarren/ogami/issues/309) · **Branch:** `feat/night-court-followups-2-play-content` · **Status:** in progress
+- **Issue:** [#309](https://github.com/iribarren/ogami/issues/309) · **Branch:** `feat/night-court-followups-2-play-content` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `vaesen-ux-followups` (PRs #354–#355)
@@ -55,11 +55,11 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T6 | 1 | S23: reproduce the dropped typeahead; fix only if it reproduces | delegated writer (slice 1) | [x] | `a941f2b0` |
 | T7 | 2 | Slice 1 review findings | delegated writer (slice 2) | [x] | `b27bc600` |
 | T8 | 2 | P4: the push offer on a success says what it can change and risks | delegated writer (slice 2) | [x] | `9e482ef4`, `f304dfb4` |
-| T9 | 2 | P5: the step card's actions stop shifting | delegated writer (slice 2) | [x] | `220efbf4`, `c13c9565`, this task\'s last commit |
+| T9 | 2 | P5: the step card's actions stop shifting | delegated writer (slice 2) | [x] | `220efbf4`, `c13c9565`, `ec0aa2ef` |
 | T10 | 2 | P1: skip a phase's closing when this session's opening did not run in that phase | delegated writer (slice 2) | [x] | `587f8306` |
 | T11 | 2 | P2, S3: re-author Night Court in Studio, re-export; tests for the strike after a clock filled elsewhere | delegated writer (slice 2); Studio by Chrome worker | [x] | `c81e84f9` |
-| T12 | 2 | Chrome pass: a step clicked in the Studio outline scrolls into view, as it does on a reload | parent, inline: one line, understood | [x] | this slice's last commit |
-| T13 | 2 | Slice 2 review findings, on the last slice's branch | parent, inline: small and understood | [x] | this slice's last commit |
+| T12 | 2 | Chrome pass: a step clicked in the Studio outline scrolls into view, as it does on a reload | parent, inline: one line, understood | [x] | `e71c40b8` |
+| T13 | 2 | Slice 2 review findings, on the last slice's branch | parent, inline: small and understood | [x] | `9c20c3ed` |
 
 ## Acceptance criteria
 
@@ -95,13 +95,15 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02 T12: the outline's step click ended at the top because the router's scroll reset undid the step's `scrollIntoView`. `select` skips the reset for a step node. Checked in Chrome: two steps scroll into view, flow settings go back to the top. No Vitest: jsdom has no scroll and the router reset does not run there.
 - 2026-11-02 `make presets` on the authoring database stops at `lanterns-of-the-mire`, before Night Court; publishing the Night Court file alone gives `Unchanged vtm-night-court (v3, managed in Studio)`. Not investigated: this slice does not touch that file.
 - 2026-11-02 T13: `useKeepPanelInPlace` asks whether any of the panel was on screen, not only its top, and leaves the page still while focus is inside the Journal; RED observed on both new Vitest cases, GREEN after. `PresetsTest` asserts no world-turn step before `hunters` targets `end` and counts its 9 routes in; written against the export, so no RED. Not changed: a new entry that would not fit is revealed first and the panel moves by that distance, which is the intended priority.
+- 2026-11-02 Closing: T1–T13 done. `make verify` passed at `e71c40b8`; at `9c20c3ed` the one failure was Prettier on a new test, then `make frontend-fix`, with `make frontend-qa` and the hook's tests rerun but not `make verify`. Pending at this commit: CI on PR #358. Open: P5's peak is not confirmed by eye (see T9 correction 2); the user checks it on the branch.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | Findings | PR |
 |---|---|---|---|---|
 | 1 | `review-f7592762099db9bc` | Approved and acknowledged, 1,114 lines | Fixed in T7: (W) `BandsEditor.tsx` closing the New step kind menu drops keyboard focus; (S) `pasteEntries.ts` refuses text starting with `[`, with no escape. S5(a) dropped by the user | [#357](https://github.com/iribarren/ogami/pull/357) |
+| 2 | `review-98d6d0c65937ee6f` | Approved and acknowledged, ~1,000 lines at `e71c40b8`. T13 (`9c20c3ed`, 77 lines, findings only) declined by the user, no review | Fixed in T13: (W) `useKeepPanelInPlace` tested only the panel's top; (S) growth from a control inside the Journal scrolled the page; (S) `PresetsTest` did not prove the faction, ally and touchstone exits. No change: the offset after `reveal` for an entry that would not fit is intended | [#358](https://github.com/iribarren/ogami/pull/358) |
 
 ## Next step
 
-Slice 2: review, PR, closing doc commit.
+None: every finding is fixed or recorded as intended. P5's on-screen behaviour is for the user to confirm on PR #358 before merging.

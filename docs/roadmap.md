@@ -485,6 +485,10 @@ Done: `structured-character-creation`, #270 in five slices (PRs #271–#275). AD
 
 Done: `vaesen-ux-followups`, #300 in two slices (PRs #354–#355). Play: a pool check step shows its size per Character before the roll, a Flow outcome shows in the guided area, two misleading prompts are gone, and the cast editor offers the previous Scene's NPCs. Studio: Duplicate and Paste fields on the sheet, the condition band label cap raised to 100 with live counters, reorderable likelihood levels, Expand all on a check step's Outcomes, a new phase's key that follows its name, sheet-order push costs, and hints and better defaults in the step editor. Follow-up [#356](https://github.com/iribarren/ogami/issues/356) (B7p); see [odd/tasks/vaesen-ux-followups.md](../odd/tasks/vaesen-ux-followups.md).
 
+**B7n. night-court-followups**
+
+Done: `night-court-followups`, #309 in two slices (PRs #357–#358). Studio: `[key]` in Paste entries with an escape for a leading `[`, Move to top and bottom for sheet groups, every special result of a check step added at once from its bands, New step… in every Next select, and a step clicked in the flow outline scrolls into view. Play: a session closing is skipped when that session's opening ran in another phase, the push offer says what a push can change and risks, and the step card holds its place. Night Court v3: a full Hunters clock strikes however it was filled, a raid overrides a strike in the same turn, and the theme is `eldritch`.
+
 **B8. rules-dice-pools**
 
 ```text

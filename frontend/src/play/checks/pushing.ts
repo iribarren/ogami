@@ -17,6 +17,18 @@ export function failedRegularDice(pool: Pool) {
   return pool.dice.filter(({ group, success }) => group === 'pool' && !success).length
 }
 
+/**
+ * Whether a check roll already succeeded, as far as the entry tells. A critical, or a total that
+ * reaches the difficulty that applied (ADR 0044 reads a failed roll the same way). A check with no
+ * difficulty has no flag to read: its bands are not in the entry, so it counts as not known.
+ */
+export function rollSucceeded(content: Extract<JournalEntry['content'], { kind: 'check' }>) {
+  if (content.special === 'critical' || content.special === 'messyCritical') {
+    return true
+  }
+  return content.difficulty !== null && content.total >= content.difficulty
+}
+
 /** Whether the roll has Hunger dice. */
 export function hasHungerDice(pool: Pool) {
   return pool.dice.some(({ group }) => group === 'hunger')

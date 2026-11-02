@@ -52,6 +52,8 @@ export function SheetFieldDialog({
   sheet,
   samples,
   original,
+  copyOf = null,
+  prefill = null,
   trigger,
 }: {
   gameSystemKey: string
@@ -59,6 +61,9 @@ export function SheetFieldDialog({
   /** The Sheet tab's sample values, which a derived field's formula is computed over. */
   samples: SheetSamples
   original: string | null
+  /** The key of the field a new, unsaved field is a copy of; `prefill` is what the form starts with. */
+  copyOf?: string | null
+  prefill?: FieldDraft | null
   trigger: ReactNode
 }) {
   const [open, setOpen] = useState(false)
@@ -75,9 +80,11 @@ export function SheetFieldDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{original === null ? 'New field' : `Edit ${original}`}</DialogTitle>
+          <DialogTitle>{formTitle(original, copyOf)}</DialogTitle>
           <DialogDescription>
-            The publisher checks the field when you save it; nothing is saved if it refuses.
+            {copyOf === null
+              ? 'The publisher checks the field when you save it; nothing is saved if it refuses.'
+              : 'A new field that starts as a copy: nothing is saved until you save it, and the publisher checks it then.'}
           </DialogDescription>
         </DialogHeader>
         <FieldForm
@@ -85,6 +92,8 @@ export function SheetFieldDialog({
           sheet={sheet}
           samples={samples}
           original={original}
+          copyOf={copyOf}
+          prefill={prefill}
           save={save}
           onSaved={() => {
             setOpen(false)
@@ -94,6 +103,9 @@ export function SheetFieldDialog({
     </Dialog>
   )
 }
+
+const formTitle = (original: string | null, copyOf: string | null) =>
+  copyOf !== null ? `Duplicate ${copyOf}` : original === null ? 'New field' : `Edit ${original}`
 
 const typeLabels: Record<FieldType, string> = {
   number: 'Number',
@@ -117,6 +129,8 @@ function FieldForm({
   sheet,
   samples,
   original,
+  copyOf,
+  prefill,
   save,
   onSaved,
 }: {
@@ -124,6 +138,8 @@ function FieldForm({
   sheet: GameSystemSheet
   samples: SheetSamples
   original: string | null
+  copyOf: string | null
+  prefill: FieldDraft | null
   save: ReturnType<typeof useSaveSheetField>
   onSaved: () => void
 }) {
@@ -132,7 +148,7 @@ function FieldForm({
   const [base, setBase] = useState(sheet)
   const [draft, setDraft] = useState<FieldDraft>(() => {
     const stored = base.fields.find((field) => field.key === original)
-    return (stored && readField(stored)) ?? blankField(base.groups)
+    return (stored && readField(stored)) ?? prefill ?? blankField(base.groups)
   })
   const [errors, setErrors] = useState<FieldErrors>({})
   const [reloadNote, setReloadNote] = useState<string | null>(null)
@@ -248,11 +264,7 @@ function FieldForm({
   }
 
   return (
-    <form
-      aria-label={original === null ? 'New field' : `Edit ${original}`}
-      className="space-y-4"
-      onSubmit={handleSubmit}
-    >
+    <form aria-label={formTitle(original, copyOf)} className="space-y-4" onSubmit={handleSubmit}>
       <TextField
         label="Key"
         keyField

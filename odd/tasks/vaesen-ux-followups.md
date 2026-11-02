@@ -50,7 +50,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T4 | 1 | P7: reword the table step prompt that promises a text field | delegated writer (slice 1) | [x] | `c28b2f14` |
 | T5 | 1 | P13: the cast editor offers the previous Scene's NPCs for one-click adding | delegated writer (slice 1) | [x] | `df706859` |
 | T5b | 2 | Slice 1 review findings (see Reviews) | delegated writer (slice 2) | [x] | — |
-| T6 | 2 | S26: Duplicate a sheet field | delegated writer (slice 2) | [ ] | — |
+| T6 | 2 | S26: Duplicate a sheet field | delegated writer (slice 2) | [x] | — |
 | T7 | 2 | S26: bulk paste sheet fields | delegated writer (slice 2) | [ ] | — |
 | T8 | 2 | S1, S14: condition band cap 100 in domain, translator and contract; live counter on check and condition band labels | delegated writer (slice 2) | [ ] | — |
 | T9 | 2 | S11: reorder likelihood oracle levels; test that the backend keeps the order | delegated writer (slice 2) | [ ] | — |
@@ -69,6 +69,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: T4 done: the table prompt now says "then decide how it fits the mystery so far". Decision changed: no version bump, because a preset file carries no version (the release version is set when `make presets` publishes it) and the precedent commit 346b0ccc bumped nothing; no test pins the wording, so there is no meaningful RED. `PresetsTest` and the Lanterns flow test pass.
 - 2026-11-02: T5 done, frontend-only: every Scene in the campaign view already carries its cast, so no endpoint was added. `previousSceneCast` takes the nearest earlier non-hook Scene of the session, or the last of an earlier session for a session's first Scene (a hook Scene has no cast of its own). The cast editor lists those NPCs that are not in the cast and still exist in the campaign, closed ones marked; one click sends the whole cast through the existing mutation. Scene start and ADR 0018 unchanged. RED: the two positive component tests failed before the change.
 - 2026-11-02: T5b done: the pool size label adds "(before the extra dice)" once a non-zero modifier is typed (the size is the server's, so the form does not clamp it itself); the two Play tests wait for the journal entry before asserting absence; the empty cast assertion is in `waitFor`; the API test rolls and asserts the recorded `4d6`. No RED observed: the modifier test was written with the change; the other three are test-only hardening and passed first run.
+- 2026-11-02: T6 done, frontend-only: a Duplicate row action on each readable sheet field opens the field dialog as a new, unsaved field (`duplicateField`: key `{key}-copy[-n]`, label `{label} (copy)`, both cut to the publisher's 64 and 100 characters); nothing is sent until Save. No RED observed: tests were written with the code and passed first run.
 
 ## Reviews
 

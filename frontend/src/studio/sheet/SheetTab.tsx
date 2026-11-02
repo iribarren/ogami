@@ -3,6 +3,7 @@ import {
   ArrowUp,
   Backpack,
   ChevronsUpDown,
+  Copy,
   Hash,
   List,
   ListChecks,
@@ -36,7 +37,13 @@ import { SheetCurrencyPanel } from './SheetCurrencyPanel'
 import { SheetPointBudgetPanel } from './SheetPointBudgetPanel'
 import { SheetPreview } from './SheetPreview'
 import { useSheetSamples, type SampleValues, type SheetSamples } from './useSheetSamples'
-import { moveTarget, readField, sheetSections, type StoredField } from './sheetDraft'
+import {
+  duplicateField,
+  moveTarget,
+  readField,
+  sheetSections,
+  type StoredField,
+} from './sheetDraft'
 import {
   useDeleteSheetField,
   useGameSystemSheet,
@@ -243,7 +250,16 @@ function FieldRow({
     )
   }
 
-  const editable = readField(field) !== null
+  const source = readField(field)
+  const editable = source !== null
+  // A new, unsaved field that starts as this one; nothing is sent until the author saves it.
+  const duplicate =
+    source === null
+      ? null
+      : duplicateField(
+          source,
+          sheet.fields.flatMap((other) => (typeof other.key === 'string' ? [other.key] : [])),
+        )
   const hint = rangeHint(field) ?? optionsHint(field) ?? inventoryHint(field)
   const up = moveTarget(sheet.fields, index, 'up', sheet.groups !== null)
   const down = moveTarget(sheet.fields, index, 'down', sheet.groups !== null)
@@ -268,6 +284,19 @@ function FieldRow({
         trigger={
           <IconButton label={`Edit ${key}`} dense disabled={!editable}>
             <Pencil />
+          </IconButton>
+        }
+      />
+      <SheetFieldDialog
+        gameSystemKey={gameSystemKey}
+        sheet={sheet}
+        samples={samples}
+        original={null}
+        copyOf={key}
+        prefill={duplicate}
+        trigger={
+          <IconButton label={`Duplicate ${key}`} dense disabled={duplicate === null}>
+            <Copy />
           </IconButton>
         }
       />

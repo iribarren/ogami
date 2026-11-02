@@ -54,6 +54,63 @@ async function addField(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('button', { name: 'Add field' }))
 }
 
+describe('duplicating a field', () => {
+  it('opens a new field prefilled from the source with a free key, and sends it only on save', async () => {
+    const { sent, handler } = recorder(Response.json({ ...sheet, version: 8 }, { status: 201 }))
+    const { user } = await openSheet({ [`POST ${base}/sheet/fields`]: handler })
+
+    await user.click(await screen.findByRole('button', { name: 'Duplicate pow' }))
+    expect(screen.getByRole('dialog', { name: 'Duplicate pow' })).toBeVisible()
+    expect(inDialog().getByLabelText('Key')).toHaveValue('pow-copy')
+    expect(inDialog().getByLabelText('Label')).toHaveValue('Power (copy)')
+    expect(inDialog().getByLabelText('Max')).toHaveValue('18')
+    expect(sent).toEqual([])
+
+    await user.click(inDialog().getByRole('button', { name: 'Create field' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([
+        {
+          expectedVersion: 7,
+          field: {
+            key: 'pow-copy',
+            label: 'Power (copy)',
+            group: 'Stats',
+            span: 2,
+            type: 'number',
+            min: 0,
+            max: 18,
+          },
+        },
+      ])
+    })
+  })
+
+  it('sends nothing when the dialog is closed without saving', async () => {
+    const { sent, handler } = recorder(Response.json(sheet, { status: 201 }))
+    const { user } = await openSheet({ [`POST ${base}/sheet/fields`]: handler })
+
+    await user.click(await screen.findByRole('button', { name: 'Duplicate pow' }))
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+    expect(sent).toEqual([])
+  })
+
+  it('cannot duplicate a field of a shape the editor cannot read', async () => {
+    await openSheet({
+      [`GET ${base}/sheet`]: json({
+        ...sheetUngrouped,
+        fields: [{ key: 'odd', label: 'Odd', type: 'number', min: 'low' }],
+      }),
+    })
+
+    expect(await screen.findByRole('button', { name: 'Duplicate odd' })).toBeDisabled()
+  })
+})
+
 describe('adding a field', () => {
   it('sends only what was filled, with the first declared group, and closes on success', async () => {
     const { sent, handler } = recorder(Response.json({ ...sheet, version: 8 }, { status: 201 }))

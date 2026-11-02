@@ -1,7 +1,7 @@
 # Feature: studio-unsaved-work
 
 - **Locator:** `odd/tasks/studio-unsaved-work.md` · Engram topic `odd/studio-unsaved-work/tasks`
-- **Issue:** [#360](https://github.com/iribarren/ogami/issues/360) · **Branch:** `fix/studio-unsaved-work-2-tab-forms` · **Status:** in progress
+- **Issue:** [#360](https://github.com/iribarren/ogami/issues/360) · **Branch:** `fix/studio-unsaved-work-2-tab-forms` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-scene-type-lost-steps` (PR #359)
@@ -62,13 +62,13 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T2 | 1 | G1, G2, G4: likelihood oracle editor, the same | delegated writer | [x] | `4b669279` |
 | T3 | 1 | G2, G3, G4: Flow editor reaches the Scene Type editor's level | delegated writer | [x] | `a1c7b83e` |
 | T4 | 1 | G5: a read in flight cannot overwrite a save in any section | delegated writer | [x] | `5ba9b924` |
-| T5 | 2 | G6: `FlowsTab` handles a refused navigation | delegated writer | [x] | |
-| T6 | 2 | G7: guard option for a tab change | delegated writer | [x] | |
-| T7 | 2 | G7: `MetadataForm` baseline and guard; Discard ignores the blocker | delegated writer | [x] | |
-| T8 | 2 | G7: `CheckEditor` dirty, guard, and a confirm on picking another check | delegated writer | [x] | |
-| T9 | 2 | G7: `SheetCurrencyPanel` guard | delegated writer | [x] | |
-| T10 | 2 | Slice 1 finding: a reload clears what the test panel last said | inline: two lines per editor, already understood | [x] | |
-| T11 | 2 | Slice 2 finding: a guarded check action opens on the current version | inline: one effect and two tests | [x] | |
+| T5 | 2 | G6: `FlowsTab` handles a refused navigation | delegated writer | [x] | `6c4ea57c` |
+| T6 | 2 | G7: guard option for a tab change | delegated writer | [x] | `0e0a1188` |
+| T7 | 2 | G7: `MetadataForm` baseline and guard; Discard ignores the blocker | delegated writer | [x] | `e83dc059` |
+| T8 | 2 | G7: `CheckEditor` dirty, guard, and a confirm on picking another check | delegated writer | [x] | `7b32670f` |
+| T9 | 2 | G7: `SheetCurrencyPanel` guard | delegated writer | [x] | `eb4c5a23` |
+| T10 | 2 | Slice 1 finding: a reload clears what the test panel last said | inline: two lines per editor, already understood | [x] | `f153d166` |
+| T11 | 2 | Slice 2 finding: a guarded check action opens on the current version | inline: one effect and two tests | [x] | `1dea00fd` |
 
 ## Acceptance criteria
 
@@ -99,13 +99,17 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: T9 done. RED: the 2 asking tests failed (tab change, leaving the page); the clean, trimmed-unit, saved and removed tests passed at once, as they pin that the form is clean. The test that rendered the bare panel now drives the cache of the full app, since the guard needs a router.
 - 2026-11-02: T10 done, last rather than first. The results were never reset: the page has owned them since before slice 1, so a reload keeps them. Slice 1 lost only the reset of the panel's own error and inputs; a `key` on the panel restores it. RED: both new tests failed on the alert still shown.
 - 2026-11-02: T11 done. The finding asked for a test; the test found a bug: a save finishing behind the question opened the next check on the old version, because the save's promise resolves before React renders the new cache, and that check's save would answer a false 409. RED: expected version 6, sent 5. The effect now reads the cache. The Leave test passed at once; with the action changed to keep the click's data, both tests fail.
+- 2026-11-02: Playwright at `f153d166`: the 5 Studio specs pass with `--workers=1`. With parallel workers, 3 runs of 3 failed on 5-second timeouts: `studio-flow-editor` each time and `studio-oracle-editor` once, at creating a GameSystem or reading after a reload. `studio-flow-editor` passes alone. Not investigated further; this slice changes neither path.
+- 2026-11-02: Chrome pass at `f153d166`. `MetadataForm`: a tab switch asks nothing and keeps the text; a link asks; Stay keeps; Leave goes; undone and saved forms leave freely; Discard with a dirty form raises no unsaved dialog and the draft answers 404. `CheckEditor`: Edit, the same check, New check, a row's Duplicate, a tab change and a link all ask when dirty and not when clean; an untouched New check leaves freely; a duplicate counts as unsaved; the editor's Duplicate carries the edits with no dialog. Two dirty forms: a second dialog follows the first. `SheetCurrencyPanel`: a tab change and a link ask; a trailing space reads clean; `zz ` saves as `zz` and reads clean. `beforeunload` was checked with a dispatched event, so the native prompt was not seen. Covered by Vitest only: T5, T10, T11.
+- 2026-11-02: Closed. The T11 commit was not reviewed: the person chose to skip it. `make verify` ran before T10 and T11; after them, the affected test files, ESLint on the checks files, and `tsc` passed. CI is the full run. Follow-up: [#363](https://github.com/iribarren/ogami/issues/363).
 
 ## Reviews
 
 | Slice | Lineage | Outcome | Findings | PR |
 |---|---|---|---|---|
 | 1 | `review-4b4a01becdc17a61` | Approved, acknowledged at `5ba9b924`, 1,588 lines | (S) A reload no longer remounts the oracle editors, so test-roll and test-answer state survives next to the replaced draft (`TableEditor.tsx:210`): T10 | [#361](https://github.com/iribarren/ogami/pull/361) |
+| 2 | `review-2f2e8d9d11ce266a` | Approved, acknowledged at `f153d166`, 1,017 lines. T11 at `1dea00fd` skipped by the person | (W) No test proved a guarded check action uses current data (`ChecksTab.test.tsx:1995`): T11, which found and fixed a real bug. Two drafts still dropped with no choice: [#363](https://github.com/iribarren/ogami/issues/363) | [#362](https://github.com/iribarren/ogami/pull/362) |
 
 ## Next step
 
-Slice 2: writer, Chrome pass, native review, PR, closing doc commit on the same PR.
+None. The one review finding is fixed in T11; the remaining gaps are in [#363](https://github.com/iribarren/ogami/issues/363).

@@ -10,6 +10,8 @@ export interface PastedEntry {
   max?: number
   /** A weighted table's weight. */
   weight?: number
+  /** The entry key, only on a schema version with entry keys. */
+  key?: string
 }
 
 export interface PasteError {
@@ -39,14 +41,65 @@ const RANGED_LINE = /^(\d{1,9})(?:\s*[-–]\s*(\d{1,9}))?(?:\s*[:)]\s*|\s*\.(?=\
 /** A line that is only a range, with or without its separator. */
 const RANGE_ONLY = /^\d{1,9}(?:\s*[-–]\s*\d{1,9})?\s*[.:)]?$/
 
+/** The key rule of every Studio key (the entry key field is checked by the server, which stays the authority). */
+const KEY_RULE = /^[a-z0-9-]{1,64}$/
+/** An optional `[key]` at the start of the entry text, then the text. */
+const KEYED_TEXT = /^\[([^\]]*)\]\s*(.*)$/
+
 /**
  * One entry per non-blank line. Ranged tables read a leading range; lines without one follow on
  * from the previous range (one total each). Weighted tables give every line weight 1 and keep a
- * leading number in the text. Any bad line fails the whole paste: nothing is guessed or fixed.
+ * leading number in the text. With `withKey` (the schema version has entry keys) the text may start
+ * with `[key]`; a key must follow the key rule and be new to the paste and, when adding, to the table.
+ * Any bad line fails the whole paste: nothing is guessed or fixed.
  */
-export function parsePaste(draft: TableDraft, input: string, mode: PasteMode): PasteResult {
+export function parsePaste(
+  draft: TableDraft,
+  input: string,
+  mode: PasteMode,
+  withKey = false,
+): PasteResult {
   const entries: PastedEntry[] = []
   const errors: PasteError[] = []
+  const seen = new Map<string, number>()
+  const inTable = new Set(
+    mode === 'append' ? draft.entries.map(({ key }) => key).filter((key) => key !== '') : [],
+  )
+
+  /** Reads the optional `[key]` off an entry's text; null once the line has failed. */
+  function keyed(number: number, text: string): { text: string; key?: string } | null {
+    const fail = (message: string) => {
+      errors.push({ line: number, message: `Line ${String(number)}: ${message}` })
+      return null
+    }
+    if (!text.startsWith('[')) {
+      return { text }
+    }
+    if (!withKey) {
+      return fail('this table has no entry keys; remove the text in brackets.')
+    }
+    const match = KEYED_TEXT.exec(text)
+    const key = match?.[1] ?? ''
+    if (!match || !KEY_RULE.test(key)) {
+      return fail(
+        'the text in brackets at the start is not a valid entry key (lower case letters, digits and hyphens, up to 64).',
+      )
+    }
+    const rest = match[2] ?? ''
+    if (rest === '') {
+      return fail('add the entry text after the key.')
+    }
+    const first = seen.get(key)
+    if (first !== undefined) {
+      return fail(`the key "${key}" is already used on line ${String(first)}.`)
+    }
+    if (inTable.has(key)) {
+      return fail(`the key "${key}" is already in the table.`)
+    }
+    seen.set(key, number)
+    return { text: rest, key }
+  }
+
   let next = draft.ranged ? pasteStart(draft, mode) : null
 
   input.split(/\r?\n/).forEach((raw, offset) => {
@@ -56,7 +109,10 @@ export function parsePaste(draft: TableDraft, input: string, mode: PasteMode): P
       return
     }
     if (!draft.ranged) {
-      entries.push({ text: line, weight: 1 })
+      const read = keyed(number, line)
+      if (read) {
+        entries.push({ ...read, weight: 1 })
+      }
       return
     }
     const match = RANGED_LINE.exec(line)
@@ -75,8 +131,11 @@ export function parsePaste(draft: TableDraft, input: string, mode: PasteMode): P
         })
         return
       }
-      entries.push({ text: line, min: next, max: next })
-      next += 1
+      const read = keyed(number, line)
+      if (read) {
+        entries.push({ ...read, min: next, max: next })
+        next += 1
+      }
       return
     }
     const min = Number(match[1])
@@ -88,7 +147,10 @@ export function parsePaste(draft: TableDraft, input: string, mode: PasteMode): P
       })
       return
     }
-    entries.push({ text: match[3] ?? '', min, max })
+    const read = keyed(number, match[3] ?? '')
+    if (read) {
+      entries.push({ ...read, min, max })
+    }
     next = max + 1
   })
 
@@ -103,7 +165,7 @@ export function applyPaste(
   firstId: number,
 ): EntryDraft[] {
   const added = pasted.map((entry, offset): EntryDraft => {
-    const made = toEntryDraft({ text: entry.text }, firstId + offset)
+    const made = { ...toEntryDraft({ text: entry.text }, firstId + offset), key: entry.key ?? '' }
     return draft.ranged
       ? { ...made, min: String(entry.min ?? ''), max: String(entry.max ?? '') }
       : { ...made, weight: String(entry.weight ?? 1) }

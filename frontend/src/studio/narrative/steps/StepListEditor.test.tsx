@@ -315,7 +315,147 @@ describe('the step list editor', () => {
     expect(card(2).getByText(/next only goes forward/)).toBeInTheDocument()
     expect(card(2).getByRole('combobox', { name: 'Next' })).toHaveValue('b')
     const options = await listOptions(user, card(1).getByRole('combobox', { name: 'Next' }))
-    expect(options.map((option) => option.value)).toEqual(['', 'a', 'end'])
+    expect(options.map((option) => option.label)).toEqual([
+      'The following step',
+      'a',
+      'End of the list',
+      'New step…',
+    ])
+  })
+
+  describe('with New step… in a Next select', () => {
+    const NEW = 'New step…'
+    const pickKind = async (user: UserEvent, kind: string) => {
+      await user.click(await screen.findByRole('menuitem', { name: kind }))
+    }
+    const kinds = () =>
+      screen.getAllByRole('menuitem').map((item) => item.getAttribute('aria-label'))
+
+    it('appends a step of the kind asked and points the step at it, in one edit', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={[{ key: 'a', kind: 'character', title: 'A' }]} />)
+
+      await chooseOption(user, 'Next', NEW, card(1))
+      expect(kinds()).toEqual([...stepKinds])
+      await pickKind(user, 'prompt')
+
+      expect(saved(0)).toMatchObject({ key: 'a', next: 'prompt-1' })
+      expect(saved(1)).toMatchObject({ key: 'prompt-1', kind: 'prompt' })
+      expect(card(1).getByRole('combobox', { name: 'Next' })).toHaveValue('prompt-1')
+      expect(screen.getByLabelText('Step 2')).toBeInTheDocument()
+    })
+
+    it('gives the new step a key no step has, and puts it last', async () => {
+      const user = userEvent.setup()
+      render(
+        <Harness
+          stored={[
+            { key: 'a', kind: 'character', title: 'A' },
+            { key: 'prompt-1', kind: 'prompt', title: 'Taken' },
+            { key: 'z', kind: 'character', title: 'Z' },
+          ]}
+        />,
+      )
+
+      await chooseOption(user, 'Next', NEW, card(1))
+      await pickKind(user, 'prompt')
+
+      expect(saved(0)).toMatchObject({ next: 'prompt-2' })
+      expect(saved(3)).toMatchObject({ key: 'prompt-2' })
+      expect((latest.written as { steps: unknown[] }).steps).toHaveLength(4)
+    })
+
+    it('leaves Next as it was when the kind menu is cancelled', async () => {
+      const user = userEvent.setup()
+      render(
+        <Harness
+          stored={[
+            { key: 'a', kind: 'character', title: 'A', next: 'b' },
+            { key: 'b', kind: 'character', title: 'B' },
+          ]}
+        />,
+      )
+
+      await chooseOption(user, 'Next', NEW, card(1))
+      await screen.findAllByRole('menuitem')
+      await user.keyboard('{Escape}')
+
+      expect(card(1).getByRole('combobox', { name: 'Next' })).toHaveValue('b')
+      expect(saved(0)).toMatchObject({ next: 'b' })
+      expect((latest.written as { steps: unknown[] }).steps).toHaveLength(2)
+    })
+
+    it('creates the target of a choice option', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={[stepListBranching[2]]} />)
+
+      await chooseOption(
+        user,
+        'Next',
+        NEW,
+        within(card(1).getByRole('group', { name: 'Option 2' })),
+      )
+      await pickKind(user, 'roll')
+
+      expect(saved(0)).toMatchObject({
+        options: [
+          { key: 'left', next: 'end' },
+          { key: 'right', next: 'roll-1' },
+        ],
+      })
+      expect(saved(1)).toMatchObject({ key: 'roll-1', kind: 'roll' })
+    })
+
+    it('creates the target of a check band, and keeps the band outcome it had', async () => {
+      const user = userEvent.setup()
+      render(
+        <Harness
+          stored={[
+            {
+              key: 'lock',
+              kind: 'check',
+              title: 'Lock',
+              check: 'skill',
+              outcomes: [{ band: 'fail', effects: [{ kind: 'endPhase' }] }],
+            },
+          ]}
+        />,
+      )
+
+      await chooseOption(
+        user,
+        'Next',
+        NEW,
+        within(card(1).getByRole('group', { name: 'Outcome fail' })),
+      )
+      await pickKind(user, 'oracle')
+
+      expect(saved(0)).toMatchObject({
+        outcomes: [{ band: 'fail', next: 'oracle-1', effects: [{ kind: 'endPhase' }] }],
+      })
+      expect(saved(1)).toMatchObject({ key: 'oracle-1', kind: 'oracle' })
+    })
+
+    it('creates the target of a roll band', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={[stepList[1]]} />)
+
+      await chooseOption(user, 'Next', NEW, within(card(1).getByRole('group', { name: 'Band 1' })))
+      await pickKind(user, 'prompt')
+
+      const step = saved(0) as { bands: { next?: string }[] }
+      expect(saved(1)).toMatchObject({ kind: 'prompt', key: step.bands[0]?.next })
+      expect(step.bands[0]?.next).toBeTruthy()
+    })
+
+    it('does not offer a shop in a setup, as the Add step menu does not', async () => {
+      const user = userEvent.setup()
+      render(<Harness setup stored={[{ key: 'a', kind: 'character', title: 'A' }]} />)
+
+      await chooseOption(user, 'Next', NEW, card(1))
+
+      expect(kinds()).toEqual(stepKinds.filter((kind) => kind !== 'shop'))
+    })
   })
 
   it('shows a backward next on a step and on a band in the fixture', () => {
@@ -625,7 +765,13 @@ describe('the step list editor', () => {
     )
 
     const options = await listOptions(user, card(1).getByRole('combobox', { name: 'Next' }))
-    expect(options.map((option) => option.value)).toEqual(['', 'a', 'c', 'end'])
+    expect(options.map((option) => option.label)).toEqual([
+      'The following step',
+      'a',
+      'c',
+      'End of the list',
+      'New step…',
+    ])
     expect(card(3).getByText('Another step has this key.')).toBeInTheDocument()
     expect(card(4).getByText('end is reserved for the end of the list.')).toBeInTheDocument()
     expect(screen.getAllByText('Twice')).toHaveLength(2)
@@ -1368,6 +1514,100 @@ describe('the step list editor', () => {
       })
     })
 
+    it('adds every missing special at once, as copies of the top band and the lowest, leaving an existing one alone', async () => {
+      const user = userEvent.setup()
+      const effect = { kind: 'sheet', field: 'stress', op: 'add', value: 1 }
+      render(
+        <Harness
+          stored={[
+            stepOf({
+              outcomes: [
+                { band: 'fail', next: 'ruin', effects: [effect] },
+                { band: 'partial', next: 'mid' },
+                { band: 'success', next: 'win', effects: [effect] },
+              ],
+            }),
+          ]}
+          context={context}
+        />,
+      )
+
+      await user.click(specials().getByRole('button', { name: 'Add all special results' }))
+
+      expect(saved(0)).toMatchObject({
+        outcomes: [
+          { band: 'fail', next: 'ruin', effects: [effect] },
+          { band: 'partial', next: 'mid' },
+          { band: 'success', next: 'win', effects: [effect] },
+          { special: 'critical', next: 'win', effects: [effect] },
+          { special: 'messyCritical', next: 'win', effects: [effect] },
+          { special: 'bestialFailure', next: 'ruin', effects: [effect] },
+        ],
+      })
+      expect(
+        specials().queryByRole('button', { name: 'Add all special results' }),
+      ).not.toBeInTheDocument()
+      expect(
+        specials()
+          .queryAllByRole('button', { name: /^Add outcome for / })
+          .map((button) => button.textContent),
+      ).toEqual([])
+    })
+
+    it('offers Add all only when two specials have no outcome, and keeps a stored one as it is', async () => {
+      const user = userEvent.setup()
+      const stored = stepOf({
+        outcomes: [
+          { band: 'success', next: 'win' },
+          { special: 'critical', next: 'mine' },
+        ],
+      })
+      render(<Harness stored={[stored]} context={context} />)
+
+      await user.click(specials().getByRole('button', { name: 'Add all special results' }))
+
+      expect(saved(0)).toMatchObject({
+        outcomes: [
+          { band: 'success', next: 'win' },
+          { special: 'critical', next: 'mine' },
+          { special: 'messyCritical', next: 'win' },
+          // The lowest band has no outcome, so its copy is empty and, as any empty outcome, not saved.
+        ],
+      })
+    })
+
+    it('hides Add all with one special missing, and a single Add starts as a copy of its band', async () => {
+      const user = userEvent.setup()
+      render(
+        <Harness
+          stored={[
+            stepOf({
+              outcomes: [
+                { band: 'fail', next: 'ruin' },
+                { special: 'critical', next: 'end' },
+                { special: 'messyCritical', next: 'end' },
+              ],
+            }),
+          ]}
+          context={context}
+        />,
+      )
+
+      expect(
+        specials().queryByRole('button', { name: 'Add all special results' }),
+      ).not.toBeInTheDocument()
+      await user.click(specials().getByRole('button', { name: 'Add outcome for Bestial failure' }))
+
+      expect(saved(0)).toMatchObject({
+        outcomes: [
+          { band: 'fail', next: 'ruin' },
+          { special: 'critical' },
+          { special: 'messyCritical' },
+          { special: 'bestialFailure', next: 'ruin' },
+        ],
+      })
+    })
+
     it('shows a stored special as a row and gives the step back as stored', () => {
       const stored = stepOf({
         outcomes: [
@@ -1464,6 +1704,16 @@ describe('the step list editor', () => {
       await replaceText(user, card(1).getByLabelText('Count max'), '1')
 
       expect(saved(0)).not.toHaveProperty('count')
+    })
+
+    it('says what the tags of a pick match: none is any open item, several must all be carried', () => {
+      render(<Harness stored={stepListPickCheck} />)
+
+      expect(
+        card(1).getByText(
+          /Only open items are offered\. With no tags any of them can be picked; with several, an item must carry all of them\./,
+        ),
+      ).toBeInTheDocument()
     })
 
     it('guides a count whose max is below its min, and edits the found and none outcomes without sheet effects', async () => {

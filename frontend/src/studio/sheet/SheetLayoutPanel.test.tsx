@@ -236,6 +236,30 @@ describe('editing the layout', () => {
     })
   })
 
+  it('moves a group to the top or bottom, and disables that at the edges', async () => {
+    const { sent, handler } = recorder(Response.json(sheet))
+    const { user } = await openSheet({ [`PUT ${base}/sheet/layout`]: handler })
+
+    await editLayout(user)
+    const before = [1, 2, 3].map(
+      (at) => within(group(at)).getByLabelText<HTMLInputElement>('Name').value,
+    )
+    expect(within(group(1)).getByRole('button', { name: 'Move to top' })).toBeDisabled()
+    expect(within(group(3)).getByRole('button', { name: 'Move to bottom' })).toBeDisabled()
+
+    await user.click(within(group(3)).getByRole('button', { name: 'Move to top' }))
+    await user.click(within(group(2)).getByRole('button', { name: 'Move to bottom' }))
+    await saveLayout(user)
+
+    await waitFor(() => {
+      expect((sent[0]?.groups as { name: string }[]).map(({ name }) => name)).toEqual([
+        before[2],
+        before[1],
+        before[0],
+      ])
+    })
+  })
+
   it('disables the edges of the order, and deleting a group that holds fields', async () => {
     const { user } = await openSheet()
 

@@ -98,4 +98,49 @@ describe('Select', () => {
     expect(trigger).toHaveTextContent('gone (not an option)')
     expect(trigger).toBeInvalid()
   })
+
+  it('does not echo back a value its caller just set to an option that did not exist yet, inside a form', async () => {
+    const user = userEvent.setup()
+    const changes: string[] = []
+    function Adding() {
+      const [options, setOptions] = useState(['a'])
+      const [value, setValue] = useState('')
+      return (
+        <form>
+          <Label htmlFor="added">Added</Label>
+          <Select
+            id="added"
+            value={value}
+            onChange={(event) => {
+              changes.push(event.target.value)
+              setValue(event.target.value)
+            }}
+          >
+            <option value="">None</option>
+            {options.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </Select>
+          <button
+            type="button"
+            onClick={() => {
+              // A new option and the value that picks it, in one render.
+              setOptions([...options, 'b'])
+              setValue('b')
+            }}
+          >
+            Add b
+          </button>
+        </form>
+      )
+    }
+    render(<Adding />)
+
+    await user.click(screen.getByRole('button', { name: 'Add b' }))
+
+    expect(screen.getByRole('combobox', { name: 'Added' })).toHaveTextContent('b')
+    expect(changes).toEqual([])
+  })
 })

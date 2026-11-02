@@ -127,6 +127,84 @@ describe('parsePaste', () => {
     ])
   })
 
+  describe('entry keys', () => {
+    const keyed = (draft: TableDraft, input: string, mode: 'replace' | 'append' = 'replace') =>
+      parsePaste(draft, input, mode, true)
+
+    it('reads an optional [key] before the text, with or without a range', () => {
+      const { entries, errors } = keyed(
+        ranged([]),
+        '1-3 [rain] Heavy rain\n[snow] Snow\n5 [hail]Hail\nFog',
+      )
+      expect(errors).toEqual([])
+      expect(entries).toEqual([
+        { text: 'Heavy rain', min: 1, max: 3, key: 'rain' },
+        { text: 'Snow', min: 4, max: 4, key: 'snow' },
+        { text: 'Hail', min: 5, max: 5, key: 'hail' },
+        { text: 'Fog', min: 6, max: 6 },
+      ])
+    })
+
+    it('reads the key of a weighted table too', () => {
+      expect(keyed({ ...weighted(), entries: [] }, '[calm] Calm\nGale').entries).toEqual([
+        { text: 'Calm', weight: 1, key: 'calm' },
+        { text: 'Gale', weight: 1 },
+      ])
+    })
+
+    it.each(['[Rain] x', '[] x', '[ra in] x', '[rain x', `[${'a'.repeat(65)}] x`])(
+      'fails the whole paste on a bracket that is not a valid key: %j',
+      (line) => {
+        const { entries, errors } = keyed(ranged([]), `Fine\n${line}`)
+        expect(entries).toEqual([])
+        expect(errors).toHaveLength(1)
+        expect(errors[0]?.message).toMatch(
+          /^Line 2: the text in brackets at the start is not a valid entry key/,
+        )
+      },
+    )
+
+    it('fails on a key without text', () => {
+      expect(keyed(ranged([]), '1 [rain]').errors[0]?.message).toBe(
+        'Line 1: add the entry text after the key.',
+      )
+    })
+
+    it('fails on any [key] when the schema version has no entry keys', () => {
+      const { entries, errors } = parsePaste(ranged([]), '[rain] Rain\n2 [snow] Snow', 'replace')
+      expect(entries).toEqual([])
+      expect(errors.map(({ line }) => line)).toEqual([1, 2])
+      expect(errors[0]?.message).toContain('no entry keys')
+    })
+
+    it('fails on a key repeated in the paste, naming both lines', () => {
+      const { errors } = keyed(ranged([]), '[rain] A\nB\n[rain] C')
+      expect(errors).toEqual([
+        { line: 3, message: 'Line 3: the key "rain" is already used on line 1.' },
+      ])
+    })
+
+    it('checks keys against the table only when adding', () => {
+      const draft = ranged([[1, 2]])
+      const table = { ...draft, entries: draft.entries.map((entry) => ({ ...entry, key: 'rain' })) }
+
+      expect(keyed(table, '[rain] Again', 'append').errors).toEqual([
+        { line: 1, message: 'Line 1: the key "rain" is already in the table.' },
+      ])
+      expect(keyed(table, '[rain] Again', 'replace').entries).toHaveLength(1)
+    })
+
+    it('puts the key into the draft, and leaves entries without one keyless', () => {
+      const draft = ranged([[1, 2]])
+      const { entries } = keyed(draft, '[rain] Rain\nSnow', 'append')
+      expect(applyPaste(draft, entries, 'append', 10).map(({ key }) => key)).toEqual([
+        '',
+        'rain',
+        '',
+      ])
+    })
+  })
+
   it('has no entries and no errors for an empty paste', () => {
     expect(parsePaste(ranged([]), ' \n\n', 'replace')).toEqual({ entries: [], errors: [] })
   })

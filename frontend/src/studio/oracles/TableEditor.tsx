@@ -267,6 +267,7 @@ export function TableEditor({
               <div className="ml-auto">
                 <PasteEntriesDialog
                   draft={draft}
+                  withKey={withKey}
                   onApply={(pasted, mode) => {
                     const entries = applyPaste(draft, pasted, mode, nextId.current)
                     nextId.current += pasted.length

@@ -69,21 +69,30 @@ export function addGroup(draft: LayoutDraft): LayoutDraft {
   return { ...draft, groups: [...draft.groups, group] }
 }
 
-/** The same draft, as is, at the edge of the list. */
-export function moveGroup(
-  draft: LayoutDraft,
-  index: number,
-  direction: 'up' | 'down',
-): LayoutDraft {
-  const target = direction === 'up' ? index - 1 : index + 1
+/** Where a group can move: a step, or to an end of the list. */
+export type GroupMove = 'up' | 'down' | 'top' | 'bottom'
+
+/** The same draft, as is, when the group is already where it would go. */
+export function moveGroup(draft: LayoutDraft, index: number, direction: GroupMove): LayoutDraft {
+  const target = {
+    up: index - 1,
+    down: index + 1,
+    top: 0,
+    bottom: draft.groups.length - 1,
+  }[direction]
   const group = draft.groups[index]
-  const neighbour = draft.groups[target]
-  if (group === undefined || neighbour === undefined) {
+  if (group === undefined || draft.groups[target] === undefined || target === index) {
     return draft
   }
   const groups = [...draft.groups]
-  groups[index] = neighbour
-  groups[target] = group
+  if (direction === 'up' || direction === 'down') {
+    groups[index] = draft.groups[target]
+    groups[target] = group
+  } else {
+    // To an end, the others keep their order.
+    groups.splice(index, 1)
+    groups.splice(target, 0, group)
+  }
   return { ...draft, groups }
 }
 

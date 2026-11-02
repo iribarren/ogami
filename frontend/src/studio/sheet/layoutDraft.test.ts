@@ -89,6 +89,21 @@ describe('editing the groups', () => {
     expect(moveGroup(draft, 1, 'down')).toBe(draft)
   })
 
+  it('moves a group to the top or bottom, the others keeping their order, and stops at the edges', () => {
+    const three = addGroup(draft)
+    const abc = {
+      ...three,
+      groups: three.groups.map((group, at) => ({ ...group, name: 'abc'[at] ?? '' })),
+    }
+
+    expect(names(moveGroup(abc, 2, 'top'))).toEqual(['c', 'a', 'b'])
+    expect(names(moveGroup(abc, 0, 'bottom'))).toEqual(['b', 'c', 'a'])
+    expect(names(moveGroup(abc, 1, 'top'))).toEqual(['b', 'a', 'c'])
+    expect(moveGroup(abc, 0, 'top')).toBe(abc)
+    expect(moveGroup(abc, 2, 'bottom')).toBe(abc)
+    expect(moveGroup(abc, 7, 'top')).toBe(abc)
+  })
+
   it('removes a group', () => {
     expect(names(removeGroup(draft, 0))).toEqual(['Health'])
   })

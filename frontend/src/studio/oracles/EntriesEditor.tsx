@@ -208,6 +208,11 @@ function EntryRow({
           aria-invalid={entry.text.trim() === ''}
           {...field('text')}
         />
+        {withKey && entry.key !== '' && (
+          <Badge variant="outline" className="font-mono" title="Entry key">
+            {entry.key}
+          </Badge>
+        )}
         {summary !== null && <Badge variant="secondary">{summary}</Badge>}
         <IconButton
           label={`${label} details`}

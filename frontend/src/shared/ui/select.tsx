@@ -83,6 +83,21 @@ function Select({
   ...props
 }: SelectProps) {
   const options = readOptions(children)
+  // Inside a form Radix keeps a hidden native select in step with `value` and, in an effect right
+  // after the value changed, reports what that select now holds. A value that is a new option (one
+  // that only exists as of this render) is not in the native select yet, so it reports '' and would
+  // undo the change. That echo arrives while the commit settles; a choice never does.
+  const settling = React.useRef(false)
+  const lastValue = React.useRef(value)
+  React.useLayoutEffect(() => {
+    if (lastValue.current !== value) {
+      lastValue.current = value
+      settling.current = true
+    }
+  }, [value])
+  React.useEffect(() => {
+    settling.current = false
+  })
   const selected = options.find((option) => option.value === value)
   // An empty value with no empty option is "nothing chosen yet" (a list still loading or
   // empty), not an error; any other value that is no option fails closed.
@@ -94,6 +109,9 @@ function Select({
       value={toInner(value)}
       disabled={disabled}
       onValueChange={(next) => {
+        if (settling.current) {
+          return
+        }
         onChange?.({ target: { value: fromInner(next) } })
       }}
     >

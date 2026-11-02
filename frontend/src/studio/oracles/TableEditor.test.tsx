@@ -995,6 +995,34 @@ describe('a table form and the version it read', () => {
   })
 
   describe('reloading after a conflict', () => {
+    it('clears what the test panel last said and keeps its results', async () => {
+      let reads = 0
+      let rolls = 0
+      const { user } = await openEditor('weather', {
+        [`GET ${base}/oracles`]: () => Response.json(++reads === 1 ? oracles : tempest),
+        [`POST ${base}/oracle-tables/weather/test-rolls`]: () =>
+          ++rolls === 1
+            ? Response.json(stormRoll)
+            : Response.json({ error: 'The roll failed.' }, { status: 500 }),
+        [put]: json(changed, 409),
+      })
+      const panel = () => within(screen.getByRole('region', { name: 'Test roll' }))
+
+      await user.click(screen.getByRole('button', { name: 'Test roll' }))
+      await screen.findByRole('list', { name: 'Test roll results' })
+      await user.click(screen.getByRole('button', { name: 'Test roll' }))
+      await panel().findByRole('alert')
+      await replace(user, 'Entry 1 text', 'Fair')
+      await user.click(save())
+      await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+      await waitFor(() => {
+        expect(screen.getByLabelText('Entry 2 text')).toHaveValue('Tempest')
+      })
+
+      expect(panel().queryByRole('alert')).not.toBeInTheDocument()
+      expect(panel().getByRole('list', { name: 'Test roll results' })).toBeInTheDocument()
+    })
+
     it('takes the draft, the stored table and the version from one read', async () => {
       let reads = 0
       const saved = recorder((sent) =>

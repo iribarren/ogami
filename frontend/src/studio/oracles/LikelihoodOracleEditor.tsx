@@ -287,6 +287,8 @@ export function LikelihoodOracleEditor({
   const [readAt, setReadAt] = useState(version)
   // Why a reload did not replace the draft; the old version is kept then, so a save still conflicts.
   const [reloadNote, setReloadNote] = useState<string | null>(null)
+  // Counts the reloads that replaced the draft, so the test panel starts again on each.
+  const [generation, setGeneration] = useState(0)
   const oracleIndex = oracles.likelihood.findIndex(
     ({ definition }) => definition.key === stored.key,
   )
@@ -390,6 +392,7 @@ export function LikelihoodOracleEditor({
     setReadAt(result.data.version)
     setReloadNote(null)
     save.reset()
+    setGeneration((count) => count + 1)
   }
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
@@ -632,7 +635,9 @@ export function LikelihoodOracleEditor({
           </Button>
         )}
       </form>
+      {/* A reload starts it again: what it last said was about the replaced draft. The results stay. */}
       <TestAnswerPanel
+        key={generation}
         dirty={dirty}
         history={history}
         levels={draft.levels}

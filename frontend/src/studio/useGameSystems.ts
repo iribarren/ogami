@@ -255,7 +255,8 @@ export function useDiscardGameSystem(key: string) {
       queryClient.removeQueries({ queryKey: gameSystemKey(key) })
       void queryClient.invalidateQueries({ queryKey: gameSystemsKey, exact: true })
       void queryClient.invalidateQueries({ queryKey: libraryPacksKey, exact: true })
-      await navigate({ to: '/studio' })
+      // The person confirmed discarding the draft, so edits in its forms are not worth asking about.
+      await navigate({ to: '/studio', ignoreBlocker: true })
     },
   })
 }

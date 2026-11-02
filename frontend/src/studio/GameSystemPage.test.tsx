@@ -519,6 +519,8 @@ describe('switching tabs', () => {
     await user.type(within(await metadataForm()).getByLabelText('Name'), '!')
     await user.click(screen.getByRole('link', { name: 'Validation' }))
     expect(screen.queryByRole('form', { name: 'Metadata' })).not.toBeInTheDocument()
+    // The form stays mounted behind the tab, so a switch has nothing to ask about.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Overview' }))
 
     expect(within(await metadataForm()).getByLabelText('Name')).toHaveValue('My draft!')
@@ -757,6 +759,22 @@ describe('discarding a draft', () => {
       expect(router.state.location.pathname).toBe('/studio')
     })
     expect(fakeApi.requests).toContain('DELETE /api/studio/game-systems/my-draft')
+  })
+
+  it('does not ask to leave without saving when the form has unsaved edits', async () => {
+    const user = userEvent.setup()
+    const { router } = renderDraft({
+      'DELETE /api/studio/game-systems/my-draft': () => new Response(null, { status: 204 }),
+    })
+
+    await user.type(within(await metadataForm()).getByLabelText('Name'), '!')
+    await user.click(await screen.findByRole('button', { name: 'Discard draft' }))
+    await user.click(await screen.findByRole('button', { name: 'Discard the draft' }))
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/studio')
+    })
+    expect(screen.queryByRole('dialog', { name: 'Leave without saving?' })).not.toBeInTheDocument()
   })
 
   it('explains a refusal and stays on the page', async () => {

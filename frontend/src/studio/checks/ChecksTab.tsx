@@ -1,5 +1,14 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { ArrowDown, ArrowUp, Copy, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useCallback, useId, useMemo, useState, type ReactNode, type SubmitEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type ReactNode,
+  type SubmitEvent,
+} from 'react'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
@@ -25,6 +34,7 @@ import { SelectField } from '../narrative/steps/fields'
 import { FormulaInput } from '../sheet/FormulaInput'
 import { previewTemplate } from '../sheet/previewTemplate'
 import { useGameSystemSheet } from '../sheet/useGameSystemSheet'
+import { UnsavedChangesDialog, UnsavedChangesGuard } from '../UnsavedChangesGuard'
 import { StudioError } from '../useGameSystems'
 import {
   blankCheck,
@@ -54,6 +64,7 @@ import { checkAnswer } from './checkError'
 import { pushContext } from './pushContext'
 import { sampleDefaults } from './checkSandbox'
 import {
+  checksKey,
   CheckError,
   useDeleteCheck,
   useGameSystemChecks,
@@ -130,8 +141,39 @@ function CheckList({
 }) {
   const move = useMoveCheck(gameSystemKey)
   const latest = useGameSystemChecks(gameSystemKey)
+  const queryClient = useQueryClient()
   const [selected, setSelected] = useState<Selection>(null)
   const [conflict, setConflict] = useState<{ message: string; loaded: boolean } | null>(null)
+  // Whether the open editor holds edits that were not saved, as it reports it.
+  const [editorUnsaved, setEditorUnsaved] = useState(false)
+  // What the person asked for while the editor held unsaved edits, waiting for their answer.
+  const [pending, setPending] = useState<((fresh: GameSystemChecks) => void) | null>(null)
+
+  /**
+   * Runs `action` on the current checks, or, when the editor holds unsaved edits, after the
+   * person agrees to lose them. Each action restarts the form, which is why it asks.
+   */
+  function guarded(action: (fresh: GameSystemChecks) => void) {
+    if (editorUnsaved) {
+      // A function as state: the updater form, or React would call it.
+      setPending(() => action)
+    } else {
+      action(data)
+    }
+  }
+
+  // The edits were saved while the question was open (a save pending when they clicked): nothing
+  // is left to lose, so the action goes on and the question would only say something false.
+  useEffect(() => {
+    if (pending !== null && !editorUnsaved) {
+      // The answer to a change the editor reports from its own effect: there is no event to run it in.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPending(null)
+      // From the cache: the save's answer is there before this render's `data` catches up, and
+      // the next form must start from the version it returned, or its own save would conflict.
+      pending(queryClient.getQueryData<GameSystemChecks>(checksKey(gameSystemKey)) ?? data)
+    }
+  }, [pending, editorUnsaved, data, queryClient, gameSystemKey])
 
   function open(
     original: string | null,
@@ -143,16 +185,16 @@ function CheckList({
   }
 
   /** Opens a new, unsaved check prefilled from the stored one `key`; nothing is sent until saved. */
-  function duplicate(key: string) {
-    const stored = data.checks.find((check) => check.key === key)
+  function duplicate(key: string, fresh: GameSystemChecks) {
+    const stored = fresh.checks.find((check) => check.key === key)
     const source = stored && readCheck(stored)
     if (source) {
       open(
         null,
-        data,
+        fresh,
         duplicateCheck(
           source,
-          data.checks.flatMap((check) => (typeof check.key === 'string' ? [check.key] : [])),
+          fresh.checks.flatMap((check) => (typeof check.key === 'string' ? [check.key] : [])),
         ),
       )
     }
@@ -277,7 +319,9 @@ function CheckList({
               variant="outline"
               size="sm"
               onClick={() => {
-                open(null, data)
+                guarded((fresh) => {
+                  open(null, fresh)
+                })
               }}
             >
               <Plus aria-hidden="true" />
@@ -307,9 +351,15 @@ function CheckList({
                   selected={selected?.original === check.key}
                   busy={move.isPending}
                   onEdit={(original) => {
-                    open(original, data)
+                    guarded((fresh) => {
+                      open(original, fresh)
+                    })
                   }}
-                  onDuplicate={duplicate}
+                  onDuplicate={(key) => {
+                    guarded((fresh) => {
+                      duplicate(key, fresh)
+                    })
+                  }}
                   onMove={(target) => {
                     move.mutate(
                       { expectedVersion: data.version, check: check.key, index: target },
@@ -349,6 +399,7 @@ function CheckList({
                 adopt(selected.opened, saved, key)
               }}
               onConflict={onConflict}
+              onUnsavedChange={setEditorUnsaved}
               onDuplicate={duplicateDraft}
               deleteAction={
                 selected.original !== null && (
@@ -367,6 +418,16 @@ function CheckList({
           </div>
         )}
       </div>
+      <UnsavedChangesDialog
+        open={pending !== null}
+        onStay={() => {
+          setPending(null)
+        }}
+        onLeave={() => {
+          pending?.(data)
+          setPending(null)
+        }}
+      />
     </section>
   )
 }
@@ -586,6 +647,7 @@ function CheckEditor({
   sampleValues,
   onSaved,
   onConflict,
+  onUnsavedChange,
   onDuplicate,
   deleteAction,
 }: {
@@ -597,6 +659,8 @@ function CheckEditor({
   sampleValues: SampleValues
   onSaved: (saved: GameSystemChecks, key: string) => void
   onConflict: (message: string) => void
+  /** Whether the form holds edits that were not saved; false again when the editor goes. */
+  onUnsavedChange: (unsaved: boolean) => void
   /** The editor head's Duplicate: copies the draft as shown, not the stored check. */
   onDuplicate: (draft: CheckDraft) => void
   /** The editor head's Delete, which needs the list's latest version. */
@@ -809,6 +873,15 @@ function CheckEditor({
   const stored = start.checks.find((check) => check.key === original)
   const written = writeCheck(draft)
   const dirty = !('check' in written) || stored === undefined || !sameCheck(written.check, stored)
+  // A new check has nothing stored: it is unsaved once it differs from the blank form (a draft
+  // holds plain data, so its JSON tells). A duplicate differs, so it counts.
+  const unsaved = original === null ? JSON.stringify(draft) !== JSON.stringify(blankCheck()) : dirty
+  useEffect(() => {
+    onUnsavedChange(unsaved)
+    return () => {
+      onUnsavedChange(false)
+    }
+  }, [unsaved, onUnsavedChange])
 
   // The form is named by the key (what the list's buttons say); the heading shows the label.
   const title = original === null ? 'New check' : `Edit ${original}`
@@ -819,6 +892,7 @@ function CheckEditor({
 
   return (
     <div className="space-y-4">
+      <UnsavedChangesGuard dirty={unsaved} blockTabChange />
       <form aria-label={title} className="panel" onSubmit={handleSubmit}>
         <div className="panel-head">
           <IconTile size="lg">

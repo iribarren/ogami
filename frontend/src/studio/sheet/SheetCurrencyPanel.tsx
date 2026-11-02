@@ -5,6 +5,7 @@ import { Button } from '@/shared/ui/button'
 import { IconTile } from '@/shared/ui/icon-tile'
 
 import { TextField } from '../narrative/TextField'
+import { UnsavedChangesGuard } from '../UnsavedChangesGuard'
 import { SelectField } from './SheetFieldDialog'
 import { ReloadLatest } from './SheetLayoutPanel'
 import { currencyAnswer } from './sheetError'
@@ -55,6 +56,8 @@ export const SheetCurrencyPanel = memo(function SheetCurrencyPanel({
       : [],
   )
   const draft = `${field}\n${unit}`
+  // A save trims the unit and the form keeps what was typed, so the unit is compared trimmed.
+  const dirty = field !== (currency?.field ?? '') || unit.trim() !== (currency?.unit ?? '')
   const error = save.error ?? remove.error
   // Only a refused save is placed on the inputs, and only while the draft is the one it judged;
   // any other error (a refused removal, a 404, a library pack) shows its message as it is.
@@ -83,6 +86,7 @@ export const SheetCurrencyPanel = memo(function SheetCurrencyPanel({
 
   return (
     <div className="panel">
+      <UnsavedChangesGuard dirty={dirty} blockTabChange />
       <div className="panel-head">
         <IconTile size="sm">
           <Wallet />

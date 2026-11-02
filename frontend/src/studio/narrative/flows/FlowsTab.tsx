@@ -96,11 +96,17 @@ export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
                     original={null}
                     initial={newFlow(sceneTypes)}
                     onSaved={(item) => {
-                      void navigate({
-                        to: '/studio/game-systems/$key/flows/$flow',
-                        params: { key: gameSystemKey, flow: String(item.key) },
-                        state: { justCreated: true },
-                      })
+                      void (async () => {
+                        try {
+                          await navigate({
+                            to: '/studio/game-systems/$key/flows/$flow',
+                            params: { key: gameSystemKey, flow: String(item.key) },
+                            state: { justCreated: true },
+                          })
+                        } catch {
+                          // The Flow is saved; if the router refuses, the list stays and shows it.
+                        }
+                      })()
                     }}
                     refresh={(draft, latest) => refreshNewFlow(draft, sceneTypeOptions(latest))}
                     trigger={

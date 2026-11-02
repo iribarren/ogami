@@ -12,6 +12,7 @@ import { Select } from '@/shared/ui/select'
 import { SaveState, type SaveStateValue } from '@/shared/ui/save-state'
 import { Textarea } from '@/shared/ui/textarea'
 
+import { UnsavedChangesGuard } from './UnsavedChangesGuard'
 import {
   StudioError,
   useEditMetadata,
@@ -36,6 +37,17 @@ const knownBadges: Partial<Record<string, (typeof creditsBadges)['dark-pack']>> 
 
 /** The name of each badge in the picker; one this build does not know shows its value. */
 const badgeNames: Record<string, string> = { 'dark-pack': 'Dark Pack' }
+
+/** What the seven fields hold, as the strings the form keeps: compared to know if it was edited. */
+interface Fields {
+  name: string
+  description: string
+  notice: string
+  license: string
+  url: string
+  badge: string
+  theme: string
+}
 
 /** Empty text means "none" for the optional fields. */
 const orNull = (text: string) => (text.trim() === '' ? null : text)
@@ -63,8 +75,22 @@ export function MetadataForm({
   const [badge, setBadge] = useState<string>(gameSystem.credits?.badge ?? '')
   const [theme, setTheme] = useState(gameSystem.theme ?? '')
   const save = useEditMetadata(gameSystem.key)
+  // What the fields held when the form opened, or when the last save went through (what that save
+  // sent, so an edit made while it was in flight stays unsaved).
+  const [baseline, setBaseline] = useState<Fields>({
+    name,
+    description,
+    notice,
+    license,
+    url,
+    badge,
+    theme,
+  })
+  const fields: Fields = { name, description, notice, license, url, badge, theme }
   // "Saved." describes the last save only: any later edit hides it.
-  const [edited, setEdited] = useState(false)
+  const dirty = (Object.keys(fields) as (keyof Fields)[]).some(
+    (field) => fields[field] !== baseline[field],
+  )
   const [savedAt, setSavedAt] = useState<Date | null>(null)
   const nameId = useId()
   const descriptionId = useId()
@@ -110,9 +136,10 @@ export function MetadataForm({
             }
       body.theme = orNull(theme)
     }
-    setEdited(false)
+    const sent = fields
     save.mutate(body, {
       onSuccess: () => {
+        setBaseline(sent)
         setSavedAt(new Date())
       },
     })
@@ -122,9 +149,9 @@ export function MetadataForm({
     ? { kind: 'saving' }
     : save.error
       ? { kind: 'failed', errors: 1 }
-      : save.isSuccess && !edited && savedAt
+      : save.isSuccess && !dirty && savedAt
         ? { kind: 'saved', at: savedAt }
-        : edited
+        : dirty
           ? { kind: 'unsaved' }
           : null
   const actionBar = (
@@ -154,14 +181,8 @@ export function MetadataForm({
   )
 
   return (
-    <form
-      aria-label="Metadata"
-      className="space-y-6"
-      onChange={() => {
-        setEdited(true)
-      }}
-      onSubmit={handleSubmit}
-    >
+    <form aria-label="Metadata" className="space-y-6" onSubmit={handleSubmit}>
+      <UnsavedChangesGuard dirty={dirty} />
       <section aria-labelledby={`${nameId}-panel`} className="panel">
         <div className="panel-head">
           <IconTile size="sm">

@@ -13,6 +13,7 @@ import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { checks, checksV1, draft, sheet, validDraft } from '../fixtures'
+import { checksKey } from './useGameSystemChecks'
 import { replaceText, typeText } from '@/test/typeText'
 
 /** The placeholders of the inputs drawn, so a test can count the band rows that rendered. */
@@ -1864,5 +1865,240 @@ describe('the challenge mode of the check editor (ADR 0049)', () => {
       expect(sent).toHaveLength(1)
     })
     expect(sent[0]?.check).not.toHaveProperty('challenge')
+  })
+})
+
+describe('leaving a check with unsaved edits', () => {
+  const dialog = () => screen.queryByRole('dialog', { name: 'Leave without saving?' })
+  const leave = (user: ReturnType<typeof userEvent.setup>) =>
+    user.click(screen.getByRole('button', { name: 'Leave without saving' }))
+
+  /** Opens `skill` and changes its dice, so the form holds an unsaved edit. */
+  async function editedSkill(handlers: Record<string, FakeHandler> = {}) {
+    const opened = await openChecks(handlers)
+    await opened.user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+    const form = within(screen.getByRole('form', { name: 'Edit skill' }))
+    await replaceText(opened.user, form.getByLabelText('Dice'), '3d6')
+    return { ...opened, form }
+  }
+
+  it('switches to another check with no question while the form is untouched', async () => {
+    const { user } = await openChecks()
+
+    await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+    await user.click(screen.getByRole('button', { name: 'Edit luck' }))
+
+    expect(screen.getByRole('form', { name: 'Edit luck' })).toBeVisible()
+    expect(dialog()).not.toBeInTheDocument()
+  })
+
+  it('asks before opening another check, and Stay keeps the draft', async () => {
+    const { user, form } = await editedSkill()
+
+    await user.click(screen.getByRole('button', { name: 'Edit luck' }))
+    expect(await screen.findByRole('dialog', { name: 'Leave without saving?' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Stay' }))
+
+    expect(dialog()).not.toBeInTheDocument()
+    expect(form.getByLabelText('Dice')).toHaveValue('3d6')
+  })
+
+  it('opens the other check when the person chooses to leave', async () => {
+    const { user } = await editedSkill()
+
+    await user.click(screen.getByRole('button', { name: 'Edit luck' }))
+    await leave(user)
+
+    expect(await screen.findByRole('form', { name: 'Edit luck' })).toBeVisible()
+    expect(screen.queryByRole('form', { name: 'Edit skill' })).not.toBeInTheDocument()
+    expect(dialog()).not.toBeInTheDocument()
+  })
+
+  it('asks before reopening the check already open, which would restart the form', async () => {
+    const { user } = await editedSkill()
+
+    await user.click(screen.getByRole('button', { name: 'Edit skill' }))
+    await leave(user)
+
+    const form = within(await screen.findByRole('form', { name: 'Edit skill' }))
+    expect(form.getByLabelText('Dice')).toHaveValue('1d10')
+  })
+
+  it('asks before New check', async () => {
+    const { user } = await editedSkill()
+
+    await user.click(screen.getByRole('button', { name: 'New check' }))
+    expect(await screen.findByRole('dialog', { name: 'Leave without saving?' })).toBeVisible()
+    await leave(user)
+
+    expect(await screen.findByRole('form', { name: 'New check' })).toBeVisible()
+  })
+
+  it('asks before a row’s Duplicate', async () => {
+    const { user } = await editedSkill()
+
+    await user.click(screen.getByRole('button', { name: 'Duplicate luck' }))
+    expect(await screen.findByRole('dialog', { name: 'Leave without saving?' })).toBeVisible()
+    await leave(user)
+
+    const form = within(await screen.findByRole('form', { name: 'New check' }))
+    expect(form.getByLabelText('Key')).toHaveValue('luck-copy')
+  })
+
+  it('lets an untouched New check go', async () => {
+    const { user } = await openChecks()
+
+    await user.click(await screen.findByRole('button', { name: 'New check' }))
+    await user.click(screen.getByRole('button', { name: 'Edit skill' }))
+
+    expect(screen.getByRole('form', { name: 'Edit skill' })).toBeVisible()
+    expect(dialog()).not.toBeInTheDocument()
+  })
+
+  it('counts a duplicate as unsaved', async () => {
+    const { user } = await openChecks()
+
+    await user.click(await screen.findByRole('button', { name: 'Duplicate skill' }))
+    await user.click(screen.getByRole('button', { name: 'Edit luck' }))
+
+    expect(await screen.findByRole('dialog', { name: 'Leave without saving?' })).toBeVisible()
+  })
+
+  it('does not ask for the editor’s own Duplicate, which takes the edits along', async () => {
+    const { user, form } = await editedSkill()
+
+    await user.click(form.getByRole('button', { name: 'Duplicate' }))
+
+    expect(await screen.findByRole('form', { name: 'New check' })).toBeVisible()
+    expect(dialog()).not.toBeInTheDocument()
+  })
+
+  it('asks before a change of tab, and Stay keeps the draft', async () => {
+    const { user, form } = await editedSkill()
+
+    await user.click(screen.getByRole('link', { name: 'Overview' }))
+    expect(await screen.findByRole('dialog', { name: 'Leave without saving?' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Stay' }))
+
+    expect(form.getByLabelText('Dice')).toHaveValue('3d6')
+  })
+
+  it('leaves for another tab with no question while the form is untouched', async () => {
+    const { user } = await openChecks()
+
+    await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+    await user.click(screen.getByRole('link', { name: 'Overview' }))
+
+    expect(await screen.findByRole('form', { name: 'Metadata' })).toBeVisible()
+    expect(dialog()).not.toBeInTheDocument()
+  })
+
+  it('goes on with the action when the save finishes behind the question', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const saved = {
+      ...checks,
+      version: 6,
+      checks: [{ ...checks.checks[0], dice: '3d6' }, checks.checks[1]],
+    }
+    const { user, form } = await editedSkill({
+      [`PUT ${base}/checks/skill`]: async () => {
+        await gate
+        return Response.json(saved)
+      },
+    })
+
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+    await user.click(screen.getByRole('button', { name: 'Edit luck' }))
+    expect(await screen.findByRole('dialog', { name: 'Leave without saving?' })).toBeVisible()
+    release()
+
+    expect(await screen.findByRole('form', { name: 'Edit luck' })).toBeVisible()
+    await waitFor(() => {
+      expect(dialog()).not.toBeInTheDocument()
+    })
+  })
+
+  it('opens on the version a save behind the question returned', async () => {
+    const saved = {
+      ...checks,
+      version: 6,
+      checks: [{ ...checks.checks[0], dice: '3d6' }, checks.checks[1]],
+    }
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const luck = recorder(() => Response.json(saved))
+    const { user, form } = await editedSkill({
+      [`PUT ${base}/checks/skill`]: async () => {
+        await gate
+        return Response.json(saved)
+      },
+      [`PUT ${base}/checks/luck`]: luck.handler,
+    })
+
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+    await user.click(screen.getByRole('button', { name: 'Edit luck' }))
+    await screen.findByRole('dialog', { name: 'Leave without saving?' })
+    release()
+    const opened = within(await screen.findByRole('form', { name: 'Edit luck' }))
+    await replaceText(user, opened.getByLabelText('Dice'), '2d6')
+    await user.click(opened.getByRole('button', { name: 'Save check' }))
+
+    await waitFor(() => {
+      expect(luck.sent).toHaveLength(1)
+    })
+    expect(luck.sent[0]).toMatchObject({ expectedVersion: 6 })
+  })
+
+  it('opens on the checks current at Leave, not at the click', async () => {
+    let reads = 0
+    const luck = recorder(() => Response.json({ ...checks, version: 7 }))
+    const { user, queryClient } = await editedSkill({
+      [`GET ${base}/checks`]: () =>
+        Response.json(++reads === 1 ? checks : { ...checks, version: 6 }),
+      [`PUT ${base}/checks/luck`]: luck.handler,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Edit luck' }))
+    await screen.findByRole('dialog', { name: 'Leave without saving?' })
+    await queryClient.refetchQueries({ queryKey: checksKey('my-draft') })
+    await waitFor(() => {
+      expect(reads).toBe(2)
+    })
+    await user.click(screen.getByRole('button', { name: 'Leave without saving' }))
+    const opened = within(await screen.findByRole('form', { name: 'Edit luck' }))
+    await replaceText(user, opened.getByLabelText('Dice'), '2d6')
+    await user.click(opened.getByRole('button', { name: 'Save check' }))
+
+    await waitFor(() => {
+      expect(luck.sent).toHaveLength(1)
+    })
+    expect(luck.sent[0]).toMatchObject({ expectedVersion: 6 })
+  })
+
+  it('reads a saved form as clean', async () => {
+    const saved = {
+      ...checks,
+      version: 6,
+      checks: [{ ...checks.checks[0], dice: '3d6' }, checks.checks[1]],
+    }
+    const { user, form } = await editedSkill({
+      [`PUT ${base}/checks/skill`]: json(saved),
+    })
+
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+    // The row shows the dice the save returned.
+    await waitFor(() => {
+      const row = screen.getByRole('button', { name: 'Edit skill' }).closest('li') as HTMLElement
+      expect(within(row).getByText('3d6')).toBeVisible()
+    })
+    await user.click(screen.getByRole('button', { name: 'Edit luck' }))
+
+    expect(await screen.findByRole('form', { name: 'Edit luck' })).toBeVisible()
+    expect(dialog()).not.toBeInTheDocument()
   })
 })

@@ -28,7 +28,7 @@ use Doctrine\DBAL\Types\JsonType;
  *
  * Stored shape: {status, phaseIndex, stage, sessionNumber, sceneNumber, sceneType, part, stepKey,
  * sequencePosition, scenesPlayed, answers: {stepKey: text}, forcedNextSceneType, phaseEnding,
- * switchCount, hook, phaseOpened, sessionOpeningDue, picked: {kind, ids} or null, autoPickDue, history: [{event, at, details: {…}}],
+ * switchCount, hook, phaseOpened, sessionOpeningDue, sessionOpenedInPhase (a phase index up to the current one, or null), picked: {kind, ids} or null, autoPickDue, history: [{event, at, details: {…}}],
  * pendingCheck: {stepKey, entryId, characterId, difficulty, bandKey, checkKey, special} or null}, every
  * field present (null where the FlowRun has none). The details are those of the event's
  * FlowRunHistoryEntry factory (a skip's part is a scene part or a hook). Times keep their
@@ -43,7 +43,9 @@ use Doctrine\DBAL\Types\JsonType;
  * scene starts by surprise. A pending check (ADR 0041) is the current step's while guidance is active,
  * else the row fails to load; rows stored before check step rolls could pend (rules-dice-pools slice
  * 5) lack pendingCheck: they read as none. A pending roll of a single-check step keeps no checkKey
- * (null), and rows stored before check sets (ADR 0042) lack it: both read the step's own check.
+ * (null), and rows stored before check sets (ADR 0042) lack it: both read the step's own check. Rows
+ * stored before the session closing was tied to the phase its opening ran in (night-court-followups)
+ * lack sessionOpenedInPhase: it reads as null (unknown), so their session closing runs as before.
  *
  * Registered by its attribute (DoctrineBundle autoconfiguration), not in doctrine.yaml.
  */
@@ -89,6 +91,7 @@ final class CampaignFlowRunType extends JsonType
             'hook' => $value->hook()?->value,
             'phaseOpened' => $value->phaseOpened(),
             'sessionOpeningDue' => $value->sessionOpeningDue(),
+            'sessionOpenedInPhase' => $value->sessionOpenedInPhase(),
             'picked' => $value->picked() instanceof PickedItems ? ['kind' => $value->picked()->kind->value, 'ids' => $value->picked()->ids] : null,
             'autoPickDue' => $value->autoPickDue(),
             'history' => array_map(
@@ -143,9 +146,15 @@ final class CampaignFlowRunType extends JsonType
             throw $this->malformed('shopStock', "the current step's");
         }
 
+        $phaseIndex = $this->int($data, 'phaseIndex');
+        $openedIn = $this->optionalInt($data, 'sessionOpenedInPhase');
+        if (null !== $openedIn && ($openedIn < 0 || $openedIn > $phaseIndex)) {
+            throw $this->malformed('sessionOpenedInPhase', 'a phase index from 0 to the current phase, or null');
+        }
+
         return FlowRun::reconstitute(
             $status,
-            $this->int($data, 'phaseIndex'),
+            $phaseIndex,
             $stage,
             $this->optionalInt($data, 'sessionNumber'),
             $sceneNumber,
@@ -166,6 +175,7 @@ final class CampaignFlowRunType extends JsonType
             $this->bool($data, 'autoPickDue', false),
             $pending,
             $stock,
+            $openedIn,
         );
     }
 

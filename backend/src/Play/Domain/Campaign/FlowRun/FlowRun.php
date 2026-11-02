@@ -82,7 +82,10 @@ use App\Randomness\Domain\Oracle\OracleTableResult;
  * closing, then the next phase starts; after the last phase the FlowRun is completed.
  *
  * Hooks: on the way to the scene pick a session that started runs its session opening first, and
- * a phase entered for the first time its phase opening. A hook runs its steps with the same
+ * a phase entered for the first time its phase opening. The phase a session opening ran in is kept,
+ * and a session closing runs only in that phase: ending the session in a later phase (Session Zero
+ * handing over to the chronicle within the same session) skips the closing, and the session ends at
+ * once. A FlowRun that does not know it (stored before) runs the closing. A hook runs its steps with the same
  * mechanics as a scene's parts, in its own hook Scene (started at the first step that waits for
  * the player), and ends after its last step (no open play); an empty hook, or one its condition
  * steps pass, creates no Scene. A switchSceneType Effect in a hook is ignored (recorded). A hook
@@ -157,6 +160,9 @@ final class FlowRun
     /** whether a session started whose opening has not run yet */
     private bool $sessionOpeningDue = false;
 
+    /** the phase index the latest session opening ran in, whether or not it had steps; null when unknown (a row stored before this was tracked) */
+    private ?int $sessionOpenedInPhase = null;
+
     /** whether the scene pick picks a selection's only Scene Type itself: a session started or a phase opened since the last scene */
     private bool $autoPickDue = false;
 
@@ -188,20 +194,21 @@ final class FlowRun
      * Rebuilds a stored FlowRun, e.g. from persistence. No rule is checked again but one: a pending
      * check is the current step's, while guidance is active.
      *
-     * @param ?int                      $sessionNumber     the guided scene's or hook Scene's session, null outside one
-     * @param ?int                      $sceneNumber       the guided scene's or hook Scene's number in it, null outside one
-     * @param array<string, string>     $answers           the latest answer text by step key
-     * @param ?string                   $phaseEnding       why the phase ends ("endPhase", "moveOn", or "finished" while it closes), null while it goes on
-     * @param list<FlowRunHistoryEntry> $history           in the order things happened
-     * @param ?Hook                     $hook              the hook running at stage Hook, else null
-     * @param bool                      $phaseOpened       whether the current phase's opening ran
-     * @param bool                      $sessionOpeningDue whether a session started whose opening has not run yet
-     * @param ?PickedItems              $picked            the items "{picked}" stands for, null when nothing was picked in the Scene
-     * @param bool                      $autoPickDue       whether the scene pick picks a selection's only Scene Type itself (a session started or a phase opened since the last scene)
-     * @param ?PendingCheck             $pendingCheck      the current check step's roll waiting for Keep or Push, else null
-     * @param ?ShopStock                $shopStock         the entries the current shop step has on sale (ADR 0045), else null
+     * @param ?int                      $sessionNumber        the guided scene's or hook Scene's session, null outside one
+     * @param ?int                      $sceneNumber          the guided scene's or hook Scene's number in it, null outside one
+     * @param array<string, string>     $answers              the latest answer text by step key
+     * @param ?string                   $phaseEnding          why the phase ends ("endPhase", "moveOn", or "finished" while it closes), null while it goes on
+     * @param list<FlowRunHistoryEntry> $history              in the order things happened
+     * @param ?Hook                     $hook                 the hook running at stage Hook, else null
+     * @param bool                      $phaseOpened          whether the current phase's opening ran
+     * @param bool                      $sessionOpeningDue    whether a session started whose opening has not run yet
+     * @param ?PickedItems              $picked               the items "{picked}" stands for, null when nothing was picked in the Scene
+     * @param bool                      $autoPickDue          whether the scene pick picks a selection's only Scene Type itself (a session started or a phase opened since the last scene)
+     * @param ?PendingCheck             $pendingCheck         the current check step's roll waiting for Keep or Push, else null
+     * @param ?ShopStock                $shopStock            the entries the current shop step has on sale (ADR 0045), else null
+     * @param ?int                      $sessionOpenedInPhase the phase index the latest session opening ran in, null when unknown (the session closing then runs)
      *
-     * @throws \InvalidArgumentException when the pending check is not the current step's, or guidance is not active, or the shop stock is not the current step's
+     * @throws \InvalidArgumentException when the pending check is not the current step's, or guidance is not active, or the shop stock is not the current step's, or the phase of the session opening is negative or past the current phase
      */
     public static function reconstitute(
         FlowRunStatus $status,
@@ -226,6 +233,7 @@ final class FlowRun
         bool $autoPickDue = false,
         ?PendingCheck $pendingCheck = null,
         ?ShopStock $shopStock = null,
+        ?int $sessionOpenedInPhase = null,
     ): self {
         if ($pendingCheck instanceof PendingCheck && (FlowRunStatus::Active !== $status || $pendingCheck->stepKey !== $stepKey)) {
             throw new \InvalidArgumentException(\sprintf('A pending check of step "%s" belongs to the current step of an active FlowRun.', $pendingCheck->stepKey));
@@ -233,6 +241,10 @@ final class FlowRun
 
         if ($shopStock instanceof ShopStock && $shopStock->stepKey !== $stepKey) {
             throw new \InvalidArgumentException(\sprintf('The stock of shop step "%s" belongs to the current step.', $shopStock->stepKey));
+        }
+
+        if (null !== $sessionOpenedInPhase && ($sessionOpenedInPhase < 0 || $sessionOpenedInPhase > $phaseIndex)) {
+            throw new \InvalidArgumentException(\sprintf('A session opening ran in a phase from 0 to the current one (%d), got %d.', $phaseIndex, $sessionOpenedInPhase));
         }
 
         $flowRun = new self();
@@ -258,6 +270,7 @@ final class FlowRun
         $flowRun->autoPickDue = $autoPickDue;
         $flowRun->pendingCheck = $pendingCheck;
         $flowRun->shopStock = $shopStock;
+        $flowRun->sessionOpenedInPhase = $sessionOpenedInPhase;
 
         return $flowRun;
     }
@@ -277,6 +290,7 @@ final class FlowRun
 
         $this->assertNoPendingCheck();
         $this->sessionOpeningDue = true;
+        $this->sessionOpenedInPhase = null;
         if (FlowRunStatus::Active === $this->status) {
             $this->goOn($context);
         }
@@ -633,7 +647,10 @@ final class FlowRun
     /**
      * Ends the session under way between scenes, at the scene pick: the session closing runs first
      * (in its hook Scene), and the session ends once it finishes, at once when it has no step that
-     * waits. The FlowRun then waits for the next session.
+     * waits. The FlowRun then waits for the next session. The closing of a phase this session's
+     * opening did not run in is skipped (the session ends at once): it would close what was never
+     * opened, as when Session Zero hands over to the chronicle in the same session. A FlowRun that
+     * does not know where the opening ran (a row stored before it was tracked) runs the closing.
      *
      * @throws FlowRunNotActive            when guidance is paused or the Flow is complete
      * @throws CheckStepPending            when a check step's roll waits for Keep or Push
@@ -646,7 +663,7 @@ final class FlowRun
             throw SessionCannotEndWhileGuided::at($this->where());
         }
 
-        $this->runHook(Hook::SessionClosing, $context);
+        $this->runHook(Hook::SessionClosing, $context, null !== $this->sessionOpenedInPhase && $this->sessionOpenedInPhase !== $this->phaseIndex);
     }
 
     /**
@@ -844,6 +861,15 @@ final class FlowRun
     public function sessionOpeningDue(): bool
     {
         return $this->sessionOpeningDue;
+    }
+
+    /**
+     * The phase index the latest session opening ran in (an empty opening counts as having run),
+     * null when unknown: a row stored before it was tracked, or a session whose opening is due.
+     */
+    public function sessionOpenedInPhase(): ?int
+    {
+        return $this->sessionOpenedInPhase;
     }
 
     /**
@@ -1167,6 +1193,7 @@ final class FlowRun
 
         if ($this->sessionOpeningDue) {
             $this->sessionOpeningDue = false;
+            $this->sessionOpenedInPhase = $this->phaseIndex;
             $this->autoPickDue = true;
             $this->runHook(Hook::SessionOpening, $context);
         } elseif (!$this->phaseOpened) {
@@ -1233,16 +1260,16 @@ final class FlowRun
     /**
      * Runs a hook of the current phase from its first step, in its own hook Scene, which starts at
      * the first step that waits for the player (or an Effect naming the scene): condition steps that
-     * pass the whole hook leave no Scene, and an empty hook is passed at once. Without a session
+     * pass the whole hook leave no Scene, and an empty hook (or a skipped one) is passed at once. Without a session
      * under way the hook waits for one (see goOn()).
      */
-    private function runHook(Hook $hook, FlowRunContext $context): void
+    private function runHook(Hook $hook, FlowRunContext $context, bool $skipped = false): void
     {
         $this->stage = FlowRunStage::Hook;
         $this->hook = $hook;
         $this->sessionNumber = $this->sceneNumber = $this->sceneType = $this->part = $this->stepKey = null;
         $this->shopStock = null;
-        $first = $hook->steps($this->phase($context->flow))->steps[0] ?? null;
+        $first = $skipped ? null : $hook->steps($this->phase($context->flow))->steps[0] ?? null;
         if (null === $first) {
             $this->afterHook($context);
 

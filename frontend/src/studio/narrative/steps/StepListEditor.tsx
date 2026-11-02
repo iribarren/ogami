@@ -1,15 +1,10 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/ui/collapsible'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/shared/ui/dropdown-menu'
 import { IconButton } from '@/shared/ui/icon-button'
 import { Label } from '@/shared/ui/label'
 import { useStableItems } from '@/shared/lib/useStableItems'
@@ -22,7 +17,9 @@ import { BandsEditor, NextPicker, type BandProblems } from './BandsEditor'
 import { ChoiceFields, OracleFields, TableFields } from './BranchingFields'
 import { moveItem } from './draftParts'
 import { CheckFields, PickFields } from './PickCheckFields'
+import { NewStepContext } from './newStepContext'
 import { ShopFields } from './ShopFields'
+import { StepKindMenuItems } from './StepKindMenuItems'
 import { EffectsEditor, SETUP_NO_SHEET } from './EffectsEditor'
 import { Area, CheckList } from './fields'
 import type { StepContext } from './stepContext'
@@ -36,7 +33,6 @@ import {
   pickOutcomes,
   stepGuides,
   stepKey,
-  stepKinds,
   type BandDraft,
   type CountTarget,
   type EditedStep,
@@ -67,9 +63,6 @@ function bandProblems(guide: StepGuide, mine: StepError[]): BandProblems {
 
 /** The simple fields of an open step sit two to a row; areas and nested editors span both. */
 const wide = 'sm:col-span-2'
-
-/** Said in the Add step menu: the publisher refuses a suggested choice without one (S21). */
-const CHOICE_MENU_HINT = 'a suggested one needs a Skip option'
 
 function StepFields({
   step,
@@ -644,14 +637,40 @@ export function StepListEditor({
   )
   // For event handlers only: a child's layout effect runs before this one in the same commit,
   // so a callback called from there would still see the previous render's props.
-  const latest = useRef({ steps, origins, onChange })
+  const trackerKeys = context.trackers.map(({ key }) => key)
+  const latest = useRef({ steps, origins, onChange, trackerKeys })
   useLayoutEffect(() => {
-    latest.current = { steps, origins, onChange }
+    latest.current = { steps, origins, onChange, trackerKeys }
   })
+  // The step a Next select asked for, until the change that points at it is made (same event).
+  const created = useRef<StepDraft | null>(null)
   const change = useCallback((index: number, changed: StepDraft) => {
-    const { steps: now, onChange: emit } = latest.current
-    emit(now.map((current, at) => (at === index ? changed : current)))
+    const { steps: now, origins: from, onChange: emit } = latest.current
+    const added = created.current
+    created.current = null
+    const edited = now.map((current, at) => (at === index ? changed : current))
+    if (added !== null) {
+      setOrigin([...from, null])
+    }
+    emit(added === null ? edited : [...edited, added])
   }, [])
+  const newStepFor = useMemo(
+    () => ({
+      setup,
+      create: (kind: StepKind) => {
+        const step = newStep(kind, latest.current.steps, latest.current.trackerKeys)
+        created.current = step
+        // Whatever calls this makes its change in the same event; a call that does not leaves nothing behind.
+        queueMicrotask(() => {
+          if (created.current === step) {
+            created.current = null
+          }
+        })
+        return step.key
+      },
+    }),
+    [setup],
+  )
   const move = useCallback((index: number, by: number) => {
     const { steps: now, origins: from, onChange: emit } = latest.current
     setOrigin(moveItem(from, index, by))
@@ -697,29 +716,31 @@ export function StepListEditor({
       {steps.length === 0 ? (
         <p className="text-muted-foreground">No steps yet.</p>
       ) : (
-        <ol className="space-y-3">
-          {steps.map((step, index) => (
-            // The list is edited in place and has no ids: the position is the identity.
-            <StepCard
-              key={index}
-              step={step}
-              index={index}
-              total={steps.length}
-              current={current === index}
-              answer={errors}
-              guide={guides[index] ?? { bands: {}, scenes: {}, nexts: {}, items: {} }}
-              mine={mine[index] ?? noErrors}
-              context={context}
-              setup={setup}
-              laterKeys={laterKeys[index] ?? []}
-              onChange={change}
-              onMove={move}
-              onDelete={remove}
-              onItems={items}
-              onInnerRestructure={restructure}
-            />
-          ))}
-        </ol>
+        <NewStepContext.Provider value={newStepFor}>
+          <ol className="space-y-3">
+            {steps.map((step, index) => (
+              // The list is edited in place and has no ids: the position is the identity.
+              <StepCard
+                key={index}
+                step={step}
+                index={index}
+                total={steps.length}
+                current={current === index}
+                answer={errors}
+                guide={guides[index] ?? { bands: {}, scenes: {}, nexts: {}, items: {} }}
+                mine={mine[index] ?? noErrors}
+                context={context}
+                setup={setup}
+                laterKeys={laterKeys[index] ?? []}
+                onChange={change}
+                onMove={move}
+                onDelete={remove}
+                onItems={items}
+                onInnerRestructure={restructure}
+              />
+            ))}
+          </ol>
+        </NewStepContext.Provider>
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -729,34 +750,13 @@ export function StepListEditor({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          {stepKinds
-            // A Scene Type's setup has no Character, which a shop needs: the publisher refuses it there.
-            .filter((option) => !(setup && option === 'shop'))
-            .map((option) => (
-              <DropdownMenuItem
-                key={option}
-                aria-label={option}
-                aria-description={option === 'choice' ? CHOICE_MENU_HINT : undefined}
-                onSelect={() => {
-                  setOrigin([...origins, null])
-                  onChange([
-                    ...steps,
-                    newStep(
-                      option,
-                      steps,
-                      context.trackers.map(({ key }) => key),
-                    ),
-                  ])
-                }}
-              >
-                <StepKindTile kind={option} />
-                {option}
-                {option === 'choice' && (
-                  // Said before the step is added; the name stays "choice" for assistive technology.
-                  <span className="ml-2 text-xs text-muted-foreground">{CHOICE_MENU_HINT}</span>
-                )}
-              </DropdownMenuItem>
-            ))}
+          <StepKindMenuItems
+            setup={setup}
+            onPick={(kind) => {
+              setOrigin([...origins, null])
+              onChange([...steps, newStep(kind, steps, trackerKeys)])
+            }}
+          />
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

@@ -1,12 +1,15 @@
-import { useId } from 'react'
+import { useContext, useId, useState } from 'react'
 
 import { Button } from '@/shared/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/shared/ui/dropdown-menu'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 
 import { TextField } from '../TextField'
 import type { ValueDraft, ValueForm } from './draftParts'
 import { EffectsEditor } from './EffectsEditor'
+import { NewStepContext } from './newStepContext'
+import { StepKindMenuItems } from './StepKindMenuItems'
 import { END, newBand, type BandDraft } from './stepDraft'
 import type { StepContext } from './stepContext'
 import type { StepError } from './stepError'
@@ -17,6 +20,9 @@ const formNames: Record<ValueForm, string> = {
   formula: 'Formula',
   dice: 'Dice',
 }
+
+/** Not a key (keys are lower case letters, digits and hyphens): the entry that asks for a new step. */
+const NEW_STEP = '\u0000new-step'
 
 /** A `next` picker: the following step, a later key of the list, or `end`. */
 export function NextPicker({
@@ -33,6 +39,8 @@ export function NextPicker({
   onChange: (next: string) => void
 }) {
   const id = useId()
+  const newStep = useContext(NewStepContext)
+  const [asking, setAsking] = useState(false)
   // A value the list no longer offers (after a move) stays visible, so it can be seen and fixed.
   // Repeated keys (or a step keyed `end`) must not repeat an option: they are one choice.
   const offered = [...new Set([...laterKeys.filter((key) => key !== END), END])]
@@ -45,8 +53,19 @@ export function NextPicker({
         id={id}
         value={value}
         aria-invalid={error !== undefined}
+        // The kind menu takes the focus the select would get back.
+        onCloseAutoFocus={(event) => {
+          if (asking) {
+            event.preventDefault()
+          }
+        }}
         onChange={(event) => {
-          onChange(event.target.value)
+          if (event.target.value === NEW_STEP) {
+            // Next stays as it was until a kind is picked.
+            setAsking(true)
+          } else {
+            onChange(event.target.value)
+          }
         }}
       >
         <option value="">The following step</option>
@@ -55,7 +74,23 @@ export function NextPicker({
             {key === END ? 'End of the list' : key}
           </option>
         ))}
+        {newStep && <option value={NEW_STEP}>New step…</option>}
       </Select>
+      {newStep && (
+        <DropdownMenu open={asking} onOpenChange={setAsking}>
+          <DropdownMenuTrigger asChild>
+            <span aria-hidden="true" className="block h-0" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" aria-label={`${label}: kind of the new step`}>
+            <StepKindMenuItems
+              setup={newStep.setup}
+              onPick={(kind) => {
+                onChange(newStep.create(kind))
+              }}
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   )

@@ -24,6 +24,9 @@ export function SceneTypeEditorPage({
     version: number
   } | null>(null)
 
+  // The last rename save: the editor is remounted on the new key, so the page keeps its "Saved at".
+  const [renamed, setRenamed] = useState<{ key: string; at: Date } | null>(null)
+
   const backLink = (
     <Link
       to="/studio/game-systems/$key"
@@ -98,6 +101,10 @@ export function SceneTypeEditorPage({
           original={open.item.key}
           initial={open.draft}
           version={open.version}
+          savedAt={renamed?.key === sceneType ? renamed.at : null}
+          onRenamed={(key, at) => {
+            setRenamed({ key, at })
+          }}
         />
       )}
     </EditorFrame>

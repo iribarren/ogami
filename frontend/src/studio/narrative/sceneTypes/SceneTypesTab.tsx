@@ -42,11 +42,19 @@ export function SceneTypesTab({ gameSystemKey }: { gameSystemKey: string }) {
                     New Scene Type
                   </Button>
                 }
+                // `ItemDialog` tells this only while the tab is mounted: the save's callbacks do
+                // not run once it is gone, so there is no mounted check as in the editor.
                 onSaved={(item) => {
-                  void navigate({
-                    to: '/studio/game-systems/$key/scene-types/$sceneType',
-                    params: { key: gameSystemKey, sceneType: String(item.key) },
-                  })
+                  void (async () => {
+                    try {
+                      await navigate({
+                        to: '/studio/game-systems/$key/scene-types/$sceneType',
+                        params: { key: gameSystemKey, sceneType: String(item.key) },
+                      })
+                    } catch {
+                      // The Scene Type is saved; if the router refuses, the list stays and shows it.
+                    }
+                  })()
                 }}
               />
             </div>

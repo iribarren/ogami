@@ -130,6 +130,55 @@ describe('creating a Scene Type', () => {
     expect(sent).toEqual([{ expectedVersion: 5, item: created }])
   })
 
+  it('stays on the list, saved, when the router refuses to open the editor', async () => {
+    const created = {
+      key: 'heist',
+      name: 'Heist',
+      purpose: 'Steal it.',
+      oracles: [],
+      setup: [],
+      play: [],
+      closing: [],
+    }
+    const { user, router } = await openTab({
+      [`POST ${base}/narrative/scene-types`]: () =>
+        Response.json(
+          {
+            ...narrativeScenes,
+            version: 6,
+            sceneTypes: [
+              ...narrativeScenes.sceneTypes,
+              { key: 'heist', definition: created, usedBy: [] },
+            ],
+          },
+          { status: 201 },
+        ),
+    })
+    // Not a `vi.spyOn`: it reads the promise it returns, which would count as handling it.
+    let refused = false
+    router.navigate = () => {
+      refused = true
+      return Promise.reject(new Error('refused'))
+    }
+    const unhandled = vi.fn()
+    process.on('unhandledRejection', unhandled)
+
+    await user.click(await screen.findByRole('button', { name: 'New Scene Type' }))
+    await typeText(user, inDialog().getByLabelText('Key'), 'heist')
+    await typeText(user, inDialog().getByLabelText('Name'), 'Heist')
+    await typeText(user, inDialog().getByLabelText('Purpose'), 'Steal it.')
+    await user.click(inDialog().getByRole('button', { name: 'Create Scene Type' }))
+
+    expect(await screen.findByText('Heist')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(refused).toBe(true)
+    })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    process.off('unhandledRejection', unhandled)
+    expect(unhandled).not.toHaveBeenCalled()
+    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+  })
+
   it('says the key is taken in the dialog and stays there', async () => {
     const { user } = await openTab({
       [`POST ${base}/narrative/scene-types`]: json(

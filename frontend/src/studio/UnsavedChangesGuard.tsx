@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useBlocker } from '@tanstack/react-router'
 
 import { Button } from '@/shared/ui/button'
@@ -21,6 +22,15 @@ export function UnsavedChangesGuard({ dirty }: { dirty: boolean }) {
     enableBeforeUnload: dirty,
     withResolver: true,
   })
+
+  // The person asked to leave and the changes were saved meanwhile (a save pending when they
+  // pressed Back): nothing is left to lose, so the dialog would only say something false.
+  const proceed = blocker.status === 'blocked' ? blocker.proceed : undefined
+  useEffect(() => {
+    if (!dirty) {
+      proceed?.()
+    }
+  }, [dirty, proceed])
 
   return (
     <Dialog

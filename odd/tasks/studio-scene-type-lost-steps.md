@@ -48,11 +48,12 @@ Forecasts include tests and docs. Hard ceiling ~1,700 per slice. No API change.
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | C1: create opens the editor | delegated writer (Sonnet): 2+ non-trivial files | [x] | |
-| T2 | 1 | C2: guard unsaved changes on leaving, and leaving during a pending save | delegated writer | [x] | |
-| T3 | 1 | C3: reload warns and clears "Saved at" | delegated writer | [x] | |
-| T4 | 1 | C4 and C5: a stale read neither overwrites a save nor fills the form | delegated writer | [x] | |
-| T5 | 1 | Two-tab API regression test | delegated writer | [x] | |
+| T1 | 1 | C1: create opens the editor | delegated writer (Sonnet): 2+ non-trivial files | [x] | `86a484ee` |
+| T2 | 1 | C2: guard unsaved changes on leaving, and leaving during a pending save | delegated writer | [x] | `c09917c8` |
+| T3 | 1 | C3: reload warns and clears "Saved at" | delegated writer | [x] | `3c2e715b` |
+| T4 | 1 | C4 and C5: a stale read neither overwrites a save nor fills the form | delegated writer | [x] | `b95d1558` |
+| T5 | 1 | Two-tab API regression test | delegated writer | [x] | `093db53f` |
+| T6 | 1 | Review and browser-pass findings: the dialog after a save settles, create's navigation, Back and `beforeunload` tests, "Saved at" after a rename | delegated writer | [x] | |
 
 ## Acceptance criteria
 
@@ -75,6 +76,8 @@ Forecasts include tests and docs. Hard ceiling ~1,700 per slice. No API change.
 - 2026-11-02: T3 done; RED: both new tests failed (old "Saved at" stayed after Reload; no warning). The sentence matches `LikelihoodOracleEditor`.
 - 2026-11-02: T4 done; RED: the held-GET test kept version 5 in the cache, and the two stale-cache tests found no loading text and the form filled from the stale cache. The filled-once test passes at once, as a guard.
 - 2026-11-02: T5 done; no RED, as expected: the test passed at once (200 then 409, the first save kept its steps), so the server has no lost save.
+- 2026-11-02: Chrome pass at `093db53f`: create lands in the editor; the dialog shows for a link and for Back; Escape and Stay keep the draft; Leave discards it and the server keeps the last save; a saved form and a rename save raise no dialog; `beforeunload` blocks only while dirty (a dispatched event, so the native prompt itself was not seen); with two real tabs a stale list showing `setup 1` opens the editor with the server's 2 steps; a 409 warns and Reload clears "Saved at". Found: a rename save remounts the editor and loses "Saved at". Covered by Vitest only: a GET racing a save, leaving during a pending save.
+- 2026-11-02: T6 done; RED: the held-save success test left the dialog open, the rename "Saved at" test found no status, create's rejected navigation was unhandled; Back, `beforeunload` and the failed-save tests pass at once. Memory history never runs blockers on Back or `beforeunload`, so those tests use a browser history. A rename save with Back pressed ends on the Back target, no dialog.
 
 ## Reviews
 
@@ -83,4 +86,4 @@ Forecasts include tests and docs. Hard ceiling ~1,700 per slice. No API change.
 
 ## Next step
 
-Slice 1: writer, then native review, browser pass, PR.
+T6 on PR #359, then the closing doc commit with a `follow-up` issue for the guard on the other Studio editors.

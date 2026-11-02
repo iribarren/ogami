@@ -1,7 +1,13 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createBrowserHistory, RouterProvider } from '@tanstack/react-router'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import type { FakeHandler } from '@/test/fakeApi'
+import { createQueryClient } from '@/app/queryClient'
+import { createAppRouter } from '@/app/router'
+import { ApiClientProvider } from '@/shared/api/ApiClientProvider'
+import { ColorModeProvider } from '@/shared/theme/ColorModeProvider'
+import { createFakeApiClient, type FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { ambush, draft, narrativeScenes, validDraft } from '../../fixtures'
@@ -218,6 +224,19 @@ describe('the Scene Type editor', () => {
     expect(saved.sent[0]?.item).toMatchObject({ key: 'trap' })
     expect(sceneKey()).toHaveValue('trap')
     expect(screen.queryByText(/has no Scene Type/)).not.toBeInTheDocument()
+  })
+
+  it('shows "Saved at" on the renamed editor after a rename save', async () => {
+    const saved = recorder(() => Response.json(withScene({ ...ambush, key: 'trap' })))
+    const { user, router } = await openEditor('ambush', { [put]: saved.handler })
+
+    await replace(user, sceneKey(), 'trap')
+    await user.click(save())
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/scene-types/trap')
+    })
+    expect(await screen.findByRole('status')).toHaveTextContent(/^Saved at/)
   })
 
   it('sends the version of the save that renamed it with the next save, to the new key', async () => {
@@ -899,6 +918,175 @@ describe('leaving with unsaved changes', () => {
         ?.sceneTypes.map(({ key }) => key),
     ).toContain('trap')
     expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+  })
+
+  describe('while a save is pending', () => {
+    /** Holds the save's answer until `release`, so the person can press Back meanwhile. */
+    function held(respond: () => Response) {
+      let release: () => void = () => undefined
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      return {
+        release: () => {
+          release()
+        },
+        handler: async () => {
+          await gate
+          return respond()
+        },
+      }
+    }
+
+    it('closes the dialog and leaves when the save succeeds', async () => {
+      const save$ = held(() => Response.json(withScene({ ...ambush, name: 'Trap' }, 9)))
+      const { user, router, queryClient } = await openEditor('ambush', {
+        ...draftRead,
+        [put]: save$.handler,
+      })
+
+      await replace(user, screen.getByLabelText('Name'), 'Trap')
+      await user.click(save())
+      await user.click(back())
+      await screen.findByRole('dialog', { name: 'Leave without saving?' })
+      save$.release()
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+      })
+      expect(dialog()).not.toBeInTheDocument()
+      expect(
+        queryClient.getQueryData<typeof narrativeScenes>(narrativeKey('my-draft'))?.version,
+      ).toBe(9)
+    })
+
+    it('keeps the dialog and the draft when the save fails, and shows the failure after Stay', async () => {
+      const save$ = held(() => Response.json(changed, { status: 409 }))
+      const { user, router } = await openEditor('ambush', { ...draftRead, [put]: save$.handler })
+
+      await replace(user, screen.getByLabelText('Name'), 'Trap')
+      await user.click(save())
+      await user.click(back())
+      await screen.findByRole('dialog', { name: 'Leave without saving?' })
+      save$.release()
+      await waitFor(() => {
+        expect(screen.getAllByText(/was changed by another request/).length).toBeGreaterThan(0)
+      })
+      expect(dialog()).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Stay' }))
+
+      await waitFor(() => {
+        expect(dialog()).not.toBeInTheDocument()
+      })
+      expect(screen.getByLabelText('Name')).toHaveValue('Trap')
+      expect(await pageAlert()).toHaveTextContent('was changed by another request')
+      expect(router.state.location.pathname).toBe(
+        '/studio/game-systems/my-draft/scene-types/ambush',
+      )
+    })
+
+    it('ends on one page with no dialog when a rename save succeeds', async () => {
+      const save$ = held(() => Response.json(withScene({ ...ambush, key: 'trap' }, 9)))
+      const { user, router } = await openEditor('ambush', { ...draftRead, [put]: save$.handler })
+
+      await replace(user, sceneKey(), 'trap')
+      await user.click(save())
+      await user.click(back())
+      await screen.findByRole('dialog', { name: 'Leave without saving?' })
+      save$.release()
+
+      await waitFor(() => {
+        expect(dialog()).not.toBeInTheDocument()
+      })
+      // Pinned: the person ends where Back was taking them. The renamed editor is not reached.
+      expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+      expect(router.state.status).toBe('idle')
+    })
+  })
+
+  describe('leaving through the browser', () => {
+    /**
+     * An editor with a page behind it, on the browser's own history: a memory history never runs
+     * the blockers on Back, only the browser's `popstate` does.
+     */
+    async function openAfterAnother(handlers: Record<string, FakeHandler> = {}) {
+      window.history.replaceState(null, '', '/studio/game-systems/my-draft/scene-types/quiet')
+      const { api } = createFakeApiClient({
+        'GET /api/auth/me': signedInAs('GAME_MANAGER'),
+        [`GET ${base}/narrative`]: json(narrativeScenes),
+        ...handlers,
+      })
+      const queryClient = createQueryClient()
+      const router = createAppRouter({ queryClient, api, history: createBrowserHistory() })
+      render(
+        <ColorModeProvider>
+          <QueryClientProvider client={queryClient}>
+            <ApiClientProvider client={api}>
+              <RouterProvider router={router} />
+            </ApiClientProvider>
+          </QueryClientProvider>
+        </ColorModeProvider>,
+      )
+      await screen.findByRole('form', { name: 'Scene Type' })
+      await act(() =>
+        router.navigate({
+          to: '/studio/game-systems/$key/scene-types/$sceneType',
+          params: { key: 'my-draft', sceneType: 'ambush' },
+        }),
+      )
+      await waitFor(() => {
+        expect(sceneKey()).toHaveValue('ambush')
+      })
+      return { user: userEvent.setup(), router }
+    }
+
+    it('asks on the browser Back button when the form is dirty, and stays', async () => {
+      const { user, router } = await openAfterAnother()
+
+      await replace(user, screen.getByLabelText('Name'), 'Trap')
+      act(() => {
+        window.history.back()
+      })
+
+      expect(
+        await screen.findByRole('dialog', { name: 'Leave without saving?' }),
+      ).toBeInTheDocument()
+      expect(router.state.location.pathname).toBe(
+        '/studio/game-systems/my-draft/scene-types/ambush',
+      )
+    })
+
+    it('goes Back from a clean form without asking', async () => {
+      const { router } = await openAfterAnother()
+
+      act(() => {
+        window.history.back()
+      })
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe(
+          '/studio/game-systems/my-draft/scene-types/quiet',
+        )
+      })
+      expect(dialog()).not.toBeInTheDocument()
+    })
+
+    it('asks the browser to confirm closing the tab only while the form is dirty', async () => {
+      const saved = recorder(() => Response.json(withScene({ ...ambush, name: 'Trap' })))
+      const { user } = await openAfterAnother({ [put]: saved.handler })
+      const closing = () => {
+        const event = new Event('beforeunload', { cancelable: true })
+        window.dispatchEvent(event)
+        return event.defaultPrevented
+      }
+
+      expect(closing()).toBe(false)
+      await replace(user, screen.getByLabelText('Name'), 'Trap')
+      expect(closing()).toBe(true)
+      await user.click(save())
+      expect(await screen.findByRole('status')).toHaveTextContent(/^Saved at/)
+      expect(closing()).toBe(false)
+    })
   })
 
   it('drops an added step only after the person confirms leaving', async () => {

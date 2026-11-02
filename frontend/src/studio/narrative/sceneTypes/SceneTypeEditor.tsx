@@ -41,6 +41,8 @@ export function SceneTypeEditor({
   original,
   initial,
   version,
+  savedAt: initialSavedAt = null,
+  onRenamed,
 }: {
   gameSystemKey: string
   narrative: GameSystemNarrative
@@ -48,6 +50,10 @@ export function SceneTypeEditor({
   original: string
   initial: SceneTypeDraft
   version: number
+  /** When a rename save made this form: the page remounts it on the new key, which would lose it. */
+  savedAt?: Date | null
+  /** Told the new key and when a save renamed the Scene Type, before the editor is opened anew. */
+  onRenamed?: (key: string, at: Date) => void
 }) {
   const id = useId()
   const [draft, setDraft] = useState(initial)
@@ -55,7 +61,7 @@ export function SceneTypeEditor({
   const [current, setCurrent] = useState(original)
   // The draft as last saved or loaded, to tell unsaved changes from a saved form; `savedAt` is null until a save.
   const [baseline, setBaseline] = useState(() => JSON.stringify(initial))
-  const [savedAt, setSavedAt] = useState<Date | null>(null)
+  const [savedAt, setSavedAt] = useState<Date | null>(initialSavedAt)
   const [answer, setAnswer] = useState<SceneTypeAnswer>(noAnswer)
   // Why a reload did not replace the draft; the old version is kept then, so a save still conflicts.
   const [reloadNote, setReloadNote] = useState<string | null>(null)
@@ -108,7 +114,11 @@ export function SceneTypeEditor({
       setReadAt(saved.version)
       setCurrent(key)
       setBaseline(JSON.stringify(draft))
-      setSavedAt(new Date())
+      const at = new Date()
+      setSavedAt(at)
+      if (key !== current) {
+        onRenamed?.(key, at)
+      }
     } catch (error) {
       const index = narrative.sceneTypes.findIndex((item) => item.key === current)
       const message = error instanceof Error ? error.message : 'Saving the item failed.'

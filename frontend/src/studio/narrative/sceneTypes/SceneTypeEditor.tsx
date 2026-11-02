@@ -168,6 +168,8 @@ export function SceneTypeEditor({
     setDraft(reloaded)
     setBaseline(JSON.stringify(reloaded))
     setReadAt(result.data.version)
+    // The replaced draft was not saved by this person, so the old "Saved at" no longer describes it.
+    setSavedAt(null)
     setReloadNote(null)
     setAnswer(noAnswer)
     setGeneration((count) => count + 1)
@@ -283,16 +285,21 @@ export function SceneTypeEditor({
         <div className="action-bar">
           {saveState && <SaveState state={saveState} />}
           {answer.conflict && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                void reload()
-              }}
-            >
-              <RotateCcw aria-hidden="true" />
-              Reload the latest version
-            </Button>
+            <>
+              <p className="text-sm text-destructive">
+                Reloading replaces your unsaved edits with the latest stored Scene Type.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  void reload()
+                }}
+              >
+                <RotateCcw aria-hidden="true" />
+                Reload the latest version
+              </Button>
+            </>
           )}
           <Button type="submit" disabled={save.isPending}>
             Save

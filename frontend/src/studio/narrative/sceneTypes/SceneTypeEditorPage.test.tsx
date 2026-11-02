@@ -487,6 +487,47 @@ describe('a conflict', () => {
     expect(saved.sent[1]?.expectedVersion).toBe(6)
   })
 
+  it('warns that a reload replaces unsaved edits, and shows no saved time after it', async () => {
+    let reads = 0
+    let puts = 0
+    const newer = { ...ambush, purpose: 'Changed elsewhere.' }
+    const { user } = await openEditor('ambush', {
+      [`GET ${base}/narrative`]: () =>
+        Response.json(++reads === 1 ? narrativeScenes : withScene(newer, 7)),
+      [put]: () =>
+        ++puts === 1
+          ? Response.json(withScene(ambush, 6))
+          : Response.json(changed, { status: 409 }),
+    })
+
+    await replace(user, screen.getByLabelText('Name'), 'Mine')
+    await user.click(save())
+    expect(await screen.findByRole('status')).toHaveTextContent(/^Saved at/)
+    await user.click(list('Closing').getByRole('button', { name: 'Add step' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'prompt' }))
+    expect(list('Closing').getByRole('group', { name: 'Step 2' })).toBeInTheDocument()
+    await user.click(save())
+    await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Purpose')).toHaveValue('Changed elsewhere.')
+    })
+    expect(list('Closing').queryByRole('group', { name: 'Step 2' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Saved at/)).not.toBeInTheDocument()
+  })
+
+  it('says on the conflict that Reload replaces unsaved edits', async () => {
+    const { user } = await openEditor('ambush', { [put]: json(changed, 409) })
+
+    expect(screen.queryByText(/Reloading replaces/)).not.toBeInTheDocument()
+    await replace(user, screen.getByLabelText('Name'), 'Mine')
+    await user.click(save())
+
+    expect(await screen.findByText(/Reloading replaces your unsaved edits/)).toHaveTextContent(
+      'Reloading replaces your unsaved edits with the latest stored Scene Type.',
+    )
+  })
+
   it.each([
     [
       'is gone',

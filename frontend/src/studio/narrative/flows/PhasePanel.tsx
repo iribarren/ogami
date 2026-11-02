@@ -8,7 +8,7 @@ import { Select } from '@/shared/ui/select'
 
 import { TextField } from '../TextField'
 import { Area } from '../steps/fields'
-import { phaseModes, type PhaseDraft } from './flowDraft'
+import { editPhaseKey, editPhaseName, phaseModes, type PhaseDraft } from './flowDraft'
 import type { PhaseAnswer } from './flowError'
 
 /** The fields of one phase; `answer` holds what the checks and the server said about it. */
@@ -23,6 +23,7 @@ export function PhasePanel({
 }) {
   const modeId = useId()
   const fields = answer?.fields ?? {}
+  const needsSceneType = phase.selection.rule !== 'oracle' && phase.selection.sceneTypes.length === 0
 
   return (
     <div className="space-y-4">
@@ -32,8 +33,9 @@ export function PhasePanel({
           keyField
           value={phase.key}
           error={fields.key}
+          help={phase.follow === true ? 'The key follows the name until you edit it.' : undefined}
           onChange={(key) => {
-            onChange({ ...phase, key })
+            onChange(editPhaseKey(phase, key))
           }}
         />
         <TextField
@@ -41,7 +43,7 @@ export function PhasePanel({
           value={phase.name}
           error={fields.name}
           onChange={(name) => {
-            onChange({ ...phase, name })
+            onChange(editPhaseName(phase, name))
           }}
         />
         <TextField
@@ -80,6 +82,12 @@ export function PhasePanel({
           onChange({ ...phase, description })
         }}
       />
+      {needsSceneType && (
+        <p className="hint">
+          A phase needs a Scene Type to pick from before the Flow can be saved. Add one to this
+          phase in the outline.
+        </p>
+      )}
       {answer?.messages.map((message) => (
         <Alert key={message}>{message}</Alert>
       ))}

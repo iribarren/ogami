@@ -55,7 +55,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T8 | 2 | S1, S14: condition band cap 100 in domain, translator and contract; live counter on check and condition band labels | delegated writer (slice 2) | [ ] | — |
 | T9 | 2 | S11: reorder likelihood oracle levels; test that the backend keeps the order | delegated writer (slice 2) | [x] | — |
 | T10 | 2 | S16: a check set's per-band effects easier to reach | delegated writer (slice 2) | [x] | — |
-| T11 | 2 | S22, S23: a new phase's key follows its name; a hint that a phase needs a Scene Type | delegated writer (slice 2) | [ ] | — |
+| T11 | 2 | S22, S23: a new phase's key follows its name; a hint that a phase needs a Scene Type | delegated writer (slice 2) | [x] | — |
 | T12 | 2 | S8: push cost field select in sheet order | delegated writer (slice 2) | [ ] | — |
 | T13 | 2 | S17, S21, P17: `sheet` effect hint in Setup; Skip option hint before adding; a new `condition` step starts with a tracker and a second band | delegated writer (slice 2) | [ ] | — |
 | T14 | 2 | Closing: S15 follow-up issue and roadmap line; roadmap B7m done; this doc closed | parent (closing doc commit) | [ ] | — |
@@ -73,6 +73,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: T7 done, frontend-only: `Paste fields` dialog in the sheet tab (`pasteFields.ts` parser, `PasteFieldsDialog`). One name per line is a label, the key is its slug (cut to 64); shared type (number, text, list), group and a number's bounds; per-line refusal of a keyless name, a name over 100, a key of the sheet or an earlier line, before anything is sent. Fields go one by one through `useSaveSheetField` with the version each answer returned; a failure stops the run, says how many were added and keeps the lines not added; a 409 offers the reload. No RED observed: tests were written with the code and passed once the fixtures were right.
 - 2026-11-02: T9 done: ArrowUp/ArrowDown buttons on each likelihood level (`moveLevel` in `likelihoodDraft.ts`; first row no up, last no down, disabled as in Checks bands). The backend already kept the order but no test pinned it: added `aSavedLikelihoodOracleKeepsItsLevelsInTheOrderTheAuthorGave`. No RED observed: the tests were written with the code and passed first run.
 - 2026-11-02: T10 done, frontend-only: Expand all / Collapse all above the band rows of a check step's Outcomes (bands and special results); each row follows the newest press once and is then the author's again. Rows with a next or effects still start open, empty ones collapsed; S15 untouched. No RED observed: written with the code, passed once the fixture's open rows were accounted for.
+- 2026-11-02: T11 done, frontend-only: `PhaseDraft.follow` with `editPhaseName`/`editPhaseKey` (the `slugOf` helper the other Studio forms use). A new phase follows from the start; a stored phase follows when its key is what its name gives, which covers the first phase a new flow starts with (`main`/`Main`) and means renaming such a stored phase now renames its key too (one existing page test updated for it; the key field says so). A phase with no Scene Type shows a hint that it needs one before the Flow can be saved. No RED observed: tests written with the code.
 
 ## Reviews
 

@@ -3,6 +3,8 @@ import {
   flowToItem,
   newFlow,
   newFlowToItem,
+  editPhaseKey,
+  editPhaseName,
   newPhase,
   refreshNewFlow,
   setHook,
@@ -351,9 +353,36 @@ describe('a new phase', () => {
       description: '',
       mode: 'once',
       selection: { rule: 'sequence', sceneTypes: [], extra: {} },
+      follow: true,
       hooks: {},
       extra: {},
     })
     expect(newPhase([]).key).toBe('phase-1')
+  })
+})
+
+describe('the key of a phase following its name (S22, S23)', () => {
+  const stored = (key: string, name: string) =>
+    flowToDraft({ ...kingsport, phases: [{ ...kingsport.phases[0], key, name }] })?.phases[0]
+
+  it('follows the name of a new phase until the key is typed', () => {
+    const added = editPhaseName(newPhase([]), 'The Long Night!')
+    expect(added.key).toBe('the-long-night')
+
+    const typed = editPhaseKey(added, 'night')
+    expect(editPhaseName(typed, 'Dawn')).toMatchObject({ key: 'night', name: 'Dawn' })
+  })
+
+  it('follows from the first phase a new flow starts with', () => {
+    const first = newFlowToItem({ key: 'f', name: 'F', sceneType: 's', sceneTypes: [] })
+    const phase = flowToDraft(first.item)?.phases[0]
+
+    expect(phase && editPhaseName(phase, 'Opening').key).toBe('opening')
+  })
+
+  it('does not follow a stored phase whose key is not what its name gives', () => {
+    const phase = stored('custom', 'Setup')
+
+    expect(phase && editPhaseName(phase, 'Prep').key).toBe('custom')
   })
 })

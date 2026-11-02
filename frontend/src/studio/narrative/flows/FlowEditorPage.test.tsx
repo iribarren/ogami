@@ -231,7 +231,8 @@ describe('the flow editor', () => {
         defaultView: 'journal',
         oracles: ['complications'],
         trackers: ['heat'],
-        phases: [{ ...phases[0], name: 'Prep', mode: 'loop', act: 'One' }, phases[1]],
+        // The stored key was what the name "Setup" gives, so it follows the rename.
+        phases: [{ ...phases[0], key: 'prep', name: 'Prep', mode: 'loop', act: 'One' }, phases[1]],
       },
     })
   })
@@ -293,6 +294,20 @@ describe('the phase outline', () => {
         selection: { rule: 'sequence', sceneTypes: ['ambush'] },
       },
     ])
+  })
+
+  it('has a new phase follow its name in its key until the key is edited, and says a Scene Type is needed (S22, S23)', async () => {
+    const { user } = await openEditor('heist')
+
+    await user.click(screen.getByRole('button', { name: 'Add phase' }))
+    expect(content().getByText(/needs a Scene Type to pick from before the Flow can be saved/)).toBeVisible()
+    await replace(user, content().getByLabelText('Name'), 'The Long Night')
+    expect(content().getByLabelText('Key')).toHaveValue('the-long-night')
+
+    await replace(user, content().getByLabelText('Key'), 'night')
+    await replace(user, content().getByLabelText('Name'), 'Dawn')
+    expect(content().getByLabelText('Key')).toHaveValue('night')
+    expect(content().queryByText('The key follows the name until you edit it.')).toBeNull()
   })
 
   it('moves a phase up or down and saves the new order', async () => {

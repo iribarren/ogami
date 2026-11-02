@@ -1,3 +1,4 @@
+import { slugOf } from '../../checks/checkDraft'
 import type { FieldErrors } from '../narrativeDraft'
 import { isObject, listOf, stringsOf, textOf, unknownFields } from '../steps/draftParts'
 import { stepsToDrafts, stepsToItems, type StepDraft } from '../steps/stepDraft'
@@ -45,6 +46,11 @@ export interface PhaseDraft {
   description: string
   mode: PhaseMode
   selection: SelectionDraft
+  /**
+   * While set, the key follows the name (`editPhaseName`). A stored phase follows when its key is
+   * what its name gives, so the first phase of a new flow ("main" for "Main") follows too.
+   */
+  follow?: boolean
   /**
    * The step lists of the hooks. A hook the phase does not have stays missing, and one the author
    * empties is removed (`setHook`): the publisher drops an empty list, so none is sent for it.
@@ -152,9 +158,20 @@ function phaseToDraft(value: unknown): PhaseDraft | null {
     description,
     mode,
     selection,
+    follow: key === slugOf(name),
     hooks,
     extra: unknownFields(value, phaseKnown),
   }
+}
+
+/** The phase with a new name; the key follows it while the phase has not had its key typed. */
+export function editPhaseName(phase: PhaseDraft, name: string): PhaseDraft {
+  return phase.follow === true ? { ...phase, name, key: slugOf(name) } : { ...phase, name }
+}
+
+/** The phase with a key typed by hand, which stops it following the name. */
+export function editPhaseKey(phase: PhaseDraft, key: string): PhaseDraft {
+  return { ...phase, key, follow: false }
 }
 
 /** The flow as form state; null when a field has a shape this editor does not read. */
@@ -315,6 +332,7 @@ export function newPhase(phases: PhaseDraft[]): PhaseDraft {
     description: '',
     mode: 'once',
     selection: { rule: 'sequence', sceneTypes: [], extra: {} },
+    follow: true,
     hooks: {},
     extra: {},
   }

@@ -19,7 +19,8 @@ describe('parsing pasted field names', () => {
   it('refuses a name with no letter or digit, naming the line', () => {
     const [line] = parseFieldPaste('???', [])
 
-    expect(line).toMatchObject({ line: 1, key: '', error: expect.stringContaining('letter') })
+    expect(line).toMatchObject({ line: 1, key: '' })
+    expect(line?.error).toContain('letter')
   })
 
   it('refuses a key the sheet already has', () => {

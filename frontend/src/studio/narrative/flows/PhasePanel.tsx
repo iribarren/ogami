@@ -23,7 +23,8 @@ export function PhasePanel({
 }) {
   const modeId = useId()
   const fields = answer?.fields ?? {}
-  const needsSceneType = phase.selection.rule !== 'oracle' && phase.selection.sceneTypes.length === 0
+  const needsSceneType =
+    phase.selection.rule !== 'oracle' && phase.selection.sceneTypes.length === 0
 
   return (
     <div className="space-y-4">

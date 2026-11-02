@@ -31,8 +31,7 @@ export interface PastedLine {
 }
 
 /** The key a pasted name derives: its slug, cut to the publisher's limit without a trailing hyphen. */
-export const keyOfName = (name: string) =>
-  slugOf(name).slice(0, fieldLimits.key).replace(/-$/, '')
+export const keyOfName = (name: string) => slugOf(name).slice(0, fieldLimits.key).replace(/-$/, '')
 
 /**
  * One field per non-blank line, the line being its label. Each line says what stops it, so the

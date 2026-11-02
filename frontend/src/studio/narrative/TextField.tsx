@@ -34,7 +34,12 @@ export function TextField({
   const helpId = `${id}-help`
   const errorId = `${id}-error`
   const countId = `${id}-count`
-  const described = [keyField ? hintId : null, help ? helpId : null, error ? errorId : null, limit === undefined ? null : countId]
+  const described = [
+    keyField ? hintId : null,
+    help ? helpId : null,
+    error ? errorId : null,
+    limit === undefined ? null : countId,
+  ]
     .filter((part) => part !== null)
     .join(' ')
 

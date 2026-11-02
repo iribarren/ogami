@@ -45,8 +45,10 @@ function answering(...responses: (() => Response)[]) {
 }
 
 const saved = (version: number) => () => Response.json({ ...sheet, version }, { status: 201 })
-const refused = (error: string, status = 422, code?: string) => () =>
-  Response.json({ error, code }, { status })
+const refused =
+  (error: string, status = 422, code?: string) =>
+  () =>
+    Response.json({ error, code }, { status })
 
 describe('pasting sheet fields', () => {
   it('previews the derived keys and sends nothing until the button is pressed', async () => {
@@ -163,7 +165,11 @@ describe('pasting sheet fields', () => {
   it('stops on a conflict midway and offers the reload, then retries with the latest version', async () => {
     const { sent, handler } = answering(
       saved(8),
-      refused('GameSystem "my-draft" was changed by another request. Reload it and try again.', 409, 'modified_concurrently'),
+      refused(
+        'GameSystem "my-draft" was changed by another request. Reload it and try again.',
+        409,
+        'modified_concurrently',
+      ),
       saved(13),
     )
     let reads = 0

@@ -753,7 +753,9 @@ describe('the step list editor', () => {
       // A character step offers sheet effects in a setup: nothing to explain.
       expect(effectsOf(2).queryByText(why)).not.toBeInTheDocument()
       unmount()
-      const { unmount: unmountList } = render(<Harness setup stored={stepListSheetEffects.slice(0, 1)} />)
+      const { unmount: unmountList } = render(
+        <Harness setup stored={stepListSheetEffects.slice(0, 1)} />,
+      )
       expect(
         within(screen.getByRole('group', { name: 'Option 1 outcome effects' })).getByText(why),
       ).toBeInTheDocument()
@@ -1516,7 +1518,8 @@ describe('the step list editor', () => {
       const user = userEvent.setup()
       render(<Harness stored={stepListPickCheck} />)
       const outcomes = () => within(card(2).getByRole('group', { name: 'Outcomes' }))
-      const opened = () => outcomes().queryAllByRole('group', { name: /^Outcome (fail|partial|success)$/ })
+      const opened = () =>
+        outcomes().queryAllByRole('group', { name: /^Outcome (fail|partial|success)$/ })
 
       // Only the bands that already say something start open.
       expect(opened().length).toBeLessThan(3)

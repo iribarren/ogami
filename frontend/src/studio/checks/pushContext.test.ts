@@ -1,5 +1,6 @@
 import { checks } from '../fixtures'
 import { pushContext } from './pushContext'
+import type { GameSystemChecks } from './useGameSystemChecks'
 
 const data = {
   ...checks,
@@ -8,9 +9,10 @@ const data = {
     { key: 'hp', label: 'Hit points', type: 'track' as const, max: 12 },
   ],
   conditions: [{ key: 'phys', label: 'Physical', options: [{ key: 'hurt', label: 'Hurt' }] }],
-}
+} as unknown as GameSystemChecks
 
-const keys = (order?: string[]) => pushContext(data, order).sheetFields.map(({ key }) => key)
+const keys = (order?: string[]) =>
+  (pushContext(data, order).sheetFields ?? []).map(({ key }) => key)
 
 describe('the context of a push cost', () => {
   it('lists the number and track fields, then the conditions fields, without the sheet order', () => {
@@ -27,7 +29,8 @@ describe('the context of a push cost', () => {
   })
 
   it('keeps the options of a conditions field', () => {
-    const [, , phys] = pushContext(data).sheetFields
+    const fields = pushContext(data).sheetFields ?? []
+    const phys = fields.find(({ key }) => key === 'phys')
 
     expect(phys?.options).toEqual([{ key: 'hurt', name: 'Hurt' }])
   })

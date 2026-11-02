@@ -299,7 +299,9 @@ describe('the phase outline', () => {
     const { user } = await openEditor('heist')
 
     await user.click(screen.getByRole('button', { name: 'Add phase' }))
-    expect(content().getByText(/needs a Scene Type to pick from before the Flow can be saved/)).toBeVisible()
+    expect(
+      content().getByText(/needs a Scene Type to pick from before the Flow can be saved/),
+    ).toBeVisible()
     await replace(user, content().getByLabelText('Name'), 'The Long Night')
     expect(content().getByLabelText('Key')).toHaveValue('the-long-night')
 

@@ -1388,7 +1388,10 @@ describe('the push of a pool check in the check editor', () => {
     const [pow, , hp] = sheet.fields
     const physical = { key: 'physical', label: 'Physical', type: 'conditions', options: [] }
     const { user, effect } = await editRaid(
-      { ...raid, push: { label: 'Pay', effects: [{ kind: 'sheet', field: 'physical', op: 'mark' }] } },
+      {
+        ...raid,
+        push: { label: 'Pay', effects: [{ kind: 'sheet', field: 'physical', op: 'mark' }] },
+      },
       { [`GET ${base}/sheet`]: json({ ...sheet, fields: [physical, pow, hp] }) },
     )
 

@@ -118,7 +118,12 @@ export function PasteFieldsDialog({
       }
     }
     // What was added leaves the box; what was not stays, as pasted.
-    setText(lines.slice(added).map(({ name }) => name).join('\n'))
+    setText(
+      lines
+        .slice(added)
+        .map(({ name }) => name)
+        .join('\n'),
+    )
     setOutcome({ added, total: lines.length, stopped })
     setRunning(false)
   }
@@ -229,8 +234,7 @@ export function PasteFieldsDialog({
         {outcome !== null && (
           <div role={outcome.stopped === null ? 'status' : 'alert'} className="space-y-1 text-sm">
             <p>
-              Added {outcome.added} of {outcome.total}{' '}
-              {outcome.total === 1 ? 'field' : 'fields'}.
+              Added {outcome.added} of {outcome.total} {outcome.total === 1 ? 'field' : 'fields'}.
             </p>
             {outcome.stopped !== null && (
               <p className="text-destructive">

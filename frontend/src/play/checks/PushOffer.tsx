@@ -6,7 +6,7 @@ import { NativeSelect } from '@/shared/ui/native-select'
 
 import type { Campaign } from '../campaigns/useCampaigns'
 import type { JournalEntry } from '../journal/useJournal'
-import { burnScore, diceBeatenBy, hasHungerDice, pushOf, rollSucceeded } from './pushing'
+import { burnScore, diceBeatenBy, hasHungerDice, pushOf } from './pushing'
 
 type Character = Campaign['characters'][number]
 
@@ -100,9 +100,10 @@ function BurnOutlook({ outlook }: { outlook: Outlook }) {
  * The cost of the push and one select per option the player picks (each `push.picks` field, listing
  * its options not marked yet, counting the picks above it). A field with every option marked asks
  * for nothing. Push is possible once every select has an option; Keep leaves the roll as it is.
- * It tells the cap of the push, and that Hunger dice are never re-rolled (ADR 0044). On a pool roll
- * that already succeeded it says what the push can still change (more successes, never fewer) and
- * what it risks (the cost, whatever the dice show), from ADR 0041 and ADR 0044.
+ * It tells the cap of the push, and that Hunger dice are never re-rolled (ADR 0044). On every pool
+ * roll it says what the push can still change (more successes, never fewer) and what it risks (the
+ * cost, whatever the dice show, and a messy critical with Hunger dice), from ADR 0041 and ADR 0044.
+ * A band check has no difficulty, so the offer cannot tell a success and the copy holds either way.
  *
  * The push of a challenge roll is a burn (ADR 0049): no dice are re-rolled. It tells the momentum on
  * the Character's sheet now, the score it would give and the dice it would beat, against those of
@@ -147,7 +148,6 @@ export function PushOffer({
   const pool = entry.content.kind === 'check' ? entry.content.pool : null
   const challenge = entry.content.kind === 'check' ? entry.content.challenge : null
   const burn = challenge === null ? null : burnOutlook(campaign, entry, character)
-  const succeeded = entry.content.kind === 'check' && pool !== null && rollSucceeded(entry.content)
   const rerolls =
     push.maxDice === null
       ? 'Re-roll every failed regular die.'
@@ -159,12 +159,14 @@ export function PushOffer({
         {challenge === null ? 'Push' : 'Burn'}: <strong>{push.label}</strong>
       </p>
       {burn !== null && <BurnOutlook outlook={burn} />}
-      {succeeded && (
+      {pool !== null && (
         <p className="text-sm">
-          This roll already succeeded. A push re-rolls only the dice that failed and keeps the
-          successes, so it cannot lower the result; it can only add successes, which may reach a
-          higher band or a critical. The cost is paid whatever the dice show, and a roll is pushed
-          once. Keep takes the result as it is, at no cost.
+          A push re-rolls only the dice that failed and keeps the successes, so it cannot lower the
+          result; it can only add successes, which may reach a higher band or a critical. The cost
+          is paid whatever the dice show, and a roll is pushed once. Keep takes the result as it is,
+          at no cost.
+          {hasHungerDice(pool) &&
+            ' A new critical that pairs with a Hunger die is a messy critical.'}
         </p>
       )}
       {(push.maxDice !== null || (pool !== null && hasHungerDice(pool))) && (

@@ -1,6 +1,5 @@
 import { edgeCheck, fulfillCheck, gritCheck, persuadeCheck } from '../campaigns/fixtures'
 import { nightJobCampaign } from '../characters/fixtures'
-import type { JournalEntry } from '../journal/useJournal'
 import {
   bestialFailureEntry,
   burnableRollEntry,
@@ -13,7 +12,7 @@ import {
   skillCheckEntry,
   vowProgressEntry,
 } from '../journal/fixtures'
-import { burnScore, canBurn, canPush, diceBeatenBy, rollSucceeded } from './pushing'
+import { burnScore, canBurn, canPush, diceBeatenBy } from './pushing'
 
 const campaign = { ...nightJobCampaign, checks: [gritCheck, persuadeCheck] }
 
@@ -127,33 +126,5 @@ describe('canBurn', () => {
     expect(canBurn(edgeCampaign, vowProgressEntry)).toBe(false)
     expect(canBurn(edgeCampaign, gritEntry)).toBe(false)
     expect(canBurn(edgeCampaign, skillCheckEntry)).toBe(false)
-  })
-})
-
-type CheckEntryContent = Extract<JournalEntry['content'], { kind: 'check' }>
-
-describe('rollSucceeded', () => {
-  const content = (over: Partial<CheckEntryContent>): CheckEntryContent => {
-    if (bestialFailureEntry.content.kind !== 'check') {
-      throw new Error('The fixture is no check roll.')
-    }
-    return { ...bestialFailureEntry.content, ...over }
-  }
-
-  it('reads a total that reaches the difficulty as a success, and one below it as a failure', () => {
-    expect(rollSucceeded(content({ difficulty: 3, total: 3, special: null }))).toBe(true)
-    expect(rollSucceeded(content({ difficulty: 3, total: 2, special: null }))).toBe(false)
-  })
-
-  it('reads a critical as a success, a bestial failure as none', () => {
-    expect(rollSucceeded(content({ difficulty: null, special: 'critical' }))).toBe(true)
-    expect(rollSucceeded(content({ difficulty: null, special: 'messyCritical' }))).toBe(true)
-    expect(rollSucceeded(content({ difficulty: 5, total: 1, special: 'bestialFailure' }))).toBe(
-      false,
-    )
-  })
-
-  it('does not guess without a difficulty: the bands are not in the entry', () => {
-    expect(rollSucceeded(content({ difficulty: null, total: 9, special: null }))).toBe(false)
   })
 })

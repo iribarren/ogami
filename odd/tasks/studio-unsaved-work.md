@@ -65,7 +65,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T5 | 2 | G6: `FlowsTab` handles a refused navigation | delegated writer | [x] | |
 | T6 | 2 | G7: guard option for a tab change | delegated writer | [x] | |
 | T7 | 2 | G7: `MetadataForm` baseline and guard; Discard ignores the blocker | delegated writer | [x] | |
-| T8 | 2 | G7: `CheckEditor` dirty, guard, and a confirm on picking another check | delegated writer | [ ] | |
+| T8 | 2 | G7: `CheckEditor` dirty, guard, and a confirm on picking another check | delegated writer | [x] | |
 | T9 | 2 | G7: `SheetCurrencyPanel` guard | delegated writer | [ ] | |
 | T10 | 2 | Slice 1 finding: a reload clears the test roll and test answer | delegated writer | [ ] | |
 
@@ -94,6 +94,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: T5 done. RED: the refused-navigation test failed with one unhandled rejection; it now passes. `FlowsTab` has the `SceneTypesTab` try/catch.
 - 2026-11-02: T6 done. RED: the 2 tab-change tests failed (the guard ignored `tab`); the 7 others (path change, Stay, Leave, same-tab search, no tab equals `overview`, unknown to Overview, clean) passed at once, as they pin existing behaviour. `UnsavedChangesDialog` is exported.
 - 2026-11-02: T7 done. RED: 6 new tests failed (dirty leave never asked, an undone edit read unsaved, Discard raised no dialog yet); the untouched, saved-leave and tab-switch tests passed at once. `MetadataForm.stories.tsx` already ran under `StoryProviders`, which has a router, so it is unchanged.
+- 2026-11-02: T8 done. RED: 9 of 13 new tests failed (no question on Edit, New check, Duplicate, tab change, or the save-behind-the-dialog case); the untouched-switch, untouched New check, editor Duplicate and untouched tab change tests passed at once. The saved-form test failed at RED on its own selector, not on behaviour, and was fixed. Drafts hold plain data, so `JSON.stringify` compares them. Stories already run under `StoryProviders`.
 
 ## Reviews
 

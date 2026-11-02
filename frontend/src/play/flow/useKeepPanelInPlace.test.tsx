@@ -115,6 +115,18 @@ describe('keeping the guided panel in place', () => {
     expect(disconnected).toBe(1)
   })
 
+  it('takes its first measurement when it becomes active, so the Journal loading does not scroll', () => {
+    const { rerender } = render(<Harness active={false} panelTop={300} />)
+    expect(callback).toBeNull()
+
+    rerender(<Harness panelTop={300} />)
+    resizeTo(11000)
+    expect(scrollBy).not.toHaveBeenCalled()
+
+    resizeTo(11092)
+    expect(scrollBy).toHaveBeenCalledExactlyOnceWith({ top: 92, behavior: 'instant' })
+  })
+
   it('does nothing without ResizeObserver', () => {
     vi.stubGlobal('ResizeObserver', undefined)
 

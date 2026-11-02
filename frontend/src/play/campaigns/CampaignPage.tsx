@@ -105,7 +105,9 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
   const [view, setView] = useFlowView(campaign)
   const trackers = visibleTrackers(campaign)
   const focused = campaign.flowRun !== null && view === 'focus'
-  const { journalRef, panelRef } = useKeepPanelInPlace(!focused)
+  // Measured once the Journal has loaded: the load itself is no growth to follow.
+  const journalLoaded = useJournal(campaign.id).status === 'success'
+  const { journalRef, panelRef } = useKeepPanelInPlace(!focused && journalLoaded)
   // Shared by the step card and the controls below the composer, so one pending state covers both.
   const command = useFlowRunCommand(campaign.id)
   const openList = (kind: ListKind) => {

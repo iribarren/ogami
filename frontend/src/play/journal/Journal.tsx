@@ -14,10 +14,13 @@ import { playOrdinals, titleAddsToType, typeLabel } from './sceneLabels'
 import { SceneTypeOffer, type ListedScene } from './SceneTypeOffer'
 import { recordEntryKey, type JournalEntry } from './useJournal'
 
-/** Brings an entry just recorded into view, without moving focus (jsdom cannot scroll). */
+/**
+ * Brings an entry just recorded into view, without moving focus (jsdom cannot scroll). It does not
+ * animate: a smooth scroll in flight would fight `useKeepPanelInPlace`, and the step card would jump.
+ */
 function reveal(element: HTMLElement | null) {
   if (element !== null && 'scrollIntoView' in element) {
-    element.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    element.scrollIntoView({ block: 'nearest', behavior: 'auto' })
   }
 }
 

@@ -23,7 +23,7 @@ import { ChoiceFields, OracleFields, TableFields } from './BranchingFields'
 import { moveItem } from './draftParts'
 import { CheckFields, PickFields } from './PickCheckFields'
 import { ShopFields } from './ShopFields'
-import { EffectsEditor } from './EffectsEditor'
+import { EffectsEditor, SETUP_NO_SHEET } from './EffectsEditor'
 import { Area, CheckList } from './fields'
 import type { StepContext } from './stepContext'
 import { StepKindTile } from './stepKindTile'
@@ -67,6 +67,9 @@ function bandProblems(guide: StepGuide, mine: StepError[]): BandProblems {
 
 /** The simple fields of an open step sit two to a row; areas and nested editors span both. */
 const wide = 'sm:col-span-2'
+
+/** Said in the Add step menu: the publisher refuses a suggested choice without one (S21). */
+const CHOICE_MENU_HINT = 'a suggested one needs a Skip option'
 
 function StepFields({
   step,
@@ -352,6 +355,7 @@ function StepFields({
           effects={step.effects}
           context={context}
           allowSheet={step.kind === 'character' || (step.kind === 'prompt' && !setup)}
+          noSheetHint={setup ? SETUP_NO_SHEET : undefined}
           errors={mine.filter(
             (error) =>
               error.band === null &&
@@ -731,13 +735,26 @@ export function StepListEditor({
             .map((option) => (
               <DropdownMenuItem
                 key={option}
+                aria-label={option}
+                aria-description={option === 'choice' ? CHOICE_MENU_HINT : undefined}
                 onSelect={() => {
                   setOrigin([...origins, null])
-                  onChange([...steps, newStep(option, steps)])
+                  onChange([
+                    ...steps,
+                    newStep(
+                      option,
+                      steps,
+                      context.trackers.map(({ key }) => key),
+                    ),
+                  ])
                 }}
               >
                 <StepKindTile kind={option} />
                 {option}
+                {option === 'choice' && (
+                  // Said before the step is added; the name stays "choice" for assistive technology.
+                  <span className="ml-2 text-xs text-muted-foreground">{CHOICE_MENU_HINT}</span>
+                )}
               </DropdownMenuItem>
             ))}
         </DropdownMenuContent>

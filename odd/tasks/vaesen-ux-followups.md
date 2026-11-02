@@ -57,7 +57,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T10 | 2 | S16: a check set's per-band effects easier to reach | delegated writer (slice 2) | [x] | — |
 | T11 | 2 | S22, S23: a new phase's key follows its name; a hint that a phase needs a Scene Type | delegated writer (slice 2) | [x] | — |
 | T12 | 2 | S8: push cost field select in sheet order | delegated writer (slice 2) | [x] | — |
-| T13 | 2 | S17, S21, P17: `sheet` effect hint in Setup; Skip option hint before adding; a new `condition` step starts with a tracker and a second band | delegated writer (slice 2) | [ ] | — |
+| T13 | 2 | S17, S21, P17: `sheet` effect hint in Setup; Skip option hint before adding; a new `condition` step starts with a tracker and a second band | delegated writer (slice 2) | [x] | — |
 | T14 | 2 | Closing: S15 follow-up issue and roadmap line; roadmap B7m done; this doc closed | parent (closing doc commit) | [ ] | — |
 
 ## Progress
@@ -75,6 +75,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: T10 done, frontend-only: Expand all / Collapse all above the band rows of a check step's Outcomes (bands and special results); each row follows the newest press once and is then the author's again. Rows with a next or effects still start open, empty ones collapsed; S15 untouched. No RED observed: written with the code, passed once the fixture's open rows were accounted for.
 - 2026-11-02: T11 done, frontend-only: `PhaseDraft.follow` with `editPhaseName`/`editPhaseKey` (the `slugOf` helper the other Studio forms use). A new phase follows from the start; a stored phase follows when its key is what its name gives, which covers the first phase a new flow starts with (`main`/`Main`) and means renaming such a stored phase now renames its key too (one existing page test updated for it; the key field says so). A phase with no Scene Type shows a hint that it needs one before the Flow can be saved. No RED observed: tests written with the code.
 - 2026-11-02: T12 done, frontend-only: the checks read model gives conditions fields apart from the others with no position, so `pushContext` takes the key order of the sheet (already read by the check editor) and sorts the cost's sheet fields by it; unlisted ones follow. No API change. No RED observed: tests written with the code.
+- 2026-11-02: T13 done, frontend-only: S17 a hint (`SETUP_NO_SHEET`, ADR 0042) under the effects of a Setup step or choice option that is offered no sheet kind; S21 the Add step menu says on `choice` that a suggested one needs a Skip option (the item keeps its accessible name); P17 `newStep('condition', steps, trackers)` preselects the draft's first tracker and adds a band besides Otherwise, a stored condition step with one band opens as stored (tested). No RED observed: tests written with the code.
 
 ## Reviews
 

@@ -386,12 +386,17 @@ function EffectCard({
   )
 }
 
+/** Why a Scene Type's Setup offers no sheet effect (ADR 0042). */
+export const SETUP_NO_SHEET =
+  'No sheet effects here: a Scene Type’s Setup runs before a Character is known (ADR 0042).'
+
 /**
  * An ordered list of effect cards, edited in place: add (the kind is chosen first), delete, move,
  * at most ten. A sheet effect is offered only where `allowSheet`; one stored elsewhere stays,
  * flagged. `kinds` narrows the kinds offered (the cost of a push takes sheet and tracker effects
  * only); `allowPick` lets a mark on a conditions field leave its option to the player, which only
- * the cost of a push does. `errors` are the server's messages about these effects (`effect` is their position).
+ * the cost of a push does. `noSheetHint` says why no sheet effect is offered, where it is not
+ * obvious. `errors` are the server's messages about these effects (`effect` is their position).
  * `onRestructure` tells the owner of the messages that effects moved or went.
  */
 export function EffectsEditor({
@@ -401,6 +406,7 @@ export function EffectsEditor({
   allowSheet,
   kinds,
   allowPick = false,
+  noSheetHint,
   errors,
   onChange,
   onRestructure,
@@ -411,6 +417,7 @@ export function EffectsEditor({
   allowSheet: boolean
   kinds?: readonly EffectKind[]
   allowPick?: boolean
+  noSheetHint?: string
   errors: StepError[]
   onChange: (effects: EffectDraft[]) => void
   onRestructure?: () => void
@@ -496,6 +503,7 @@ export function EffectsEditor({
           </p>
         )}
       </div>
+      {!allowSheet && noSheetHint !== undefined && <p className="hint">{noSheetHint}</p>}
     </fieldset>
   )
 }

@@ -1449,6 +1449,25 @@ describe('the step list editor', () => {
       expect(card(2).getAllByText('Not a band of this check.')).toHaveLength(2)
     })
 
+    it('expands and collapses every band at once, collapsed being the default', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepListPickCheck} />)
+      const outcomes = () => within(card(2).getByRole('group', { name: 'Outcomes' }))
+      const opened = () => outcomes().queryAllByRole('group', { name: /^Outcome (fail|partial|success)$/ })
+
+      // Only the bands that already say something start open.
+      expect(opened().length).toBeLessThan(3)
+      await user.click(outcomes().getByRole('button', { name: 'Expand all' }))
+      expect(opened()).toHaveLength(3)
+
+      await user.click(outcomes().getByRole('button', { name: 'Collapse all' }))
+      expect(opened()).toHaveLength(0)
+
+      // A band the author opens by hand stays theirs until the next press.
+      await user.click(outcomes().getByText('partial'))
+      expect(opened()).toHaveLength(1)
+    })
+
     it('shows the difficulty only for a check that declares one, with its range, and guides a value outside it', async () => {
       const user = userEvent.setup()
       render(<Harness stored={stepListPickCheck} />)

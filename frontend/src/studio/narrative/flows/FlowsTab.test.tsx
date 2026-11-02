@@ -360,6 +360,58 @@ describe('creating a flow', () => {
     expect(sent).toEqual([{ expectedVersion: 5, item: created }])
   })
 
+  it('stays on the list, saved, when the router refuses to open the editor', async () => {
+    const created = {
+      key: 'chase',
+      name: 'Chase',
+      defaultView: 'focus',
+      oracles: [],
+      trackers: [],
+      phases: [
+        {
+          key: 'main',
+          name: 'Main',
+          mode: 'once',
+          selection: { rule: 'sequence', sceneTypes: ['quiet'] },
+        },
+      ],
+    }
+    const { user, router } = await openTab({
+      [`POST ${base}/narrative/flows`]: () =>
+        Response.json(
+          {
+            ...narrativeFlows,
+            version: 6,
+            flows: [...narrativeFlows.flows, { key: 'chase', definition: created, usedBy: [] }],
+          },
+          { status: 201 },
+        ),
+    })
+    // Not a `vi.spyOn`: it reads the promise it returns, which would count as handling it.
+    let refused = false
+    router.navigate = () => {
+      refused = true
+      return Promise.reject(new Error('refused'))
+    }
+    const unhandled = vi.fn()
+    process.on('unhandledRejection', unhandled)
+
+    await user.click(await screen.findByRole('button', { name: 'New flow' }))
+    await typeText(user, inDialog().getByLabelText('Key'), 'chase')
+    await typeText(user, inDialog().getByLabelText('Name'), 'Chase')
+    await chooseOption(user, 'First Scene Type', 'Quiet', inDialog())
+    await user.click(inDialog().getByRole('button', { name: 'Create flow' }))
+
+    expect(await screen.findByText('Chase')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(refused).toBe(true)
+    })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    process.off('unhandledRejection', unhandled)
+    expect(unhandled).not.toHaveBeenCalled()
+    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+  })
+
   it('cannot start without a Scene Type, and says so', async () => {
     await openTab({
       [`GET ${base}/narrative`]: json({ ...narrativeFlows, sceneTypes: [] }),

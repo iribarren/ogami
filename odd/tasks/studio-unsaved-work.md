@@ -1,7 +1,7 @@
 # Feature: studio-unsaved-work
 
 - **Locator:** `odd/tasks/studio-unsaved-work.md` · Engram topic `odd/studio-unsaved-work/tasks`
-- **Issue:** [#360](https://github.com/iribarren/ogami/issues/360) · **Branch:** `fix/studio-unsaved-work-1-route-editors` · **Status:** in progress
+- **Issue:** [#360](https://github.com/iribarren/ogami/issues/360) · **Branch:** `fix/studio-unsaved-work-2-tab-forms` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `studio-scene-type-lost-steps` (PR #359)
@@ -40,6 +40,10 @@ Reading the code, not yet reproduced; RED tests are the reproduction.
 | G6 | Same `try/catch` as `SceneTypesTab` | Parent |
 | G7 | `UnsavedChangesGuard` gains an opt-in to also block a change of `tab`, comparing normalized tabs (no tab means Overview), used by `CheckEditor` and `SheetCurrencyPanel`. `MetadataForm` does not use it: it stays mounted on a tab switch. Details for slice 2 are decided when it is planned | Parent |
 | Slice 2 | Accepted: two dialogs in a row when two forms are dirty; restoring a release replaces a dirty `MetadataForm`, behind restore's own confirm | Parent |
+| Guard (T6) | Prop `blockTabChange`, off by default. Tabs compare through `parseGameSystemTab(search.tab) ?? 'overview'`, because `shouldBlockFn` gets the raw parsed search. The dialog becomes an exported `UnsavedChangesDialog` so `CheckList` shows the same words | Parent |
+| `MetadataForm` (T7) | Baseline of the seven fields in state, replaced by what was sent when a save succeeds, so an edit made during a save stays dirty. `dirty` replaces `edited`. Path changes only. `useDiscardGameSystem` passes `ignoreBlocker`: the person already confirmed discarding | Parent |
+| `CheckEditor` (T8) | Stored check: the existing `dirty`. New check: differs from `blankCheck()`, so an untouched New check leaves freely and a duplicate counts as unsaved. `CheckList` learns it through an effect that also reports false on unmount. Edit, New check and a row's Duplicate ask first, including on the check already open, because each one restarts the form. The actions take the data current at Leave, not at the click. A save finishing behind the dialog runs the action, as the guard does. The editor's own Duplicate does not ask: the edits go with the copy. Delete has its own confirm | Parent |
+| `SheetCurrencyPanel` (T9) | `dirty` compares field and trimmed unit with the stored currency, because a save trims the unit and the form keeps what was typed | Parent |
 
 ## Slice plan
 
@@ -48,21 +52,22 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
 | 1 | `fix/studio-unsaved-work-1-route-editors` | `fix(studio): studio-unsaved-work 1/2 route editors` | T1–T4 | ~1,150 forecast, ~1,600 actual: oracle editors ~930 (tests ~610), Flow editor ~310, `cancelQueries` ~250, this doc ~100. T5 moved to slice 2 at the stop line |
-| 2 | `fix/studio-unsaved-work-2-tab-forms` | `fix(studio): studio-unsaved-work 2/2 forms in tabs` | T5–T9 | ~650: T5 ~45; guard option ~75; `MetadataForm` ~200; `CheckEditor` ~240; currency ~75 |
+| 2 | `fix/studio-unsaved-work-2-tab-forms` | `fix(studio): studio-unsaved-work 2/2 forms in tabs` | T5–T10 | ~750: T5 ~45; guard option ~75; `MetadataForm` ~200; `CheckEditor` ~260; currency ~75; T10 ~60; this doc ~35 |
 
 ## Tasks
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | G1, G2, G4: oracle table editor keeps what it read, guarded, and waits for a refetch on opening | delegated writer (Sonnet): 2+ non-trivial files | [x] | |
-| T2 | 1 | G1, G2, G4: likelihood oracle editor, the same | delegated writer | [x] | |
-| T3 | 1 | G2, G3, G4: Flow editor reaches the Scene Type editor's level | delegated writer | [x] | |
-| T4 | 1 | G5: a read in flight cannot overwrite a save in any section | delegated writer | [x] | |
-| T5 | 2 | G6: `FlowsTab` handles a refused navigation | delegated writer | [ ] | |
+| T1 | 1 | G1, G2, G4: oracle table editor keeps what it read, guarded, and waits for a refetch on opening | delegated writer (Sonnet): 2+ non-trivial files | [x] | `8ecc1cb1` |
+| T2 | 1 | G1, G2, G4: likelihood oracle editor, the same | delegated writer | [x] | `4b669279` |
+| T3 | 1 | G2, G3, G4: Flow editor reaches the Scene Type editor's level | delegated writer | [x] | `a1c7b83e` |
+| T4 | 1 | G5: a read in flight cannot overwrite a save in any section | delegated writer | [x] | `5ba9b924` |
+| T5 | 2 | G6: `FlowsTab` handles a refused navigation | delegated writer | [x] | |
 | T6 | 2 | G7: guard option for a tab change | delegated writer | [ ] | |
 | T7 | 2 | G7: `MetadataForm` baseline and guard; Discard ignores the blocker | delegated writer | [ ] | |
 | T8 | 2 | G7: `CheckEditor` dirty, guard, and a confirm on picking another check | delegated writer | [ ] | |
 | T9 | 2 | G7: `SheetCurrencyPanel` guard | delegated writer | [ ] | |
+| T10 | 2 | Slice 1 finding: a reload clears the test roll and test answer | delegated writer | [ ] | |
 
 ## Acceptance criteria
 
@@ -86,12 +91,14 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: T4 done. RED: all 6 held-GET tests failed (older read replaced the saved data). Restore has no hook test file: its test sits in `useGameSystems.test.tsx` beside the metadata one, as an `it.each` over both writes.
 - 2026-11-02: T5 moved to slice 2: the writer reached the 1,500 stop line at T4 and discarded T5's work.
 - 2026-11-02: Chrome pass at `a89ee936`, table and Flow editors. **G1 in the real app:** a draft held open while another request saved, then a refetch, then Save: a 409 with the warning, and the other request's entry kept on the server. Reload took the latest entries and the form read clean. Both editors: dirty blocks `beforeunload` and clean does not (a dispatched event, so the native prompt was not seen); the dialog shows on a link; Stay keeps the draft; a rename save raises no dialog; a clean form leaves freely. Flow: "Saved at" survives a rename, a 409 warns, Reload clears "Saved at", Leave keeps the server's data. Covered by Vitest only: the likelihood oracle editor, a `?node=` change, opening from a stale cache, a read in flight during a save.
+- 2026-11-02: T5 done. RED: the refused-navigation test failed with one unhandled rejection; it now passes. `FlowsTab` has the `SceneTypesTab` try/catch.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | Findings | PR |
 |---|---|---|---|---|
+| 1 | `review-4b4a01becdc17a61` | Approved, acknowledged at `5ba9b924`, 1,588 lines | (S) A reload no longer remounts the oracle editors, so test-roll and test-answer state survives next to the replaced draft (`TableEditor.tsx:210`): T10 | [#361](https://github.com/iribarren/ogami/pull/361) |
 
 ## Next step
 
-Slice 1: writer, Chrome pass, native review, PR.
+Slice 2: writer, Chrome pass, native review, PR, closing doc commit on the same PR.

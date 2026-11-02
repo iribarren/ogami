@@ -489,6 +489,33 @@ describe('the table editor', () => {
       expect(screen.queryByLabelText('Entry 3 text')).not.toBeInTheDocument()
     })
 
+    it('carries a pasted [key] into the entry, shows it while collapsed and refuses a key already in the table', async () => {
+      const { user } = await openEditor('weather')
+
+      const dialog = await paste(user, '7 [gale] Gale\n8 [clear] Clear again')
+      expect(dialog.getByRole('alert')).toHaveTextContent(
+        'Line 2: the key "clear" is already in the table.',
+      )
+      await user.clear(dialog.getByLabelText('Entries to paste'))
+      await user.click(dialog.getByLabelText('Entries to paste'))
+      await user.paste('7 [gale] Gale')
+      await user.click(dialog.getByRole('button', { name: 'Use 1 entry' }))
+
+      expect(screen.getByLabelText('Entry 3 key')).toHaveValue('gale')
+      expect(entry(3).getByText('gale')).toBeInTheDocument()
+      expect(entry(1).getByText('clear')).toBeInTheDocument()
+      expect(entry(2).queryByTitle('Entry key')).not.toBeInTheDocument()
+    })
+
+    it('refuses any [key] on a version 1 table', async () => {
+      const { user } = await openEditor('weather', {}, oraclesV1)
+
+      const dialog = await paste(user, '7 [gale] Gale')
+
+      expect(dialog.getByRole('alert')).toHaveTextContent('Line 1: this table has no entry keys')
+      expect(dialog.getByRole('button', { name: 'Use 0 entries' })).toBeDisabled()
+    })
+
     it('gives a weighted table weight 1 and keeps leading numbers in the text', async () => {
       const { user } = await openEditor('storm-kind')
 

@@ -25,9 +25,12 @@ import type { TableDraft } from './tableDraft'
  */
 export function PasteEntriesDialog({
   draft,
+  withKey,
   onApply,
 }: {
   draft: TableDraft
+  /** Whether the draft's schema version has entry keys. */
+  withKey: boolean
   onApply: (entries: PastedEntry[], mode: PasteMode) => void
 }) {
   const [open, setOpen] = useState(false)
@@ -35,7 +38,10 @@ export function PasteEntriesDialog({
   const [mode, setMode] = useState<PasteMode>('append')
   const textId = useId()
   const errorsId = useId()
-  const { entries, errors } = useMemo(() => parsePaste(draft, text, mode), [draft, text, mode])
+  const { entries, errors } = useMemo(
+    () => parsePaste(draft, text, mode, withKey),
+    [draft, text, mode, withKey],
+  )
 
   function change(next: boolean) {
     setOpen(next)
@@ -64,6 +70,8 @@ export function PasteEntriesDialog({
             {draft.ranged
               ? ' A leading number or range (3, 4-6, 4–6, then a space, ".", ":" or ")") sets the range; other lines follow on from the previous one.'
               : ' Every entry gets weight 1, and a leading number stays part of the text.'}
+            {withKey &&
+              ' To set an entry key, put it in brackets before the text, after the range: "1-3 [rain] Heavy rain". A key is new to the paste and, when adding, to the table.'}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-1">

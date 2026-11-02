@@ -15,6 +15,7 @@ import {
 } from '@/shared/ui/dropdown-menu'
 import { IconButton } from '@/shared/ui/icon-button'
 import { Input } from '@/shared/ui/input'
+import { CharCount } from '@/shared/ui/char-count'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 
@@ -220,6 +221,9 @@ export function BandsEditor({
   )
 }
 
+/** The longest band label the publisher accepts. */
+const BAND_LABEL_LIMIT = 100
+
 const noFound: BandErrors = {}
 
 /** One band of the list: its key, label and bound, and the buttons that move or remove it. */
@@ -273,6 +277,7 @@ const BandRow = memo(function BandRow({
         <BandInput
           label={`${name} label`}
           placeholder="Label"
+          limit={BAND_LABEL_LIMIT}
           className="w-40 flex-[2]"
           value={band.label}
           onChange={(label) => {
@@ -354,10 +359,13 @@ function BandInput({
   error,
   describedBy,
   mono = false,
+  limit,
   className,
 }: {
   label: string
   placeholder: string
+  /** The cap of the text, which gets a live counter. */
+  limit?: number
   value: string
   onChange: (value: string) => void
   error?: string
@@ -367,7 +375,10 @@ function BandInput({
 }) {
   const id = useId()
   const errorId = `${id}-error`
-  const described = [describedBy, error ? errorId : undefined].filter(Boolean).join(' ')
+  const countId = `${id}-count`
+  const described = [describedBy, error ? errorId : undefined, limit ? countId : undefined]
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <div className={cn('min-w-0 space-y-1', className)}>
@@ -386,6 +397,7 @@ function BandInput({
           onChange(event.target.value)
         }}
       />
+      {limit !== undefined && <CharCount id={countId} length={value.length} max={limit} />}
       {error && <FieldError id={errorId}>{error}</FieldError>}
     </div>
   )

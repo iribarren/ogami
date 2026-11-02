@@ -6,6 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/ui
 import { TextField } from '../TextField'
 import { moveItem } from './draftParts'
 import { PickField } from './fields'
+import { SETUP_NO_SHEET } from './EffectsEditor'
 import { OutcomeEditor, RowControls } from './OutcomeEditor'
 import type { StepContext } from './stepContext'
 import {
@@ -407,6 +408,7 @@ export function ChoiceFields({ step, ...p }: KindProps & { step: Of<'choice'> })
                 errors={rest}
                 // The player picks the Character; a skip has none, so its option cannot change the sheet.
                 allowSheet={!p.setup && (step.skip === '' || option.key !== step.skip)}
+                noSheetHint={p.setup ? SETUP_NO_SHEET : undefined}
                 onChange={(outcome) => {
                   replace(outcome)
                 }}

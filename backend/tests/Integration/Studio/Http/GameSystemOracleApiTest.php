@@ -383,6 +383,22 @@ final class GameSystemOracleApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aSavedLikelihoodOracleKeepsItsLevelsInTheOrderTheAuthorGave(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $fate = (array) self::at($this->oracles(), 'likelihood.0.definition');
+        $levels = array_column((array) $fate['levels'], 'key');
+
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/likelihood-oracles/fate', ['expectedVersion' => 1, 'oracle' => [...$fate, 'levels' => array_reverse((array) $fate['levels'])]]);
+
+        self::assertResponseIsSuccessful();
+        $stored = array_column((array) self::at($this->oracles(), 'likelihood.0.definition.levels'), 'key');
+        self::assertSame(array_reverse($levels), $stored);
+        self::assertNotSame($levels, $stored);
+    }
+
+    #[Test]
     public function anUnreferencedLikelihoodOracleIsDeletedWithTheVersionInTheQuery(): void
     {
         $this->signIn('ann@example.com', ['GAME_MANAGER']);

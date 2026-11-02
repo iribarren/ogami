@@ -21,6 +21,7 @@ export function OutcomeEditor({
   nextGuide,
   errors,
   allowSheet = false,
+  noSheetHint,
   onChange,
   onRestructure,
 }: {
@@ -31,6 +32,7 @@ export function OutcomeEditor({
   nextGuide?: string
   errors: StepError[]
   allowSheet?: boolean
+  noSheetHint?: string
   onChange: (outcome: OutcomeDraft) => void
   onRestructure?: () => void
 }) {
@@ -59,6 +61,7 @@ export function OutcomeEditor({
         effects={outcome.effects}
         context={context}
         allowSheet={allowSheet}
+        noSheetHint={noSheetHint}
         errors={errors.filter(aboutEffects)}
         onChange={(effects) => {
           onChange({ ...outcome, effects })

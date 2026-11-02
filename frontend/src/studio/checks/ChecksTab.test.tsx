@@ -1384,6 +1384,26 @@ describe('the push of a pool check in the check editor', () => {
     ).toEqual(['Pick a sheet field', 'Power', 'Hit points', 'Physical'])
   })
 
+  it('lists the cost’s sheet fields in the order of the sheet, a conditions field among them (S8)', async () => {
+    const [pow, , hp] = sheet.fields
+    const physical = { key: 'physical', label: 'Physical', type: 'conditions', options: [] }
+    const { user, effect } = await editRaid(
+      {
+        ...raid,
+        push: { label: 'Pay', effects: [{ kind: 'sheet', field: 'physical', op: 'mark' }] },
+      },
+      { [`GET ${base}/sheet`]: json({ ...sheet, fields: [physical, pow, hp] }) },
+    )
+
+    await waitFor(async () => {
+      expect(
+        (await listOptions(user, effect(1).getByRole('combobox', { name: 'Sheet field' }))).map(
+          (option) => option.label,
+        ),
+      ).toEqual(['Pick a sheet field', 'Physical', 'Power', 'Hit points'])
+    })
+  })
+
   it('reads a stored push into the form and saves it unchanged', async () => {
     const stored = {
       ...raid,

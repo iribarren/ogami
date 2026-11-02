@@ -638,9 +638,25 @@ describe('a step draft', () => {
     expect(newStep('prompt', existing).key).toBe('prompt-1')
     expect(newStep('condition', existing)).toMatchObject({
       source: 'tracker',
-      bands: [{ upTo: null }],
+      tracker: '',
+      bands: [{ upTo: { form: 'integer', text: '' } }, { upTo: null }],
     })
     expect(stepsToDrafts([{ key: 'k', kind: 'oracle' }]).map(stepKey)).toEqual(['k'])
+  })
+
+  it('starts a new condition step on the first tracker the draft has, with a band besides the last (P17)', () => {
+    expect(newStep('condition', [], ['heat', 'dread'])).toMatchObject({
+      tracker: 'heat',
+      bands: [{ upTo: { text: '' } }, { upTo: null }],
+    })
+  })
+
+  it('opens a stored condition step with one band as stored, without the new defaults (P17)', () => {
+    const [step] = stepsToDrafts([
+      { key: 'c', kind: 'condition', title: 'C', tracker: 'heat', bands: [{}] },
+    ])
+
+    expect(step).toMatchObject({ kind: 'condition', tracker: 'heat', bands: [{ upTo: null }] })
   })
 
   it('starts a new pick and check step with the defaults', () => {

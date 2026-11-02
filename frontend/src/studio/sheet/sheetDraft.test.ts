@@ -1,5 +1,6 @@
 import {
   blankField,
+  duplicateField,
   editOptionKey,
   editOptionLabel,
   moveTarget,
@@ -486,5 +487,46 @@ describe('an inventory field', () => {
     expect(
       writeField(filled({ type: 'text', capacity: '10', categories: ['Weapons'] }), null),
     ).toEqual({ field: { key: 'luck', label: 'Luck', type: 'text' } })
+  })
+})
+
+describe('duplicating a field', () => {
+  const source = filled({
+    key: 'luck',
+    label: 'Luck',
+    type: 'select',
+    options: [{ key: 'a', label: 'A' }],
+    categories: ['Weapons'],
+  })
+
+  it('starts from the source with a free key and a label that says it is a copy', () => {
+    const copy = duplicateField(source, ['luck', 'pow'])
+
+    expect(copy).toMatchObject({ key: 'luck-copy', label: 'Luck (copy)', type: 'select' })
+    expect(copy.options).toEqual(source.options)
+  })
+
+  it('takes the next free number when the copy key is taken', () => {
+    expect(duplicateField(source, ['luck', 'luck-copy', 'luck-copy-2']).key).toBe('luck-copy-3')
+  })
+
+  it('copies the options and categories so editing the copy leaves the source alone', () => {
+    const copy = duplicateField(source, [])
+
+    expect(copy.options[0]).not.toBe(source.options[0])
+    expect(copy.categories).not.toBe(source.categories)
+  })
+
+  it('keeps the key within 64 characters and the label within 100, even for a long source', () => {
+    const long = filled({ key: 'k'.repeat(64), label: 'L'.repeat(100) })
+    const copy = duplicateField(long, [long.key])
+
+    expect(copy.key).toHaveLength(64)
+    expect(copy.key.endsWith('-copy')).toBe(true)
+    expect(copy.label).toHaveLength(100)
+    expect(copy.label.endsWith(' (copy)')).toBe(true)
+    // A taken truncated key still gets a free number inside the limit.
+    expect(duplicateField(long, [long.key, copy.key]).key).toHaveLength(64)
+    expect(duplicateField(long, [long.key, copy.key]).key).not.toBe(copy.key)
   })
 })

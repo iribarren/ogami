@@ -81,6 +81,28 @@ describe('CheckStepForm', () => {
     expect(screen.queryByText(/rolls \d+ di/)).not.toBeInTheDocument()
   })
 
+  it('says the shown pool size excludes the extra dice once some are typed', async () => {
+    const user = userEvent.setup()
+    render(
+      <CheckStepForm
+        campaign={{ ...campaign, checks: [sneakCheck, gripCheck] }}
+        step={{
+          ...checkStep,
+          check: 'sneak',
+          characters: [{ id: 'ada', name: 'Ada', poolSize: 6 }],
+        }}
+        pending={false}
+        onRoll={() => undefined}
+      />,
+    )
+
+    expect(screen.queryByText('(before the extra dice)')).not.toBeInTheDocument()
+    await user.clear(screen.getByLabelText('Extra dice'))
+    await user.type(screen.getByLabelText('Extra dice'), '2')
+    expect(screen.getByText('Ada rolls 6 dice')).toBeInTheDocument()
+    expect(screen.getByText('(before the extra dice)')).toBeInTheDocument()
+  })
+
   describe('a check set', () => {
     const withSet = { ...campaign, checks: [sneakCheck, gripCheck] }
 

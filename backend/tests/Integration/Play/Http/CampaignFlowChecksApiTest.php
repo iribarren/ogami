@@ -103,8 +103,15 @@ final class CampaignFlowChecksApiTest extends WebTestCase
     {
         $this->inScene('pooled');
 
-        // Ada has the default hands (4) and the pool is {hands} dice; the roll below uses the same 4.
+        // Ada has the default hands (4) and the pool is {hands} dice.
         self::assertSame([['id' => 'char-ada', 'name' => 'Ada', 'poolSize' => 4]], self::at($this->campaign(), 'flowRun', 'step', 'characters'));
+
+        // The roll then records the very size the view showed: four d6, no extra dice.
+        $this->random->script(5, 2, 6, 1);
+        $this->answer(['stepKey' => 'roll-it', 'characterId' => 'char-ada']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('4d6', self::at($this->journal()[0], 'content', 'expression'));
     }
 
     #[Test]

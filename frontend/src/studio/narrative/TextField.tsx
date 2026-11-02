@@ -1,6 +1,7 @@
 import { useId } from 'react'
 
 import { FieldError } from '@/shared/ui/alert'
+import { CharCount } from '@/shared/ui/char-count'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 
@@ -17,6 +18,7 @@ export function TextField({
   error,
   help,
   keyField = false,
+  limit,
 }: {
   label: string
   value: string
@@ -24,12 +26,20 @@ export function TextField({
   error?: string
   help?: string
   keyField?: boolean
+  /** The cap of the text: it gets a live counter, and typing past it is not blocked. */
+  limit?: number
 }) {
   const id = useId()
   const hintId = `${id}-hint`
   const helpId = `${id}-help`
   const errorId = `${id}-error`
-  const described = [keyField ? hintId : null, help ? helpId : null, error ? errorId : null]
+  const countId = `${id}-count`
+  const described = [
+    keyField ? hintId : null,
+    help ? helpId : null,
+    error ? errorId : null,
+    limit === undefined ? null : countId,
+  ]
     .filter((part) => part !== null)
     .join(' ')
 
@@ -52,6 +62,7 @@ export function TextField({
           {help}
         </p>
       )}
+      {limit !== undefined && <CharCount id={countId} length={value.length} max={limit} />}
       {error && <FieldError id={errorId}>{error}</FieldError>}
     </div>
   )

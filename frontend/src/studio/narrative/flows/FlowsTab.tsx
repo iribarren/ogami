@@ -99,6 +99,7 @@ export function FlowsTab({ gameSystemKey }: { gameSystemKey: string }) {
                       void navigate({
                         to: '/studio/game-systems/$key/flows/$flow',
                         params: { key: gameSystemKey, flow: String(item.key) },
+                        state: { justCreated: true },
                       })
                     }}
                     refresh={(draft, latest) => refreshNewFlow(draft, sceneTypeOptions(latest))}

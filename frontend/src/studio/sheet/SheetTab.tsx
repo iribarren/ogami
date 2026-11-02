@@ -3,6 +3,7 @@ import {
   ArrowUp,
   Backpack,
   ChevronsUpDown,
+  Copy,
   Hash,
   List,
   ListChecks,
@@ -29,6 +30,7 @@ import {
 } from '@/shared/ui/dialog'
 
 import { StudioError } from '../useGameSystems'
+import { PasteFieldsDialog } from './PasteFieldsDialog'
 import { SheetFieldDialog } from './SheetFieldDialog'
 import type { LayoutDraft } from './layoutDraft'
 import { SheetLayoutPanel } from './SheetLayoutPanel'
@@ -36,7 +38,13 @@ import { SheetCurrencyPanel } from './SheetCurrencyPanel'
 import { SheetPointBudgetPanel } from './SheetPointBudgetPanel'
 import { SheetPreview } from './SheetPreview'
 import { useSheetSamples, type SampleValues, type SheetSamples } from './useSheetSamples'
-import { moveTarget, readField, sheetSections, type StoredField } from './sheetDraft'
+import {
+  duplicateField,
+  moveTarget,
+  readField,
+  sheetSections,
+  type StoredField,
+} from './sheetDraft'
 import {
   useDeleteSheetField,
   useGameSystemSheet,
@@ -113,7 +121,8 @@ function SheetFields({
             <UserRound />
           </IconTile>
           <h2 className="font-heading text-panel-title">Sheet fields</h2>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <PasteFieldsDialog gameSystemKey={gameSystemKey} sheet={data} />
             <SheetFieldDialog
               gameSystemKey={gameSystemKey}
               sheet={data}
@@ -243,7 +252,16 @@ function FieldRow({
     )
   }
 
-  const editable = readField(field) !== null
+  const source = readField(field)
+  const editable = source !== null
+  // A new, unsaved field that starts as this one; nothing is sent until the author saves it.
+  const duplicate =
+    source === null
+      ? null
+      : duplicateField(
+          source,
+          sheet.fields.flatMap((other) => (typeof other.key === 'string' ? [other.key] : [])),
+        )
   const hint = rangeHint(field) ?? optionsHint(field) ?? inventoryHint(field)
   const up = moveTarget(sheet.fields, index, 'up', sheet.groups !== null)
   const down = moveTarget(sheet.fields, index, 'down', sheet.groups !== null)
@@ -268,6 +286,19 @@ function FieldRow({
         trigger={
           <IconButton label={`Edit ${key}`} dense disabled={!editable}>
             <Pencil />
+          </IconButton>
+        }
+      />
+      <SheetFieldDialog
+        gameSystemKey={gameSystemKey}
+        sheet={sheet}
+        samples={samples}
+        original={null}
+        copyOf={key}
+        prefill={duplicate}
+        trigger={
+          <IconButton label={`Duplicate ${key}`} dense disabled={duplicate === null}>
+            <Copy />
           </IconButton>
         }
       />

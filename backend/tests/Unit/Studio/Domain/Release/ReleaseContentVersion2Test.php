@@ -183,6 +183,7 @@ final class ReleaseContentVersion2Test extends TestCase
         yield 'a band upTo of an integer-valued float' => [self::scenes('sceneTypes.3.closing.1.bands.0.upTo', 5.0)];
         yield 'a band label on a condition band' => [self::scenes('sceneTypes.3.closing.0.bands.0.label', 'Low')];
         yield 'a band label on a roll band' => [self::scenes('sceneTypes.3.setup.3.bands.0.label', str_repeat('a', 80))];
+        yield 'a band label of the 100-character cap' => [self::scenes('sceneTypes.3.setup.3.bands.0.label', str_repeat('a', 100))];
         yield 'a roll step without bands' => [self::unset('flows.0.phases.0.worldTurn.0.bands', self::example())];
 
         // Flows, references inside a flow and placeholders.
@@ -598,7 +599,7 @@ final class ReleaseContentVersion2Test extends TestCase
         yield 'band label a number' => [$condition([['upTo' => 3, 'label' => 7], []]), 'sceneTypes[3].closing[0].bands[0].label: must be a string'];
         yield 'band label empty' => [$condition([['upTo' => 3, 'label' => ''], []]), 'sceneTypes[3].closing[0].bands[0].label: must not be empty'];
         yield 'band label blank' => [$condition([['upTo' => 3, 'label' => '  '], []]), 'sceneTypes[3].closing[0].bands[0].label: must not be blank'];
-        yield 'band label too long' => [self::scenes('sceneTypes.3.setup.3.bands.0.label', str_repeat('a', 81)), 'sceneTypes[3].setup[3].bands[0].label: must be at most 80 characters, 81 given'];
+        yield 'band label too long' => [self::scenes('sceneTypes.3.setup.3.bands.0.label', str_repeat('a', 101)), 'sceneTypes[3].setup[3].bands[0].label: must be at most 100 characters, 101 given'];
 
         // Effects.
         yield 'too many effects' => [self::scenes('sceneTypes.2.setup.0.effects', array_fill(0, 11, ['kind' => 'endPhase'])), 'sceneTypes[2].setup[0].effects: at most 10 effects, 11 given'];

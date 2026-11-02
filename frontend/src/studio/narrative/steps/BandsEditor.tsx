@@ -222,6 +222,7 @@ export function BandsEditor({
             <TextField
               label="Label"
               help="Optional. Names this outcome."
+              limit={100}
               value={band.label}
               error={problems.label[index]}
               onChange={(label) => {

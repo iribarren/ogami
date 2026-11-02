@@ -129,7 +129,9 @@ describe('the Scene cast in the journal', () => {
       await waitFor(() => {
         expect(sent).toEqual([{ npcIds: [brannNpc.id, miraNpc.id], characterIds: [] }])
       })
-      expect(await offered()).toEqual([])
+      await waitFor(async () => {
+        expect(await offered()).toEqual([])
+      })
     })
 
     it.each([

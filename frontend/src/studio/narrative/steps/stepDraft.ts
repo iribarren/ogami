@@ -604,7 +604,12 @@ export function newOption(options: OptionDraft[]): OptionDraft {
   return { key: `option-${String(n)}`, label: '', ...emptyOutcome() }
 }
 
-export function newStep(kind: StepKind, steps: StepDraft[]): EditedStep {
+/**
+ * A step to add. A `condition` step starts with the first of `trackers` (the keys the draft has,
+ * none being fine) and a band to fill in besides the last, so it is close to valid. Stored steps
+ * are never given these defaults.
+ */
+export function newStep(kind: StepKind, steps: StepDraft[], trackers: string[] = []): EditedStep {
   const base: StepBase = {
     key: freeKey(kind, steps),
     title: '',
@@ -628,11 +633,11 @@ export function newStep(kind: StepKind, steps: StepDraft[]): EditedStep {
         ...base,
         kind,
         source: 'tracker',
-        tracker: '',
+        tracker: trackers[0] ?? '',
         of: 'npc',
         tags: [],
         countExtra: {},
-        bands: [lastBand],
+        bands: [newBand(), lastBand],
       }
     case 'oracle':
       return {

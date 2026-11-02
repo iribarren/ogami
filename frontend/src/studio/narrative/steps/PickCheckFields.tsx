@@ -116,12 +116,19 @@ export function PickFields({ step, ...p }: KindProps & { step: Of<'pick'> }) {
   )
 }
 
+/** The last press of Expand all (open) or Collapse all; `press` counts them, 0 for none yet. */
+interface ExpandRequest {
+  open: boolean
+  press: number
+}
+
 /** One band of the chosen check: collapsed until it has something to show. */
 function BandRow({
   band,
   outcome,
   errors,
   startOpen = false,
+  expand,
   ...p
 }: Pick<KindProps, 'context' | 'laterKeys' | 'onRestructure'> & {
   band: string
@@ -130,9 +137,16 @@ function BandRow({
   errors: StepError[]
   /** Open on mount, for an outcome the author has just added. */
   startOpen?: boolean
+  /** The newest "Expand all" or "Collapse all" press: a row follows it once, then is the author's again. */
+  expand: ExpandRequest
   onChange: (outcome: OutcomeDraft) => void
 }) {
   const [open, setOpen] = useState(startOpen || outcome.next !== '' || outcome.effects.length > 0)
+  const [seen, setSeen] = useState(expand.press)
+  if (seen !== expand.press) {
+    setSeen(expand.press)
+    setOpen(expand.open)
+  }
 
   return (
     <Collapsible open={open || errors.length > 0} onOpenChange={setOpen}>
@@ -196,6 +210,7 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
     p.onItems(step.outcomes.length, (before) => before.filter((_, row) => row !== position))
     setOutcomes(step.outcomes.filter((_, row) => row !== position))
   }
+  const [expand, setExpand] = useState<ExpandRequest>({ open: false, press: 0 })
   const messages = (position: number) => p.mine.filter((error) => error.item === position)
   const setOutcomes = (outcomes: CheckOutcomeDraft[]) => {
     p.onChange({ ...step, outcomes })
@@ -275,6 +290,23 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
             Pick {set ? 'the checks' : 'a check'} to set what each band does.
           </p>
         )}
+        {bands.length > 1 && (
+          <div className="flex gap-2">
+            {([true, false] as const).map((open) => (
+              <Button
+                key={String(open)}
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setExpand(({ press }) => ({ open, press: press + 1 }))
+                }}
+              >
+                {open ? 'Expand all' : 'Collapse all'}
+              </Button>
+            ))}
+          </div>
+        )}
         {bands.map((band) => {
           const position = at(band)
           const outcome = step.outcomes[position]
@@ -282,6 +314,7 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
             <BandRow
               key={`${keys[0] ?? ''}/${band}`}
               band={band}
+              expand={expand}
               outcome={outcome ?? { next: '', effects: [], extra: {} }}
               context={p.context}
               laterKeys={p.laterKeys}
@@ -336,6 +369,7 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
                 <div key={name} className="space-y-2">
                   <BandRow
                     band={label}
+                    expand={expand}
                     outcome={step.outcomes[position] ?? blankOutcome}
                     context={p.context}
                     laterKeys={p.laterKeys}

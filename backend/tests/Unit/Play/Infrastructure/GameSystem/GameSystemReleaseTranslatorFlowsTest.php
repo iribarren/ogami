@@ -248,7 +248,7 @@ final class GameSystemReleaseTranslatorFlowsTest extends TestCase
         yield 'band label not a string' => ['flows.0.phases.0.worldTurn.0.bands.0.label', 7, 'flows[0].phases[0].worldTurn[0].bands[0].label: must be a string.'];
         yield 'blank band label' => ['flows.0.phases.0.worldTurn.0.bands.0.label', '  ', 'flows[0].phases[0].worldTurn[0].bands[0].label: must not be blank.'];
         yield 'empty band label' => ['flows.0.phases.0.worldTurn.0.bands.0.label', '', 'flows[0].phases[0].worldTurn[0].bands[0].label: must not be blank.'];
-        yield 'band label too long' => ['flows.0.phases.0.worldTurn.0.bands.0.label', str_repeat('a', 81), 'flows[0].phases[0].worldTurn[0].bands[0].label: must be at most 80 characters.'];
+        yield 'band label too long' => ['flows.0.phases.0.worldTurn.0.bands.0.label', str_repeat('a', 101), 'flows[0].phases[0].worldTurn[0].bands[0].label: must be at most 100 characters.'];
     }
 
     #[Test]

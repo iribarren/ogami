@@ -144,6 +144,10 @@ export function CheckForm({
                 {selected?.name} rolls {selectedPoolSize} {selectedPoolSize === 1 ? 'die' : 'dice'}
               </strong>
             )}
+            {selectedPoolSize != null && Number(situational) !== 0 && (
+              // The size is the server's, worked out without the modifier typed below.
+              <span className="ml-1 text-muted-foreground">(before the extra dice)</span>
+            )}
           </p>
         )}
         {check?.difficulty != null &&

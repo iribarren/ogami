@@ -118,6 +118,33 @@ export function blankField(groups: SheetGroup[] | null): FieldDraft {
   }
 }
 
+/** The limits the publisher puts on a field's key and label. */
+export const fieldLimits = { key: 64, label: 100 }
+
+/** `text` and `suffix` as one string of at most `limit` characters: `text` gives way, not `suffix`. */
+const fitWith = (text: string, suffix: string, limit: number) =>
+  `${text.slice(0, Math.max(0, limit - suffix.length))}${suffix}`
+
+/**
+ * An unsaved copy of `source` for the new-field form: the key is the first free "{key}-copy",
+ * "{key}-copy-2"…, the label "{label} (copy)", both cut to the publisher's limits. The options
+ * and categories are copied, so editing the copy never touches the source.
+ */
+export function duplicateField(source: FieldDraft, existingKeys: string[]): FieldDraft {
+  const taken = new Set(existingKeys)
+  let key = fitWith(source.key, '-copy', fieldLimits.key)
+  for (let copy = 2; taken.has(key); copy += 1) {
+    key = fitWith(source.key, `-copy-${String(copy)}`, fieldLimits.key)
+  }
+  return {
+    ...source,
+    key,
+    label: fitWith(source.label, ' (copy)', fieldLimits.label),
+    options: source.options.map((option) => ({ ...option })),
+    categories: [...source.categories],
+  }
+}
+
 /** The inputs only a type has: changing the type starts them again. */
 export const typeProperties = [
   'min',

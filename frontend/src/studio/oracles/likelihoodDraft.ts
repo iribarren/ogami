@@ -49,6 +49,17 @@ export function toLevelDraft(level: Stored, id: number): LevelDraft {
   }
 }
 
+/** The levels with the one at `from` moved to `to`; the same list when either is out of range. */
+export function moveLevel(levels: LevelDraft[], from: number, to: number): LevelDraft[] {
+  const moved = levels[from]
+  if (moved === undefined || to < 0 || to >= levels.length || to === from) {
+    return levels
+  }
+  const next = levels.filter((_, at) => at !== from)
+  next.splice(to, 0, moved)
+  return next
+}
+
 export function toDraft(oracle: LikelihoodOracle): LikelihoodDraft {
   const chaos = record(oracle.chaos)
   return {

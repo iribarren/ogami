@@ -1,6 +1,6 @@
 import { ArrowLeft, Route as RouteIcon } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useLocation } from '@tanstack/react-router'
 
 import { Badge } from '@/shared/ui/badge'
 import { IconTile } from '@/shared/ui/icon-tile'
@@ -10,6 +10,13 @@ import { useGameSystemNarrative, type NarrativeItem } from '../useGameSystemNarr
 import { FlowEditor } from './FlowEditor'
 import { flowToDraft, type FlowDraft } from './flowDraft'
 import { flowIssueCount } from './flowIssues'
+
+declare module '@tanstack/react-router' {
+  interface HistoryState {
+    /** Set by New flow: this editor is the first opening of a flow nobody has published yet. */
+    justCreated?: boolean
+  }
+}
 
 /**
  * `/studio/game-systems/$key/flows/$flow`: edits one flow of a draft. `node` is the outline node
@@ -24,6 +31,8 @@ export function FlowEditorPage({
   flow: string
   node?: string
 }) {
+  // Router history state, not a search param: it is not part of the URL a person shares or bookmarks.
+  const justCreated = useLocation({ select: (location) => location.state.justCreated === true })
   const narrative = useGameSystemNarrative(gameSystemKey)
   const gameSystem = useStudioGameSystem(gameSystemKey)
   const validation = useGameSystemValidation(gameSystemKey)
@@ -60,7 +69,7 @@ export function FlowEditorPage({
 
   const { data } = narrative
   const found = data.flows.find((item) => item.key === flow)
-  const draft = found === undefined ? null : flowToDraft(found.definition)
+  const draft = found === undefined ? null : flowToDraft(found.definition, { justCreated })
   // The form is filled once, from what was read when it opened; later reads (a save, a refetch)
   // must not take it from under the person, nor make it vanish when the flow has gone or
   // changed shape elsewhere: a save then says so, and a reload explains why it cannot replace it.
@@ -116,6 +125,7 @@ export function FlowEditorPage({
           initial={open.draft}
           version={open.version}
           selected={node}
+          justCreated={justCreated}
         />
       )}
     </div>

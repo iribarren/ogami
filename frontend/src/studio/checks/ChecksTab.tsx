@@ -678,7 +678,14 @@ function CheckEditor({
     () => (hungerIsFormula ? checkReads(hunger, start) : []),
     [hungerIsFormula, hunger, start],
   )
-  const costContext = useMemo(() => pushContext(start), [start])
+  const costContext = useMemo(
+    () =>
+      pushContext(
+        start,
+        (sheet.data?.fields ?? []).flatMap(({ key }) => (typeof key === 'string' ? [key] : [])),
+      ),
+    [start, sheet.data],
+  )
   // The momentum is a number field; one the sheet no longer has stays listed, so the form shows it.
   const momentumOptions = useMemo(() => {
     const listed = start.fields

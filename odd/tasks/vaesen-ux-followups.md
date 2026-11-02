@@ -1,7 +1,7 @@
 # Feature: vaesen-ux-followups
 
 - **Locator:** `odd/tasks/vaesen-ux-followups.md` · Engram topic `odd/vaesen-ux-followups/tasks`
-- **Issue:** [#300](https://github.com/iribarren/ogami/issues/300) · **Branch:** `feat/vaesen-ux-followups-1-play` · **Status:** in progress
+- **Issue:** [#300](https://github.com/iribarren/ogami/issues/300) · **Branch:** `feat/vaesen-ux-followups-2-studio` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-ironsworn` (PRs #342–#352)
@@ -28,6 +28,9 @@ Out of scope: S15 (tall step cards), which goes to a follow-up issue with a road
 | P3 | The server evaluates the pool size per Character; the client does not duplicate the formula engine | Parent |
 | P7 | Reword the preset prompt; no post-roll text field | Parent |
 | S14 | Raise the condition band label cap from 80 to 100 to match checks, backwards compatible, plus a live counter | Parent |
+| S26 paste | Client side, no new endpoint: pasted fields go one by one through the existing `POST /sheet/fields`, each with the version the last one returned. A failure stops there and says what was added; the lines not added stay in the dialog | Parent |
+| S16 | Expand all / Collapse all on a check set's per-band effects, collapsed by default: open by default would make the tall cards of S15 taller | Parent |
+| T15 "just created" | A stored phase never follows its name by default. Only the editor opened straight after New flow marks a `main`/`Main` first phase as following, through TanStack Router history `state` (`justCreated`, typed `HistoryState`): not part of the URL, so a shared link or bookmark never carries it. It is dropped from the entry at the first save, and the first save also ends following for every phase | Parent |
 
 ## Slice plan
 
@@ -36,26 +39,28 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
 | 1 | `feat/vaesen-ux-followups-1-play` | `feat(play): vaesen-ux-followups 1/2 guided steps` | T1–T5 | ~1,100: this doc and roadmap ~100; P3 backend ~150, generated OpenAPI and TS ~300, frontend ~60; P9 ~120; P6 ~10; P7 ~10; P13 ~300 |
-| 2 | `feat/vaesen-ux-followups-2-studio` | `feat(studio): vaesen-ux-followups 2/2 authoring polish` | T6–T14 | ~1,000: S26 ~400; S1, S14 ~130; S11 ~60; S16 ~80; S22, S23 ~50; S8, S17, S21, P17 ~50; closing ~100 |
+| 2 | `feat/vaesen-ux-followups-2-studio` | `feat(studio): vaesen-ux-followups 2/2 authoring polish` | T5b–T15 | ~1,000: S26 ~400; S1, S14 ~130; S11 ~60; S16 ~80; S22, S23 ~50; S8, S17, S21, P17 ~50; closing ~100. Actual: 1,515 before T15, 1,782 with it, over the ceiling only through the late findings task |
 
 ## Tasks
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | P3: a pool check step shows the evaluated pool size per Character before the roll; API test; `make api` | delegated writer (slice 1) | [x] | — |
-| T2 | 1 | P9: a resolved `condition` step's outcome shows in the guided step area, including when it ends the phase | delegated writer (slice 1) | [x] | — |
-| T3 | 1 | P6: the oracle question field no longer shows a placeholder that is not used when blank | delegated writer (slice 1) | [x] | — |
-| T4 | 1 | P7: reword the table step prompt that promises a text field; preset version bump | delegated writer (slice 1) | [x] | — |
-| T5 | 1 | P13: the cast editor offers the previous Scene's NPCs for one-click adding | delegated writer (slice 1) | [x] | — |
-| T6 | 2 | S26: Duplicate a sheet field | delegated writer (slice 2) | [ ] | — |
-| T7 | 2 | S26: bulk paste sheet fields | delegated writer (slice 2) | [ ] | — |
-| T8 | 2 | S1, S14: condition band cap 100 in domain, translator and contract; live counter on check and condition band labels | delegated writer (slice 2) | [ ] | — |
-| T9 | 2 | S11: reorder likelihood oracle levels; test that the backend keeps the order | delegated writer (slice 2) | [ ] | — |
-| T10 | 2 | S16: a check set's per-band effects easier to reach | delegated writer (slice 2) | [ ] | — |
-| T11 | 2 | S22, S23: a new phase's key follows its name; a hint that a phase needs a Scene Type | delegated writer (slice 2) | [ ] | — |
-| T12 | 2 | S8: push cost field select in sheet order | delegated writer (slice 2) | [ ] | — |
-| T13 | 2 | S17, S21, P17: `sheet` effect hint in Setup; Skip option hint before adding; a new `condition` step starts with a tracker and a second band | delegated writer (slice 2) | [ ] | — |
-| T14 | 2 | Closing: S15 follow-up issue and roadmap line; roadmap B7m done; this doc closed | parent (closing doc commit) | [ ] | — |
+| T1 | 1 | P3: a pool check step shows the evaluated pool size per Character before the roll; API test; `make api` | delegated writer (slice 1) | [x] | `3db02868` |
+| T2 | 1 | P9: a resolved `condition` step's outcome shows in the guided step area, including when it ends the phase | delegated writer (slice 1) | [x] | `a4aab0e3` |
+| T3 | 1 | P6: the oracle question field no longer shows a placeholder that is not used when blank | delegated writer (slice 1) | [x] | `2a6d546f` |
+| T4 | 1 | P7: reword the table step prompt that promises a text field | delegated writer (slice 1) | [x] | `c28b2f14` |
+| T5 | 1 | P13: the cast editor offers the previous Scene's NPCs for one-click adding | delegated writer (slice 1) | [x] | `df706859` |
+| T5b | 2 | Slice 1 review findings (see Reviews) | delegated writer (slice 2) | [x] | `92baa1fc` |
+| T6 | 2 | S26: Duplicate a sheet field | delegated writer (slice 2) | [x] | `5d072f7d` |
+| T7 | 2 | S26: bulk paste sheet fields | delegated writer (slice 2) | [x] | `35dded7a` |
+| T8 | 2 | S1, S14: condition band cap 100 in domain, translator and contract; live counter on check and condition band labels | delegated writer (slice 2) | [x] | `58c85a01` |
+| T9 | 2 | S11: reorder likelihood oracle levels; test that the backend keeps the order | delegated writer (slice 2) | [x] | `bb68fdbd` |
+| T10 | 2 | S16: a check set's per-band effects easier to reach | delegated writer (slice 2) | [x] | `7e64805f` |
+| T11 | 2 | S22, S23: a new phase's key follows its name; a hint that a phase needs a Scene Type | delegated writer (slice 2) | [x] | `ed84d4d9`, `60afbfec` |
+| T12 | 2 | S8: push cost field select in sheet order | delegated writer (slice 2) | [x] | `c1cf79c1` |
+| T13 | 2 | S17, S21, P17: `sheet` effect hint in Setup; Skip option hint before adding; a new `condition` step starts with a tracker and a second band | delegated writer (slice 2) | [x] | `d80af6d1` |
+| T15 | 2 | Slice 2 review findings of `review-b1745bc88fc144b9`: a published placeholder phase must not follow its name; a followed key stays valid and free; the paste dialog resets on open; paste no-answer and retry version tests | delegated writer (slice 2) | [x] | `936aa899` |
+| T14 | 2 | Closing: S15 follow-up issue and roadmap line; roadmap B7m done; this doc closed | parent (closing doc commit) | [x] | closing doc commit |
 
 ## Progress
 
@@ -65,12 +70,29 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: T3 done: the oracle question input has no placeholder; label unchanged. RED: the new no-placeholder test failed first.
 - 2026-11-02: T4 done: the table prompt now says "then decide how it fits the mystery so far". Decision changed: no version bump, because a preset file carries no version (the release version is set when `make presets` publishes it) and the precedent commit 346b0ccc bumped nothing; no test pins the wording, so there is no meaningful RED. `PresetsTest` and the Lanterns flow test pass.
 - 2026-11-02: T5 done, frontend-only: every Scene in the campaign view already carries its cast, so no endpoint was added. `previousSceneCast` takes the nearest earlier non-hook Scene of the session, or the last of an earlier session for a session's first Scene (a hook Scene has no cast of its own). The cast editor lists those NPCs that are not in the cast and still exist in the campaign, closed ones marked; one click sends the whole cast through the existing mutation. Scene start and ADR 0018 unchanged. RED: the two positive component tests failed before the change.
+- 2026-11-02: T5b done: the pool size label adds "(before the extra dice)" once a non-zero modifier is typed (the size is the server's, so the form does not clamp it itself); the two Play tests wait for the journal entry before asserting absence; the empty cast assertion is in `waitFor`; the API test rolls and asserts the recorded `4d6`. No RED observed: the modifier test was written with the change; the other three are test-only hardening and passed first run.
+- 2026-11-02: T6 done, frontend-only: a Duplicate row action on each readable sheet field opens the field dialog as a new, unsaved field (`duplicateField`: key `{key}-copy[-n]`, label `{label} (copy)`, both cut to the publisher's 64 and 100 characters); nothing is sent until Save. No RED observed: tests were written with the code and passed first run.
+- 2026-11-02: T7 done, frontend-only: `Paste fields` dialog in the sheet tab (`pasteFields.ts` parser, `PasteFieldsDialog`). One name per line is a label, the key is its slug (cut to 64); shared type (number, text, list), group and a number's bounds; per-line refusal of a keyless name, a name over 100, a key of the sheet or an earlier line, before anything is sent. Fields go one by one through `useSaveSheetField` with the version each answer returned; a failure stops the run, says how many were added and keeps the lines not added; a 409 offers the reload. No RED observed: tests were written with the code and passed once the fixtures were right.
+- 2026-11-02: T9 done: ArrowUp/ArrowDown buttons on each likelihood level (`moveLevel` in `likelihoodDraft.ts`; first row no up, last no down, disabled as in Checks bands). The backend already kept the order but no test pinned it: added `aSavedLikelihoodOracleKeepsItsLevelsInTheOrderTheAuthorGave`. No RED observed: the tests were written with the code and passed first run.
+- 2026-11-02: T10 done, frontend-only: Expand all / Collapse all above the band rows of a check step's Outcomes (bands and special results); each row follows the newest press once and is then the author's again. Rows with a next or effects still start open, empty ones collapsed; S15 untouched. No RED observed: written with the code, passed once the fixture's open rows were accounted for.
+- 2026-11-02: T11 done, frontend-only: `PhaseDraft.follow` with `editPhaseName`/`editPhaseKey` (the `slugOf` helper the other Studio forms use). A new phase follows from the start; a phase with no Scene Type shows a hint that it needs one before the Flow can be saved. Which stored phases follow was narrowed in the correction below. No RED observed: tests written with the code.
+- 2026-11-02: T12 done, frontend-only: the checks read model gives conditions fields apart from the others with no position, so `pushContext` takes the key order of the sheet (already read by the check editor) and sorts the cost's sheet fields by it; unlisted ones follow. No API change. No RED observed: tests written with the code.
+- 2026-11-02: T13 done, frontend-only: S17 a hint (`SETUP_NO_SHEET`, ADR 0042) under the effects of a Setup step or choice option that is offered no sheet kind; S21 the Add step menu says on `choice` that a suggested one needs a Skip option (the item keeps its accessible name); P17 `newStep('condition', steps, trackers)` preselects the draft's first tracker and adds a band besides Otherwise, a stored condition step with one band opens as stored (tested). No RED observed: tests written with the code.
+- 2026-11-02: T11 correction: a stored phase follows its name only when it is the new-flow placeholder (`PLACEHOLDER_PHASE`, key `main`, name `Main`, shared with `newFlowToItem`); any other stored key, even one equal to its name's slug, is never renamed. RED observed: the `setup`/`Setup` test failed against the first version; the page test I had changed is back to its original expectation.
+- 2026-11-02: T8 done: the condition band label cap is 100 in `Bands.php`, `GameSystemReleaseTranslator.php`, `docs/contracts/gamesystem-release.md` and `v2.schema.json` (the only copy of the schema); labels of 80 or fewer stay valid (the 80-character case is kept in the tests). New shared `CharCount` (`37/100`, destructive past the cap, same figures as text for assistive technology, typing never blocked) on the band label of `checks/BandsEditor.tsx` and `narrative/steps/BandsEditor.tsx` (through `TextField`'s new `limit`). RED observed: the 100/101 boundary tests failed (3 failures, 1 error) and the counter tests failed before the code.
+- 2026-11-02: QA fix after a full `make verify` (the earlier "ok" came from a filtered output and hid failures): the likelihood order test no longer calls the non-static `at()` from static closures (Rector had made them static), and phpstan casts, two ESLint `any` errors and a type error in the new tests are fixed. RED observed: PHPUnit error, PHPStan, ESLint and tsc reported them.
+- 2026-11-02: T15 done, frontend-only. Router history `state` `justCreated` (set by New flow) is the only way a stored `main`/`Main` follows; saving ends following; a followed key is cut to 64 (`ReleaseFields::key`), kept when the name derives none and numbered (`-2`) when another phase has it (`editPhaseName` takes the other phases); the paste dialog resets its settings on open. RED observed: stored-main-does-not-follow and the key limits/blank/duplicate tests in `flowDraft.test.ts`, the page test for a stored `main` opened normally (with the old default), and the paste dialog group reset (a stale group showed `Pick a group.`). No RED for the page test that follows after New flow and stops at the save (written with the code), nor for the paste no-answer path and the retry versions (`[7, 8, 8, 9]`): both passed on first run, no stale version found.
+
+- 2026-11-02: T14 done, closing: S15 is [#356](https://github.com/iribarren/ogami/issues/356) with roadmap line B7p; roadmap B7m done. T15's `make verify` did not finish: `backend-test` was killed at about 79% of 8564 with no failure, and T15 changes no backend file. Its frontend checks passed by hand: `frontend-qa`, `api-check`, and Vitest on `src/studio` and `src/play` (120 files, 2577 tests). The last full `make verify` was at `96e208a7`; CI is the full run. No browser pass on either slice.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | Findings | PR |
 |---|---|---|---|---|
+| 1 | `review-293f4e9ed48f29c1` | Approved, acknowledged; 631 lines | Fixed in slice 2 (T5b): (W) `CheckForm.tsx:142-146` pool size label ignores a situational modifier; (W) `GuidedPanel.test.tsx:104-117` outcome-absent tests can pass before the journal loads; (S) `SceneCast.test.tsx:132` empty-list assertion needs `waitFor`; (S) `CampaignFlowChecksApiTest.php:106-107` should roll and assert the recorded pool size | [#354](https://github.com/iribarren/ogami/pull/354) |
+| 2 | `review-b1745bc88fc144b9` | Approved, acknowledged; 1,515 lines at `96e208a7` | All fixed in T15: (W) `flowDraft.ts:162` a published `main`/`Main` phase's key follows a rename; (S) `flowDraft.ts:170` a followed key is not checked for siblings, blank names or length; (S) `PasteFieldsDialog.tsx:53` stale group; (S) `PasteFieldsDialog.tsx:114` no-answer path untested; (S) `PasteFieldsDialog.test.tsx:162` retry versions unasserted | [#355](https://github.com/iribarren/ogami/pull/355) |
+| 2, T15 | None | Declined by the user (`936aa899`, 319 lines), so T15 has no native review | Parent read the production diff; focused tests pass | [#355](https://github.com/iribarren/ogami/pull/355) |
 
 ## Next step
 
-Slice 1: T1–T5 on `feat/vaesen-ux-followups-1-play`.
+None. Every finding is fixed; S15 is [#356](https://github.com/iribarren/ogami/issues/356).

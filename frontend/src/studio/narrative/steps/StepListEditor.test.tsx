@@ -7,6 +7,7 @@ import {
   stepListBackward,
   stepListBranching,
   stepListPickCheck,
+  stepListSheetEffects,
   stepListShop,
   stepListWithOtherKinds,
   stepPickers,
@@ -193,12 +194,57 @@ describe('the step items', () => {
     await user.click(screen.getByRole('button', { name: 'Add step' }))
 
     const items = await screen.findAllByRole('menuitem')
-    expect(items.map((item) => item.textContent)).toEqual([...stepKinds])
+    expect(items.map((item) => item.getAttribute('aria-label'))).toEqual([...stepKinds])
     for (const item of items) {
       expect(item.querySelector('[aria-hidden="true"] svg')).not.toBeNull()
     }
     // The old kind select is gone.
     expect(screen.queryByRole('combobox', { name: 'New step kind' })).not.toBeInTheDocument()
+  })
+
+  it('says in the Add step menu, before a choice is added, that a suggested one needs a Skip option (S21)', async () => {
+    const user = userEvent.setup()
+    render(<Harness stored={[]} />)
+
+    await user.click(screen.getByRole('button', { name: 'Add step' }))
+
+    const items = await screen.findAllByRole('menuitem')
+    const hinted = items.filter((item) => item.textContent.includes('needs a Skip option'))
+    expect(hinted.map((item) => item.getAttribute('aria-label'))).toEqual(['choice'])
+    // The item keeps its name.
+    expect(screen.getByRole('menuitem', { name: 'choice' })).toBeInTheDocument()
+  })
+
+  it('counts the characters of a condition band label against the cap of 100, red past it (S14)', async () => {
+    const user = userEvent.setup()
+    const condition = {
+      key: 'c',
+      kind: 'condition',
+      title: 'C',
+      tracker: 'heat',
+      bands: [{ upTo: 3, label: 'Low' }, { label: 'High' }],
+    }
+    render(<Harness stored={[condition]} />)
+    const band = within(card(1).getByRole('group', { name: 'Band 1' }))
+
+    expect(band.getByText('3 of 100 characters')).toBeInTheDocument()
+    expect(band.getByText('3/100')).not.toHaveClass('text-destructive')
+    expect(band.getByLabelText('Label')).toHaveAccessibleDescription(/3 of 100 characters/)
+    await replaceText(user, band.getByLabelText('Label'), 'x'.repeat(101))
+    expect(band.getByText('101/100')).toHaveClass('text-destructive')
+  })
+
+  it('adds a condition step on the first tracker of the draft, with a band to fill in (P17)', async () => {
+    const user = userEvent.setup()
+    render(<Harness stored={[]} />)
+
+    await addStep(user, 'condition')
+
+    // The draft is not valid until the band is filled in, so the written steps are errors; the form shows the defaults.
+    const first = stepPickers.trackers[0]
+    expect(card(1).getByRole('combobox', { name: 'Tracker' })).toHaveTextContent(first?.name ?? '')
+    expect(card(1).getByRole('group', { name: 'Band 1' })).toBeInTheDocument()
+    expect(card(1).getByRole('group', { name: 'Band 2' })).toHaveTextContent('Otherwise')
   })
 
   it('moves a step with icon buttons that keep their names and show them as tooltips', async () => {
@@ -697,6 +743,25 @@ describe('the step list editor', () => {
       expect(effectsOf(1).getByText(/only allowed in a character step/)).toBeInTheDocument()
       // A character step keeps its sheet effects in a setup.
       expect(await kinds(2)).toContain('sheet')
+    })
+
+    it('says why a Scene Type setup offers no sheet effect, on a step and on a choice option, and not elsewhere (S17)', () => {
+      const why = /Setup runs before a Character is known/
+      const { unmount } = render(<Harness setup stored={[stepList[0], stepList[3]]} />)
+
+      expect(effectsOf(1).getByText(why)).toBeInTheDocument()
+      // A character step offers sheet effects in a setup: nothing to explain.
+      expect(effectsOf(2).queryByText(why)).not.toBeInTheDocument()
+      unmount()
+      const { unmount: unmountList } = render(
+        <Harness setup stored={stepListSheetEffects.slice(0, 1)} />,
+      )
+      expect(
+        within(screen.getByRole('group', { name: 'Option 1 outcome effects' })).getByText(why),
+      ).toBeInTheDocument()
+      unmountList()
+      render(<Harness stored={[stepList[0]]} />)
+      expect(screen.queryByText(why)).not.toBeInTheDocument()
     })
 
     it('allows sheet effects in a choice option, not in the option the skip names or in a setup', async () => {
@@ -1447,6 +1512,26 @@ describe('the step list editor', () => {
       await user.clear(card(2).getByLabelText('Difficulty'))
       expect(card(2).queryByLabelText('Difficulty')).not.toBeInTheDocument()
       expect(card(2).getAllByText('Not a band of this check.')).toHaveLength(2)
+    })
+
+    it('expands and collapses every band at once, collapsed being the default', async () => {
+      const user = userEvent.setup()
+      render(<Harness stored={stepListPickCheck} />)
+      const outcomes = () => within(card(2).getByRole('group', { name: 'Outcomes' }))
+      const opened = () =>
+        outcomes().queryAllByRole('group', { name: /^Outcome (fail|partial|success)$/ })
+
+      // Only the bands that already say something start open.
+      expect(opened().length).toBeLessThan(3)
+      await user.click(outcomes().getByRole('button', { name: 'Expand all' }))
+      expect(opened()).toHaveLength(3)
+
+      await user.click(outcomes().getByRole('button', { name: 'Collapse all' }))
+      expect(opened()).toHaveLength(0)
+
+      // A band the author opens by hand stays theirs until the next press.
+      await user.click(outcomes().getByText('partial'))
+      expect(opened()).toHaveLength(1)
     })
 
     it('shows the difficulty only for a check that declares one, with its range, and guides a value outside it', async () => {

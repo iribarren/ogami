@@ -51,7 +51,7 @@ Forecasts include tests and docs. Hard ceiling ~1,700 per slice. No API change.
 | T1 | 1 | C1: create opens the editor | delegated writer (Sonnet): 2+ non-trivial files | [x] | |
 | T2 | 1 | C2: guard unsaved changes on leaving, and leaving during a pending save | delegated writer | [x] | |
 | T3 | 1 | C3: reload warns and clears "Saved at" | delegated writer | [x] | |
-| T4 | 1 | C4 and C5: a stale read neither overwrites a save nor fills the form | delegated writer | [ ] | |
+| T4 | 1 | C4 and C5: a stale read neither overwrites a save nor fills the form | delegated writer | [x] | |
 | T5 | 1 | Two-tab API regression test | delegated writer | [ ] | |
 
 ## Acceptance criteria
@@ -73,6 +73,7 @@ Forecasts include tests and docs. Hard ceiling ~1,700 per slice. No API change.
 - 2026-11-02: T1 done; RED: the create test found no editor form and the URL on the list. Create now opens the editor; the `selected` state is gone.
 - 2026-11-02: T2 done; RED: 5 of 8 new tests failed with no guard (no dialog; the pending-save test fails without the mounted check). New `UnsavedChangesGuard` on the Scene Type editor only.
 - 2026-11-02: T3 done; RED: both new tests failed (old "Saved at" stayed after Reload; no warning). The sentence matches `LikelihoodOracleEditor`.
+- 2026-11-02: T4 done; RED: the held-GET test kept version 5 in the cache, and the two stale-cache tests found no loading text and the form filled from the stale cache. The filled-once test passes at once, as a guard.
 
 ## Reviews
 

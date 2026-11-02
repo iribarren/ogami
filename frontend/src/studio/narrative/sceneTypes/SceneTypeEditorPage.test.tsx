@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
@@ -575,6 +575,111 @@ describe('a conflict', () => {
     await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
 
     expect(await screen.findByText(/Couldn.t reload the latest version/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Name')).toHaveValue('Mine')
+  })
+})
+
+describe('opening from a cache that may be stale', () => {
+  const draftRead = {
+    [`GET ${base}`]: json(draft),
+    [`GET ${base}/validation`]: json(validDraft),
+  }
+  const withoutPlay = withScene({ ...ambush, play: [] }, 5)
+
+  /**
+   * Opens Ambush, leaves it, and comes back to a stale cache: the editor mount reads it again, and
+   * the form must wait for `settle`, which answers that read.
+   */
+  async function reopenWhileRefetching(answer: () => Response) {
+    let reads = 0
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const saved = recorder(() => Response.json(withScene(ambush, 7)))
+    const opened = await openEditor('ambush', {
+      ...draftRead,
+      [`GET ${base}/narrative`]: async () => {
+        if (++reads === 1) {
+          return Response.json(withoutPlay)
+        }
+        await gate
+        return answer()
+      },
+      [put]: saved.handler,
+    })
+    expect(list('Play').queryByRole('group', { name: 'Step 1' })).not.toBeInTheDocument()
+    await opened.user.click(screen.getByRole('link', { name: 'Back to my-draft' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('form', { name: 'Scene Type' })).not.toBeInTheDocument()
+    })
+    // Stale, as it is once the stale time has passed; the next mount reads it again.
+    await opened.queryClient.invalidateQueries({
+      queryKey: narrativeKey('my-draft'),
+      refetchType: 'none',
+    })
+    await act(() =>
+      opened.router.navigate({
+        to: '/studio/game-systems/$key/scene-types/$sceneType',
+        params: { key: 'my-draft', sceneType: 'ambush' },
+      }),
+    )
+    return { ...opened, saved, settle: release }
+  }
+
+  it('shows the steps the server holds, and saves with its version', async () => {
+    const { user, saved, settle } = await reopenWhileRefetching(() =>
+      Response.json(withScene(ambush, 6)),
+    )
+
+    expect(screen.getByText('Loading the Scene Type…')).toBeInTheDocument()
+    settle()
+    await waitFor(() => {
+      expect(list('Play').getByRole('group', { name: 'Step 2' })).toBeInTheDocument()
+    })
+    await replace(user, screen.getByLabelText('Name'), 'Trap')
+    await user.click(save())
+
+    await waitFor(() => {
+      expect(saved.sent).toHaveLength(1)
+    })
+    expect(saved.sent[0]?.expectedVersion).toBe(6)
+    expect(saved.sent[0]?.item).toMatchObject({ play: ambush.play })
+  })
+
+  it('opens from the cache when the refetch fails, so a save still answers with a conflict', async () => {
+    const { user, saved, settle } = await reopenWhileRefetching(() =>
+      Response.json({ error: 'Gone' }, { status: 404 }),
+    )
+
+    expect(screen.getByText('Loading the Scene Type…')).toBeInTheDocument()
+    settle()
+    expect(await screen.findByRole('form', { name: 'Scene Type' })).toBeInTheDocument()
+    expect(screen.queryByText('Loading the Scene Type…')).not.toBeInTheDocument()
+    expect(list('Play').queryByRole('group', { name: 'Step 1' })).not.toBeInTheDocument()
+    await user.click(save())
+    await waitFor(() => {
+      expect(saved.sent).toHaveLength(1)
+    })
+    expect(saved.sent[0]?.expectedVersion).toBe(5)
+  })
+
+  it('does not replace a form that is already open when a later read brings other data', async () => {
+    let reads = 0
+    const { user, queryClient } = await openEditor('ambush', {
+      [`GET ${base}/narrative`]: () =>
+        Response.json(
+          ++reads === 1 ? narrativeScenes : withScene({ ...ambush, purpose: 'Elsewhere.' }, 6),
+        ),
+    })
+    await replace(user, screen.getByLabelText('Name'), 'Mine')
+
+    await act(() => queryClient.invalidateQueries({ queryKey: narrativeKey('my-draft') }))
+
+    await waitFor(() => {
+      expect(reads).toBe(2)
+    })
+    expect(screen.getByLabelText('Purpose')).toHaveValue('Something goes wrong on the street.')
     expect(screen.getByLabelText('Name')).toHaveValue('Mine')
   })
 })

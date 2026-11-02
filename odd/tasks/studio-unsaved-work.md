@@ -64,7 +64,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T4 | 1 | G5: a read in flight cannot overwrite a save in any section | delegated writer | [x] | `5ba9b924` |
 | T5 | 2 | G6: `FlowsTab` handles a refused navigation | delegated writer | [x] | |
 | T6 | 2 | G7: guard option for a tab change | delegated writer | [x] | |
-| T7 | 2 | G7: `MetadataForm` baseline and guard; Discard ignores the blocker | delegated writer | [ ] | |
+| T7 | 2 | G7: `MetadataForm` baseline and guard; Discard ignores the blocker | delegated writer | [x] | |
 | T8 | 2 | G7: `CheckEditor` dirty, guard, and a confirm on picking another check | delegated writer | [ ] | |
 | T9 | 2 | G7: `SheetCurrencyPanel` guard | delegated writer | [ ] | |
 | T10 | 2 | Slice 1 finding: a reload clears the test roll and test answer | delegated writer | [ ] | |
@@ -93,6 +93,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: Chrome pass at `a89ee936`, table and Flow editors. **G1 in the real app:** a draft held open while another request saved, then a refetch, then Save: a 409 with the warning, and the other request's entry kept on the server. Reload took the latest entries and the form read clean. Both editors: dirty blocks `beforeunload` and clean does not (a dispatched event, so the native prompt was not seen); the dialog shows on a link; Stay keeps the draft; a rename save raises no dialog; a clean form leaves freely. Flow: "Saved at" survives a rename, a 409 warns, Reload clears "Saved at", Leave keeps the server's data. Covered by Vitest only: the likelihood oracle editor, a `?node=` change, opening from a stale cache, a read in flight during a save.
 - 2026-11-02: T5 done. RED: the refused-navigation test failed with one unhandled rejection; it now passes. `FlowsTab` has the `SceneTypesTab` try/catch.
 - 2026-11-02: T6 done. RED: the 2 tab-change tests failed (the guard ignored `tab`); the 7 others (path change, Stay, Leave, same-tab search, no tab equals `overview`, unknown to Overview, clean) passed at once, as they pin existing behaviour. `UnsavedChangesDialog` is exported.
+- 2026-11-02: T7 done. RED: 6 new tests failed (dirty leave never asked, an undone edit read unsaved, Discard raised no dialog yet); the untouched, saved-leave and tab-switch tests passed at once. `MetadataForm.stories.tsx` already ran under `StoryProviders`, which has a router, so it is unchanged.
 
 ## Reviews
 

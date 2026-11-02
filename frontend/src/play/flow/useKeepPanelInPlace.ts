@@ -3,10 +3,12 @@ import { useEffect, useRef } from 'react'
 /**
  * In the Journal view the guided panel sits below the Journal, so every new entry pushes it down
  * and the button under the player's pointer moves. This keeps the panel where it is: when the
- * Journal's height changes, the window scrolls by the same delta, as long as the panel was on
- * screen before the change. It reacts to height changes only, so the player's own scrolling never
- * triggers it, and the first measurement (the initial load) is ignored. Without `ResizeObserver`
- * it does nothing. `active` is false when the Journal is not on the page (focus mode).
+ * Journal's height changes, the window scrolls by the same delta, as long as some of the panel was
+ * on screen before the change and focus is not inside the Journal. It reacts to height changes
+ * only, so the player's own scrolling never triggers it, and the first measurement (the initial
+ * load) is ignored. A new entry that would not fit on screen is revealed first, so the panel then
+ * moves by exactly that distance: reading the entry wins. Without `ResizeObserver` it does nothing.
+ * `active` is false when the Journal is not on the page (focus mode).
  */
 export function useKeepPanelInPlace(active: boolean) {
   const journalRef = useRef<HTMLDivElement>(null)
@@ -34,9 +36,13 @@ export function useKeepPanelInPlace(active: boolean) {
       if (panel === null) {
         return
       }
+      // A control inside the Journal is what the player is using: the page stays still under it.
+      if (journal.contains(document.activeElement)) {
+        return
+      }
       // The panel has moved by `delta` already: judge where it was before the change.
-      const before = panel.getBoundingClientRect().top - delta
-      if (before < 0 || before >= window.innerHeight) {
+      const { top, bottom } = panel.getBoundingClientRect()
+      if (bottom - delta <= 0 || top - delta >= window.innerHeight) {
         return
       }
       window.scrollBy({ top: delta, behavior: 'instant' })

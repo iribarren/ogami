@@ -614,6 +614,7 @@ final class PresetsTest extends KernelTestCase
         // The clock check runs on every route, and the Inquisition roll is the turn's last step so a raid wins over a strike.
         self::assertSame('stir', $worldTurn->steps[0]->key);
         self::assertSame('inquisition', $worldTurn->steps[\count($worldTurn->steps) - 1]->key);
+        $this->assertEveryWorldTurnExitReachesTheHuntersCheck();
         $upTo = $inquisition->bands[0]->upTo;
         self::assertInstanceOf(Formula::class, $upTo);
         self::assertSame('{tracker:masquerade}', $upTo->toString());
@@ -928,5 +929,29 @@ final class PresetsTest extends KernelTestCase
         }
 
         return $targets;
+    }
+
+    /**
+     * Every route out of the steps before the clock check goes to it, empty picks included, or a
+     * full clock would not strike on that route. A later Studio re-export must keep that.
+     */
+    private function assertEveryWorldTurnExitReachesTheHuntersCheck(): void
+    {
+        /** @var array{flows: list<array{phases: list<array{key: string, worldTurn?: list<array{key: string}>}>}>} $document */
+        $document = json_decode((string) file_get_contents(\dirname(__DIR__, 3).'/presets/vtm-night-court.json'), true, 512, \JSON_THROW_ON_ERROR);
+        $phase = array_find($document['flows'][0]['phases'], static fn (array $phase): bool => 'chronicle' === $phase['key']);
+        $exits = 0;
+        foreach ($phase['worldTurn'] ?? [] as $step) {
+            if ('hunters' === $step['key']) {
+                break;
+            }
+
+            $encoded = json_encode($step, \JSON_THROW_ON_ERROR);
+            self::assertStringNotContainsString('"next":"end"', $encoded, \sprintf('World turn step "%s" ends the turn before the clock check.', $step['key']));
+            $exits += substr_count($encoded, '"next":"hunters"');
+        }
+
+        // The 8 exits that ended the turn, and the hunter-activity event.
+        self::assertSame(9, $exits);
     }
 }

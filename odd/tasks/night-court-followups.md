@@ -59,6 +59,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T10 | 2 | P1: skip a phase's closing when this session's opening did not run in that phase | delegated writer (slice 2) | [x] | `587f8306` |
 | T11 | 2 | P2, S3: re-author Night Court in Studio, re-export; tests for the strike after a clock filled elsewhere | delegated writer (slice 2); Studio by Chrome worker | [x] | `c81e84f9` |
 | T12 | 2 | Chrome pass: a step clicked in the Studio outline scrolls into view, as it does on a reload | parent, inline: one line, understood | [x] | this slice's last commit |
+| T13 | 2 | Slice 2 review findings, on the last slice's branch | parent, inline: small and understood | [x] | this slice's last commit |
 
 ## Acceptance criteria
 
@@ -93,6 +94,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02 T9 correction 2: `reveal` no longer animates, and the compensation starts once the Journal has loaded; reloads stay at scrollY 0. P5 evidence is limited: settled positions match on rolls and record, but two steps that change the scene ended 59 px off, and timer samples show a 100–150 px peak for 0.3–1 s. The automated tab renders at about 1 frame per second (gaps of 1,017 ms measured), which matches that window, so the peak is probably never painted at a normal frame rate; not confirmed by eye. Focus view is stable.
 - 2026-11-02 T12: the outline's step click ended at the top because the router's scroll reset undid the step's `scrollIntoView`. `select` skips the reset for a step node. Checked in Chrome: two steps scroll into view, flow settings go back to the top. No Vitest: jsdom has no scroll and the router reset does not run there.
 - 2026-11-02 `make presets` on the authoring database stops at `lanterns-of-the-mire`, before Night Court; publishing the Night Court file alone gives `Unchanged vtm-night-court (v3, managed in Studio)`. Not investigated: this slice does not touch that file.
+- 2026-11-02 T13: `useKeepPanelInPlace` asks whether any of the panel was on screen, not only its top, and leaves the page still while focus is inside the Journal; RED observed on both new Vitest cases, GREEN after. `PresetsTest` asserts no world-turn step before `hunters` targets `end` and counts its 9 routes in; written against the export, so no RED. Not changed: a new entry that would not fit is revealed first and the panel moves by that distance, which is the intended priority.
 
 ## Reviews
 

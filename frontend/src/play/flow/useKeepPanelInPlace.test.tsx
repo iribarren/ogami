@@ -27,11 +27,14 @@ function Harness({ active = true, panelTop }: { active?: boolean; panelTop: numb
   const { journalRef, panelRef } = useKeepPanelInPlace(active)
   return (
     <>
-      <div ref={journalRef}>journal</div>
+      <div ref={journalRef}>
+        <button type="button">Expand entry</button>
+      </div>
       <div
         ref={(element) => {
           if (element !== null) {
-            element.getBoundingClientRect = () => ({ top: panelTop }) as DOMRect
+            element.getBoundingClientRect = () =>
+              ({ top: panelTop, bottom: panelTop + 400 }) as DOMRect
           }
           panelRef.current = element
         }}
@@ -92,6 +95,31 @@ describe('keeping the guided panel in place', () => {
   it('does not scroll when the panel was off screen', () => {
     render(<Harness panelTop={window.innerHeight + 1000} />)
     resizeTo(500)
+    resizeTo(592)
+
+    expect(scrollBy).not.toHaveBeenCalled()
+  })
+
+  it('scrolls while the panel top is above the viewport but its actions are still on screen', () => {
+    render(<Harness panelTop={-200} />)
+    resizeTo(500)
+    resizeTo(592)
+
+    expect(scrollBy).toHaveBeenCalledExactlyOnceWith({ top: 92, behavior: 'instant' })
+  })
+
+  it('does not scroll when the whole panel was above the viewport', () => {
+    render(<Harness panelTop={-1000} />)
+    resizeTo(500)
+    resizeTo(592)
+
+    expect(scrollBy).not.toHaveBeenCalled()
+  })
+
+  it('does not scroll when the player is using a control inside the Journal', () => {
+    const { getByRole } = render(<Harness panelTop={300} />)
+    resizeTo(500)
+    getByRole('button', { name: 'Expand entry' }).focus()
     resizeTo(592)
 
     expect(scrollBy).not.toHaveBeenCalled()

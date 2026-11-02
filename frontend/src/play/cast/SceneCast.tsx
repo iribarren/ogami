@@ -20,6 +20,8 @@ interface SceneCastProps {
   characters: Campaign['characters']
   sessionNumber: number
   scene: Pick<Scene, 'number' | 'cast' | 'characters'>
+  /** The NPCs in the cast of the previous Scene, offered for one-click adding while the cast is edited. */
+  previousCast?: Scene['cast']
   /** Only the current scene's cast is edited; a past scene's is read-only. */
   editable: boolean
   /** The release's sheet: with it, each Character in the cast has a "View sheet" button. */
@@ -57,6 +59,7 @@ export function SceneCast({
   characters,
   sessionNumber,
   scene,
+  previousCast = [],
   editable,
   sheet,
   economy,
@@ -82,6 +85,11 @@ export function SceneCast({
       .filter(({ id }) => !characterIds.includes(id))
       .map(({ id, name }) => ({ value: `character:${id}`, label: `${name} (Character)` })),
   ]
+  // Only NPCs the campaign still has can be added; one already in the cast is not offered again.
+  const fromPrevious = previousCast.flatMap(({ id }) => {
+    const npc = npcs.find((held) => held.id === id)
+    return npc === undefined || npcIds.includes(id) ? [] : [npc]
+  })
   // The selection falls back to the first member that can still be added.
   const selected = addable.some(({ value }) => value === toAdd) ? toAdd : (addable[0]?.value ?? '')
   const send = (next: { npcIds: string[]; characterIds: string[] }) => {
@@ -92,6 +100,9 @@ export function SceneCast({
       npcIds: npcIds.filter((id) => `npc:${id}` !== value),
       characterIds: characterIds.filter((id) => `character:${id}` !== value),
     })
+  }
+  const withNpc = (id: string) => {
+    send({ npcIds: [...npcIds, id], characterIds })
   }
   const withSelected = () => {
     const [kind, id = ''] = selected.split(':')
@@ -186,6 +197,30 @@ export function SceneCast({
           >
             Add
           </Button>
+        </div>
+      )}
+      {editable && editing && fromPrevious.length > 0 && (
+        <div
+          role="group"
+          aria-label="From the previous scene"
+          className="flex flex-wrap items-center gap-2"
+        >
+          <span className="text-muted-foreground">From the previous scene:</span>
+          {fromPrevious.map(({ id, name, status }) => (
+            <Button
+              key={id}
+              type="button"
+              variant="outline"
+              size="xs"
+              aria-label={`Add ${name}`}
+              disabled={edit.isPending}
+              onClick={() => {
+                withNpc(id)
+              }}
+            >
+              {status === 'closed' ? `${name} (closed)` : name}
+            </Button>
+          ))}
         </div>
       )}
       {edit.error && (

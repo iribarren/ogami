@@ -91,6 +91,67 @@ describe('the Scene cast in the journal', () => {
     expect(await (await currentCast()).findByText('The old guard')).toBeInTheDocument()
   })
 
+  describe('the previous scene’s NPCs', () => {
+    /** The names offered for one-click adding; none when the section is absent. */
+    const offered = async () => {
+      const group = (await currentCast()).queryByRole('group', { name: 'From the previous scene' })
+      return group === null
+        ? []
+        : within(group)
+            .getAllByRole('button')
+            .map((button) => button.textContent)
+    }
+    const editCast = async () => {
+      await userEvent.click((await currentCast()).getByRole('button', { name: 'Edit cast' }))
+    }
+
+    it('offers each NPC of the previous scene that is not in the cast, once the cast is edited', async () => {
+      renderCast(withCasts(lostMineWithLists, [miraNpc, brannNpc, oldGuardNpc], [brannNpc]))
+
+      expect(await offered()).toEqual([])
+      await editCast()
+
+      expect(await offered()).toEqual(['Mira Vane', 'The old guard (closed)'])
+    })
+
+    it('adds the NPC in one click, sending the whole cast', async () => {
+      const { sent } = renderCast(
+        castCampaign,
+        sceneWith([
+          { id: brannNpc.id, name: brannNpc.name },
+          { id: miraNpc.id, name: miraNpc.name },
+        ]),
+      )
+
+      await editCast()
+      await userEvent.click((await currentCast()).getByRole('button', { name: 'Add Mira Vane' }))
+
+      await waitFor(() => {
+        expect(sent).toEqual([{ npcIds: [brannNpc.id, miraNpc.id], characterIds: [] }])
+      })
+      expect(await offered()).toEqual([])
+    })
+
+    it.each([
+      ['every one of them is in the cast', [miraNpc], [miraNpc]],
+      ['the previous scene had no cast', [], [brannNpc]],
+    ])('offers nothing when %s', async (_name, past, current) => {
+      renderCast(withCasts(lostMineWithLists, past, current))
+
+      await editCast()
+
+      expect(await offered()).toEqual([])
+    })
+
+    it('offers nothing in the first scene of the campaign', async () => {
+      renderCast({ ...castCampaign, sessions: castCampaign.sessions.slice(1) })
+
+      await editCast()
+
+      expect(await offered()).toEqual([])
+    })
+  })
+
   it('removes an NPC, sending the cast without it', async () => {
     const user = userEvent.setup()
     const { sent } = renderCast(castCampaign, sceneWith([]))

@@ -1,5 +1,6 @@
 import { useId } from 'react'
 
+import { previousSceneCast } from '../cast/previousSceneCast'
 import { SceneCast } from '../cast/SceneCast'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { isAttached } from '../journal/attachments'
@@ -75,6 +76,7 @@ function CurrentCast({ campaign }: { campaign: Campaign }) {
       characters={campaign.characters}
       sessionNumber={sessionNumber}
       scene={scene}
+      previousCast={previousSceneCast(campaign.sessions, sessionNumber, scene.number)}
       editable
       sheet={campaign.pinnedRelease.sheet}
       economy={campaign.pinnedRelease}

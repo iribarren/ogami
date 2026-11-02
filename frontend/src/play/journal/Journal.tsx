@@ -1,6 +1,7 @@
 import { useMutationState } from '@tanstack/react-query'
 import { useId, type ReactNode } from 'react'
 
+import { previousSceneCast } from '../cast/previousSceneCast'
 import { SceneCast } from '../cast/SceneCast'
 import { type Campaign } from '../campaigns/useCampaigns'
 import { groupJournal } from './groupJournal'
@@ -95,6 +96,7 @@ export function Journal({
                   characters={characters}
                   sessionNumber={session.number}
                   scene={listed(sessions, session.number, scene.number)}
+                  previousCast={previousSceneCast(sessions, session.number, scene.number)}
                   editable={current?.session === session.number && current.scene === scene.number}
                 />
                 {scene.entries.filter(shownInPlace).length === 0 ? (

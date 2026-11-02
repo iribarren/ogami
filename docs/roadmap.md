@@ -101,6 +101,7 @@ Items here come after every feature defined above. Build them in this order: fix
 | B16 | `preset-ironsworn` | Preset | B7 | Optional. Ironsworn under CC BY 4.0: challenge dice (an action score against two d10), momentum below zero and vow progress tracks |
 | B17 | `e2e-studio-flow-editor-timeout` ([#321](https://github.com/iribarren/ogami/issues/321)) | Tooling | — | `studio-flow-editor.spec.ts` times out on a `page.goto` load in the local full e2e suite (passes in CI and alone): mark it slow and wait on the page's state instead of `load`. Found while closing `play-items-economy` |
 | B18 | `play-sheet-display-polish` ([#340](https://github.com/iribarren/ogami/issues/340)) | Play | — | Journal shows raw sheet field keys and no-op changes, the Character form shows raw `startMax` formulas, plain checks offer a situational modifier, and the header says "No session yet" between sessions. Found in the `preset-west-marches` Chrome pass |
+| B19 | `play-tracker-display-polish` ([#353](https://github.com/iribarren/ogami/issues/353)) | Play | — | Tracker level names outside the panel, a Threads badge that counts closed ones, a cancelled action die that reads as rolled, "None" beside "Skip" on a suggested choice, a Character select with one Character, the sandbox's burn offer without its dice |
 
 ## Starter prompts
 
@@ -556,6 +557,8 @@ Done: `preset-west-marches`, #337 in two slices (PRs #338–#339). A West Marche
 ```text
 Start feature `preset-ironsworn` (ODD). Optional. Author an Ironsworn preset under CC BY 4.0: challenge dice (an action score against two d10, each compared on its own), momentum that goes below zero and burns, and vow progress tracks. Name which are contract gaps (ADR 0024) and close them in every layer. Credits carry the license notice (ADR 0021).
 ```
+
+Done: `preset-ironsworn`, #341 in eleven slices (PRs #342–#352). An Ironsworn preset on the SRD (CC BY 4.0), key `ironsworn`, unofficial: challenge dice as a new contract shape (ADR 0049) in the contract, Play and Studio, momentum that goes below zero and burns, five fixed vow slots, twenty moves as Scene Types, and the SRD's oracle tables. Follow-up: [#353](https://github.com/iribarren/ogami/issues/353) (B19).
 
 ## Related
 

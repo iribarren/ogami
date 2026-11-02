@@ -744,6 +744,60 @@ export function setCheckOutcome(
   return { outcomes: entries.map((entry) => entry.outcome), origin: entries.map((e) => e.from) }
 }
 
+/**
+ * The band a special result starts from. A check lists its bands from the lowest result to the
+ * top one, and the last catches the rest (glossary, "Outcome band"; ADR 0044 reads "the first band"
+ * as the failing one): `critical` and `messyCritical` copy the last band, `bestialFailure` the first.
+ */
+export const specialSourceBand = (special: CheckSpecial, bands: string[]): string | undefined =>
+  special === 'bestialFailure' ? bands[0] : bands[bands.length - 1]
+
+/**
+ * What a new outcome for `special` starts as: a deep copy of its source band's outcome (its next
+ * step, effects and the fields the editor keeps as stored), blank when that band has none. Later
+ * edits of the band, or of the copy, do not reach the other.
+ */
+export function specialStart(
+  outcomes: CheckOutcomeDraft[],
+  bands: string[],
+  special: CheckSpecial,
+): OutcomeDraft {
+  const source = specialSourceBand(special, bands)
+  const band = outcomes.find(
+    (outcome) => !isSpecialOutcome(outcome) && source !== undefined && outcome.band === source,
+  )
+  const { next, effects, extra } = band ?? { next: '', effects: [], extra: {} }
+  return structuredClone({ next, effects, extra })
+}
+
+/**
+ * The outcomes with an outcome added for each of `specials` that has none, each as
+ * {@link specialStart}; an existing special outcome is left as it is. `origin` is as in
+ * {@link setCheckOutcome}, across all the additions.
+ */
+export function addSpecialOutcomes(
+  outcomes: CheckOutcomeDraft[],
+  bands: string[],
+  specials: CheckSpecial[],
+) {
+  let current = outcomes
+  let origin: (number | null)[] = outcomes.map((_, at) => at)
+  for (const special of specials) {
+    if (current.some((outcome) => isSpecialOutcome(outcome) && outcome.special === special)) {
+      continue
+    }
+    const step = setCheckOutcome(
+      current,
+      bands,
+      { special },
+      specialStart(outcomes, bands, special),
+    )
+    origin = step.origin.map((from) => (from === null ? null : (origin[from] ?? null)))
+    current = step.outcomes
+  }
+  return { outcomes: current, origin }
+}
+
 /** The outcomes with the one of `band` set to `outcome`, as {@link setCheckOutcome}. */
 export const setBandOutcome = (
   outcomes: CheckOutcomeDraft[],

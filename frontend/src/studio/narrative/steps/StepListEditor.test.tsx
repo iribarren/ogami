@@ -1368,6 +1368,100 @@ describe('the step list editor', () => {
       })
     })
 
+    it('adds every missing special at once, as copies of the top band and the lowest, leaving an existing one alone', async () => {
+      const user = userEvent.setup()
+      const effect = { kind: 'sheet', field: 'stress', op: 'add', value: 1 }
+      render(
+        <Harness
+          stored={[
+            stepOf({
+              outcomes: [
+                { band: 'fail', next: 'ruin', effects: [effect] },
+                { band: 'partial', next: 'mid' },
+                { band: 'success', next: 'win', effects: [effect] },
+              ],
+            }),
+          ]}
+          context={context}
+        />,
+      )
+
+      await user.click(specials().getByRole('button', { name: 'Add all special results' }))
+
+      expect(saved(0)).toMatchObject({
+        outcomes: [
+          { band: 'fail', next: 'ruin', effects: [effect] },
+          { band: 'partial', next: 'mid' },
+          { band: 'success', next: 'win', effects: [effect] },
+          { special: 'critical', next: 'win', effects: [effect] },
+          { special: 'messyCritical', next: 'win', effects: [effect] },
+          { special: 'bestialFailure', next: 'ruin', effects: [effect] },
+        ],
+      })
+      expect(
+        specials().queryByRole('button', { name: 'Add all special results' }),
+      ).not.toBeInTheDocument()
+      expect(
+        specials()
+          .queryAllByRole('button', { name: /^Add outcome for / })
+          .map((button) => button.textContent),
+      ).toEqual([])
+    })
+
+    it('offers Add all only when two specials have no outcome, and keeps a stored one as it is', async () => {
+      const user = userEvent.setup()
+      const stored = stepOf({
+        outcomes: [
+          { band: 'success', next: 'win' },
+          { special: 'critical', next: 'mine' },
+        ],
+      })
+      render(<Harness stored={[stored]} context={context} />)
+
+      await user.click(specials().getByRole('button', { name: 'Add all special results' }))
+
+      expect(saved(0)).toMatchObject({
+        outcomes: [
+          { band: 'success', next: 'win' },
+          { special: 'critical', next: 'mine' },
+          { special: 'messyCritical', next: 'win' },
+          // The lowest band has no outcome, so its copy is empty and, as any empty outcome, not saved.
+        ],
+      })
+    })
+
+    it('hides Add all with one special missing, and a single Add starts as a copy of its band', async () => {
+      const user = userEvent.setup()
+      render(
+        <Harness
+          stored={[
+            stepOf({
+              outcomes: [
+                { band: 'fail', next: 'ruin' },
+                { special: 'critical', next: 'end' },
+                { special: 'messyCritical', next: 'end' },
+              ],
+            }),
+          ]}
+          context={context}
+        />,
+      )
+
+      expect(
+        specials().queryByRole('button', { name: 'Add all special results' }),
+      ).not.toBeInTheDocument()
+      await user.click(specials().getByRole('button', { name: 'Add outcome for Bestial failure' }))
+
+      expect(saved(0)).toMatchObject({
+        outcomes: [
+          { band: 'fail', next: 'ruin' },
+          { special: 'critical' },
+          { special: 'messyCritical' },
+          { special: 'bestialFailure', next: 'ruin' },
+        ],
+      })
+    })
+
     it('shows a stored special as a row and gives the step back as stored', () => {
       const stored = stepOf({
         outcomes: [

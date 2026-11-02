@@ -49,7 +49,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T1 | 1 | S32: a pick step's hint says no tags means any NPC, and an NPC must have all the tags | delegated writer (slice 1) | [x] | |
 | T2 | 1 | S9: `[key]` in Paste entries; a row with a key shows it while collapsed | delegated writer (slice 1) | [x] | |
 | T3 | 1 | S5: Declare layout on a sheet with no fields; Move to top and bottom for groups | delegated writer (slice 1) | [x] (b only) | |
-| T4 | 1 | S13: add every special result at once, prefilled from a band; a single Add prefills too | | [ ] | |
+| T4 | 1 | S13: add every special result at once, prefilled from a band; a single Add prefills too | delegated writer (slice 1) | [x] | |
 | T5 | 1 | S16: "New step…" in the Next select | | [ ] | |
 | T6 | 1 | S23: reproduce the dropped typeahead; fix only if it reproduces | | [ ] | |
 | T7 | 2 | Slice 1 review findings | | [ ] | |
@@ -77,6 +77,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02 T1: pick step hint added (`PickFields`), worded from `Campaign::pickCandidates` (open items only; `carries` all tags; empty tags match all). No RED observed: written with the code; the new Vitest case passes.
 - 2026-11-02 T2: `parsePaste(.., withKey)` reads `[key]` (rule `^[a-z0-9-]{1,64}$`, as the other Studio key checks; the entry key input has no client rule, the server decides); duplicates in the paste always fail, against the table only when appending; collapsed row shows the key. No RED observed: tests written with the code; all pass.
 - 2026-11-02 T3: (b) Move to top / Move to bottom for groups, disabled at the ends. (a) left out: the backend refuses declaring a layout on a sheet with no fields (`GameSystem::declareSheetLayout`, "add a field first", asserted in `GameSystemSheetApiTest`); parent must decide. No RED observed: tests written with the code; all pass.
+- 2026-11-02 T4: "Add all special results" (two or more rollable specials without an outcome) and a prefilled single Add, via `specialStart`/`addSpecialOutcomes` in `stepDraft.ts`. Top band = last of the check's `bands`, lowest = first (glossary: the last band catches the rest; ADR 0044: the first band is the failing one). A source band with no outcome gives an empty copy, which is not saved, as for any empty outcome. No RED observed: tests written with the code; all pass.
 
 ## Reviews
 

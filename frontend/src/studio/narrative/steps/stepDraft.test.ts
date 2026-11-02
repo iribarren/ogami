@@ -1,10 +1,13 @@
 import {
   DISJOINT_DIFFICULTY,
+  addSpecialOutcomes,
   checkDifficulty,
   newStep,
   producibleSpecials,
   setBandOutcome,
   setCheckOutcome,
+  specialSourceBand,
+  specialStart,
   stepGuides,
   stepKey,
   stepsToDrafts,
@@ -531,6 +534,105 @@ describe('a step draft', () => {
       expect(edited.outcomes).toHaveLength(3)
       expect(edited.outcomes[1]).toEqual({ ...blank, special: 'critical' })
       expect(edited.origin).toEqual([0, 2, 1])
+    })
+
+    describe('and adding the special results from the bands', () => {
+      const three = ['fail', 'partial', 'success']
+      const withBands = (...extra: Record<string, unknown>[]) =>
+        draftOf(
+          {
+            ...check,
+            outcomes: [
+              { band: 'fail', next: 'ruin', effects: [sheetEffect], mood: 'grim' },
+              { band: 'success', next: 'win', effects: [sheetEffect] },
+              ...extra,
+            ],
+          },
+          'check',
+        ).outcomes
+      const names = (outcomes: CheckOutcomeDraft[]) =>
+        outcomes.map((outcome) => ('special' in outcome ? outcome.special : outcome.band))
+
+      it('takes critical and messy critical from the last band and bestial failure from the first', () => {
+        expect(specialSourceBand('critical', three)).toBe('success')
+        expect(specialSourceBand('messyCritical', three)).toBe('success')
+        expect(specialSourceBand('bestialFailure', three)).toBe('fail')
+        expect(specialSourceBand('critical', [])).toBeUndefined()
+      })
+
+      it('starts a special as a copy of its band, next step included, and blank when the band has none', () => {
+        const outcomes = withBands()
+
+        expect(specialStart(outcomes, three, 'critical')).toMatchObject({ next: 'win' })
+        expect(specialStart(outcomes, three, 'bestialFailure')).toMatchObject({ next: 'ruin' })
+        expect(specialStart(outcomes, ['fail', 'partial', 'lost'], 'critical')).toEqual({
+          next: '',
+          effects: [],
+          extra: {},
+        })
+      })
+
+      it('copies deeply: editing the copy leaves the band unchanged, and the other way round', () => {
+        const outcomes = withBands()
+        const band = outcomes.find((outcome) => 'band' in outcome && outcome.band === 'fail')
+        if (band === undefined) {
+          throw new Error('the fixture has a fail band')
+        }
+        const before = structuredClone(band)
+
+        const copy = specialStart(outcomes, three, 'bestialFailure')
+        copy.next = 'elsewhere'
+        copy.effects.push({ kind: 'endPhase' } as EffectDraft)
+        Object.assign(copy.effects[0] as object, { field: 'changed' })
+        Object.assign(copy.extra, { mood: 'bright' })
+
+        expect(band).toEqual(before)
+        const again = specialStart(outcomes, three, 'bestialFailure')
+        Object.assign(band, { next: 'later' })
+        expect(again.next).toBe('ruin')
+      })
+
+      it('adds the missing specials in one command, leaves an existing one alone and tracks where each had been', () => {
+        const outcomes = withBands({ special: 'critical', next: 'mine' })
+        const added = addSpecialOutcomes(outcomes, three, [
+          'critical',
+          'messyCritical',
+          'bestialFailure',
+        ])
+
+        expect(names(added.outcomes)).toEqual([
+          'fail',
+          'success',
+          'critical',
+          'messyCritical',
+          'bestialFailure',
+        ])
+        expect(added.outcomes[2]).toBe(outcomes[2])
+        expect(added.outcomes[3]).toMatchObject({ next: 'win' })
+        expect(added.outcomes[4]).toMatchObject({ next: 'ruin' })
+        expect(added.origin).toEqual([0, 1, 2, null, null])
+      })
+
+      it('keeps the origin right when several are added around a stray outcome', () => {
+        const outcomes = withBands({ band: 'ghost', next: 'end' })
+        const added = addSpecialOutcomes(outcomes, three, ['critical', 'bestialFailure'])
+
+        expect(names(added.outcomes)).toEqual([
+          'fail',
+          'success',
+          'critical',
+          'bestialFailure',
+          'ghost',
+        ])
+        expect(added.origin).toEqual([0, 1, null, null, 2])
+      })
+
+      it('reads a step stored before this change, with no special outcomes, as it was', () => {
+        const added = addSpecialOutcomes(withBands(), three, [])
+
+        expect(names(added.outcomes)).toEqual(['fail', 'success'])
+        expect(added.origin).toEqual([0, 1])
+      })
     })
 
     describe('and the pools of the checks', () => {

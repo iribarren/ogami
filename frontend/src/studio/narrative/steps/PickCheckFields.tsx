@@ -22,9 +22,11 @@ import {
   pickOutcomes,
   producibleSpecials,
   rangeOf,
+  addSpecialOutcomes,
   sameBands,
   setBandOutcome,
   setCheckOutcome,
+  specialStart,
   type CheckOutcomeDraft,
   type CheckSpecial,
   type OutcomeDraft,
@@ -215,6 +217,8 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
     setOutcomes(step.outcomes.filter((_, row) => row !== position))
   }
   const [expand, setExpand] = useState<ExpandRequest>({ open: false, press: 0 })
+  // The special results the pool can roll that have no outcome yet.
+  const missing = specials.filter((name) => atSpecial(name) === -1)
   const messages = (position: number) => p.mine.filter((error) => error.item === position)
   const setOutcomes = (outcomes: CheckOutcomeDraft[]) => {
     p.onChange({ ...step, outcomes })
@@ -340,8 +344,26 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
             <p className="text-sm font-medium">Special results</p>
             <p className="text-sm text-muted-foreground">
               A special result&apos;s outcome replaces the band&apos;s. Messy critical does not fall
-              back to Critical.
+              back to Critical. A new special result starts as a copy of a band&apos;s outcome
+              (Critical and Messy critical the top band, Bestial failure the lowest) and does not
+              follow later edits to it.
             </p>
+            {missing.length >= 2 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const { outcomes, origin } = addSpecialOutcomes(step.outcomes, bands, missing)
+                  p.onItems(step.outcomes.length, (before) =>
+                    origin.map((from) => (from === null ? null : (before[from] ?? null))),
+                  )
+                  setOutcomes(outcomes)
+                }}
+              >
+                Add all special results
+              </Button>
+            )}
             {specials.map((name) => {
               const position = atSpecial(name)
               const label = specialLabels[name]
@@ -364,7 +386,7 @@ export function CheckFields({ step, ...p }: KindProps & { step: Of<'check'> }) {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    set(blankOutcome)
+                    set(specialStart(step.outcomes, bands, name))
                   }}
                 >
                   Add outcome for {label}

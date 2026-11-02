@@ -3,6 +3,8 @@ import { Button } from '@/shared/ui/button'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { useStartSession } from '../campaigns/useCampaigns'
 import { ListLinks } from '../lists/ListLinks'
+import { FlowOutcomeView } from '../journal/JournalEntryView'
+import { useJournal } from '../journal/useJournal'
 import { visibleTrackers } from '../trackers/useTrackers'
 import { Disclosure } from './Disclosure'
 import { EndPhaseDialog } from './EndPhaseDialog'
@@ -39,6 +41,26 @@ function currentSceneType(campaign: Campaign, flowRun: FlowRun) {
     .find(({ number }) => number === campaign.currentSessionNumber)
     ?.scenes.find(({ number }) => number === sceneNumber)
   return campaign.sceneTypes.find(({ key }) => key === scene?.sceneType)
+}
+
+/**
+ * What the Flow decided on its own (a resolved condition step, a band's effects, the end of a
+ * phase) while that is still the newest journal entry, so the player sees it where the step is
+ * and not only in the journal. It shows with no current step too, when the outcome ended the
+ * phase or the Flow.
+ */
+function LatestFlowOutcome({ campaignId }: { campaignId: string }) {
+  const journal = useJournal(campaignId)
+  const latest = journal.data?.at(-1)
+  if (latest?.content.kind !== 'flowOutcome') {
+    return null
+  }
+  return (
+    <section aria-label="Flow outcome" className="space-y-1">
+      <p className="type-label">Flow outcome</p>
+      <FlowOutcomeView content={latest.content} />
+    </section>
+  )
 }
 
 /**
@@ -91,6 +113,7 @@ export function GuidedBody({ campaign, flowRun, command }: PartProps) {
           )}
         </div>
       )}
+      <LatestFlowOutcome campaignId={campaign.id} />
       {active && flowRun.step !== null && (
         <StepCard
           key={`${String(campaign.currentSceneNumber)}/${flowRun.progress?.part ?? ''}/${flowRun.step.key}`}

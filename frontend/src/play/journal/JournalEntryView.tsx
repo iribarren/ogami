@@ -243,7 +243,7 @@ function ChangeLines({
 }
 
 /** What the Flow decided on its own, one muted line per note, in the order it decided. */
-function FlowOutcomeView({ content }: { content: FlowOutcomeContent }) {
+export function FlowOutcomeView({ content }: { content: FlowOutcomeContent }) {
   return (
     <ul className="space-y-0.5 text-sm text-muted-foreground">
       {content.notes.map((note, index) => (

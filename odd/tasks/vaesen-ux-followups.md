@@ -43,7 +43,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | P3: a pool check step shows the evaluated pool size per Character before the roll; API test; `make api` | delegated writer (slice 1) | [x] | — |
-| T2 | 1 | P9: a resolved `condition` step's outcome shows in the guided step area, including when it ends the phase | delegated writer (slice 1) | [ ] | — |
+| T2 | 1 | P9: a resolved `condition` step's outcome shows in the guided step area, including when it ends the phase | delegated writer (slice 1) | [x] | — |
 | T3 | 1 | P6: the oracle question field no longer shows a placeholder that is not used when blank | delegated writer (slice 1) | [ ] | — |
 | T4 | 1 | P7: reword the table step prompt that promises a text field; preset version bump | delegated writer (slice 1) | [ ] | — |
 | T5 | 1 | P13: the cast editor offers the previous Scene's NPCs for one-click adding | delegated writer (slice 1) | [ ] | — |
@@ -61,6 +61,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - 2026-11-02: explored all findings against `main`; all still present except S21, partly fixed (a live guide exists once the step is added). Slice plan written.
 - 2026-11-02: T1 done: `Check::poolSize()` reuses the roll's `countOf` and `CheckPool::sizeFor`, so a size of zero or below shows 1 die like the roll and an unevaluable pool shows null. `CheckView.poolSizes` by Character id; FlowRun view `characters` entries are `{id, name, poolSize}`. A check set shows no size (the pool depends on the check picked). `RollCheckDialog` left alone: Campaign characters carry no evaluated pool, so showing it there needs a new API field. RED: the form test failed before the CheckForm change; the backend unit tests were written with the code and passed first run.
+- 2026-11-02: T2 done, frontend-only: `GuidedBody` shows the newest journal entry when it is a `flowOutcome`, above the step, reusing the journal's `FlowOutcomeView`. A `flowOutcome` is the Flow's own note whatever produced it (a condition step, a band's effects, a skip, a scene end), so the guided area names it "Flow outcome" like the journal and does not claim a condition step caused it. No API field added. RED: 3 of the 5 new GuidedPanel tests failed before the change.
 
 ## Reviews
 

@@ -25,6 +25,7 @@ import {
   type GroupDraft,
   type LayoutDraft,
   type LayoutErrors,
+  type GroupMove,
 } from './layoutDraft'
 import { SelectField } from './SheetFieldDialog'
 import { sheetLayoutAnswer } from './sheetError'
@@ -372,7 +373,7 @@ function LayoutForm({
       groups: current.groups.map((group, at) => (at === index ? { ...group, ...changes } : group)),
     }))
   }, [])
-  const moveGroupAt = useCallback((index: number, direction: 'up' | 'down') => {
+  const moveGroupAt = useCallback((index: number, direction: GroupMove) => {
     setDraft((current) => moveGroup(current, index, direction))
   }, [])
   const removeGroupAt = useCallback((index: number) => {
@@ -471,7 +472,7 @@ const GroupFields = memo(function GroupFields({
   held: number
   errors: GroupErrors
   onChange: (index: number, changes: Partial<GroupDraft>) => void
-  onMove: (index: number, direction: 'up' | 'down') => void
+  onMove: (index: number, direction: GroupMove) => void
   onRemove: (index: number) => void
 }) {
   const holdId = useId()
@@ -529,6 +530,28 @@ const GroupFields = memo(function GroupFields({
           }}
         >
           Move down
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={index === 0}
+          onClick={() => {
+            onMove(index, 'top')
+          }}
+        >
+          Move to top
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={last}
+          onClick={() => {
+            onMove(index, 'bottom')
+          }}
+        >
+          Move to bottom
         </Button>
         <Button
           type="button"

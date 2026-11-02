@@ -67,6 +67,10 @@ export function PickFields({ step, ...p }: KindProps & { step: Of<'pick'> }) {
           p.onChange({ ...step, mode: mode as typeof step.mode })
         }}
       />
+      <p className="text-sm text-muted-foreground">
+        Only open items are offered. With no tags any of them can be picked; with several, an item
+        must carry all of them.
+      </p>
       <CheckList
         legend="Tags"
         options={p.context.tags}

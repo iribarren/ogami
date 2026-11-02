@@ -1466,6 +1466,16 @@ describe('the step list editor', () => {
       expect(saved(0)).not.toHaveProperty('count')
     })
 
+    it('says what the tags of a pick match: none is any open item, several must all be carried', () => {
+      render(<Harness stored={stepListPickCheck} />)
+
+      expect(
+        card(1).getByText(
+          /Only open items are offered\. With no tags any of them can be picked; with several, an item must carry all of them\./,
+        ),
+      ).toBeInTheDocument()
+    })
+
     it('guides a count whose max is below its min, and edits the found and none outcomes without sheet effects', async () => {
       const user = userEvent.setup()
       render(<Harness stored={stepListPickCheck} />)

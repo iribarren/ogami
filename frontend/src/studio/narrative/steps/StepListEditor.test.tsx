@@ -381,6 +381,7 @@ describe('the step list editor', () => {
       await user.keyboard('{Escape}')
 
       expect(card(1).getByRole('combobox', { name: 'Next' })).toHaveValue('b')
+      expect(card(1).getByRole('combobox', { name: 'Next' })).toHaveFocus()
       expect(saved(0)).toMatchObject({ next: 'b' })
       expect((latest.written as { steps: unknown[] }).steps).toHaveLength(2)
     })

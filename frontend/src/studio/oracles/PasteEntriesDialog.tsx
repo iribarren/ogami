@@ -71,7 +71,7 @@ export function PasteEntriesDialog({
               ? ' A leading number or range (3, 4-6, 4–6, then a space, ".", ":" or ")") sets the range; other lines follow on from the previous one.'
               : ' Every entry gets weight 1, and a leading number stays part of the text.'}
             {withKey &&
-              ' To set an entry key, put it in brackets before the text, after the range: "1-3 [rain] Heavy rain". A key is new to the paste and, when adding, to the table.'}
+              ' To set an entry key, put it in brackets before the text, after the range: "1-3 [rain] Heavy rain". A key is new to the paste and, when adding, to the table. To start an entry\'s text with a bracket, write \\[.'}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-1">

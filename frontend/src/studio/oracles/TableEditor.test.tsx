@@ -507,13 +507,13 @@ describe('the table editor', () => {
       expect(entry(2).queryByTitle('Entry key')).not.toBeInTheDocument()
     })
 
-    it('refuses any [key] on a version 1 table', async () => {
+    it('keeps brackets as plain text on a version 1 table', async () => {
       const { user } = await openEditor('weather', {}, oraclesV1)
 
       const dialog = await paste(user, '7 [gale] Gale')
 
-      expect(dialog.getByRole('alert')).toHaveTextContent('Line 1: this table has no entry keys')
-      expect(dialog.getByRole('button', { name: 'Use 0 entries' })).toBeDisabled()
+      expect(dialog.queryByRole('alert')).not.toBeInTheDocument()
+      expect(dialog.getByRole('button', { name: 'Use 1 entry' })).toBeEnabled()
     })
 
     it('gives a weighted table weight 1 and keeps leading numbers in the text', async () => {

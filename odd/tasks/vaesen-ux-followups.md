@@ -39,7 +39,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
 | 1 | `feat/vaesen-ux-followups-1-play` | `feat(play): vaesen-ux-followups 1/2 guided steps` | T1–T5 | ~1,100: this doc and roadmap ~100; P3 backend ~150, generated OpenAPI and TS ~300, frontend ~60; P9 ~120; P6 ~10; P7 ~10; P13 ~300 |
-| 2 | `feat/vaesen-ux-followups-2-studio` | `feat(studio): vaesen-ux-followups 2/2 authoring polish` | T5b–T15 | ~1,000: S26 ~400; S1, S14 ~130; S11 ~60; S16 ~80; S22, S23 ~50; S8, S17, S21, P17 ~50; closing ~100. Actual: 1,515 before T15, about 1,834 with it, over the ceiling only through the late findings task |
+| 2 | `feat/vaesen-ux-followups-2-studio` | `feat(studio): vaesen-ux-followups 2/2 authoring polish` | T5b–T15 | ~1,000: S26 ~400; S1, S14 ~130; S11 ~60; S16 ~80; S22, S23 ~50; S8, S17, S21, P17 ~50; closing ~100. Actual: 1,515 before T15, 1,782 with it, over the ceiling only through the late findings task |
 
 ## Tasks
 

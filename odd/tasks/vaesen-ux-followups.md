@@ -1,7 +1,7 @@
 # Feature: vaesen-ux-followups
 
 - **Locator:** `odd/tasks/vaesen-ux-followups.md` · Engram topic `odd/vaesen-ux-followups/tasks`
-- **Issue:** [#300](https://github.com/iribarren/ogami/issues/300) · **Branch:** `feat/vaesen-ux-followups-2-studio` · **Status:** in progress
+- **Issue:** [#300](https://github.com/iribarren/ogami/issues/300) · **Branch:** `feat/vaesen-ux-followups-2-studio` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-ironsworn` (PRs #342–#352)
@@ -39,7 +39,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
 | 1 | `feat/vaesen-ux-followups-1-play` | `feat(play): vaesen-ux-followups 1/2 guided steps` | T1–T5 | ~1,100: this doc and roadmap ~100; P3 backend ~150, generated OpenAPI and TS ~300, frontend ~60; P9 ~120; P6 ~10; P7 ~10; P13 ~300 |
-| 2 | `feat/vaesen-ux-followups-2-studio` | `feat(studio): vaesen-ux-followups 2/2 authoring polish` | T6–T14 | ~1,000: S26 ~400; S1, S14 ~130; S11 ~60; S16 ~80; S22, S23 ~50; S8, S17, S21, P17 ~50; closing ~100 |
+| 2 | `feat/vaesen-ux-followups-2-studio` | `feat(studio): vaesen-ux-followups 2/2 authoring polish` | T5b–T15 | ~1,000: S26 ~400; S1, S14 ~130; S11 ~60; S16 ~80; S22, S23 ~50; S8, S17, S21, P17 ~50; closing ~100. Actual: 1,515 before T15, about 1,834 with it, over the ceiling only through the late findings task |
 
 ## Tasks
 
@@ -50,17 +50,17 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T3 | 1 | P6: the oracle question field no longer shows a placeholder that is not used when blank | delegated writer (slice 1) | [x] | `2a6d546f` |
 | T4 | 1 | P7: reword the table step prompt that promises a text field | delegated writer (slice 1) | [x] | `c28b2f14` |
 | T5 | 1 | P13: the cast editor offers the previous Scene's NPCs for one-click adding | delegated writer (slice 1) | [x] | `df706859` |
-| T5b | 2 | Slice 1 review findings (see Reviews) | delegated writer (slice 2) | [x] | — |
-| T6 | 2 | S26: Duplicate a sheet field | delegated writer (slice 2) | [x] | — |
-| T7 | 2 | S26: bulk paste sheet fields | delegated writer (slice 2) | [x] | — |
-| T8 | 2 | S1, S14: condition band cap 100 in domain, translator and contract; live counter on check and condition band labels | delegated writer (slice 2) | [x] | — |
-| T9 | 2 | S11: reorder likelihood oracle levels; test that the backend keeps the order | delegated writer (slice 2) | [x] | — |
-| T10 | 2 | S16: a check set's per-band effects easier to reach | delegated writer (slice 2) | [x] | — |
-| T11 | 2 | S22, S23: a new phase's key follows its name; a hint that a phase needs a Scene Type | delegated writer (slice 2) | [x] | — |
-| T12 | 2 | S8: push cost field select in sheet order | delegated writer (slice 2) | [x] | — |
-| T13 | 2 | S17, S21, P17: `sheet` effect hint in Setup; Skip option hint before adding; a new `condition` step starts with a tracker and a second band | delegated writer (slice 2) | [x] | — |
-| T15 | 2 | Slice 2 review findings of `review-b1745bc88fc144b9`: a published placeholder phase must not follow its name; a followed key stays valid and free; the paste dialog resets on open; paste no-answer and retry version tests | delegated writer (slice 2) | [x] | — |
-| T14 | 2 | Closing: S15 follow-up issue and roadmap line; roadmap B7m done; this doc closed | parent (closing doc commit) | [ ] | — |
+| T5b | 2 | Slice 1 review findings (see Reviews) | delegated writer (slice 2) | [x] | `92baa1fc` |
+| T6 | 2 | S26: Duplicate a sheet field | delegated writer (slice 2) | [x] | `5d072f7d` |
+| T7 | 2 | S26: bulk paste sheet fields | delegated writer (slice 2) | [x] | `35dded7a` |
+| T8 | 2 | S1, S14: condition band cap 100 in domain, translator and contract; live counter on check and condition band labels | delegated writer (slice 2) | [x] | `58c85a01` |
+| T9 | 2 | S11: reorder likelihood oracle levels; test that the backend keeps the order | delegated writer (slice 2) | [x] | `bb68fdbd` |
+| T10 | 2 | S16: a check set's per-band effects easier to reach | delegated writer (slice 2) | [x] | `7e64805f` |
+| T11 | 2 | S22, S23: a new phase's key follows its name; a hint that a phase needs a Scene Type | delegated writer (slice 2) | [x] | `ed84d4d9`, `60afbfec` |
+| T12 | 2 | S8: push cost field select in sheet order | delegated writer (slice 2) | [x] | `c1cf79c1` |
+| T13 | 2 | S17, S21, P17: `sheet` effect hint in Setup; Skip option hint before adding; a new `condition` step starts with a tracker and a second band | delegated writer (slice 2) | [x] | `d80af6d1` |
+| T15 | 2 | Slice 2 review findings of `review-b1745bc88fc144b9`: a published placeholder phase must not follow its name; a followed key stays valid and free; the paste dialog resets on open; paste no-answer and retry version tests | delegated writer (slice 2) | [x] | `936aa899` |
+| T14 | 2 | Closing: S15 follow-up issue and roadmap line; roadmap B7m done; this doc closed | parent (closing doc commit) | [x] | closing doc commit |
 
 ## Progress
 
@@ -83,12 +83,16 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: QA fix after a full `make verify` (the earlier "ok" came from a filtered output and hid failures): the likelihood order test no longer calls the non-static `at()` from static closures (Rector had made them static), and phpstan casts, two ESLint `any` errors and a type error in the new tests are fixed. RED observed: PHPUnit error, PHPStan, ESLint and tsc reported them.
 - 2026-11-02: T15 done, frontend-only. Router history `state` `justCreated` (set by New flow) is the only way a stored `main`/`Main` follows; saving ends following; a followed key is cut to 64 (`ReleaseFields::key`), kept when the name derives none and numbered (`-2`) when another phase has it (`editPhaseName` takes the other phases); the paste dialog resets its settings on open. RED observed: stored-main-does-not-follow and the key limits/blank/duplicate tests in `flowDraft.test.ts`, the page test for a stored `main` opened normally (with the old default), and the paste dialog group reset (a stale group showed `Pick a group.`). No RED for the page test that follows after New flow and stops at the save (written with the code), nor for the paste no-answer path and the retry versions (`[7, 8, 8, 9]`): both passed on first run, no stale version found.
 
+- 2026-11-02: T14 done, closing: S15 is [#356](https://github.com/iribarren/ogami/issues/356) with roadmap line B7p; roadmap B7m done. T15's `make verify` did not finish: `backend-test` was killed at about 79% of 8564 with no failure, and T15 changes no backend file. Its frontend checks passed by hand: `frontend-qa`, `api-check`, and Vitest on `src/studio` and `src/play` (120 files, 2577 tests). The last full `make verify` was at `96e208a7`; CI is the full run. No browser pass on either slice.
+
 ## Reviews
 
 | Slice | Lineage | Outcome | Findings | PR |
 |---|---|---|---|---|
 | 1 | `review-293f4e9ed48f29c1` | Approved, acknowledged; 631 lines | Fixed in slice 2 (T5b): (W) `CheckForm.tsx:142-146` pool size label ignores a situational modifier; (W) `GuidedPanel.test.tsx:104-117` outcome-absent tests can pass before the journal loads; (S) `SceneCast.test.tsx:132` empty-list assertion needs `waitFor`; (S) `CampaignFlowChecksApiTest.php:106-107` should roll and assert the recorded pool size | [#354](https://github.com/iribarren/ogami/pull/354) |
+| 2 | `review-b1745bc88fc144b9` | Approved, acknowledged; 1,515 lines at `96e208a7` | All fixed in T15: (W) `flowDraft.ts:162` a published `main`/`Main` phase's key follows a rename; (S) `flowDraft.ts:170` a followed key is not checked for siblings, blank names or length; (S) `PasteFieldsDialog.tsx:53` stale group; (S) `PasteFieldsDialog.tsx:114` no-answer path untested; (S) `PasteFieldsDialog.test.tsx:162` retry versions unasserted | [#355](https://github.com/iribarren/ogami/pull/355) |
+| 2, T15 | None | Declined by the user (`936aa899`, 319 lines), so T15 has no native review | Parent read the production diff; focused tests pass | [#355](https://github.com/iribarren/ogami/pull/355) |
 
 ## Next step
 
-Slice 2: T5b–T13 on `feat/vaesen-ux-followups-2-studio`, then T14 closes the feature on that PR.
+None. Every finding is fixed; S15 is [#356](https://github.com/iribarren/ogami/issues/356).

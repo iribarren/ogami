@@ -8,7 +8,11 @@ import { EditorFrame } from '../EditorFrame'
 import { StudioError } from '../useGameSystems'
 import { TableEditor } from './TableEditor'
 import { useRollHistory } from './useRollHistory'
-import { useGameSystemOracles, type OracleTableResult } from './useGameSystemOracles'
+import {
+  useGameSystemOracles,
+  type OracleTableItem,
+  type OracleTableResult,
+} from './useGameSystemOracles'
 
 /** `/studio/game-systems/$key/oracle-tables/$table`: edits one oracle table of a draft. */
 export function OracleTableEditorPage({
@@ -20,9 +24,13 @@ export function OracleTableEditorPage({
 }) {
   const oracles = useGameSystemOracles(gameSystemKey)
   const narrative = useGameSystemNarrative(gameSystemKey)
-  const [reloads, setReloads] = useState(0)
   const history = useRollHistory<OracleTableResult>()
-  const [reloadFailed, setReloadFailed] = useState(false)
+  // What the form was filled from, once: later reads (a save, a refetch) must not replace it.
+  const [opened, setOpened] = useState<{
+    key: string
+    item: OracleTableItem
+    version: number
+  } | null>(null)
   // The key a save is renaming the table to: the cache answers with it before the URL does.
   const [renaming, setRenaming] = useState<string | null>(null)
 
@@ -62,9 +70,22 @@ export function OracleTableEditorPage({
     )
   }
 
+  // Cached data older than the stale time is being read again: wait for it rather than fill the
+  // form from what may lack entries saved elsewhere. If that read fails, `isFetching` ends and the
+  // form opens from the cache; a save then answers with a conflict. A form already open stays.
+  if (oracles.isFetching && opened?.key !== table) {
+    return <p className="text-muted-foreground">Loading the table…</p>
+  }
   const find = (key: string) => oracles.data.tables.find(({ definition }) => definition.key === key)
   // Until the URL follows the rename, the editor stays on the renamed table, mounted.
-  const item = find(table) ?? (renaming === null ? undefined : find(renaming))
+  const found = find(table) ?? (renaming === null ? undefined : find(renaming))
+  // The form is filled once, from what was read when it opened (after any refetch in flight, see
+  // above); it must not vanish when the table has gone from a later read: a save then says so.
+  if (found !== undefined && (opened?.item !== found || opened.key !== table)) {
+    setOpened({ key: table, item: found, version: oracles.data.version })
+  }
+  const open = opened?.key === table ? opened : null
+  const item = found ?? open?.item
   if (!item) {
     return (
       <div className="space-y-3">
@@ -83,30 +104,19 @@ export function OracleTableEditorPage({
       title={item.definition.name}
       backLink={backLink}
     >
-      <TableEditor
-        key={`${table}-${String(reloads)}`}
-        gameSystemKey={gameSystemKey}
-        oracles={oracles.data}
-        context={withNarrative && narrative.data ? stepContext(narrative.data) : null}
-        item={item}
-        history={history}
-        onRenaming={setRenaming}
-        onReload={() => {
-          setReloadFailed(false)
-          void oracles.refetch().then((result) => {
-            // A failed refetch keeps the stale table: do not reset the form on it.
-            if (result.isError) {
-              setReloadFailed(true)
-            } else {
-              setReloads((count) => count + 1)
-            }
-          })
-        }}
-      />
-      {reloadFailed && (
-        <p role="alert" className="text-sm text-destructive">
-          Couldn&apos;t reload the latest version. Try again.
-        </p>
+      {open === null ? (
+        <p className="text-muted-foreground">Loading the table…</p>
+      ) : (
+        <TableEditor
+          key={table}
+          gameSystemKey={gameSystemKey}
+          oracles={oracles.data}
+          context={withNarrative && narrative.data ? stepContext(narrative.data) : null}
+          initial={open.item.definition}
+          version={open.version}
+          history={history}
+          onRenaming={setRenaming}
+        />
       )}
     </EditorFrame>
   )

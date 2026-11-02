@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type SubmitEvent } from 'react'
+import { useEffect, useId, useRef, useState, type SubmitEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react'
 
@@ -11,6 +11,7 @@ import { Select } from '@/shared/ui/select'
 import { KeyHint } from '../KeyHint'
 import type { NarrativeItem } from '../narrative/useGameSystemNarrative'
 import { StudioError } from '../useGameSystems'
+import { UnsavedChangesGuard } from '../UnsavedChangesGuard'
 import {
   chaosRange,
   draftProblems,
@@ -27,10 +28,11 @@ import { TestAnswerPanel } from './TestAnswerPanel'
 import type { RollHistory } from './useRollHistory'
 import {
   OracleError,
+  useGameSystemOracles,
   useSaveLikelihoodOracle,
   useTestAskLikelihoodOracle,
   type GameSystemOracles,
-  type LikelihoodOracleItem,
+  type LikelihoodOracle,
   type LikelihoodTest,
 } from './useGameSystemOracles'
 
@@ -258,25 +260,33 @@ interface LikelihoodOracleEditorProps {
   oracles: GameSystemOracles
   /** The draft's trackers, which the chaos factor picks from; null for a draft without them. */
   trackers: NarrativeItem[] | null
-  item: LikelihoodOracleItem
+  /** The oracle as it was read when the form opened, and the version of that read. */
+  initial: LikelihoodOracle
+  version: number
   history: RollHistory<LikelihoodTest>
   /** Told the key a save renames the oracle to before it is sent, and null once it settled. */
   onRenaming: (key: string | null) => void
-  /** Refetches the oracles and starts the form again from the latest stored oracle. */
-  onReload: () => void
 }
 
-/** The form of one likelihood oracle beside its test-answer panel; the draft is the form's own until saved. */
+/**
+ * The form of one likelihood oracle beside its test-answer panel; the draft is the form's own
+ * until saved. It is filled once, from `initial` read at `version`: a save sends that version, and
+ * a save or a reload replaces the stored oracle and the version together, so later reads never
+ * touch them.
+ */
 export function LikelihoodOracleEditor({
   gameSystemKey,
   oracles,
   trackers,
-  item,
+  initial,
+  version,
   history,
   onRenaming,
-  onReload,
 }: LikelihoodOracleEditorProps) {
-  const stored = item.definition
+  const [stored, setStored] = useState(initial)
+  const [readAt, setReadAt] = useState(version)
+  // Why a reload did not replace the draft; the old version is kept then, so a save still conflicts.
+  const [reloadNote, setReloadNote] = useState<string | null>(null)
   const oracleIndex = oracles.likelihood.findIndex(
     ({ definition }) => definition.key === stored.key,
   )
@@ -285,7 +295,16 @@ export function LikelihoodOracleEditor({
   const nextId = useRef(stored.levels.length)
   const save = useSaveLikelihoodOracle(gameSystemKey)
   const ask = useTestAskLikelihoodOracle(gameSystemKey)
+  const latest = useGameSystemOracles(gameSystemKey)
   const navigate = useNavigate()
+  // False once the editor is gone: a save still pending then must not navigate the person back here.
+  const mounted = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
   const keyId = useId()
   const nameId = useId()
   const sidesId = useId()
@@ -318,22 +337,29 @@ export function LikelihoodOracleEditor({
       onRenaming(body.key)
     }
     try {
-      await save.mutateAsync({
-        expectedVersion: oracles.version,
+      const saved = await save.mutateAsync({
+        expectedVersion: readAt,
         current: stored.key,
         oracle: body,
       })
+      setReadAt(saved.version)
+      setStored(body)
+      setReloadNote(null)
     } catch {
       onRenaming(null)
       return null
     }
     if (renames) {
       try {
-        await navigate({
-          to: '/studio/game-systems/$key/likelihood-oracles/$oracle',
-          params: { key: gameSystemKey, oracle: body.key },
-          replace: true,
-        })
+        if (mounted.current) {
+          await navigate({
+            to: '/studio/game-systems/$key/likelihood-oracles/$oracle',
+            params: { key: gameSystemKey, oracle: body.key },
+            replace: true,
+            // The blocker may still see the draft as unsaved right after the save.
+            ignoreBlocker: true,
+          })
+        }
       } catch {
         // The save went through; if the router refuses, the URL decides what the page shows.
       } finally {
@@ -341,6 +367,29 @@ export function LikelihoodOracleEditor({
       }
     }
     return body.key
+  }
+
+  async function reload() {
+    const result = await latest.refetch()
+    if (result.isError || result.data === undefined) {
+      setReloadNote("Couldn't reload the latest version. Try again.")
+      return
+    }
+    // The oracle, its draft and the version come from the same read, and the version is only taken
+    // with a replaced draft: otherwise a later save would overwrite what was not seen.
+    const found = result.data.likelihood.find(({ definition }) => definition.key === stored.key)
+    if (found === undefined) {
+      setReloadNote(
+        `The likelihood oracle ${stored.key} no longer exists. Your changes are kept; go back to the list.`,
+      )
+      return
+    }
+    setDraft(toDraft(found.definition))
+    nextId.current = found.definition.levels.length
+    setStored(found.definition)
+    setReadAt(result.data.version)
+    setReloadNote(null)
+    save.reset()
   }
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
@@ -380,6 +429,7 @@ export function LikelihoodOracleEditor({
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <form aria-label="Likelihood oracle" className="space-y-6" onSubmit={handleSubmit} noValidate>
+        <UnsavedChangesGuard dirty={dirty} />
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor={keyId}>Key</Label>
@@ -551,6 +601,11 @@ export function LikelihoodOracleEditor({
             ))}
           </ul>
         )}
+        {reloadNote !== null && (
+          <p role="alert" className="text-sm text-destructive">
+            {reloadNote}
+          </p>
+        )}
         {formProblem !== null && (
           <div role="alert" className="space-y-1 text-sm text-destructive">
             <p>{formProblem}</p>
@@ -563,7 +618,12 @@ export function LikelihoodOracleEditor({
           </div>
         )}
         {conflict ? (
-          <Button type="button" onClick={onReload}>
+          <Button
+            type="button"
+            onClick={() => {
+              void reload()
+            }}
+          >
             Reload the latest version
           </Button>
         ) : (

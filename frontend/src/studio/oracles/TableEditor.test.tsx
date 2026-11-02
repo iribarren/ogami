@@ -1,11 +1,12 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
 import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { oracles, oraclesV1, stormRoll, narrativeScenes } from '../fixtures'
+import { draft, narrativeScenes, oracles, oraclesV1, stormRoll, validDraft } from '../fixtures'
+import { oraclesKey } from './useGameSystemOracles'
 import { replaceText } from '@/test/typeText'
 
 const base = '/api/studio/game-systems/my-draft'
@@ -344,7 +345,7 @@ describe('the table editor', () => {
     expect(watch.seen.notFound).toBe(false)
   })
 
-  it('lets go of the renamed key when the navigation is refused, and leaves the URL to decide', async () => {
+  it('keeps the form on the renamed key when the navigation is refused, and leaves the URL alone', async () => {
     const { user, router } = await openEditor('weather', {
       [`PUT ${base}/oracle-tables/weather`]: () => Response.json(afterRename),
     })
@@ -353,7 +354,12 @@ describe('the table editor', () => {
     await replace(user, 'Key', 'skies')
     await user.click(save())
 
-    expect(await screen.findByText(/no oracle table/)).toBeInTheDocument()
+    // The form is the person's own: it stays, on the key it was saved under, and the URL is left.
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+    })
+    expect(screen.getByLabelText('Key')).toHaveValue('skies')
+    expect(screen.queryByText(/no oracle table/)).not.toBeInTheDocument()
     expect(router.state.location.pathname).toBe(
       '/studio/game-systems/my-draft/oracle-tables/weather',
     )
@@ -817,5 +823,296 @@ describe('the oracle table editor page', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Narrative down')
     expect(screen.queryByRole('form', { name: 'Oracle table' })).not.toBeInTheDocument()
+  })
+})
+
+describe('a table form and the version it read', () => {
+  const put = `PUT ${base}/oracle-tables/weather`
+  const draftRead = {
+    [`GET ${base}`]: json(draft),
+    [`GET ${base}/validation`]: json(validDraft),
+  }
+  const changed = { error: 'GameSystem "my-draft" was changed by another request.' }
+  const [first, second] = weather.definition.entries as [
+    (typeof weather.definition.entries)[number],
+    (typeof weather.definition.entries)[number],
+  ]
+  // Another request saved the table meanwhile: newer entries at a newer version.
+  const tempest = {
+    ...oracles,
+    version: 8,
+    tables: [
+      {
+        ...weather,
+        definition: { ...weather.definition, entries: [first, { ...second, text: 'Tempest' }] },
+      },
+      ...others,
+    ],
+  }
+
+  interface Sent {
+    expectedVersion: number
+    table: Record<string, unknown>
+  }
+  function recorder(respond: (sent: Sent[]) => Response) {
+    const sent: Sent[] = []
+    const handler: FakeHandler = async (request) => {
+      sent.push((await request.json()) as Sent)
+      return respond(sent)
+    }
+    return { sent, handler }
+  }
+
+  /** Reads the oracles again and lets the page take the answer. */
+  const refetch = (queryClient: { invalidateQueries: (filters: object) => Promise<void> }) =>
+    act(async () => {
+      await queryClient.invalidateQueries({ queryKey: oraclesKey('my-draft') })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+  const dialog = () => screen.queryByRole('dialog', { name: 'Leave without saving?' })
+  const back = () => screen.getByRole('link', { name: 'Back to my-draft' })
+
+  it('sends the version it read, so a save after a newer read answers with a conflict', async () => {
+    let reads = 0
+    const saved = recorder(() => Response.json(changed, { status: 409 }))
+    const { user, queryClient } = await openEditor('weather', {
+      [`GET ${base}/oracles`]: () => Response.json(++reads === 1 ? oracles : tempest),
+      [put]: saved.handler,
+    })
+
+    await replace(user, 'Name', 'Skies')
+    await refetch(queryClient)
+    expect(reads).toBe(2)
+    await user.click(save())
+
+    await waitFor(() => {
+      expect(saved.sent).toHaveLength(1)
+    })
+    expect(saved.sent[0]?.expectedVersion).toBe(7)
+    expect(await screen.findByRole('alert')).toHaveTextContent('changed by another request')
+    expect(screen.getByRole('button', { name: 'Reload the latest version' })).toBeInTheDocument()
+  })
+
+  it('does not read a clean form as edited when a newer read arrives', async () => {
+    let reads = 0
+    const { queryClient } = await openEditor('weather', {
+      [`GET ${base}/oracles`]: () => Response.json(++reads === 1 ? oracles : tempest),
+    })
+
+    await refetch(queryClient)
+
+    expect(reads).toBe(2)
+    expect(screen.getByLabelText('Entry 2 text')).toHaveValue('Storm')
+    expect(save()).toBeDisabled()
+  })
+
+  it('keeps a draft when its table is gone from the cache, and a save says so', async () => {
+    const saved = recorder(() => Response.json(changed, { status: 409 }))
+    const { user, queryClient } = await openEditor('weather', { [put]: saved.handler })
+
+    await replace(user, 'Name', 'Skies')
+    act(() => {
+      queryClient.setQueryData(oraclesKey('my-draft'), { ...oracles, version: 8, tables: others })
+    })
+
+    expect(screen.getByLabelText('Name')).toHaveValue('Skies')
+    await user.click(save())
+    expect(await screen.findByRole('alert')).toHaveTextContent('changed by another request')
+    expect(saved.sent[0]?.expectedVersion).toBe(7)
+  })
+
+  describe('opening from a cache that may be stale', () => {
+    /** Opens weather, leaves, and comes back to a stale cache whose read is held until `settle`. */
+    async function reopenWhileRefetching(answer: () => Response) {
+      let reads = 0
+      let release: () => void = () => undefined
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const saved = recorder(() => Response.json(tempest))
+      const opened = await openEditor('weather', {
+        ...draftRead,
+        [`GET ${base}/oracles`]: async () => {
+          if (++reads === 1) {
+            return Response.json(oracles)
+          }
+          await gate
+          return answer()
+        },
+        [put]: saved.handler,
+      })
+      await opened.user.click(back())
+      await waitFor(() => {
+        expect(screen.queryByRole('form', { name: 'Oracle table' })).not.toBeInTheDocument()
+      })
+      await opened.queryClient.invalidateQueries({
+        queryKey: oraclesKey('my-draft'),
+        refetchType: 'none',
+      })
+      await act(() =>
+        opened.router.navigate({
+          to: '/studio/game-systems/$key/oracle-tables/$table',
+          params: { key: 'my-draft', table: 'weather' },
+        }),
+      )
+      return { ...opened, saved, settle: release }
+    }
+
+    it('shows the entries the server holds, and saves with its version', async () => {
+      const { user, saved, settle } = await reopenWhileRefetching(() => Response.json(tempest))
+
+      expect(screen.getByText('Loading the table…')).toBeInTheDocument()
+      settle()
+      await waitFor(() => {
+        expect(screen.getByLabelText('Entry 2 text')).toHaveValue('Tempest')
+      })
+      await replace(user, 'Name', 'Skies')
+      await user.click(save())
+
+      await waitFor(() => {
+        expect(saved.sent).toHaveLength(1)
+      })
+      expect(saved.sent[0]?.expectedVersion).toBe(8)
+    })
+
+    it('opens from the cache when the read fails, so a save still answers with a conflict', async () => {
+      const { user, saved, settle } = await reopenWhileRefetching(() =>
+        Response.json({ error: 'Gone' }, { status: 404 }),
+      )
+
+      expect(screen.getByText('Loading the table…')).toBeInTheDocument()
+      settle()
+      expect(await screen.findByRole('form', { name: 'Oracle table' })).toBeInTheDocument()
+      expect(screen.getByLabelText('Entry 2 text')).toHaveValue('Storm')
+      await replace(user, 'Name', 'Skies')
+      await user.click(save())
+
+      await waitFor(() => {
+        expect(saved.sent).toHaveLength(1)
+      })
+      expect(saved.sent[0]?.expectedVersion).toBe(7)
+    })
+  })
+
+  describe('reloading after a conflict', () => {
+    it('takes the draft, the stored table and the version from one read', async () => {
+      let reads = 0
+      const saved = recorder((sent) =>
+        sent.length === 1 ? Response.json(changed, { status: 409 }) : Response.json(tempest),
+      )
+      const { user } = await openEditor('weather', {
+        [`GET ${base}/oracles`]: () => Response.json(++reads === 1 ? oracles : tempest),
+        [put]: saved.handler,
+      })
+
+      await replace(user, 'Entry 1 text', 'Fair')
+      await user.click(save())
+      await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+      await waitFor(() => {
+        expect(screen.getByLabelText('Entry 2 text')).toHaveValue('Tempest')
+      })
+      expect(screen.getByLabelText('Entry 1 text')).toHaveValue('Clear')
+      expect(save()).toBeDisabled()
+      await replace(user, 'Name', 'Skies')
+      await user.click(save())
+
+      await waitFor(() => {
+        expect(saved.sent).toHaveLength(2)
+      })
+      expect(saved.sent.map(({ expectedVersion }) => expectedVersion)).toEqual([7, 8])
+    })
+
+    it('keeps the draft and the conflict when the table is gone from the latest read', async () => {
+      let reads = 0
+      const { user } = await openEditor('weather', {
+        [`GET ${base}/oracles`]: () =>
+          Response.json(++reads === 1 ? oracles : { ...oracles, version: 8, tables: others }),
+        [put]: json(changed, 409),
+      })
+
+      await replace(user, 'Name', 'Skies')
+      await user.click(save())
+      await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+
+      expect(await screen.findByText(/no longer exists/)).toBeInTheDocument()
+      expect(screen.getByLabelText('Name')).toHaveValue('Skies')
+      expect(screen.getByRole('button', { name: 'Reload the latest version' })).toBeInTheDocument()
+    })
+  })
+
+  describe('leaving', () => {
+    it('asks when the form is dirty: Stay keeps the draft, Leave goes', async () => {
+      const { user, router } = await openEditor('weather', draftRead)
+
+      await replace(user, 'Name', 'Skies')
+      await user.click(back())
+      expect(await screen.findByRole('dialog', { name: 'Leave without saving?' })).toBeVisible()
+      await user.click(screen.getByRole('button', { name: 'Stay' }))
+
+      await waitFor(() => {
+        expect(dialog()).not.toBeInTheDocument()
+      })
+      expect(screen.getByLabelText('Name')).toHaveValue('Skies')
+      expect(router.state.location.pathname).toBe(
+        '/studio/game-systems/my-draft/oracle-tables/weather',
+      )
+
+      await user.click(back())
+      await user.click(await screen.findByRole('button', { name: 'Leave without saving' }))
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+      })
+    })
+
+    it('leaves a clean form without asking', async () => {
+      const { user, router } = await openEditor('weather', draftRead)
+
+      await user.click(back())
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+      })
+      expect(dialog()).not.toBeInTheDocument()
+    })
+
+    it('does not ask for a rename save, which opens the renamed table', async () => {
+      const saved = recorder(() =>
+        Response.json({
+          ...oracles,
+          version: 8,
+          tables: [{ ...weather, definition: { ...weather.definition, key: 'skies' } }, ...others],
+        }),
+      )
+      const { user, router } = await openEditor('weather', { [put]: saved.handler })
+
+      await replace(user, 'Key', 'skies')
+      await user.click(save())
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe(
+          '/studio/game-systems/my-draft/oracle-tables/skies',
+        )
+      })
+      expect(dialog()).not.toBeInTheDocument()
+    })
+  })
+
+  it('carries the version of a test roll’s own save into the next save', async () => {
+    const saved = recorder(() => Response.json({ ...oracles, version: 8 }))
+    const { user } = await openEditor('weather', {
+      [put]: saved.handler,
+      [`POST ${base}/oracle-tables/weather/test-rolls`]: json(stormRoll),
+    })
+
+    await replace(user, 'Name', 'Skies')
+    await user.click(screen.getByRole('button', { name: 'Test roll' }))
+    await screen.findByRole('list', { name: 'Steps' })
+    await replace(user, 'Entry 1 text', 'Fair')
+    await user.click(save())
+
+    await waitFor(() => {
+      expect(saved.sent).toHaveLength(2)
+    })
+    expect(saved.sent.map(({ expectedVersion }) => expectedVersion)).toEqual([7, 8])
   })
 })

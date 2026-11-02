@@ -8,6 +8,7 @@ import { IconTile } from '@/shared/ui/icon-tile'
 import { SaveState, type SaveStateValue } from '@/shared/ui/save-state'
 
 import { StudioError } from '../../useGameSystems'
+import { UnsavedChangesGuard } from '../../UnsavedChangesGuard'
 import { moveItem } from '../steps/draftParts'
 import { useGameSystemChecks } from '../../checks/useGameSystemChecks'
 import { useGameSystemSheet } from '../../sheet/useGameSystemSheet'
@@ -49,6 +50,8 @@ export function FlowEditor({
   version,
   selected,
   justCreated,
+  savedAt: initialSavedAt = null,
+  onRenamed,
 }: {
   gameSystemKey: string
   narrative: GameSystemNarrative
@@ -59,6 +62,10 @@ export function FlowEditor({
   selected: string | undefined
   /** The editor opened straight after New flow: its history entry says so until the first save. */
   justCreated: boolean
+  /** When a rename save made this form: the page remounts it on the new key, which would lose it. */
+  savedAt?: Date | null
+  /** Told the new key and when a save renamed the flow, before the editor is opened anew. */
+  onRenamed?: (key: string, at: Date) => void
 }) {
   const [draft, setDraft] = useState(initial)
   const [readAt, setReadAt] = useState(version)
@@ -68,7 +75,7 @@ export function FlowEditor({
   const [reloadNote, setReloadNote] = useState<string | null>(null)
   // The draft as it was last loaded or saved: the form is unsaved while it differs.
   const [baseline, setBaseline] = useState(() => JSON.stringify(initial))
-  const [savedAt, setSavedAt] = useState<Date | null>(null)
+  const [savedAt, setSavedAt] = useState<Date | null>(initialSavedAt)
   // The node whose first invalid field takes focus once it is shown ("Go to the first").
   const [focusAt, setFocusAt] = useState<{ path: string; id: number } | null>(null)
   const focused = useRef(0)
@@ -78,6 +85,15 @@ export function FlowEditor({
   const save = useSaveNarrativeItem(gameSystemKey)
   const latest = useGameSystemNarrative(gameSystemKey)
   const navigate = useNavigate()
+  // False once the editor is gone: a save still pending then must not navigate the person back here.
+  const mounted = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  const dirty = JSON.stringify(draft) !== baseline
   // Kept while the narrative is the same, so the step cards below can skip renders.
   // The checks say which special results a check step may branch on; until they load, none is offered.
   const checks = useGameSystemChecks(gameSystemKey)
@@ -159,7 +175,11 @@ export function FlowEditor({
         phases: latest.phases.map((phase) => ({ ...phase, follow: false })),
       }))
       setBaseline(JSON.stringify(stored))
-      setSavedAt(new Date())
+      const at = new Date()
+      setSavedAt(at)
+      if (key !== current) {
+        onRenamed?.(key, at)
+      }
     } catch (error) {
       const index = narrative.flows.findIndex((stored) => stored.key === current)
       const message = error instanceof Error ? error.message : 'Saving the item failed.'
@@ -169,18 +189,20 @@ export function FlowEditor({
       })
       return
     }
-    if (key !== current) {
+    if (key !== current && mounted.current) {
       try {
         await navigate({
           to: '/studio/game-systems/$key/flows/$flow',
           params: { key: gameSystemKey, flow: key },
           search: { node: selected },
           replace: true,
+          // The blocker may still see the draft as unsaved right after the save.
+          ignoreBlocker: true,
         })
       } catch {
         // The save went through; if the router refuses, the URL decides what the page shows.
       }
-    } else if (justCreated) {
+    } else if (key === current && justCreated && mounted.current) {
       // Drops the signal from the history entry, so a browser reload does not follow again.
       try {
         await navigate({
@@ -217,6 +239,8 @@ export function FlowEditor({
     setDraft(reloaded)
     setBaseline(JSON.stringify(reloaded))
     setReadAt(result.data.version)
+    // The replaced draft was not saved by this person, so the old "Saved at" no longer describes it.
+    setSavedAt(null)
     setReloadNote(null)
     setAnswer(noAnswer)
     setGeneration((count) => count + 1)
@@ -233,7 +257,7 @@ export function FlowEditor({
           errors: count,
           onGoToFirst: answerNode(answer) === null ? undefined : goToFirst,
         }
-      : JSON.stringify(draft) !== baseline
+      : dirty
         ? { kind: 'unsaved' }
         : savedAt === null
           ? null
@@ -398,6 +422,7 @@ export function FlowEditor({
           void submit(event)
         }}
       >
+        <UnsavedChangesGuard dirty={dirty} />
         <nav aria-label="Breadcrumb">
           <ol className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
             {trail.map((label, at) => (
@@ -426,15 +451,20 @@ export function FlowEditor({
           <div className="action-bar">
             {saveState && <SaveState state={saveState} />}
             {answer.conflict && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  void reload()
-                }}
-              >
-                Reload the latest version
-              </Button>
+              <>
+                <p className="text-sm text-destructive">
+                  Reloading replaces your unsaved edits with the latest stored flow.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    void reload()
+                  }}
+                >
+                  Reload the latest version
+                </Button>
+              </>
             )}
             <Button type="submit" disabled={save.isPending}>
               Save

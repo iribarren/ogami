@@ -78,7 +78,9 @@ function useOracleWrite<Variables>(
 
   return useMutation({
     mutationFn: write,
-    onSuccess: (oracles) => {
+    onSuccess: async (oracles) => {
+      // A read in flight was asked for before this write; its answer would replace the saved oracles.
+      await queryClient.cancelQueries({ queryKey: oraclesKey(key), exact: true })
       queryClient.setQueryData(oraclesKey(key), oracles)
       invalidateOtherDraftReads(queryClient, key, oraclesKey(key), oracles.version)
     },

@@ -77,7 +77,9 @@ function useCheckWrite<Variables>(
 
   return useMutation({
     mutationFn: write,
-    onSuccess: (checks) => {
+    onSuccess: async (checks) => {
+      // A read in flight was asked for before this write; its answer would replace the saved checks.
+      await queryClient.cancelQueries({ queryKey: checksKey(key), exact: true })
       queryClient.setQueryData(checksKey(key), checks)
       invalidateOtherDraftReads(queryClient, key, checksKey(key), checks.version)
     },

@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type SubmitEvent } from 'react'
+import { useEffect, useId, useRef, useState, type SubmitEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { List } from 'lucide-react'
 
@@ -12,6 +12,7 @@ import type { FieldErrors } from '../narrative/narrativeDraft'
 import { mapStepError, type StepError } from '../narrative/steps/stepError'
 import type { StepContext } from '../narrative/steps/stepContext'
 import { StudioError } from '../useGameSystems'
+import { UnsavedChangesGuard } from '../UnsavedChangesGuard'
 import { CoverageSummary, EntriesEditor } from './EntriesEditor'
 import { PasteEntriesDialog } from './PasteEntriesDialog'
 import { applyPaste } from './pasteEntries'
@@ -24,16 +25,17 @@ import {
   toDraft,
   toTable,
   type EntryDraft,
+  type OracleTable,
   type TableDraft,
 } from './tableDraft'
 import { TestRollPanel } from './TestRollPanel'
 import type { RollHistory } from './useRollHistory'
 import {
   OracleError,
+  useGameSystemOracles,
   useSaveOracleTable,
   useTestRollOracleTable,
   type GameSystemOracles,
-  type OracleTableItem,
   type OracleTableResult,
 } from './useGameSystemOracles'
 
@@ -64,32 +66,50 @@ interface TableEditorProps {
   oracles: GameSystemOracles
   /** What entry Scene Types and effects pick from; null for a draft of a schema without them. */
   context: StepContext | null
-  item: OracleTableItem
+  /** The table as it was read when the form opened, and the version of that read. */
+  initial: OracleTable
+  version: number
   history: RollHistory<OracleTableResult>
   /** Told the key a save renames the table to before it is sent, and null once it settled. */
   onRenaming: (key: string | null) => void
-  /** Refetches the oracles and starts the form again from the latest stored table. */
-  onReload: () => void
 }
 
-/** The form of one table beside its test-roll panel; the draft is the form's own until saved. */
+/**
+ * The form of one table beside its test-roll panel; the draft is the form's own until saved. It
+ * is filled once, from `initial` read at `version`: a save sends that version, and a save or a
+ * reload replaces the stored table and the version together, so later reads never touch them.
+ */
 export function TableEditor({
   gameSystemKey,
   oracles,
   context,
-  item,
+  initial,
+  version,
   history,
   onRenaming,
-  onReload,
 }: TableEditorProps) {
-  const stored = item.definition
+  const [stored, setStored] = useState(initial)
+  const [readAt, setReadAt] = useState(version)
+  // Why a reload did not replace the draft; the old version is kept then, so a save still conflicts.
+  const [reloadNote, setReloadNote] = useState<string | null>(null)
+  // Remounts the entries on a reload: their cards keep no state of the draft they replace.
+  const [generation, setGeneration] = useState(0)
   const tableIndex = oracles.tables.findIndex(({ definition }) => definition.key === stored.key)
   const withKey = oracles.schemaVersion >= 2
   const [draft, setDraft] = useState<TableDraft>(() => toDraft(stored))
   const nextId = useRef(stored.entries.length)
   const save = useSaveOracleTable(gameSystemKey)
   const roll = useTestRollOracleTable(gameSystemKey)
+  const latest = useGameSystemOracles(gameSystemKey)
   const navigate = useNavigate()
+  // False once the editor is gone: a save still pending then must not navigate the person back here.
+  const mounted = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
   const keyId = useId()
   const nameId = useId()
   const diceId = useId()
@@ -135,22 +155,29 @@ export function TableEditor({
       onRenaming(body.key)
     }
     try {
-      await save.mutateAsync({
-        expectedVersion: oracles.version,
+      const saved = await save.mutateAsync({
+        expectedVersion: readAt,
         current: stored.key,
         table: body,
       })
+      setReadAt(saved.version)
+      setStored(body)
+      setReloadNote(null)
     } catch {
       onRenaming(null)
       return null
     }
     if (renames) {
       try {
-        await navigate({
-          to: '/studio/game-systems/$key/oracle-tables/$table',
-          params: { key: gameSystemKey, table: body.key },
-          replace: true,
-        })
+        if (mounted.current) {
+          await navigate({
+            to: '/studio/game-systems/$key/oracle-tables/$table',
+            params: { key: gameSystemKey, table: body.key },
+            replace: true,
+            // The blocker may still see the draft as unsaved right after the save.
+            ignoreBlocker: true,
+          })
+        }
       } catch {
         // The save went through; if the router refuses, the URL decides what the page shows.
       } finally {
@@ -158,6 +185,30 @@ export function TableEditor({
       }
     }
     return body.key
+  }
+
+  async function reload() {
+    const result = await latest.refetch()
+    if (result.isError || result.data === undefined) {
+      setReloadNote("Couldn't reload the latest version. Try again.")
+      return
+    }
+    // The table, its draft and the version come from the same read, and the version is only taken
+    // with a replaced draft: otherwise a later save would overwrite what was not seen.
+    const found = result.data.tables.find(({ definition }) => definition.key === stored.key)
+    if (found === undefined) {
+      setReloadNote(
+        `The table ${stored.key} no longer exists. Your changes are kept; go back to the list.`,
+      )
+      return
+    }
+    setDraft(toDraft(found.definition))
+    nextId.current = found.definition.entries.length
+    setStored(found.definition)
+    setReadAt(result.data.version)
+    setReloadNote(null)
+    save.reset()
+    setGeneration((count) => count + 1)
   }
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
@@ -202,6 +253,7 @@ export function TableEditor({
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <form aria-label="Oracle table" className="panel" onSubmit={handleSubmit} noValidate>
+        <UnsavedChangesGuard dirty={dirty} />
         <div className="panel-head">
           <IconTile size="sm">
             <List />
@@ -277,6 +329,7 @@ export function TableEditor({
               </div>
             </div>
             <EntriesEditor
+              key={generation}
               entries={draft.entries}
               problems={problems}
               ranged={draft.ranged}
@@ -295,6 +348,11 @@ export function TableEditor({
               }}
             />
           </div>
+          {reloadNote !== null && (
+            <p role="alert" className="text-sm text-destructive">
+              {reloadNote}
+            </p>
+          )}
           {formProblem !== null && (
             <div role="alert" className="space-y-1 text-sm text-destructive">
               <p>{formProblem}</p>
@@ -309,7 +367,12 @@ export function TableEditor({
         </div>
         <div className="action-bar">
           {conflict ? (
-            <Button type="button" onClick={onReload}>
+            <Button
+              type="button"
+              onClick={() => {
+                void reload()
+              }}
+            >
               Reload the latest version
             </Button>
           ) : (

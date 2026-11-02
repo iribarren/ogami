@@ -43,6 +43,9 @@ export function FlowEditorPage({
     version: number
   } | null>(null)
 
+  // The last rename save: the editor is remounted on the new key, so the page keeps its "Saved at".
+  const [renamed, setRenamed] = useState<{ key: string; at: Date } | null>(null)
+
   const backLink = (
     <Link
       to="/studio/game-systems/$key"
@@ -68,6 +71,12 @@ export function FlowEditorPage({
   }
 
   const { data } = narrative
+  // Cached data older than the stale time is being read again: wait for it rather than fill the
+  // form from what may lack phases saved elsewhere. If that read fails, `isFetching` ends and the
+  // form opens from the cache; a save then answers with a conflict. A form already open stays.
+  if (narrative.isFetching && opened?.key !== flow) {
+    return <p className="text-muted-foreground">Loading the flow…</p>
+  }
   const found = data.flows.find((item) => item.key === flow)
   const draft = found === undefined ? null : flowToDraft(found.definition, { justCreated })
   // The form is filled once, from what was read when it opened; later reads (a save, a refetch)
@@ -126,6 +135,10 @@ export function FlowEditorPage({
           version={open.version}
           selected={node}
           justCreated={justCreated}
+          savedAt={renamed?.key === flow ? renamed.at : null}
+          onRenamed={(key, at) => {
+            setRenamed({ key, at })
+          }}
         />
       )}
     </div>

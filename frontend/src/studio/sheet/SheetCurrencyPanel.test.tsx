@@ -1,16 +1,13 @@
-import { QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import { createQueryClient } from '@/app/queryClient'
-import { ApiClientProvider } from '@/shared/api/ApiClientProvider'
-import { createFakeApiClient, type FakeHandler } from '@/test/fakeApi'
+import type { FakeHandler } from '@/test/fakeApi'
 import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 import { typeText } from '@/test/typeText'
 
 import { draft, sheet, sheetWithEconomy, validDraft } from '../fixtures'
-import { SheetCurrencyPanel } from './SheetCurrencyPanel'
+import { sheetKey } from './useGameSystemSheet'
 
 const base = '/api/studio/game-systems/my-draft'
 
@@ -182,18 +179,22 @@ describe('a sheet with a currency', () => {
   })
 
   it('follows the stored currency when it changes from outside', async () => {
-    const { api } = createFakeApiClient({})
-    const ui = (source: typeof sheetWithEconomy) => (
-      <QueryClientProvider client={createQueryClient()}>
-        <ApiClientProvider client={api}>
-          <SheetCurrencyPanel gameSystemKey="my-draft" sheet={source} />
-        </ApiClientProvider>
-      </QueryClientProvider>
-    )
-    const { rerender } = render(ui(sheetWithEconomy))
-    expect(panel().getByLabelText('Unit')).toHaveValue('eb')
+    const queryClient = renderAppAt('/studio/game-systems/my-draft', {
+      'GET /api/auth/me': signedInAs('GAME_MANAGER'),
+      'GET /api/studio/game-systems': json([]),
+      [`GET ${base}`]: json(draft),
+      [`GET ${base}/validation`]: json(validDraft),
+      [`GET ${base}/sheet`]: json(sheetWithEconomy),
+    }).queryClient
+    await userEvent.click(await screen.findByRole('link', { name: 'Sheet' }))
+    expect(await screen.findByLabelText('Unit')).toHaveValue('eb')
 
-    rerender(ui({ ...sheetWithEconomy, currency: { field: 'eddies', unit: 'cr' } }))
+    act(() => {
+      queryClient.setQueryData(sheetKey('my-draft'), {
+        ...sheetWithEconomy,
+        currency: { field: 'eddies', unit: 'cr' },
+      })
+    })
 
     await waitFor(() => {
       expect(panel().getByLabelText('Unit')).toHaveValue('cr')
@@ -241,5 +242,82 @@ describe('a refused save', () => {
       expect(panel().queryByText('Another request saved the draft.')).not.toBeInTheDocument()
     })
     expect(panel().getByLabelText('Unit')).toHaveValue('eb')
+  })
+})
+
+describe('leaving with an unsaved currency', () => {
+  const dialog = () => screen.queryByRole('dialog', { name: 'Leave without saving?' })
+  const otherTab = () => screen.getByRole('link', { name: 'Overview' })
+
+  it('asks before a change of tab, and Stay keeps the draft', async () => {
+    const user = await openSheet()
+
+    await screen.findByLabelText('Currency field')
+    await chooseOption(user, 'Currency field', 'dex')
+    await user.click(otherTab())
+    expect(await screen.findByRole('dialog', { name: 'Leave without saving?' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Stay' }))
+
+    expect(dialog()).not.toBeInTheDocument()
+    expect(panel().getByLabelText('Currency field')).toHaveTextContent('Dexterity')
+  })
+
+  it('asks before leaving the page, and goes when the person chooses to', async () => {
+    const user = await openSheet()
+
+    await typeText(user, await screen.findByLabelText('Unit'), 'eb')
+    await user.click(screen.getByRole('link', { name: /Back to Studio/ }))
+    await user.click(await screen.findByRole('button', { name: 'Leave without saving' }))
+
+    expect(await screen.findByRole('heading', { name: /Studio/ })).toBeVisible()
+  })
+
+  it('lets an untouched panel go', async () => {
+    const user = await openSheet()
+
+    await screen.findByLabelText('Currency field')
+    await user.click(otherTab())
+
+    expect(await screen.findByRole('form', { name: 'Metadata' })).toBeVisible()
+    expect(dialog()).not.toBeInTheDocument()
+  })
+
+  it('reads a unit that differs only by its spaces as the stored one', async () => {
+    const user = await openSheet({}, sheetWithEconomy)
+
+    await typeText(user, await screen.findByLabelText('Unit'), ' ')
+    await user.click(otherTab())
+
+    expect(await screen.findByRole('form', { name: 'Metadata' })).toBeVisible()
+    expect(dialog()).not.toBeInTheDocument()
+  })
+
+  it('reads a saved currency as clean, though the unit was typed with spaces', async () => {
+    const saved = { ...sheet, version: 8, currency: { field: 'dex', unit: 'eb' } }
+    const user = await openSheet({ [`PUT ${url}`]: json(saved) })
+
+    await screen.findByLabelText('Currency field')
+    await chooseOption(user, 'Currency field', 'dex')
+    await typeText(user, panel().getByLabelText('Unit'), ' eb ')
+    await user.click(panel().getByRole('button', { name: 'Save currency' }))
+    expect(await screen.findByText('Characters spend dex in eb.')).toBeVisible()
+    await user.click(otherTab())
+
+    expect(await screen.findByRole('form', { name: 'Metadata' })).toBeVisible()
+    expect(dialog()).not.toBeInTheDocument()
+  })
+
+  it('reads a removed currency as clean', async () => {
+    const user = await openSheet(
+      { [`DELETE ${url}`]: json({ ...sheetWithEconomy, version: 14, currency: null }) },
+      sheetWithEconomy,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Remove currency' }))
+    expect(await screen.findByText(/Characters have no money/)).toBeVisible()
+    await user.click(otherTab())
+
+    expect(await screen.findByRole('form', { name: 'Metadata' })).toBeVisible()
+    expect(dialog()).not.toBeInTheDocument()
   })
 })

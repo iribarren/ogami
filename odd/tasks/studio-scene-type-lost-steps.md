@@ -1,7 +1,7 @@
 # Feature: studio-scene-type-lost-steps
 
 - **Locator:** `odd/tasks/studio-scene-type-lost-steps.md` · Engram topic `odd/studio-scene-type-lost-steps/tasks`
-- **Issue:** [#310](https://github.com/iribarren/ogami/issues/310) · **Branch:** `fix/studio-scene-type-lost-steps-1-unsaved-work` · **Status:** in progress
+- **Issue:** [#310](https://github.com/iribarren/ogami/issues/310) · **Branch:** `fix/studio-scene-type-lost-steps-1-unsaved-work` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `night-court-followups` (PRs #357–#358)
@@ -53,7 +53,7 @@ Forecasts include tests and docs. Hard ceiling ~1,700 per slice. No API change.
 | T3 | 1 | C3: reload warns and clears "Saved at" | delegated writer | [x] | `3c2e715b` |
 | T4 | 1 | C4 and C5: a stale read neither overwrites a save nor fills the form | delegated writer | [x] | `b95d1558` |
 | T5 | 1 | Two-tab API regression test | delegated writer | [x] | `093db53f` |
-| T6 | 1 | Review and browser-pass findings: the dialog after a save settles, create's navigation, Back and `beforeunload` tests, "Saved at" after a rename | delegated writer | [x] | |
+| T6 | 1 | Review and browser-pass findings: the dialog after a save settles, create's navigation, Back and `beforeunload` tests, "Saved at" after a rename | delegated writer | [x] | `40aab8ae` |
 
 ## Acceptance criteria
 
@@ -78,12 +78,14 @@ Forecasts include tests and docs. Hard ceiling ~1,700 per slice. No API change.
 - 2026-11-02: T5 done; no RED, as expected: the test passed at once (200 then 409, the first save kept its steps), so the server has no lost save.
 - 2026-11-02: Chrome pass at `093db53f`: create lands in the editor; the dialog shows for a link and for Back; Escape and Stay keep the draft; Leave discards it and the server keeps the last save; a saved form and a rename save raise no dialog; `beforeunload` blocks only while dirty (a dispatched event, so the native prompt itself was not seen); with two real tabs a stale list showing `setup 1` opens the editor with the server's 2 steps; a 409 warns and Reload clears "Saved at". Found: a rename save remounts the editor and loses "Saved at". Covered by Vitest only: a GET racing a save, leaving during a pending save.
 - 2026-11-02: T6 done; RED: the held-save success test left the dialog open, the rename "Saved at" test found no status, create's rejected navigation was unhandled; Back, `beforeunload` and the failed-save tests pass at once. Memory history never runs blockers on Back or `beforeunload`, so those tests use a browser history. A rename save with Back pressed ends on the Back target, no dialog.
+- 2026-11-02: Closed. S21's exact cause stays unproved; every client path found is closed. T6 has Vitest coverage and `make verify` only, no Chrome pass. The browser's native `beforeunload` prompt was never seen, only the handler. CI on PR #359 is the full run. The other Studio editors follow in [#360](https://github.com/iribarren/ogami/issues/360).
 
 ## Reviews
 
 | Slice | Lineage | Outcome | Findings | PR |
 |---|---|---|---|---|
+| 1 | `review-c2af5ec64df79345` | Approved and acknowledged, 638 lines at `093db53f`. T6 (`40aab8ae`, 303 lines, findings plus the rename "Saved at" fix) declined by the user, no review | Fixed in T6: (W) the leave dialog outlives a pending save; (S) create's navigation unguarded (`ItemDialog` cannot call `onSaved` after unmount, so only the refused navigation needed handling); (S) Back and `beforeunload` untested. Filed as [#360](https://github.com/iribarren/ogami/issues/360): the same protection on the other Studio editors | [#359](https://github.com/iribarren/ogami/pull/359) |
 
 ## Next step
 
-T6 on PR #359, then the closing doc commit with a `follow-up` issue for the guard on the other Studio editors.
+None: every finding is fixed or has an issue ([#360](https://github.com/iribarren/ogami/issues/360)).

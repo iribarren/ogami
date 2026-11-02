@@ -51,7 +51,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T3 | 1 | S5: Declare layout on a sheet with no fields; Move to top and bottom for groups | delegated writer (slice 1) | [x] (b only) | |
 | T4 | 1 | S13: add every special result at once, prefilled from a band; a single Add prefills too | delegated writer (slice 1) | [x] | |
 | T5 | 1 | S16: "New step…" in the Next select | delegated writer (slice 1) | [x] | |
-| T6 | 1 | S23: reproduce the dropped typeahead; fix only if it reproduces | | [ ] | |
+| T6 | 1 | S23: reproduce the dropped typeahead; fix only if it reproduces | delegated writer (slice 1) | [x] | |
 | T7 | 2 | Slice 1 review findings | | [ ] | |
 | T8 | 2 | P4: the push offer on a success says what it can change and risks | | [ ] | |
 | T9 | 2 | P5: the step card's actions stop shifting | | [ ] | |
@@ -79,6 +79,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02 T3: (b) Move to top / Move to bottom for groups, disabled at the ends. (a) left out: the backend refuses declaring a layout on a sheet with no fields (`GameSystem::declareSheetLayout`, "add a field first", asserted in `GameSystemSheetApiTest`); parent must decide. No RED observed: tests written with the code; all pass.
 - 2026-11-02 T4: "Add all special results" (two or more rollable specials without an outcome) and a prefilled single Add, via `specialStart`/`addSpecialOutcomes` in `stepDraft.ts`. Top band = last of the check's `bands`, lowest = first (glossary: the last band catches the rest; ADR 0044: the first band is the failing one). A source band with no outcome gives an empty copy, which is not saved, as for any empty outcome. No RED observed: tests written with the code; all pass.
 - 2026-11-02 T5: "New step…" in every Next select (`NextPicker`, so steps, choice options, oracle answers, table entries, roll bands, check bands), asking the kind in the Add step menu's own items (`StepKindMenuItems`). One callback through `NewStepContext`: `create(kind)` stages the step and the next `change` appends it with the link, so the edit is atomic. No RED observed: tests written with the code; all pass.
+- 2026-11-02 T6: not reproduced with real key events; likely a browser-tool artefact. Tried in Playwright (Chromium, stack up): focus the entry nested-table select, Enter to open, type the first 3 letters of each of 3 options at 50ms, 0ms and 120ms per key, 18 runs; the matching option was highlighted and focused every time. Throwaway spec deleted. Found instead, checking T5 in a real browser: inside a `<form>` Radix echoes `''` from its hidden native select when `value` becomes an option that is new in that render, which undid "New step…" (jsdom tests without a form pass). `select.tsx` now ignores that echo while the commit settles; RED observed on a new `select.test.tsx` case (changes recorded `['']`), GREEN after the fix; re-checked in Playwright: Next points at the new step, and Escape leaves Next as it was.
 
 ## Reviews
 

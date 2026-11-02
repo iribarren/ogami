@@ -47,7 +47,7 @@ function currentSceneType(campaign: Campaign, flowRun: FlowRun) {
  * What the Flow decided on its own (a resolved condition step, a band's effects, the end of a
  * phase) while that is still the newest journal entry, so the player sees it where the step is
  * and not only in the journal. It shows with no current step too, when the outcome ended the
- * phase or the Flow.
+ * phase or the Flow. It sits below the step, so it appearing or going never moves the step's actions.
  */
 function LatestFlowOutcome({ campaignId }: { campaignId: string }) {
   const journal = useJournal(campaignId)
@@ -113,7 +113,6 @@ export function GuidedBody({ campaign, flowRun, command }: PartProps) {
           )}
         </div>
       )}
-      <LatestFlowOutcome campaignId={campaign.id} />
       {active && flowRun.step !== null && (
         <StepCard
           key={`${String(campaign.currentSceneNumber)}/${flowRun.progress?.part ?? ''}/${flowRun.step.key}`}
@@ -132,6 +131,8 @@ export function GuidedBody({ campaign, flowRun, command }: PartProps) {
           onCommand={onCommand}
         />
       )}
+      {/* Below the cards: above them it comes and goes with each action and moves their buttons. */}
+      <LatestFlowOutcome campaignId={campaign.id} />
       {command.error && answersTheCard(command.variables) && (
         <p role="alert" className="text-sm text-destructive">
           {command.error.message}

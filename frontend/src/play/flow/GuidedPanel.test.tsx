@@ -86,7 +86,7 @@ describe('the guided panel', () => {
   })
 
   describe('the Flow outcome', () => {
-    it('shows what the Flow decided above the current step while it is the newest entry', async () => {
+    it('shows what the Flow decided below the current step while it is the newest entry', async () => {
       renderGuided(guided(atStep(promptStep)), {}, [chosenWay, flowOutcomeEntry])
 
       const guide = await panel()
@@ -95,9 +95,10 @@ describe('the guided panel', () => {
       expect(outcome.getByText('Threat 3 → 4')).toBeInTheDocument()
       expect(outcome.getByText('The phase ends after this scene')).toBeInTheDocument()
       const card = guide.getByRole('region', { name: 'Current step: Who walks in?' })
+      // Below the card, so that it coming and going never moves the card's buttons.
       expect(
         outcome.getByText('Strong hit').compareDocumentPosition(card) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
+          Node.DOCUMENT_POSITION_PRECEDING,
       ).toBeTruthy()
     })
 

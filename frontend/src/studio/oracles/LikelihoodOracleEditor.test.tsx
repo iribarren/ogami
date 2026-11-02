@@ -1,11 +1,20 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
 import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { oracles, oraclesV1Likelihood, oraclesWithChaos, narrativeScenes } from '../fixtures'
+import {
+  draft,
+  fateAnswer,
+  narrativeScenes,
+  oracles,
+  oraclesV1Likelihood,
+  oraclesWithChaos,
+  validDraft,
+} from '../fixtures'
+import { oraclesKey } from './useGameSystemOracles'
 
 const base = '/api/studio/game-systems/my-draft'
 const put = `PUT ${base}/likelihood-oracles/fate`
@@ -500,7 +509,7 @@ describe('the likelihood oracle editor', () => {
     expect(notFound).toBe(false)
   })
 
-  it('lets go of the renamed key when the navigation is refused, and leaves the URL to decide', async () => {
+  it('keeps the form on the renamed key when the navigation is refused, and leaves the URL alone', async () => {
     const renamed = saved([{ ...fate, definition: { ...fate.definition, key: 'luck' } }])
     const { user, router } = await openEditor('fate', { [put]: json(renamed) })
     vi.spyOn(router, 'navigate').mockRejectedValue(new Error('Navigation refused.'))
@@ -508,7 +517,12 @@ describe('the likelihood oracle editor', () => {
     await replace(user, 'Key', 'luck')
     await user.click(save())
 
-    expect(await screen.findByText(/no likelihood oracle/)).toBeInTheDocument()
+    // The form is the person's own: it stays, on the key it was saved under, and the URL is left.
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+    })
+    expect(screen.getByLabelText('Key')).toHaveValue('luck')
+    expect(screen.queryByText(/no likelihood oracle/)).not.toBeInTheDocument()
     expect(router.state.location.pathname).toBe(
       '/studio/game-systems/my-draft/likelihood-oracles/fate',
     )
@@ -538,5 +552,286 @@ describe('the likelihood oracle editor page', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Narrative down')
     expect(screen.queryByRole('form', { name: 'Likelihood oracle' })).not.toBeInTheDocument()
+  })
+})
+
+describe('a likelihood form and the version it read', () => {
+  const draftRead = {
+    [`GET ${base}`]: json(draft),
+    [`GET ${base}/validation`]: json(validDraft),
+  }
+  const changed = { error: 'GameSystem "my-draft" was changed by another request.' }
+  const [first, second] = fate.definition.levels as [
+    (typeof fate.definition.levels)[number],
+    (typeof fate.definition.levels)[number],
+  ]
+  // Another request saved the oracle meanwhile: newer levels at a newer version.
+  const probable = saved([
+    {
+      ...fate,
+      definition: { ...fate.definition, levels: [first, { ...second, label: 'Probable' }] },
+    },
+  ])
+
+  interface Sent {
+    expectedVersion: number
+    oracle: Record<string, unknown>
+  }
+  function recorder(respond: (sent: Sent[]) => Response) {
+    const sent: Sent[] = []
+    const handler: FakeHandler = async (request) => {
+      sent.push((await request.json()) as Sent)
+      return respond(sent)
+    }
+    return { sent, handler }
+  }
+
+  /** Reads the oracles again and lets the page take the answer. */
+  const refetch = (queryClient: { invalidateQueries: (filters: object) => Promise<void> }) =>
+    act(async () => {
+      await queryClient.invalidateQueries({ queryKey: oraclesKey('my-draft') })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+  const dialog = () => screen.queryByRole('dialog', { name: 'Leave without saving?' })
+  const back = () => screen.getByRole('link', { name: 'Back to my-draft' })
+
+  it('sends the version it read, so a save after a newer read answers with a conflict', async () => {
+    let reads = 0
+    const stored = recorder(() => Response.json(changed, { status: 409 }))
+    const { user, queryClient } = await openEditor('fate', {
+      [`GET ${base}/oracles`]: () => Response.json(++reads === 1 ? oracles : probable),
+      [put]: stored.handler,
+    })
+
+    await replace(user, 'Name', 'Luck')
+    await refetch(queryClient)
+    expect(reads).toBe(2)
+    await user.click(save())
+
+    await waitFor(() => {
+      expect(stored.sent).toHaveLength(1)
+    })
+    expect(stored.sent[0]?.expectedVersion).toBe(7)
+    expect(await screen.findByRole('alert')).toHaveTextContent('changed by another request')
+    expect(screen.getByRole('button', { name: 'Reload the latest version' })).toBeInTheDocument()
+  })
+
+  it('does not read a clean form as edited when a newer read arrives', async () => {
+    let reads = 0
+    const { queryClient } = await openEditor('fate', {
+      [`GET ${base}/oracles`]: () => Response.json(++reads === 1 ? oracles : probable),
+    })
+
+    await refetch(queryClient)
+
+    expect(reads).toBe(2)
+    expect(screen.getByLabelText('Level 2 label')).toHaveValue('Likely')
+    expect(save()).toBeDisabled()
+  })
+
+  it('keeps a draft when its oracle is gone from the cache, and a save says so', async () => {
+    const stored = recorder(() => Response.json(changed, { status: 409 }))
+    const { user, queryClient } = await openEditor('fate', { [put]: stored.handler })
+
+    await replace(user, 'Name', 'Luck')
+    act(() => {
+      queryClient.setQueryData(oraclesKey('my-draft'), { ...oracles, version: 8, likelihood: [] })
+    })
+
+    expect(screen.getByLabelText('Name')).toHaveValue('Luck')
+    await user.click(save())
+    expect(await screen.findByRole('alert')).toHaveTextContent('changed by another request')
+    expect(stored.sent[0]?.expectedVersion).toBe(7)
+  })
+
+  describe('opening from a cache that may be stale', () => {
+    /** Opens fate, leaves, and comes back to a stale cache whose read is held until `settle`. */
+    async function reopenWhileRefetching(answer: () => Response) {
+      let reads = 0
+      let release: () => void = () => undefined
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const stored = recorder(() => Response.json(probable))
+      const opened = await openEditor('fate', {
+        ...draftRead,
+        [`GET ${base}/oracles`]: async () => {
+          if (++reads === 1) {
+            return Response.json(oracles)
+          }
+          await gate
+          return answer()
+        },
+        [put]: stored.handler,
+      })
+      await opened.user.click(back())
+      await waitFor(() => {
+        expect(screen.queryByRole('form', { name: 'Likelihood oracle' })).not.toBeInTheDocument()
+      })
+      await opened.queryClient.invalidateQueries({
+        queryKey: oraclesKey('my-draft'),
+        refetchType: 'none',
+      })
+      await act(() =>
+        opened.router.navigate({
+          to: '/studio/game-systems/$key/likelihood-oracles/$oracle',
+          params: { key: 'my-draft', oracle: 'fate' },
+        }),
+      )
+      return { ...opened, stored, settle: release }
+    }
+
+    it('shows the levels the server holds, and saves with its version', async () => {
+      const { user, stored, settle } = await reopenWhileRefetching(() => Response.json(probable))
+
+      expect(screen.getByText('Loading the oracle…')).toBeInTheDocument()
+      settle()
+      await waitFor(() => {
+        expect(screen.getByLabelText('Level 2 label')).toHaveValue('Probable')
+      })
+      await replace(user, 'Name', 'Luck')
+      await user.click(save())
+
+      await waitFor(() => {
+        expect(stored.sent).toHaveLength(1)
+      })
+      expect(stored.sent[0]?.expectedVersion).toBe(8)
+    })
+
+    it('opens from the cache when the read fails, so a save still answers with a conflict', async () => {
+      const { user, stored, settle } = await reopenWhileRefetching(() =>
+        Response.json({ error: 'Gone' }, { status: 404 }),
+      )
+
+      expect(screen.getByText('Loading the oracle…')).toBeInTheDocument()
+      settle()
+      expect(await screen.findByRole('form', { name: 'Likelihood oracle' })).toBeInTheDocument()
+      expect(screen.getByLabelText('Level 2 label')).toHaveValue('Likely')
+      await replace(user, 'Name', 'Luck')
+      await user.click(save())
+
+      await waitFor(() => {
+        expect(stored.sent).toHaveLength(1)
+      })
+      expect(stored.sent[0]?.expectedVersion).toBe(7)
+    })
+  })
+
+  describe('reloading after a conflict', () => {
+    it('takes the draft, the stored oracle and the version from one read', async () => {
+      let reads = 0
+      const stored = recorder((sent) =>
+        sent.length === 1 ? Response.json(changed, { status: 409 }) : Response.json(probable),
+      )
+      const { user } = await openEditor('fate', {
+        [`GET ${base}/oracles`]: () => Response.json(++reads === 1 ? oracles : probable),
+        [put]: stored.handler,
+      })
+
+      await replace(user, 'Level 1 label', 'Even')
+      await user.click(save())
+      await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+      await waitFor(() => {
+        expect(screen.getByLabelText('Level 2 label')).toHaveValue('Probable')
+      })
+      expect(screen.getByLabelText('Level 1 label')).toHaveValue('50/50')
+      expect(save()).toBeDisabled()
+      await replace(user, 'Name', 'Luck')
+      await user.click(save())
+
+      await waitFor(() => {
+        expect(stored.sent).toHaveLength(2)
+      })
+      expect(stored.sent.map(({ expectedVersion }) => expectedVersion)).toEqual([7, 8])
+    })
+
+    it('keeps the draft and the conflict when the oracle is gone from the latest read', async () => {
+      let reads = 0
+      const { user } = await openEditor('fate', {
+        [`GET ${base}/oracles`]: () =>
+          Response.json(++reads === 1 ? oracles : { ...oracles, version: 8, likelihood: [] }),
+        [put]: json(changed, 409),
+      })
+
+      await replace(user, 'Name', 'Luck')
+      await user.click(save())
+      await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+
+      expect(await screen.findByText(/no longer exists/)).toBeInTheDocument()
+      expect(screen.getByLabelText('Name')).toHaveValue('Luck')
+      expect(screen.getByRole('button', { name: 'Reload the latest version' })).toBeInTheDocument()
+    })
+  })
+
+  describe('leaving', () => {
+    it('asks when the form is dirty: Stay keeps the draft, Leave goes', async () => {
+      const { user, router } = await openEditor('fate', draftRead)
+
+      await replace(user, 'Name', 'Luck')
+      await user.click(back())
+      expect(await screen.findByRole('dialog', { name: 'Leave without saving?' })).toBeVisible()
+      await user.click(screen.getByRole('button', { name: 'Stay' }))
+
+      await waitFor(() => {
+        expect(dialog()).not.toBeInTheDocument()
+      })
+      expect(screen.getByLabelText('Name')).toHaveValue('Luck')
+      expect(router.state.location.pathname).toBe(
+        '/studio/game-systems/my-draft/likelihood-oracles/fate',
+      )
+
+      await user.click(back())
+      await user.click(await screen.findByRole('button', { name: 'Leave without saving' }))
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+      })
+    })
+
+    it('leaves a clean form without asking', async () => {
+      const { user, router } = await openEditor('fate', draftRead)
+
+      await user.click(back())
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+      })
+      expect(dialog()).not.toBeInTheDocument()
+    })
+
+    it('does not ask for a rename save, which opens the renamed oracle', async () => {
+      const stored = recorder(() =>
+        Response.json(saved([{ ...fate, definition: { ...fate.definition, key: 'luck' } }])),
+      )
+      const { user, router } = await openEditor('fate', { [put]: stored.handler })
+
+      await replace(user, 'Key', 'luck')
+      await user.click(save())
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe(
+          '/studio/game-systems/my-draft/likelihood-oracles/luck',
+        )
+      })
+      expect(dialog()).not.toBeInTheDocument()
+    })
+  })
+
+  it('carries the version of a test answer’s own save into the next save', async () => {
+    const stored = recorder(() => Response.json(saved([fate])))
+    const { user } = await openEditor('fate', {
+      [put]: stored.handler,
+      [`POST ${base}/likelihood-oracles/fate/test-answers`]: json(fateAnswer),
+    })
+
+    await replace(user, 'Name', 'Luck')
+    await user.click(screen.getByRole('button', { name: 'Ask' }))
+    await screen.findByRole('list', { name: 'Test answer results' })
+    await replace(user, 'Level 1 label', 'Even')
+    await user.click(save())
+
+    await waitFor(() => {
+      expect(stored.sent).toHaveLength(2)
+    })
+    expect(stored.sent.map(({ expectedVersion }) => expectedVersion)).toEqual([7, 8])
   })
 })

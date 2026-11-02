@@ -19,6 +19,7 @@ import { GuidedControls } from '../flow/GuidedParts'
 import { GuidedPanel } from '../flow/GuidedPanel'
 import { useFlowRunCommand } from '../flow/useFlowRun'
 import { useFlowView, type FlowView } from '../flow/useFlowView'
+import { useKeepPanelInPlace } from '../flow/useKeepPanelInPlace'
 import { Journal } from '../journal/Journal'
 import { NoteComposer } from '../journal/NoteComposer'
 import { useJournal, useRecordRoll } from '../journal/useJournal'
@@ -104,6 +105,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
   const [view, setView] = useFlowView(campaign)
   const trackers = visibleTrackers(campaign)
   const focused = campaign.flowRun !== null && view === 'focus'
+  const { journalRef, panelRef } = useKeepPanelInPlace(!focused)
   // Shared by the step card and the controls below the composer, so one pending state covers both.
   const command = useFlowRunCommand(campaign.id)
   const openList = (kind: ListKind) => {
@@ -142,9 +144,13 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
             <FocusPanel campaign={campaign} flowRun={campaign.flowRun} command={command} />
           ) : (
             <Section title="Journal" icon={<Feather />}>
-              <CampaignJournal campaign={campaign} />
+              <div ref={journalRef}>
+                <CampaignJournal campaign={campaign} />
+              </div>
               {campaign.flowRun !== null && (
-                <GuidedPanel campaign={campaign} flowRun={campaign.flowRun} command={command} />
+                <div ref={panelRef}>
+                  <GuidedPanel campaign={campaign} flowRun={campaign.flowRun} command={command} />
+                </div>
               )}
             </Section>
           )}

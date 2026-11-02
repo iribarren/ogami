@@ -52,7 +52,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T5b | 2 | Slice 1 review findings (see Reviews) | delegated writer (slice 2) | [x] | — |
 | T6 | 2 | S26: Duplicate a sheet field | delegated writer (slice 2) | [x] | — |
 | T7 | 2 | S26: bulk paste sheet fields | delegated writer (slice 2) | [x] | — |
-| T8 | 2 | S1, S14: condition band cap 100 in domain, translator and contract; live counter on check and condition band labels | delegated writer (slice 2) | [ ] | — |
+| T8 | 2 | S1, S14: condition band cap 100 in domain, translator and contract; live counter on check and condition band labels | delegated writer (slice 2) | [x] | — |
 | T9 | 2 | S11: reorder likelihood oracle levels; test that the backend keeps the order | delegated writer (slice 2) | [x] | — |
 | T10 | 2 | S16: a check set's per-band effects easier to reach | delegated writer (slice 2) | [x] | — |
 | T11 | 2 | S22, S23: a new phase's key follows its name; a hint that a phase needs a Scene Type | delegated writer (slice 2) | [x] | — |
@@ -77,6 +77,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: T12 done, frontend-only: the checks read model gives conditions fields apart from the others with no position, so `pushContext` takes the key order of the sheet (already read by the check editor) and sorts the cost's sheet fields by it; unlisted ones follow. No API change. No RED observed: tests written with the code.
 - 2026-11-02: T13 done, frontend-only: S17 a hint (`SETUP_NO_SHEET`, ADR 0042) under the effects of a Setup step or choice option that is offered no sheet kind; S21 the Add step menu says on `choice` that a suggested one needs a Skip option (the item keeps its accessible name); P17 `newStep('condition', steps, trackers)` preselects the draft's first tracker and adds a band besides Otherwise, a stored condition step with one band opens as stored (tested). No RED observed: tests written with the code.
 - 2026-11-02: T11 correction: a stored phase follows its name only when it is the new-flow placeholder (`PLACEHOLDER_PHASE`, key `main`, name `Main`, shared with `newFlowToItem`); any other stored key, even one equal to its name's slug, is never renamed. RED observed: the `setup`/`Setup` test failed against the first version; the page test I had changed is back to its original expectation.
+- 2026-11-02: T8 done: the condition band label cap is 100 in `Bands.php`, `GameSystemReleaseTranslator.php`, `docs/contracts/gamesystem-release.md` and `v2.schema.json` (the only copy of the schema); labels of 80 or fewer stay valid (the 80-character case is kept in the tests). New shared `CharCount` (`37/100`, destructive past the cap, same figures as text for assistive technology, typing never blocked) on the band label of `checks/BandsEditor.tsx` and `narrative/steps/BandsEditor.tsx` (through `TextField`'s new `limit`). RED observed: the 100/101 boundary tests failed (3 failures, 1 error) and the counter tests failed before the code.
 
 ## Reviews
 

@@ -91,3 +91,21 @@ describe('the band rows', () => {
     expect(screen.getByLabelText('Keys')).toHaveTextContent('three|two|four|five')
   })
 })
+
+describe('the band label counter (S1)', () => {
+  it('counts the characters of each band label against the cap of 100, red past it', () => {
+    render(<Harness />)
+
+    // One counter per band; "Band one" is 8 characters, "Band two" too.
+    expect(screen.getAllByText(/^\d+\/100$/)).toHaveLength(5)
+    expect(screen.getAllByText('8/100')).toHaveLength(2)
+    expect(screen.getAllByText('8 of 100 characters')).toHaveLength(2)
+    fireEvent.change(screen.getByLabelText('Band 1 label'), { target: { value: 'x'.repeat(101) } })
+
+    expect(screen.getByText('101/100')).toHaveClass('text-destructive')
+    expect(screen.getByLabelText('Band 1 label')).toHaveAccessibleDescription(
+      '101 of 100 characters (1 over)',
+    )
+    expect(screen.getAllByText('8/100')[0]).not.toHaveClass('text-destructive')
+  })
+})

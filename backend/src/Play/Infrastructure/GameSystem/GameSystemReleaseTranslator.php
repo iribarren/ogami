@@ -165,7 +165,7 @@ final readonly class GameSystemReleaseTranslator
     private const int MAX_CHECKS = 50;
     private const int MAX_CHECK_SET = 10;
     private const int MAX_CHECK_BANDS = 10;
-    private const int MAX_BAND_LABEL_LENGTH = 80;
+    private const int MAX_BAND_LABEL_LENGTH = 100;
     private const int MAX_CHECK_LABEL_LENGTH = 100;
     private const int MAX_CHECK_HINT_LENGTH = 500;
     private const int MAX_DIFFICULTY_LABEL_LENGTH = 60;

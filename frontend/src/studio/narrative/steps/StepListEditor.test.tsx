@@ -215,6 +215,25 @@ describe('the step items', () => {
     expect(screen.getByRole('menuitem', { name: 'choice' })).toBeInTheDocument()
   })
 
+  it('counts the characters of a condition band label against the cap of 100, red past it (S14)', async () => {
+    const user = userEvent.setup()
+    const condition = {
+      key: 'c',
+      kind: 'condition',
+      title: 'C',
+      tracker: 'heat',
+      bands: [{ upTo: 3, label: 'Low' }, { label: 'High' }],
+    }
+    render(<Harness stored={[condition]} />)
+    const band = within(card(1).getByRole('group', { name: 'Band 1' }))
+
+    expect(band.getByText('3 of 100 characters')).toBeInTheDocument()
+    expect(band.getByText('3/100')).not.toHaveClass('text-destructive')
+    expect(band.getByLabelText('Label')).toHaveAccessibleDescription(/3 of 100 characters/)
+    await replaceText(user, band.getByLabelText('Label'), 'x'.repeat(101))
+    expect(band.getByText('101/100')).toHaveClass('text-destructive')
+  })
+
   it('adds a condition step on the first tracker of the draft, with a band to fill in (P17)', async () => {
     const user = userEvent.setup()
     render(<Harness stored={[]} />)

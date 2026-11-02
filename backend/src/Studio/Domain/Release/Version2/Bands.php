@@ -19,7 +19,7 @@ final class Bands
 {
     public const int MAX_BANDS = 20;
     public const int MAX_LEVEL_LABEL_LENGTH = 100;
-    public const int MAX_BAND_LABEL_LENGTH = 80;
+    public const int MAX_BAND_LABEL_LENGTH = 100;
 
     private const array BAND = ['upTo' => false, 'label' => false, 'next' => false, 'effects' => false];
     private const array LEVEL = ['upTo' => false, 'label' => true];

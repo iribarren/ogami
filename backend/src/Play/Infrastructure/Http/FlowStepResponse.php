@@ -31,11 +31,11 @@ use OpenApi\Attributes as OA;
 final readonly class FlowStepResponse
 {
     /**
-     * @param list<FlowStepOptionResponse> $options
-     * @param list<string>                 $checks
-     * @param list<FactSlotResponse>       $fills
-     * @param list<ItemRefResponse>        $characters
-     * @param list<string>                 $inspiration
+     * @param list<FlowStepOptionResponse>     $options
+     * @param list<string>                     $checks
+     * @param list<FactSlotResponse>           $fills
+     * @param list<FlowCheckCharacterResponse> $characters
+     * @param list<string>                     $inspiration
      */
     private function __construct(
         #[OA\Property(example: 'slip-past')]
@@ -87,7 +87,7 @@ final readonly class FlowStepResponse
         #[OA\Property(
             description: 'The Characters who can roll the check step: those in the current Scene, outside a Scene those in the session party (check step); empty for the other kinds.',
             type: 'array',
-            items: new OA\Items(ref: new Model(type: ItemRefResponse::class)),
+            items: new OA\Items(ref: new Model(type: FlowCheckCharacterResponse::class)),
         )]
         public array $characters,
         #[OA\Property(
@@ -135,6 +135,6 @@ final readonly class FlowStepResponse
         $step = $view->step;
         $checkView = $view->check;
 
-        return new self($step->key, $view->kind->value, $view->title, $view->prompt, $view->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options, $pick, array_map(FactSlotResponse::fromSlot(...), $view->fills), $check, $checks, $checkView?->difficulty, $checkView->difficultyFixed ?? false, array_map(static fn (PickedItem $character): ItemRefResponse => ItemRefResponse::of($character->id, $character->name), $checkView->characters ?? []), $step instanceof PromptStep ? $step->inspiration : [], $step instanceof PromptStep && $step->changesSheet(), $view->pending instanceof PendingCheck ? FlowStepPendingResponse::fromPending($view->pending) : null, $shop);
+        return new self($step->key, $view->kind->value, $view->title, $view->prompt, $view->tip, $step->mandatory, $oracle, $likelihood, $table, $dice, $options, $pick, array_map(FactSlotResponse::fromSlot(...), $view->fills), $check, $checks, $checkView?->difficulty, $checkView->difficultyFixed ?? false, array_map(static fn (PickedItem $character): FlowCheckCharacterResponse => FlowCheckCharacterResponse::of($character->id, $character->name, $checkView?->poolSizes[$character->id] ?? null), $checkView->characters ?? []), $step instanceof PromptStep ? $step->inspiration : [], $step instanceof PromptStep && $step->changesSheet(), $view->pending instanceof PendingCheck ? FlowStepPendingResponse::fromPending($view->pending) : null, $shop);
     }
 }

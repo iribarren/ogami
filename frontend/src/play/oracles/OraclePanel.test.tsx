@@ -77,6 +77,14 @@ describe('OraclePanel', () => {
     })
   })
 
+  it('shows no placeholder in the optional question field, which has no default', () => {
+    renderPanel({})
+
+    expect(
+      within(oracleForm('Fate question')).getByLabelText('Question (optional)'),
+    ).not.toHaveAttribute('placeholder')
+  })
+
   it('leaves out an empty question and a cleared chaos factor', async () => {
     const sent: unknown[] = []
     renderPanel({

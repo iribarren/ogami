@@ -203,7 +203,6 @@ function LikelihoodOracleForm({
           value={question}
           maxLength={MAX_QUESTION_LENGTH}
           autoComplete="off"
-          placeholder="Is the door locked?"
           disabled={disabled}
           onChange={(event) => {
             setQuestion(event.target.value)

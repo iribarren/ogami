@@ -53,6 +53,34 @@ describe('CheckStepForm', () => {
     expect(onRoll).toHaveBeenCalledWith(expect.objectContaining({ situational: 2 }))
   })
 
+  it('shows the dice the selected Character would roll next to the pool formula', async () => {
+    const user = userEvent.setup()
+    const characters = [
+      { id: 'ada', name: 'Ada', poolSize: 6 },
+      { id: 'bo', name: 'Bo', poolSize: 1 },
+      { id: 'cy', name: 'Cy', poolSize: null },
+    ]
+    render(
+      <CheckStepForm
+        campaign={{ ...campaign, checks: [sneakCheck, gripCheck] }}
+        step={{ ...checkStep, check: 'sneak', characters }}
+        pending={false}
+        onRoll={() => undefined}
+      />,
+    )
+
+    expect(screen.queryByText(/rolls \d+ di/)).not.toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('Character'), 'Ada')
+    expect(screen.getByText('Ada rolls 6 dice')).toBeInTheDocument()
+    expect(
+      screen.getByText('Pool: Agility + Stealth − Physical d6, success on 5+'),
+    ).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('Character'), 'Bo')
+    expect(screen.getByText('Bo rolls 1 die')).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('Character'), 'Cy')
+    expect(screen.queryByText(/rolls \d+ di/)).not.toBeInTheDocument()
+  })
+
   describe('a check set', () => {
     const withSet = { ...campaign, checks: [sneakCheck, gripCheck] }
 

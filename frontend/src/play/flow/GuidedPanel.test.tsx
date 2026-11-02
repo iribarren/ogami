@@ -6,7 +6,7 @@ import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { alarmTracker, heatTracker, lostMineCampaign } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
-import { chosenWay } from '../journal/fixtures'
+import { chosenWay, flowOutcomeEntry } from '../journal/fixtures'
 import {
   atStep,
   atTheScenePick,
@@ -83,6 +83,54 @@ describe('the guided panel', () => {
     expect(card.getByText('Describe the first person.')).toBeInTheDocument()
     expect(card.getByText('Tip: Keep it short.')).toBeInTheDocument()
     expect(guide.getByText('Setup: Who walks in?')).toBeInTheDocument()
+  })
+
+  describe('the Flow outcome', () => {
+    it('shows what the Flow decided above the current step while it is the newest entry', async () => {
+      renderGuided(guided(atStep(promptStep)), {}, [chosenWay, flowOutcomeEntry])
+
+      const guide = await panel()
+      const outcome = within(await guide.findByRole('region', { name: 'Flow outcome' }))
+      expect(outcome.getByText('Strong hit')).toBeInTheDocument()
+      expect(outcome.getByText('Threat 3 → 4')).toBeInTheDocument()
+      expect(outcome.getByText('The phase ends after this scene')).toBeInTheDocument()
+      const card = guide.getByRole('region', { name: 'Current step: Who walks in?' })
+      expect(
+        outcome.getByText('Strong hit').compareDocumentPosition(card) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+    })
+
+    it('goes away once a later entry is recorded', async () => {
+      renderGuided(guided(atStep(promptStep)), {}, [flowOutcomeEntry, chosenWay])
+
+      await panel()
+      await screen.findByRole('region', { name: 'Current step: Who walks in?' })
+      expect(screen.queryByRole('region', { name: 'Flow outcome' })).not.toBeInTheDocument()
+    })
+
+    it('shows nothing for a journal with no Flow outcome or no entries', async () => {
+      renderGuided(guided(atStep(promptStep)), {}, [chosenWay])
+
+      await screen.findByRole('region', { name: 'Current step: Who walks in?' })
+      expect(screen.queryByRole('region', { name: 'Flow outcome' })).not.toBeInTheDocument()
+    })
+
+    it('shows when the outcome left no current step', async () => {
+      renderGuided(guided(inOpenPlay), {}, [flowOutcomeEntry])
+
+      const guide = await panel()
+      expect(await guide.findByRole('region', { name: 'Flow outcome' })).toBeInTheDocument()
+      expect(guide.queryByRole('region', { name: /^Current step/ })).not.toBeInTheDocument()
+    })
+
+    it('shows when the outcome ended the flow', async () => {
+      renderGuided(guided({ ...inOpenPlay, status: 'completed' }), {}, [flowOutcomeEntry])
+
+      const guide = await panel()
+      expect(await guide.findByRole('region', { name: 'Flow outcome' })).toBeInTheDocument()
+      expect(guide.getByText('Flow complete. Play on freely.')).toBeInTheDocument()
+    })
   })
 
   it.each([

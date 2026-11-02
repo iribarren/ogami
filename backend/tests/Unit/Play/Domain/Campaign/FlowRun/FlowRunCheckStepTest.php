@@ -122,6 +122,35 @@ final class FlowRunCheckStepTest extends FlowRunTestCase
     }
 
     #[Test]
+    public function aPoolCheckStepShowsThePoolEachCharacterWouldRoll(): void
+    {
+        $release = CheckStepReleases::release(CheckStepReleases::step('grit'));
+
+        $check = $this->inScene($release)->flowRunView($release)?->step?->check;
+
+        self::assertSame(['ada' => 3], $check?->poolSizes);
+    }
+
+    #[Test]
+    public function aStepWithoutAPoolOrWithACheckSetShowsNoPoolSize(): void
+    {
+        $dice = CheckStepReleases::release(CheckStepReleases::step('skill'));
+        $set = CheckStepReleases::release(CheckStepReleases::step(['grit', 'nerve']));
+
+        self::assertSame([[], []], [$this->inScene($dice)->flowRunView($dice)?->step?->check?->poolSizes, $this->inScene($set)->flowRunView($set)?->step?->check?->poolSizes]);
+    }
+
+    #[Test]
+    public function aStepWithNoCharactersInTheSceneStillRenders(): void
+    {
+        $release = CheckStepReleases::release(CheckStepReleases::step('grit'));
+        $campaign = $this->campaign($release);
+        $campaign->editCurrentSceneCast([], []);
+
+        self::assertSame([[], []], [$campaign->flowRunView($release)?->step?->check?->characters, $campaign->flowRunView($release)?->step?->check?->poolSizes]);
+    }
+
+    #[Test]
     public function inAHookTheViewShowsTheSessionsParty(): void
     {
         $release = CheckStepReleases::release(CheckStepReleases::step(), true);

@@ -2553,6 +2553,20 @@ export interface components {
              */
             hint: string | null;
         };
+        FlowCheckCharacterResponse: {
+            /**
+             * @description The id of the Character.
+             * @example 0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b
+             */
+            id: string;
+            /** @example Ada */
+            name: string;
+            /**
+             * @description The dice the Character would roll for the step's pool check before any situational modifier, worked out as the roll does (kept in 1..100); null when the step has a check set (the pool depends on the check picked), the check rolls no pool, or the pool cannot be evaluated now.
+             * @example 6
+             */
+            poolSize: number | null;
+        };
         FlowStepPendingResponse: {
             /**
              * @description The journal entry of the roll, as the journal lists it.
@@ -2639,7 +2653,7 @@ export interface components {
             /** @description Whether the check step fixes the Check difficulty (a literal, a Tracker or a Formula), even when it cannot be evaluated now (difficulty is then null and answering the step is refused); false when the player sets it and for the other kinds. */
             difficultyFixed: boolean;
             /** @description The Characters who can roll the check step: those in the current Scene, outside a Scene those in the session party (check step); empty for the other kinds. */
-            characters: components["schemas"]["ItemRefResponse"][];
+            characters: components["schemas"]["FlowCheckCharacterResponse"][];
             /** @description The keys of the oracle tables the prompt step offers as inspiration, in order; empty for the other kinds and for a prompt that offers none. The player may roll them; they never change the step. */
             inspiration: string[];
             /** @description Whether completing the step changes a Character's sheet, so the answer must name the Character with "characterId" (prompt step); false for the other kinds. A choice step says it for each option instead. */

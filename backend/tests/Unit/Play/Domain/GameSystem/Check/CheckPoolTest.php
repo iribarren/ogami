@@ -241,6 +241,37 @@ final class CheckPoolTest extends TestCase
     }
 
     #[Test]
+    public function thePoolSizeIsTheOneARollWithoutSituationalModifierRolls(): void
+    {
+        self::assertSame(6, $this->formulaPool()->poolSize($this->sheet()));
+        self::assertSame(2, $this->check(new CheckPool(2, 6, 5))->poolSize($this->sheet()));
+    }
+
+    #[Test]
+    public function aPoolSizeOfZeroOrBelowIsOneDieLikeTheRoll(): void
+    {
+        $check = $this->check(new CheckPool(Formula::fromString('{zero} - 3'), 6, 5));
+
+        self::assertSame(1, $check->poolSize($this->sheet()));
+        self::assertSame(1, $check->perform(new ScriptedRandomNumberGenerator(6), $this->sheet(), null, 0)->pool?->roll->size());
+    }
+
+    #[Test]
+    public function aPoolSizeThatCannotBeEvaluatedIsNullAndDoesNotThrow(): void
+    {
+        self::assertNull($this->check(new CheckPool(Formula::fromString('{hands} / {zero}'), 6, 5))->poolSize($this->sheet()));
+        self::assertNull($this->check(new CheckPool(Formula::fromString('{missing} + 1'), 6, 5))->poolSize($this->sheet()));
+    }
+
+    #[Test]
+    public function aCheckWithoutAPoolHasNoPoolSize(): void
+    {
+        $check = new Check('skill', 'Skill', null, DiceExpression::fromString('1d10'), null, null, [new CheckBand('all', 'All')]);
+
+        self::assertNull($check->poolSize($this->sheet()));
+    }
+
+    #[Test]
     #[DataProvider('brokenPools')]
     public function aPoolOutOfBoundsIsRefused(int|Formula $count, int $sides, int $successAt): void
     {

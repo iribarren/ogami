@@ -141,7 +141,7 @@ export const checkStep = step({
   title: 'Slip past the guard',
   prompt: 'Roll to get by unseen.',
   check: skillCheck.key,
-  characters: [{ id: viCharacter.id, name: viCharacter.name }],
+  characters: [{ id: viCharacter.id, name: viCharacter.name, poolSize: null }],
 })
 
 /** A `check` step offering the check set Sneak and Grip (pool checks): the player picks which one Vi rolls. */
@@ -151,7 +151,7 @@ export const checkSetStep = step({
   title: 'Slip past the guard',
   prompt: 'Roll to get by unseen.',
   checks: [sneakCheck.key, gripCheck.key],
-  characters: [{ id: viCharacter.id, name: viCharacter.name }],
+  characters: [{ id: viCharacter.id, name: viCharacter.name, poolSize: null }],
 })
 
 /** `checkStep` rolling the pushable "Grit": Vi's roll, `gritEntry`, pends until Keep or Push. */
@@ -161,7 +161,7 @@ export const pendingGritStep = step({
   title: 'Slip past the guard',
   prompt: 'Roll to get by unseen.',
   check: gritCheck.key,
-  characters: [{ id: viCharacter.id, name: viCharacter.name }],
+  characters: [{ id: viCharacter.id, name: viCharacter.name, poolSize: null }],
   pending: { entryId: gritEntry.id, characterId: viCharacter.id },
 })
 

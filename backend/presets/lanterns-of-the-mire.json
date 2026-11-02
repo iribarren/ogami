@@ -384,7 +384,7 @@
                     "key": "table-1",
                     "kind": "table",
                     "title": "Find a clue",
-                    "prompt": "Roll for what you find, then say how it fits the mystery so far.",
+                    "prompt": "Roll for what you find, then decide how it fits the mystery so far.",
                     "mandatory": true,
                     "table": "a-clue"
                 }

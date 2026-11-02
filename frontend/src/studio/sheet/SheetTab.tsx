@@ -30,6 +30,7 @@ import {
 } from '@/shared/ui/dialog'
 
 import { StudioError } from '../useGameSystems'
+import { PasteFieldsDialog } from './PasteFieldsDialog'
 import { SheetFieldDialog } from './SheetFieldDialog'
 import type { LayoutDraft } from './layoutDraft'
 import { SheetLayoutPanel } from './SheetLayoutPanel'
@@ -120,7 +121,8 @@ function SheetFields({
             <UserRound />
           </IconTile>
           <h2 className="font-heading text-panel-title">Sheet fields</h2>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <PasteFieldsDialog gameSystemKey={gameSystemKey} sheet={data} />
             <SheetFieldDialog
               gameSystemKey={gameSystemKey}
               sheet={data}

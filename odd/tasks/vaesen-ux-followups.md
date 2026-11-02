@@ -51,7 +51,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T5 | 1 | P13: the cast editor offers the previous Scene's NPCs for one-click adding | delegated writer (slice 1) | [x] | `df706859` |
 | T5b | 2 | Slice 1 review findings (see Reviews) | delegated writer (slice 2) | [x] | — |
 | T6 | 2 | S26: Duplicate a sheet field | delegated writer (slice 2) | [x] | — |
-| T7 | 2 | S26: bulk paste sheet fields | delegated writer (slice 2) | [ ] | — |
+| T7 | 2 | S26: bulk paste sheet fields | delegated writer (slice 2) | [x] | — |
 | T8 | 2 | S1, S14: condition band cap 100 in domain, translator and contract; live counter on check and condition band labels | delegated writer (slice 2) | [ ] | — |
 | T9 | 2 | S11: reorder likelihood oracle levels; test that the backend keeps the order | delegated writer (slice 2) | [ ] | — |
 | T10 | 2 | S16: a check set's per-band effects easier to reach | delegated writer (slice 2) | [ ] | — |
@@ -70,6 +70,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: T5 done, frontend-only: every Scene in the campaign view already carries its cast, so no endpoint was added. `previousSceneCast` takes the nearest earlier non-hook Scene of the session, or the last of an earlier session for a session's first Scene (a hook Scene has no cast of its own). The cast editor lists those NPCs that are not in the cast and still exist in the campaign, closed ones marked; one click sends the whole cast through the existing mutation. Scene start and ADR 0018 unchanged. RED: the two positive component tests failed before the change.
 - 2026-11-02: T5b done: the pool size label adds "(before the extra dice)" once a non-zero modifier is typed (the size is the server's, so the form does not clamp it itself); the two Play tests wait for the journal entry before asserting absence; the empty cast assertion is in `waitFor`; the API test rolls and asserts the recorded `4d6`. No RED observed: the modifier test was written with the change; the other three are test-only hardening and passed first run.
 - 2026-11-02: T6 done, frontend-only: a Duplicate row action on each readable sheet field opens the field dialog as a new, unsaved field (`duplicateField`: key `{key}-copy[-n]`, label `{label} (copy)`, both cut to the publisher's 64 and 100 characters); nothing is sent until Save. No RED observed: tests were written with the code and passed first run.
+- 2026-11-02: T7 done, frontend-only: `Paste fields` dialog in the sheet tab (`pasteFields.ts` parser, `PasteFieldsDialog`). One name per line is a label, the key is its slug (cut to 64); shared type (number, text, list), group and a number's bounds; per-line refusal of a keyless name, a name over 100, a key of the sheet or an earlier line, before anything is sent. Fields go one by one through `useSaveSheetField` with the version each answer returned; a failure stops the run, says how many were added and keeps the lines not added; a 409 offers the reload. No RED observed: tests were written with the code and passed once the fixtures were right.
 
 ## Reviews
 

@@ -71,6 +71,7 @@ Forecasts include tests and docs. Hard ceiling ~1,700 per slice. No API change.
 
 - 2026-11-02: Explored; S21's exact cause cannot be proved without the worker's network log. Five client paths found, none on the server. RED tests are the reproduction.
 - 2026-11-02: T1 done; RED: the create test found no editor form and the URL on the list. Create now opens the editor; the `selected` state is gone.
+- 2026-11-02: T2 done; RED: 5 of 8 new tests failed with no guard (no dialog; the pending-save test fails without the mounted check). New `UnsavedChangesGuard` on the Scene Type editor only.
 
 ## Reviews
 

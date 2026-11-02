@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { ambush, draft, narrativeScenes } from '../../fixtures'
+import { ambush, draft, narrativeScenes, validDraft } from '../../fixtures'
+import { narrativeKey } from '../useGameSystemNarrative'
 
 // The step cards' Requirement radios sit inside this page's form, where Radix measures them.
 vi.stubGlobal(
@@ -617,5 +618,162 @@ describe('a Scene Type that cannot be opened', () => {
     })
 
     expect(await screen.findByRole('alert')).toHaveTextContent('does not exist')
+  })
+})
+
+describe('leaving with unsaved changes', () => {
+  const dialog = () => screen.queryByRole('dialog', { name: 'Leave without saving?' })
+  const back = () => screen.getByRole('link', { name: 'Back to my-draft' })
+  // The GameSystem page the person leaves to.
+  const draftRead = {
+    [`GET ${base}`]: json(draft),
+    [`GET ${base}/validation`]: json(validDraft),
+  }
+
+  it('asks first when the form is dirty, and stays on the page', async () => {
+    const { user, router } = await openEditor('ambush', draftRead)
+
+    await replace(user, screen.getByLabelText('Name'), 'Trap')
+    await user.click(back())
+
+    expect(await screen.findByRole('dialog', { name: 'Leave without saving?' })).toHaveTextContent(
+      'Your changes have not been saved.',
+    )
+    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/scene-types/ambush')
+  })
+
+  it('keeps the draft on Stay and on Escape', async () => {
+    const { user, router } = await openEditor('ambush', draftRead)
+
+    await replace(user, screen.getByLabelText('Name'), 'Trap')
+    await user.click(back())
+    await user.click(await screen.findByRole('button', { name: 'Stay' }))
+    await waitFor(() => {
+      expect(dialog()).not.toBeInTheDocument()
+    })
+    expect(screen.getByLabelText('Name')).toHaveValue('Trap')
+
+    await user.click(back())
+    await screen.findByRole('dialog', { name: 'Leave without saving?' })
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(dialog()).not.toBeInTheDocument()
+    })
+    expect(screen.getByLabelText('Name')).toHaveValue('Trap')
+    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/scene-types/ambush')
+  })
+
+  it('leaves on Leave without saving', async () => {
+    const { user, router } = await openEditor('ambush', draftRead)
+
+    await replace(user, screen.getByLabelText('Name'), 'Trap')
+    await user.click(back())
+    await user.click(await screen.findByRole('button', { name: 'Leave without saving' }))
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+    })
+    expect(dialog()).not.toBeInTheDocument()
+  })
+
+  it('leaves a clean form without asking', async () => {
+    const { user, router } = await openEditor('ambush', draftRead)
+
+    await user.click(back())
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+    })
+    expect(dialog()).not.toBeInTheDocument()
+  })
+
+  it('leaves a just-saved form without asking', async () => {
+    const saved = recorder(() => Response.json(withScene({ ...ambush, name: 'Trap' })))
+    const { user, router } = await openEditor('ambush', { ...draftRead, [put]: saved.handler })
+
+    await replace(user, screen.getByLabelText('Name'), 'Trap')
+    await user.click(save())
+    expect(await screen.findByRole('status')).toHaveTextContent(/^Saved at/)
+    await user.click(back())
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+    })
+    expect(dialog()).not.toBeInTheDocument()
+  })
+
+  it('offers no dialog for a rename save, which opens the renamed Scene Type', async () => {
+    const saved = recorder(() => Response.json(withScene({ ...ambush, key: 'trap' })))
+    const { user, router } = await openEditor('ambush', { [put]: saved.handler })
+
+    await replace(user, sceneKey(), 'trap')
+    await user.click(save())
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/scene-types/trap')
+    })
+    expect(dialog()).not.toBeInTheDocument()
+  })
+
+  it('keeps what a pending save stores when the person leaves, and does not pull them back after a rename', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const renamed = { ...ambush, key: 'trap' }
+    const { user, router, queryClient } = await openEditor('ambush', {
+      ...draftRead,
+      [put]: async () => {
+        await gate
+        return Response.json(withScene(renamed, 9))
+      },
+    })
+
+    await replace(user, sceneKey(), 'trap')
+    await user.click(save())
+    await user.click(back())
+    await user.click(await screen.findByRole('button', { name: 'Leave without saving' }))
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+    })
+    // The editor has to be gone, not only the location changed, before the save is let through.
+    await waitFor(() => {
+      expect(screen.queryByRole('form', { name: 'Scene Type' })).not.toBeInTheDocument()
+    })
+    release()
+
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryData<typeof narrativeScenes>(narrativeKey('my-draft'))?.version,
+      ).toBe(9)
+    })
+    expect(
+      queryClient
+        .getQueryData<typeof narrativeScenes>(narrativeKey('my-draft'))
+        ?.sceneTypes.map(({ key }) => key),
+    ).toContain('trap')
+    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+  })
+
+  it('drops an added step only after the person confirms leaving', async () => {
+    const { user, router } = await openEditor('quiet', draftRead)
+
+    await user.click(list('Closing').getByRole('button', { name: 'Add step' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'prompt' }))
+    expect(list('Closing').getByRole('group', { name: 'Step 1' })).toBeInTheDocument()
+    await user.click(back())
+    await user.click(await screen.findByRole('button', { name: 'Stay' }))
+    expect(list('Closing').getByRole('group', { name: 'Step 1' })).toBeInTheDocument()
+
+    await user.click(back())
+    await user.click(await screen.findByRole('button', { name: 'Leave without saving' }))
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+    })
+    await user.click(await screen.findByRole('link', { name: 'Scene Types' }))
+    await user.click(await screen.findByRole('link', { name: 'Quiet' }))
+
+    await screen.findByRole('form', { name: 'Scene Type' })
+    expect(list('Closing').queryByRole('group', { name: 'Step 1' })).not.toBeInTheDocument()
   })
 })

@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type SubmitEvent } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type SubmitEvent } from 'react'
 import { BookOpen, List, RotateCcw } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 
@@ -8,6 +8,7 @@ import { IconTile } from '@/shared/ui/icon-tile'
 import { SaveState, type SaveStateValue } from '@/shared/ui/save-state'
 
 import { StudioError } from '../../useGameSystems'
+import { UnsavedChangesGuard } from '../../UnsavedChangesGuard'
 import { useGameSystemChecks } from '../../checks/useGameSystemChecks'
 import { useGameSystemSheet } from '../../sheet/useGameSystemSheet'
 import { TextField } from '../TextField'
@@ -63,6 +64,15 @@ export function SceneTypeEditor({
   const save = useSaveNarrativeItem(gameSystemKey)
   const latest = useGameSystemNarrative(gameSystemKey)
   const navigate = useNavigate()
+  // False once the editor is gone: a save still pending then must not navigate the person back here.
+  const mounted = useRef(false)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  const dirty = JSON.stringify(draft) !== baseline
   // Kept while the narrative is the same, so the step cards below can skip renders.
   // The checks say which special results a check step may branch on; until they load, none is offered.
   const checks = useGameSystemChecks(gameSystemKey)
@@ -108,12 +118,14 @@ export function SceneTypeEditor({
       })
       return
     }
-    if (key !== current) {
+    if (key !== current && mounted.current) {
       try {
         await navigate({
           to: '/studio/game-systems/$key/scene-types/$sceneType',
           params: { key: gameSystemKey, sceneType: key },
           replace: true,
+          // The blocker may still see the draft as unsaved right after the save.
+          ignoreBlocker: true,
         })
       } catch {
         // The save went through; if the router refuses, the URL decides what the page shows.
@@ -129,7 +141,7 @@ export function SceneTypeEditor({
     ? { kind: 'saving' }
     : errors > 0
       ? { kind: 'failed', errors }
-      : JSON.stringify(draft) !== baseline
+      : dirty
         ? { kind: 'unsaved' }
         : savedAt === null
           ? null
@@ -170,6 +182,7 @@ export function SceneTypeEditor({
         void submit(event)
       }}
     >
+      <UnsavedChangesGuard dirty={dirty} />
       <section aria-labelledby={`${id}-details`} className="panel">
         <div className="panel-head">
           <IconTile size="sm">

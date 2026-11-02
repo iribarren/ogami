@@ -56,7 +56,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|---|
 | T1 | 1 | G1, G2, G4: oracle table editor keeps what it read, guarded, and waits for a refetch on opening | delegated writer (Sonnet): 2+ non-trivial files | [x] | |
 | T2 | 1 | G1, G2, G4: likelihood oracle editor, the same | delegated writer | [x] | |
-| T3 | 1 | G2, G3, G4: Flow editor reaches the Scene Type editor's level | delegated writer | [ ] | |
+| T3 | 1 | G2, G3, G4: Flow editor reaches the Scene Type editor's level | delegated writer | [x] | |
 | T4 | 1 | G5: a read in flight cannot overwrite a save in any section | delegated writer | [ ] | |
 | T5 | 1 | G6: `FlowsTab` handles a refused navigation | delegated writer | [ ] | |
 | T6 | 2 | G7: guard option for a tab change | delegated writer | [ ] | |
@@ -82,6 +82,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: Explored; G1 confirmed by reading `TableEditor.tsx:139`, not yet reproduced. RED tests are the reproduction.
 - 2026-11-02: T1 done. RED: 7 new tests failed (stale version sent, clean form read dirty by a refetch, form swapped out when its table left the cache, no loading wait, no guard); reload-from-one-read, clean leave, rename and Test roll tests passed at once. `TableEditor` now holds `readAt` and the stored table; the page fills it once.
 - 2026-11-02: T2 done. RED: 7 new tests failed, the same gaps as T1; the reload, clean leave, rename and test-answer tests passed at once. The two editors share no new helper.
+- 2026-11-02: T3 done. RED: 7 of 8 new tests failed (no guard, no pending-rename mounted check, no reload warning, "Saved at" kept on reload and lost on rename, no refetch wait); the `?node=` no-prompt, clean leave and rename-no-dialog tests passed at once.
 
 ## Reviews
 

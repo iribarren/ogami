@@ -5,7 +5,8 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { draft as gameSystem, narrativeFlows } from '../../fixtures'
+import { draft as gameSystem, narrativeFlows, validDraft } from '../../fixtures'
+import { narrativeKey } from '../useGameSystemNarrative'
 import { SelectionEditor } from './SelectionEditor'
 import { typeText } from '@/test/typeText'
 
@@ -1621,5 +1622,244 @@ describe('the messages about an oracle selection', () => {
     )
     expect(screen.getByText('Another message.')).toBeInTheDocument()
     expect(screen.getAllByText('unknown oracle table')).toHaveLength(1)
+  })
+})
+
+describe('losing a draft', () => {
+  const draftRead = {
+    [`GET ${base}`]: json(gameSystem),
+    [`GET ${base}/validation`]: json(validDraft),
+  }
+  const newer = { ...heist, name: 'Changed elsewhere' }
+  const dialog = () => screen.queryByRole('dialog', { name: 'Leave without saving?' })
+  const back = () => screen.getByRole('link', { name: 'Back to my-draft' })
+
+  /** Holds the save's answer until `release`, so the person can act meanwhile. */
+  function held(respond: () => Response) {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    return {
+      release: () => {
+        release()
+      },
+      handler: async () => {
+        await gate
+        return respond()
+      },
+    }
+  }
+
+  describe('leaving', () => {
+    it('asks when the form is dirty: Stay keeps the draft, Leave goes', async () => {
+      const { user, router } = await openEditor('heist', draftRead)
+
+      await replace(user, flowName(), 'Mine')
+      await user.click(back())
+      expect(await screen.findByRole('dialog', { name: 'Leave without saving?' })).toBeVisible()
+      await user.click(screen.getByRole('button', { name: 'Stay' }))
+
+      await waitFor(() => {
+        expect(dialog()).not.toBeInTheDocument()
+      })
+      expect(flowName()).toHaveValue('Mine')
+      expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/flows/heist')
+
+      await user.click(back())
+      await user.click(await screen.findByRole('button', { name: 'Leave without saving' }))
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+      })
+    })
+
+    it('leaves a clean form without asking', async () => {
+      const { user, router } = await openEditor('heist', draftRead)
+
+      await user.click(back())
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+      })
+      expect(dialog()).not.toBeInTheDocument()
+    })
+
+    it('does not ask when a dirty form selects another node, which only changes the search', async () => {
+      const { user, router } = await openEditor('heist', draftRead)
+
+      await replace(user, flowName(), 'Mine')
+      await pickPhase(user, 2)
+
+      await waitFor(() => {
+        expect(router.state.location.search).toEqual({ node: 'phases.1' })
+      })
+      expect(dialog()).not.toBeInTheDocument()
+      expect(current()).toHaveAccessibleName(/^2\. The job/)
+    })
+
+    it('does not ask for a rename save, which opens the renamed flow', async () => {
+      const saved = recorder(() => Response.json(withHeist({ ...heist, key: 'big-heist' }, 9)))
+      const { user, router } = await openEditor('heist', { [put]: saved.handler })
+
+      await replace(user, flowKey(), 'big-heist')
+      await user.click(save())
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/flows/big-heist')
+      })
+      expect(dialog()).not.toBeInTheDocument()
+    })
+
+    it('does not pull the person back after a rename save they left behind', async () => {
+      const renamed = withHeist({ ...heist, key: 'big-heist' }, 9)
+      const pending = held(() => Response.json(renamed))
+      const { user, router, queryClient } = await openEditor('heist', {
+        ...draftRead,
+        [put]: pending.handler,
+      })
+
+      await replace(user, flowKey(), 'big-heist')
+      await user.click(save())
+      await user.click(back())
+      await user.click(await screen.findByRole('button', { name: 'Leave without saving' }))
+      await waitFor(() => {
+        expect(screen.queryByRole('form', { name: 'Flow' })).not.toBeInTheDocument()
+      })
+      pending.release()
+
+      await waitFor(() => {
+        expect(queryClient.getQueryData<typeof renamed>(narrativeKey('my-draft'))?.version).toBe(9)
+      })
+      expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft')
+    })
+  })
+
+  describe('a conflict', () => {
+    it('says that Reload replaces unsaved edits', async () => {
+      const { user } = await openEditor('heist', { [put]: json(changed, 409) })
+
+      expect(screen.queryByText(/Reloading replaces/)).not.toBeInTheDocument()
+      await replace(user, flowName(), 'Mine')
+      await user.click(save())
+
+      expect(await screen.findByText(/Reloading replaces your unsaved edits/)).toHaveTextContent(
+        'Reloading replaces your unsaved edits with the latest stored flow.',
+      )
+    })
+
+    it('clears "Saved at" on a reload, since the replaced draft was not saved by this person', async () => {
+      let reads = 0
+      const saved = recorder((sent) =>
+        sent.length === 1
+          ? Response.json(withHeist({ ...heist, name: 'Mine' }, 6))
+          : Response.json(changed, { status: 409 }),
+      )
+      const { user } = await openEditor('heist', {
+        [`GET ${base}/narrative`]: () =>
+          Response.json(++reads === 1 ? narrativeFlows : withHeist(newer, 7)),
+        [put]: saved.handler,
+      })
+
+      await replace(user, flowName(), 'Mine')
+      await user.click(save())
+      expect(await screen.findByRole('status')).toHaveTextContent(/^Saved at/)
+      await replace(user, flowName(), 'Mine again')
+      await user.click(save())
+      await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+
+      await waitFor(() => {
+        expect(flowName()).toHaveValue('Changed elsewhere')
+      })
+      expect(screen.queryByText(/Saved at/)).not.toBeInTheDocument()
+    })
+  })
+
+  it('keeps "Saved at" through the remount a rename save causes', async () => {
+    const saved = recorder(() => Response.json(withHeist({ ...heist, key: 'big-heist' }, 9)))
+    const { user, router } = await openEditor('heist', { [put]: saved.handler })
+
+    await replace(user, flowKey(), 'big-heist')
+    await user.click(save())
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/flows/big-heist')
+    })
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/^Saved at/)
+  })
+
+  describe('opening from a cache that may be stale', () => {
+    /** Opens heist, leaves, and comes back to a stale cache whose read is held until `settle`. */
+    async function reopenWhileRefetching(answer: () => Response) {
+      let reads = 0
+      let release: () => void = () => undefined
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const saved = recorder(() => Response.json(withHeist(newer, 7)))
+      const opened = await openEditor('heist', {
+        ...draftRead,
+        [`GET ${base}/narrative`]: async () => {
+          if (++reads === 1) {
+            return Response.json(narrativeFlows)
+          }
+          await gate
+          return answer()
+        },
+        [put]: saved.handler,
+      })
+      await opened.user.click(back())
+      await waitFor(() => {
+        expect(screen.queryByRole('form', { name: 'Flow' })).not.toBeInTheDocument()
+      })
+      await opened.queryClient.invalidateQueries({
+        queryKey: narrativeKey('my-draft'),
+        refetchType: 'none',
+      })
+      await act(() =>
+        opened.router.navigate({
+          to: '/studio/game-systems/$key/flows/$flow',
+          params: { key: 'my-draft', flow: 'heist' },
+        }),
+      )
+      return { ...opened, saved, settle: release }
+    }
+
+    it('shows what the server holds, and saves with its version', async () => {
+      const { user, saved, settle } = await reopenWhileRefetching(() =>
+        Response.json(withHeist(newer, 6)),
+      )
+
+      expect(screen.getByText('Loading the flow…')).toBeInTheDocument()
+      settle()
+      await waitFor(() => {
+        expect(flowName()).toHaveValue('Changed elsewhere')
+      })
+      await replace(user, flowName(), 'Mine')
+      await user.click(save())
+
+      await waitFor(() => {
+        expect(saved.sent).toHaveLength(1)
+      })
+      expect(saved.sent[0]?.expectedVersion).toBe(6)
+    })
+
+    it('opens from the cache when the read fails, so a save still answers with a conflict', async () => {
+      const { user, saved, settle } = await reopenWhileRefetching(() =>
+        Response.json({ error: 'Gone' }, { status: 404 }),
+      )
+
+      expect(screen.getByText('Loading the flow…')).toBeInTheDocument()
+      settle()
+      expect(await screen.findByRole('form', { name: 'Flow' })).toBeInTheDocument()
+      expect(screen.queryByText('Loading the flow…')).not.toBeInTheDocument()
+      expect(flowName()).toHaveValue('Heist')
+      await replace(user, flowName(), 'Mine')
+      await user.click(save())
+
+      await waitFor(() => {
+        expect(saved.sent).toHaveLength(1)
+      })
+      expect(saved.sent[0]?.expectedVersion).toBe(5)
+    })
   })
 })

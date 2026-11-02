@@ -82,7 +82,9 @@ function useSheetWrite<Variables>(
 
   return useMutation({
     mutationFn: write,
-    onSuccess: (sheet) => {
+    onSuccess: async (sheet) => {
+      // A read in flight was asked for before this write; its answer would replace the saved sheet.
+      await queryClient.cancelQueries({ queryKey: sheetKey(key), exact: true })
       queryClient.setQueryData(sheetKey(key), sheet)
       invalidateOtherDraftReads(queryClient, key, sheetKey(key), sheet.version)
     },

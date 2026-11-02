@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 
 import { createQueryClient } from '@/app/queryClient'
@@ -347,5 +347,45 @@ describe('the layout writes', () => {
     await waitFor(() => {
       expect(result.current.error?.message).toBe('Removing the layout failed with HTTP 500.')
     })
+  })
+})
+
+describe('a sheet write while a read is in flight', () => {
+  it('keeps the saved data when the older read answers afterwards', async () => {
+    let reads = 0
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const saved = { ...sheet, version: sheet.version + 1 }
+    const { client, wrapper } = setup({
+      [`GET ${base}/sheet`]: async () => {
+        if (++reads === 2) {
+          await gate
+        }
+        return Response.json(sheet)
+      },
+      [`DELETE ${base}/sheet/fields/hp`]: () => Response.json(saved),
+    })
+    const { result } = renderHook(
+      () => ({ read: useGameSystemSheet('my-draft'), write: useDeleteSheetField('my-draft') }),
+      { wrapper },
+    )
+    await waitFor(() => {
+      expect(result.current.read.data).toBeDefined()
+    })
+    // A refetch whose answer is held: it was asked for before the save.
+    void result.current.read.refetch()
+    await waitFor(() => {
+      expect(reads).toBe(2)
+    })
+
+    await act(() =>
+      result.current.write.mutateAsync({ expectedVersion: sheet.version, field: 'hp' }),
+    )
+    release()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(client.getQueryData(sheetKey('my-draft'))).toEqual(saved)
   })
 })

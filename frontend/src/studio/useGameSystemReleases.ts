@@ -82,7 +82,9 @@ export function useRestoreGameSystem(key: string) {
       }
       throw studioError(response, error, explainedRefusals, 'Restoring the release')
     },
-    onSuccess: (gameSystem) => {
+    onSuccess: async (gameSystem) => {
+      // A read in flight was asked for before this write; its answer would replace the saved GameSystem.
+      await queryClient.cancelQueries({ queryKey: gameSystemKey(key), exact: true })
       queryClient.setQueryData(gameSystemKey(key), gameSystem)
       void queryClient.invalidateQueries({ queryKey: gameSystemsKey, exact: true })
       void queryClient.invalidateQueries({ queryKey: validationKey(key) })

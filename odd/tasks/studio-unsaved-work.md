@@ -47,8 +47,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
-| 1 | `fix/studio-unsaved-work-1-route-editors` | `fix(studio): studio-unsaved-work 1/2 route editors` | T1–T5 | ~1,150: this doc ~100; oracle editors ~550; Flow editor ~280; `cancelQueries` ~130; `FlowsTab` and `renderApp` ~70 |
-| 2 | `fix/studio-unsaved-work-2-tab-forms` | `fix(studio): studio-unsaved-work 2/2 forms in tabs` | T6–T9 | ~600: guard option ~75; `MetadataForm` ~200; `CheckEditor` ~240; currency ~75 |
+| 1 | `fix/studio-unsaved-work-1-route-editors` | `fix(studio): studio-unsaved-work 1/2 route editors` | T1–T4 | ~1,150 forecast, ~1,600 actual: oracle editors ~930 (tests ~610), Flow editor ~310, `cancelQueries` ~250, this doc ~100. T5 moved to slice 2 at the stop line |
+| 2 | `fix/studio-unsaved-work-2-tab-forms` | `fix(studio): studio-unsaved-work 2/2 forms in tabs` | T5–T9 | ~650: T5 ~45; guard option ~75; `MetadataForm` ~200; `CheckEditor` ~240; currency ~75 |
 
 ## Tasks
 
@@ -57,8 +57,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T1 | 1 | G1, G2, G4: oracle table editor keeps what it read, guarded, and waits for a refetch on opening | delegated writer (Sonnet): 2+ non-trivial files | [x] | |
 | T2 | 1 | G1, G2, G4: likelihood oracle editor, the same | delegated writer | [x] | |
 | T3 | 1 | G2, G3, G4: Flow editor reaches the Scene Type editor's level | delegated writer | [x] | |
-| T4 | 1 | G5: a read in flight cannot overwrite a save in any section | delegated writer | [ ] | |
-| T5 | 1 | G6: `FlowsTab` handles a refused navigation | delegated writer | [ ] | |
+| T4 | 1 | G5: a read in flight cannot overwrite a save in any section | delegated writer | [x] | |
+| T5 | 2 | G6: `FlowsTab` handles a refused navigation | delegated writer | [ ] | |
 | T6 | 2 | G7: guard option for a tab change | delegated writer | [ ] | |
 | T7 | 2 | G7: `MetadataForm` baseline and guard; Discard ignores the blocker | delegated writer | [ ] | |
 | T8 | 2 | G7: `CheckEditor` dirty, guard, and a confirm on picking another check | delegated writer | [ ] | |
@@ -83,6 +83,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: T1 done. RED: 7 new tests failed (stale version sent, clean form read dirty by a refetch, form swapped out when its table left the cache, no loading wait, no guard); reload-from-one-read, clean leave, rename and Test roll tests passed at once. `TableEditor` now holds `readAt` and the stored table; the page fills it once.
 - 2026-11-02: T2 done. RED: 7 new tests failed, the same gaps as T1; the reload, clean leave, rename and test-answer tests passed at once. The two editors share no new helper.
 - 2026-11-02: T3 done. RED: 7 of 8 new tests failed (no guard, no pending-rename mounted check, no reload warning, "Saved at" kept on reload and lost on rename, no refetch wait); the `?node=` no-prompt, clean leave and rename-no-dialog tests passed at once.
+- 2026-11-02: T4 done. RED: all 6 held-GET tests failed (older read replaced the saved data). Restore has no hook test file: its test sits in `useGameSystems.test.tsx` beside the metadata one, as an `it.each` over both writes.
+- 2026-11-02: T5 moved to slice 2: the writer reached the 1,500 stop line at T4 and discarded T5's work.
+- 2026-11-02: Chrome pass at `a89ee936`, table and Flow editors. **G1 in the real app:** a draft held open while another request saved, then a refetch, then Save: a 409 with the warning, and the other request's entry kept on the server. Reload took the latest entries and the form read clean. Both editors: dirty blocks `beforeunload` and clean does not (a dispatched event, so the native prompt was not seen); the dialog shows on a link; Stay keeps the draft; a rename save raises no dialog; a clean form leaves freely. Flow: "Saved at" survives a rename, a 409 warns, Reload clears "Saved at", Leave keeps the server's data. Covered by Vitest only: the likelihood oracle editor, a `?node=` change, opening from a stale cache, a read in flight during a save.
 
 ## Reviews
 

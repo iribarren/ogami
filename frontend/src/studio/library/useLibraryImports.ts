@@ -80,7 +80,9 @@ function useImportsWrite<Variables>(
 
   return useMutation({
     mutationFn: write,
-    onSuccess: (imports) => {
+    onSuccess: async (imports) => {
+      // A read in flight was asked for before this write; its answer would replace the saved imports.
+      await queryClient.cancelQueries({ queryKey: libraryImportsKey(key), exact: true })
       queryClient.setQueryData(libraryImportsKey(key), imports)
       invalidateOtherDraftReads(queryClient, key, libraryImportsKey(key), imports.version)
       void queryClient.invalidateQueries({ queryKey: gameSystemsKey, exact: true })

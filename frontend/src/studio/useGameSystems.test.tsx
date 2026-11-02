@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 
 import { createQueryClient } from '@/app/queryClient'
@@ -12,11 +12,13 @@ import { libraryImportsKey } from './library/useLibraryImports'
 import { narrativeKey } from './narrative/useGameSystemNarrative'
 import { oraclesKey } from './oracles/useGameSystemOracles'
 import { sheetKey } from './sheet/useGameSystemSheet'
+import { useRestoreGameSystem } from './useGameSystemReleases'
 import {
   gameSystemKey,
   invalidateOtherDraftReads,
   sectionSegments,
   useEditMetadata,
+  useStudioGameSystem,
   validationKey,
 } from './useGameSystems'
 
@@ -71,4 +73,48 @@ describe('invalidateOtherDraftReads', () => {
     expect(client.getQueryData(validationKey('my-draft'))).toEqual({ version: 5, issues: [] })
     expect(client.getQueryState(validationKey('my-draft'))?.isInvalidated).toBe(true)
   })
+})
+
+describe('a GameSystem write while a read is in flight', () => {
+  it.each([
+    ['saving the metadata', 'PUT', '/metadata', useEditMetadata, { name: 'Renamed' }],
+    ['restoring a release', 'POST', '/restore', useRestoreGameSystem, 2],
+  ] as const)(
+    'keeps the data %s stored when the older read answers afterwards',
+    async (_, method, path, useWrite, input) => {
+      let reads = 0
+      let release: () => void = () => undefined
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const saved = { ...draft, name: 'Renamed' }
+      const { client, wrapper } = setup({
+        [`GET ${base}`]: async () => {
+          if (++reads === 2) {
+            await gate
+          }
+          return Response.json(draft)
+        },
+        [`${method} ${base}${path}`]: () => Response.json(saved),
+      })
+      const { result } = renderHook(
+        () => ({ read: useStudioGameSystem('my-draft'), write: useWrite('my-draft') }),
+        { wrapper },
+      )
+      await waitFor(() => {
+        expect(result.current.read.data).toBeDefined()
+      })
+      // A refetch whose answer is held: it was asked for before the write.
+      void result.current.read.refetch()
+      await waitFor(() => {
+        expect(reads).toBe(2)
+      })
+
+      await act(() => result.current.write.mutateAsync(input as never))
+      release()
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      expect(client.getQueryData(gameSystemKey('my-draft'))).toEqual(saved)
+    },
+  )
 })

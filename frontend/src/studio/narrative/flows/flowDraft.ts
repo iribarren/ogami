@@ -47,8 +47,9 @@ export interface PhaseDraft {
   mode: PhaseMode
   selection: SelectionDraft
   /**
-   * While set, the key follows the name (`editPhaseName`). A stored phase follows when its key is
-   * what its name gives, so the first phase of a new flow ("main" for "Main") follows too.
+   * While set, the key follows the name (`editPhaseName`). A new phase follows; a stored one only
+   * when it is the placeholder first phase of a new flow (`PLACEHOLDER_PHASE`). A stored key is
+   * never renamed otherwise: a published phase's key must not change on a rename.
    */
   follow?: boolean
   /**
@@ -158,7 +159,7 @@ function phaseToDraft(value: unknown): PhaseDraft | null {
     description,
     mode,
     selection,
-    follow: key === slugOf(name),
+    follow: key === PLACEHOLDER_PHASE.key && name === PLACEHOLDER_PHASE.name,
     hooks,
     extra: unknownFields(value, phaseKnown),
   }
@@ -338,6 +339,9 @@ export function newPhase(phases: PhaseDraft[]): PhaseDraft {
   }
 }
 
+/** The first phase a new flow starts with; its key follows its name until the author edits the key. */
+export const PLACEHOLDER_PHASE = { key: 'main', name: 'Main' } as const
+
 /** What the New flow dialog asks for: the first phase needs a Scene Type to pick from. */
 export interface NewFlowDraft {
   key: string
@@ -378,8 +382,7 @@ export function newFlowToItem({ key, name, sceneType }: NewFlowDraft): FlowResul
       trackers: [],
       phases: [
         {
-          key: 'main',
-          name: 'Main',
+          ...PLACEHOLDER_PHASE,
           mode: 'once',
           selection: { rule: 'sequence', sceneTypes: [sceneType] },
         },

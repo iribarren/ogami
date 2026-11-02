@@ -231,8 +231,7 @@ describe('the flow editor', () => {
         defaultView: 'journal',
         oracles: ['complications'],
         trackers: ['heat'],
-        // The stored key was what the name "Setup" gives, so it follows the rename.
-        phases: [{ ...phases[0], key: 'prep', name: 'Prep', mode: 'loop', act: 'One' }, phases[1]],
+        phases: [{ ...phases[0], name: 'Prep', mode: 'loop', act: 'One' }, phases[1]],
       },
     })
   })

@@ -373,16 +373,21 @@ describe('the key of a phase following its name (S22, S23)', () => {
     expect(editPhaseName(typed, 'Dawn')).toMatchObject({ key: 'night', name: 'Dawn' })
   })
 
-  it('follows from the first phase a new flow starts with', () => {
+  it('follows from the placeholder first phase a new flow starts with: main / Main', () => {
     const first = newFlowToItem({ key: 'f', name: 'F', sceneType: 's', sceneTypes: [] })
     const phase = flowToDraft(first.item)?.phases[0]
 
     expect(phase && editPhaseName(phase, 'Opening').key).toBe('opening')
   })
 
-  it('does not follow a stored phase whose key is not what its name gives', () => {
-    const phase = stored('custom', 'Setup')
+  it('does not rename the key of any other stored phase, even one that matches its name', () => {
+    const phase = stored('setup', 'Setup')
 
-    expect(phase && editPhaseName(phase, 'Prep').key).toBe('custom')
+    expect(phase && editPhaseName(phase, 'Prep').key).toBe('setup')
+    expect(phase?.follow).toBe(false)
+    expect(editPhaseName(stored('custom', 'Setup') ?? newPhase([]), 'Prep').key).toBe('custom')
+    // Only the exact placeholder follows: "main" under another name or "Main" under another key do not.
+    expect(stored('main', 'Primary')?.follow).toBe(false)
+    expect(stored('prime', 'Main')?.follow).toBe(false)
   })
 })

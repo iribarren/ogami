@@ -1,7 +1,7 @@
 # Feature: vaesen-ux-followups
 
 - **Locator:** `odd/tasks/vaesen-ux-followups.md` · Engram topic `odd/vaesen-ux-followups/tasks`
-- **Issue:** [#300](https://github.com/iribarren/ogami/issues/300) · **Branch:** `feat/vaesen-ux-followups-1-play` · **Status:** in progress
+- **Issue:** [#300](https://github.com/iribarren/ogami/issues/300) · **Branch:** `feat/vaesen-ux-followups-2-studio` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-ironsworn` (PRs #342–#352)
@@ -28,6 +28,8 @@ Out of scope: S15 (tall step cards), which goes to a follow-up issue with a road
 | P3 | The server evaluates the pool size per Character; the client does not duplicate the formula engine | Parent |
 | P7 | Reword the preset prompt; no post-roll text field | Parent |
 | S14 | Raise the condition band label cap from 80 to 100 to match checks, backwards compatible, plus a live counter | Parent |
+| S26 paste | Client side, no new endpoint: pasted fields go one by one through the existing `POST /sheet/fields`, each with the version the last one returned. A failure stops there and says what was added; the lines not added stay in the dialog | Parent |
+| S16 | Expand all / Collapse all on a check set's per-band effects, collapsed by default: open by default would make the tall cards of S15 taller | Parent |
 
 ## Slice plan
 
@@ -42,11 +44,12 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | P3: a pool check step shows the evaluated pool size per Character before the roll; API test; `make api` | delegated writer (slice 1) | [x] | — |
-| T2 | 1 | P9: a resolved `condition` step's outcome shows in the guided step area, including when it ends the phase | delegated writer (slice 1) | [x] | — |
-| T3 | 1 | P6: the oracle question field no longer shows a placeholder that is not used when blank | delegated writer (slice 1) | [x] | — |
-| T4 | 1 | P7: reword the table step prompt that promises a text field; preset version bump | delegated writer (slice 1) | [x] | — |
-| T5 | 1 | P13: the cast editor offers the previous Scene's NPCs for one-click adding | delegated writer (slice 1) | [x] | — |
+| T1 | 1 | P3: a pool check step shows the evaluated pool size per Character before the roll; API test; `make api` | delegated writer (slice 1) | [x] | `3db02868` |
+| T2 | 1 | P9: a resolved `condition` step's outcome shows in the guided step area, including when it ends the phase | delegated writer (slice 1) | [x] | `a4aab0e3` |
+| T3 | 1 | P6: the oracle question field no longer shows a placeholder that is not used when blank | delegated writer (slice 1) | [x] | `2a6d546f` |
+| T4 | 1 | P7: reword the table step prompt that promises a text field | delegated writer (slice 1) | [x] | `c28b2f14` |
+| T5 | 1 | P13: the cast editor offers the previous Scene's NPCs for one-click adding | delegated writer (slice 1) | [x] | `df706859` |
+| T5b | 2 | Slice 1 review findings (see Reviews) | delegated writer (slice 2) | [x] | — |
 | T6 | 2 | S26: Duplicate a sheet field | delegated writer (slice 2) | [ ] | — |
 | T7 | 2 | S26: bulk paste sheet fields | delegated writer (slice 2) | [ ] | — |
 | T8 | 2 | S1, S14: condition band cap 100 in domain, translator and contract; live counter on check and condition band labels | delegated writer (slice 2) | [ ] | — |
@@ -65,12 +68,14 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: T3 done: the oracle question input has no placeholder; label unchanged. RED: the new no-placeholder test failed first.
 - 2026-11-02: T4 done: the table prompt now says "then decide how it fits the mystery so far". Decision changed: no version bump, because a preset file carries no version (the release version is set when `make presets` publishes it) and the precedent commit 346b0ccc bumped nothing; no test pins the wording, so there is no meaningful RED. `PresetsTest` and the Lanterns flow test pass.
 - 2026-11-02: T5 done, frontend-only: every Scene in the campaign view already carries its cast, so no endpoint was added. `previousSceneCast` takes the nearest earlier non-hook Scene of the session, or the last of an earlier session for a session's first Scene (a hook Scene has no cast of its own). The cast editor lists those NPCs that are not in the cast and still exist in the campaign, closed ones marked; one click sends the whole cast through the existing mutation. Scene start and ADR 0018 unchanged. RED: the two positive component tests failed before the change.
+- 2026-11-02: T5b done: the pool size label adds "(before the extra dice)" once a non-zero modifier is typed (the size is the server's, so the form does not clamp it itself); the two Play tests wait for the journal entry before asserting absence; the empty cast assertion is in `waitFor`; the API test rolls and asserts the recorded `4d6`. No RED observed: the modifier test was written with the change; the other three are test-only hardening and passed first run.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | Findings | PR |
 |---|---|---|---|---|
+| 1 | `review-293f4e9ed48f29c1` | Approved, acknowledged; 631 lines | Fixed in slice 2 (T5b): (W) `CheckForm.tsx:142-146` pool size label ignores a situational modifier; (W) `GuidedPanel.test.tsx:104-117` outcome-absent tests can pass before the journal loads; (S) `SceneCast.test.tsx:132` empty-list assertion needs `waitFor`; (S) `CampaignFlowChecksApiTest.php:106-107` should roll and assert the recorded pool size | [#354](https://github.com/iribarren/ogami/pull/354) |
 
 ## Next step
 
-Slice 1: T1–T5 on `feat/vaesen-ux-followups-1-play`.
+Slice 2: T5b–T13 on `feat/vaesen-ux-followups-2-studio`, then T14 closes the feature on that PR.

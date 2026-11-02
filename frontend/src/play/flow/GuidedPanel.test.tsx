@@ -106,6 +106,8 @@ describe('the guided panel', () => {
 
       await panel()
       await screen.findByRole('region', { name: 'Current step: Who walks in?' })
+      // The journal loads after the step: wait for its entry before asserting the absence.
+      await screen.findByText(/Go right/)
       expect(screen.queryByRole('region', { name: 'Flow outcome' })).not.toBeInTheDocument()
     })
 
@@ -113,6 +115,7 @@ describe('the guided panel', () => {
       renderGuided(guided(atStep(promptStep)), {}, [chosenWay])
 
       await screen.findByRole('region', { name: 'Current step: Who walks in?' })
+      await screen.findByText(/Go right/)
       expect(screen.queryByRole('region', { name: 'Flow outcome' })).not.toBeInTheDocument()
     })
 

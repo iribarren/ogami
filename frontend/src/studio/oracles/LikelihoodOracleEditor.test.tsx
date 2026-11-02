@@ -718,6 +718,34 @@ describe('a likelihood form and the version it read', () => {
   })
 
   describe('reloading after a conflict', () => {
+    it('clears what the test panel last said and keeps its results', async () => {
+      let reads = 0
+      let asks = 0
+      const { user } = await openEditor('fate', {
+        [`GET ${base}/oracles`]: () => Response.json(++reads === 1 ? oracles : probable),
+        [`POST ${base}/likelihood-oracles/fate/test-answers`]: () =>
+          ++asks === 1
+            ? Response.json(fateAnswer)
+            : Response.json({ error: 'The answer failed.' }, { status: 500 }),
+        [put]: json(changed, 409),
+      })
+      const panel = () => within(screen.getByRole('region', { name: 'Test answer' }))
+
+      await user.click(screen.getByRole('button', { name: 'Ask' }))
+      await screen.findByRole('list', { name: 'Test answer results' })
+      await user.click(screen.getByRole('button', { name: 'Ask' }))
+      await panel().findByRole('alert')
+      await replace(user, 'Level 1 label', 'Even')
+      await user.click(save())
+      await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+      await waitFor(() => {
+        expect(screen.getByLabelText('Level 2 label')).toHaveValue('Probable')
+      })
+
+      expect(panel().queryByRole('alert')).not.toBeInTheDocument()
+      expect(panel().getByRole('list', { name: 'Test answer results' })).toBeInTheDocument()
+    })
+
     it('takes the draft, the stored oracle and the version from one read', async () => {
       let reads = 0
       const stored = recorder((sent) =>

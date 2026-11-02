@@ -382,7 +382,9 @@ export function TableEditor({
           )}
         </div>
       </form>
+      {/* A reload starts it again: what it last said was about the replaced draft. The results stay. */}
       <TestRollPanel
+        key={generation}
         dirty={dirty}
         history={history}
         disabled={!valid || save.isPending || conflict}

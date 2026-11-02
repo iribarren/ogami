@@ -54,10 +54,11 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T5 | 1 | S16: "New step…" in the Next select | delegated writer (slice 1) | [x] | `bdf8c4a4` |
 | T6 | 1 | S23: reproduce the dropped typeahead; fix only if it reproduces | delegated writer (slice 1) | [x] | `a941f2b0` |
 | T7 | 2 | Slice 1 review findings | delegated writer (slice 2) | [x] | `b27bc600` |
-| T8 | 2 | P4: the push offer on a success says what it can change and risks | delegated writer (slice 2) | [x] | `9e482ef4` |
-| T9 | 2 | P5: the step card's actions stop shifting | delegated writer (slice 2) | [x] | `220efbf4` |
+| T8 | 2 | P4: the push offer on a success says what it can change and risks | delegated writer (slice 2) | [x] | `9e482ef4`, `f304dfb4` |
+| T9 | 2 | P5: the step card's actions stop shifting | delegated writer (slice 2) | [x] | `220efbf4`, `c13c9565`, this task\'s last commit |
 | T10 | 2 | P1: skip a phase's closing when this session's opening did not run in that phase | delegated writer (slice 2) | [x] | `587f8306` |
-| T11 | 2 | P2, S3: re-author Night Court in Studio, re-export; tests for the strike after a clock filled elsewhere | delegated writer (slice 2); Studio by Chrome worker | [x] | |
+| T11 | 2 | P2, S3: re-author Night Court in Studio, re-export; tests for the strike after a clock filled elsewhere | delegated writer (slice 2); Studio by Chrome worker | [x] | `c81e84f9` |
+| T12 | 2 | Chrome pass: a step clicked in the Studio outline scrolls into view, as it does on a reload | parent, inline: one line, understood | [x] | this slice's last commit |
 
 ## Acceptance criteria
 
@@ -88,6 +89,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02 T8 correction: the Chrome pass saw no note: Night Court checks are band checks with `difficulty: null`, so `rollSucceeded` read real successes as failures. `PushOffer` now shows the note on every pool roll, worded to read true on a success and a failure, plus one Hunger sentence (a new critical paired with a Hunger die is a messy critical, `Check::specialOf`) only with Hunger dice; `rollSucceeded` and its tests deleted. Burns unchanged. No RED observed: tests written with the code; all pass.
 - 2026-11-02 T9 correction: the Chrome pass measured the Roll button moving +92 px per action in the Journal view: `GuidedPanel` sits below the Journal, so each entry pushes it down. New `useKeepPanelInPlace(active)` (`flow/`): a `ResizeObserver` on a wrapper around `CampaignJournal`; on a height change it calls `window.scrollBy` by the delta when the panel was on screen before the change (its top now minus the delta); first measurement skipped; no `ResizeObserver` means no-op; disconnects on unmount, inactive in focus mode. The only other scroll on an action is `reveal` in `Journal.tsx` (`scrollIntoView({block: 'nearest', behavior: 'smooth'})` on the entry just recorded): it only moves the page when that entry is off screen, so they agree whenever the panel is below the viewport top; near the top edge they can fight. Not changed (outside the surface). No RED observed: tests written with the code; jsdom has no layout, the parent re-measures in Chrome.
 - 2026-11-02 T11: Night Court v3 authored in the local Studio by a Chrome worker (8 Next targets at `hunters`, `inquisition` last, `hunters-strike` closing `prompt-1` mandatory, theme `eldritch`) and copied byte for byte to `backend/presets/vtm-night-court.json`. `make presets` stops at `lanterns-of-the-mire` (authored in Studio in the dev database: pre-existing, unrelated); publishing the file alone reports `Unchanged vtm-night-court (v3, managed in Studio)`. `VtmNightCourtPresetFlowTest` follows the new order (the turn starts at `stir`; the raid tests no longer pass through `inquisition` first) with no assertion weakened, and new tests: a clock filled by the tracker strikes on a quiet night and on the arrival route; the hunter-activity event still strikes at 4; the strike's closing cannot be skipped and sets the clock to 0, so the next turn forces no strike; a raid and a full clock in one turn force the raid, keep the clock at 4 and strike on the next turn. `PresetsTest` asserts theme `eldritch`, `stir` first and `inquisition` last, and the mandatory reset. RED is not observable: the export was in before the tests were written. ADR 0020 and `flow-examples.md` amended.
+- 2026-11-02 Chrome pass on v3: P1 (Session Zero ends at once, no second session; a later session asks the closing), P2 (a strike from a clock filled by hand, the reset cannot be skipped, no second strike; a raid wins, the strike follows), P4 and S3 pass. The messy critical sentence was not seen in Chrome (no push offered on a Hunger pool in the rolls made); Vitest covers it. P5 fails twice: the journal's smooth `reveal` fought the compensation, and the Journal's load counted as growth (scrollY 0 to 11,080).
+- 2026-11-02 T9 correction 2: `reveal` no longer animates, and the compensation starts once the Journal has loaded; reloads stay at scrollY 0. P5 evidence is limited: settled positions match on rolls and record, but two steps that change the scene ended 59 px off, and timer samples show a 100–150 px peak for 0.3–1 s. The automated tab renders at about 1 frame per second (gaps of 1,017 ms measured), which matches that window, so the peak is probably never painted at a normal frame rate; not confirmed by eye. Focus view is stable.
+- 2026-11-02 T12: the outline's step click ended at the top because the router's scroll reset undid the step's `scrollIntoView`. `select` skips the reset for a step node. Checked in Chrome: two steps scroll into view, flow settings go back to the top. No Vitest: jsdom has no scroll and the router reset does not run there.
+- 2026-11-02 `make presets` on the authoring database stops at `lanterns-of-the-mire`, before Night Court; publishing the Night Court file alone gives `Unchanged vtm-night-court (v3, managed in Studio)`. Not investigated: this slice does not touch that file.
 
 ## Reviews
 
@@ -97,4 +102,4 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 ## Next step
 
-Slice 2: T7–T11 on `feat/night-court-followups-2-play-content`.
+Slice 2: review, PR, closing doc commit.

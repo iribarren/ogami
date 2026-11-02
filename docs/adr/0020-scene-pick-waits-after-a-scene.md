@@ -15,7 +15,7 @@ The `preset-mythic-flow` playtest (finding P2, 2026-10-13) showed the cost. The 
 A selection with one Scene Type is picked automatically only **when a session starts or a phase opens**. After a scene the FlowRun waits at the scene pick, where the player chooses:
 
 - **Play this:** start the only Scene Type's next scene.
-- **End session:** run the session closing and end the session.
+- **End session:** run the session closing and end the session. The closing runs unless this session's opening ran in another phase, which keeps a closing question from asking about an opening it never saw (see the `FlowRun` class docblock).
 - **Move on:** end the loop phase.
 
 The FlowRun keeps whether the pick is due to pick by itself (`autoPickDue`). Running the session opening or the phase opening sets it, and starting a scene clears it. The waiting state is stable: resuming guidance or loading the campaign again leaves the FlowRun at the pick. A FlowRun stored before this decision reads as waiting, so no scene starts by surprise.

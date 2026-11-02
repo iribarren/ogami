@@ -14,6 +14,7 @@ use App\Play\Domain\GameSystem\Flow\EndPhaseEffect;
 use App\Play\Domain\GameSystem\Flow\Flow;
 use App\Play\Domain\GameSystem\Flow\FlowView;
 use App\Play\Domain\GameSystem\Flow\PhaseMode;
+use App\Play\Domain\GameSystem\Flow\PromptStep;
 use App\Play\Domain\GameSystem\Flow\RollStep;
 use App\Play\Domain\GameSystem\Flow\SelectionRule;
 use App\Play\Domain\GameSystem\Flow\SheetEffect;
@@ -357,7 +358,7 @@ final class PresetsTest extends KernelTestCase
                             $filled[] = $effect->slot;
                         }
                     }
-                    if ($step instanceof \App\Play\Domain\GameSystem\Flow\PromptStep) {
+                    if ($step instanceof PromptStep) {
                         foreach ($step->inspiration as $table) {
                             self::assertContains($table, $snapshot->oracleTableKeys(), \sprintf('Step "%s" offers an unknown table.', $step->key));
                             $inspired[] = $table;
@@ -556,6 +557,7 @@ final class PresetsTest extends KernelTestCase
         $snapshot = $this->snapshot('vtm-night-court');
         // Publishing into an empty database makes release 1, whatever version the file was exported at.
         self::assertSame(1, $snapshot->releaseVersion());
+        self::assertSame('eldritch', $snapshot->theme());
 
         // The Dark Pack Agreement (ADR 0021) is named with its link and its badge, and the notice discloses generative AI.
         $credits = $snapshot->credits();
@@ -606,12 +608,21 @@ final class PresetsTest extends KernelTestCase
         $flow = $snapshot->defaultFlow();
         self::assertNotNull($flow);
         self::assertSame('chronicle', $flow->key);
-        $inquisition = $flow->phase('chronicle')?->worldTurn->step('inquisition');
+        $worldTurn = $flow->phase('chronicle')->worldTurn ?? self::fail('No world turn.');
+        $inquisition = $worldTurn->step('inquisition');
         self::assertInstanceOf(RollStep::class, $inquisition);
+        // The clock check runs on every route, and the Inquisition roll is the turn's last step so a raid wins over a strike.
+        self::assertSame('stir', $worldTurn->steps[0]->key);
+        self::assertSame('inquisition', $worldTurn->steps[\count($worldTurn->steps) - 1]->key);
         $upTo = $inquisition->bands[0]->upTo;
         self::assertInstanceOf(Formula::class, $upTo);
         self::assertSame('{tracker:masquerade}', $upTo->toString());
         self::assertContains('masquerade', array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
+
+        // The strike's closing prompt resets the Hunters clock, so it cannot be skipped.
+        $reset = $snapshot->sceneType('hunters-strike')?->closing->step('prompt-1');
+        self::assertInstanceOf(PromptStep::class, $reset);
+        self::assertTrue($reset->mandatory);
     }
 
     #[Test]

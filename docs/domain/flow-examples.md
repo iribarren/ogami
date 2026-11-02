@@ -75,15 +75,17 @@ Dawn (Scene Type)
 
 worldTurn
   roll 1d6
-    upTo 3 → "A quiet night"
+    upTo 3 → condition hunters (below)
     rest   → table night-events, branching per entry:
       Faction move     → pick NPC [leader] → prompt "What does {picked} do toward their agenda?"
       Ally in trouble  → pick NPC [ally] → table ally-problems
       New arrival      → table arrivals → createNpc [newcomer]
       Touchstone       → pick NPC [touchstone] → prompt "What happens to {picked}?"
       Hunter activity  → hunters +1
-                         → condition hunters: upTo 3 → —; rest → nextScene Hunters strike
-  masquerade, in one of two authored styles:
+    every route ends at the clock check, so a clock filled elsewhere strikes too:
+    condition hunters: upTo 3 → —; rest → nextScene Hunters strike
+  masquerade, the turn's last step, so a raid overrides a strike in the same turn
+  (the clock stays full and strikes on the next turn), in one of two authored styles:
     fixed threshold   condition masquerade: upTo 7 → —; rest → nextScene Inquisition raid
                       (Inquisition raid's closing: masquerade set 4)
     roll-under        roll 1d10: upTo {tracker:masquerade} → nextScene Inquisition raid; rest → —
@@ -92,7 +94,7 @@ sessionClosing
   choice "Did you get {fact:desire}?"  yes → closeThread; no → —
 ```
 
-Hunters strike lowers `hunters` in its closing, or the threshold fires on every turn (authoring rule, ADR 0018 decision 7).
+Hunters strike lowers `hunters` in a mandatory closing prompt, or the threshold fires on every turn (authoring rule, ADR 0018 decision 7).
 
 ### What it shows
 

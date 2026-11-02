@@ -81,7 +81,15 @@ export function NextPicker({
           <DropdownMenuTrigger asChild>
             <span aria-hidden="true" className="block h-0" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" aria-label={`${label}: kind of the new step`}>
+          <DropdownMenuContent
+            align="start"
+            aria-label={`${label}: kind of the new step`}
+            // The menu hangs off a hidden anchor, so closing it would drop the focus to the page.
+            onCloseAutoFocus={(event) => {
+              event.preventDefault()
+              document.getElementById(id)?.focus()
+            }}
+          >
             <StepKindMenuItems
               setup={newStep.setup}
               onPick={(kind) => {

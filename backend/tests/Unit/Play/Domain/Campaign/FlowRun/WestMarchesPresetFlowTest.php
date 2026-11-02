@@ -63,7 +63,6 @@ final class WestMarchesPresetFlowTest extends FlowRunTestCase
     {
         $campaign = $this->founded();
         $campaign->endSession(self::at(), null, $this->release);
-        $this->endClosing($campaign);
         $this->setTracker($campaign, 'foe', 1);
         $campaign->startSession(self::at(), $this->release);
 
@@ -102,9 +101,8 @@ final class WestMarchesPresetFlowTest extends FlowRunTestCase
         $founding = $this->founded();
         self::assertSame(0, $this->tracker($founding, 'expeditions'));
         $founding->endSession(self::at(), null, $this->release);
-        self::assertSame([null, 'safe'], self::position($founding));
-        $founding->skipFlowStep('safe', $this->release, self::at());
-        self::assertSame([null, null], self::position($founding), 'No "Is the expedition resolved?" and no new rumor after the founding.');
+        self::assertSame([null, null], self::position($founding), 'The founding session opened in the founding phase: the expedition phase has no closing to run, so no "Is the expedition resolved?" and no new rumor.');
+        self::assertNull($founding->currentSession());
 
         $expedition = $this->expedition();
         self::assertSame(1, $this->tracker($expedition, 'expeditions'));
@@ -114,14 +112,15 @@ final class WestMarchesPresetFlowTest extends FlowRunTestCase
     }
 
     #[Test]
-    public function aPlayerWhoTravelsInTheFoundingSessionIsStillStrandedFarFromTown(): void
+    public function aFoundingSessionEndsAtOnceEvenFarFromTownSinceTheExpeditionPhaseNeverOpenedIt(): void
     {
         $campaign = $this->founded();
         $this->setTracker($campaign, 'away', 2);
 
         $campaign->endSession(self::at(), null, $this->release);
 
-        self::assertSame([null, 'stranded'], self::position($campaign));
+        self::assertSame([null, null], self::position($campaign));
+        self::assertNull($campaign->currentSession());
     }
 
     #[Test]
@@ -129,7 +128,6 @@ final class WestMarchesPresetFlowTest extends FlowRunTestCase
     {
         $campaign = $this->founded(rumors: false);
         $campaign->endSession(self::at(), null, $this->release);
-        $this->endClosing($campaign);
         $campaign->startSession(self::at(), $this->release);
         $campaign->completeFlowStep('expedition', StepResult::pick(ItemKind::Thread, []), $this->release, self::at());
 
@@ -142,7 +140,6 @@ final class WestMarchesPresetFlowTest extends FlowRunTestCase
     {
         $campaign = $this->founded(rumors: false);
         $campaign->endSession(self::at(), null, $this->release);
-        $this->endClosing($campaign);
         $campaign->startSession(self::at(), $this->release);
 
         $campaign->completeFlowStep('expedition', StepResult::pick(ItemKind::Thread, []), $this->release, self::at());
@@ -732,7 +729,6 @@ final class WestMarchesPresetFlowTest extends FlowRunTestCase
     {
         $campaign = $this->founded();
         $campaign->endSession(self::at(), null, $this->release);
-        $this->endClosing($campaign);
         $campaign->startSession(self::at(), $this->release);
         $thread = $campaign->threads()[0];
         $campaign->completeFlowStep('expedition', StepResult::pick(ItemKind::Thread, [new PickedItem($thread->id()->toString(), $thread->name())]), $this->release, self::at());
@@ -753,14 +749,6 @@ final class WestMarchesPresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep($step, $this->rolled($table, $entry), $this->release, self::at());
 
         return $campaign;
-    }
-
-    /**
-     * The closing of the session that ended after the founding: in town, and the founding is no expedition, so it ends at once.
-     */
-    private function endClosing(Campaign $campaign): void
-    {
-        $campaign->skipFlowStep('safe', $this->release, self::at());
     }
 
     /**

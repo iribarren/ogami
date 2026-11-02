@@ -149,7 +149,7 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         self::assertEquals([
             'status' => 'paused', 'phaseIndex' => 0, 'stage' => 'scene', 'sessionNumber' => 1, 'sceneNumber' => 1, 'sceneType' => 'legwork',
             'part' => 'open', 'stepKey' => null, 'sequencePosition' => 0, 'scenesPlayed' => 1, 'answers' => [], 'forcedNextSceneType' => null,
-            'phaseEnding' => null, 'switchCount' => 0, 'hook' => null, 'phaseOpened' => true, 'sessionOpeningDue' => false, 'picked' => null,
+            'phaseEnding' => null, 'switchCount' => 0, 'hook' => null, 'phaseOpened' => true, 'sessionOpeningDue' => false, 'sessionOpenedInPhase' => null, 'picked' => null,
             'autoPickDue' => false, 'history' => [['event' => 'paused', 'at' => '2026-10-10T09:02:00.000000+00:00', 'details' => []]],
             'pendingCheck' => null, 'shopStock' => null,
         ], $this->storedFlowRun('01890a5d-ac96-774b-bcce-b302099a8057'));
@@ -205,6 +205,9 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
         yield 'unknown hook' => [['stage' => 'hook', 'hook' => 'dawn'], 'Stored campaign FlowRun: "hook" must be one of "sessionOpening", "sessionClosing", "phaseOpening", "phaseClosing", "worldTurn".'];
         yield 'phase opened not a boolean' => [['phaseOpened' => 1], 'Stored campaign FlowRun: "phaseOpened" must be a boolean.'];
         yield 'session opening due null' => [['sessionOpeningDue' => null], 'Stored campaign FlowRun: "sessionOpeningDue" must be a boolean.'];
+        yield 'session opening phase not an integer' => [['sessionOpenedInPhase' => '0'], 'Stored campaign FlowRun: "sessionOpenedInPhase" must be an integer.'];
+        yield 'session opening phase negative' => [['sessionOpenedInPhase' => -1], 'Stored campaign FlowRun: "sessionOpenedInPhase" must be a phase index from 0 to the current phase, or null.'];
+        yield 'session opening phase past the current phase' => [['sessionOpenedInPhase' => 1], 'Stored campaign FlowRun: "sessionOpenedInPhase" must be a phase index from 0 to the current phase, or null.'];
         yield 'auto pick due not a boolean' => [['autoPickDue' => 'yes'], 'Stored campaign FlowRun: "autoPickDue" must be a boolean.'];
         yield 'unknown part' => [['part' => 'epilogue'], 'Stored campaign FlowRun: "part" must be one of "sceneOpening", "setup", "play", "open", "closing", "sceneClosing".'];
         yield 'scene number not an integer' => [['sceneNumber' => '1'], 'Stored campaign FlowRun: "sceneNumber" must be an integer.'];
@@ -340,6 +343,43 @@ final class DoctrineCampaignRepositoryTest extends KernelTestCase
 
         self::assertNull($loaded?->flowRun()?->pendingCheck());
         self::assertEquals($this->guidedCampaign($id->toString())->flowRun(), $loaded?->flowRun());
+    }
+
+    /**
+     * A FlowRun stored before the session closing was tied to the phase its opening ran in has no
+     * sessionOpenedInPhase: it reads as unknown (null), so its session closing runs as before.
+     */
+    #[Test]
+    public function aFlowRunStoredBeforeTheSessionOpeningPhaseWasKeptReadsItAsUnknown(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $this->repository->add($this->guidedCampaign($id->toString()));
+        $legacy = array_diff_key($this->storedFlowRun($id->toString()), array_flip(['sessionOpenedInPhase']));
+        $this->entityManager->getConnection()->executeStatement('UPDATE play_campaign SET flow_run = ? WHERE id = ?', [json_encode($legacy, \JSON_THROW_ON_ERROR), $id->toString()]);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertNull($loaded?->flowRun()?->sessionOpenedInPhase());
+        self::assertEquals($this->guidedCampaign($id->toString())->flowRun(), $loaded?->flowRun());
+    }
+
+    #[Test]
+    public function thePhaseASessionOpeningRanInRoundTripsWithTheWholeFlowRun(): void
+    {
+        $id = CampaignId::fromString('01890a5d-ac96-774b-bcce-b302099a8057');
+        $base = $this->guidedCampaign($id->toString());
+        $run = $base->flowRun() ?? throw new \LogicException('No FlowRun.');
+        $flowRun = FlowRun::reconstitute($run->status(), $run->phaseIndex(), $run->stage(), $run->scene()[0] ?? null, $run->scene()[1] ?? null, $run->sceneType(), $run->part(), $run->stepKey(), $run->sequencePosition(), $run->scenesPlayed(), $run->answers(), $run->forcedNextSceneType(), $run->phaseEndingReason(), $run->switchCount(), $run->history(), $run->hook(), $run->phaseOpened(), $run->sessionOpeningDue(), sessionOpenedInPhase: 0);
+        $campaign = Campaign::reconstitute($id, $base->ownerId(), $base->name(), $base->pinnedRelease(), $base->createdAt(), $base->sessions(), [], $base->flowKey(), $flowRun);
+        $this->repository->add($campaign);
+        $this->forgetLoaded();
+
+        $loaded = $this->repository->ofId($id);
+
+        self::assertEquals($campaign, $loaded);
+        self::assertSame(0, $loaded?->flowRun()?->sessionOpenedInPhase());
+        self::assertSame(0, $this->storedFlowRun($id->toString())['sessionOpenedInPhase']);
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Play\Domain\Campaign\Campaign;
 use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
+use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
@@ -123,10 +124,10 @@ final class VtmNightCourtPresetFlowTest extends FlowRunTestCase
     {
         $campaign = $this->afterAHunt(masquerade: 2);
 
-        $campaign->completeFlowStep('inquisition', self::roll('1d10', 2), $this->release, self::at());
-        // The raid is queued: the world turn goes on, and a quiet night (1 to 3) ends it.
-        self::assertSame('stir', self::position($campaign)[1]);
+        // A quiet night (1 to 3) goes straight to the clock check and then the Inquisition roll, the turn's last step.
         $campaign->completeFlowStep('stir', self::roll('1d6', 1), $this->release, self::at());
+        self::assertSame('inquisition', self::position($campaign)[1]);
+        $campaign->completeFlowStep('inquisition', self::roll('1d10', 2), $this->release, self::at());
 
         self::assertSame('inquisition-raid', self::flowRunOf($campaign)->forcedNextSceneType());
         $campaign->pickSceneType('inquisition-raid', $this->release, self::at());
@@ -134,21 +135,116 @@ final class VtmNightCourtPresetFlowTest extends FlowRunTestCase
     }
 
     #[Test]
-    public function aMasqueradeRollOverItsValueLeavesTheNightToStir(): void
+    public function aMasqueradeRollOverItsValueLeavesTheNightQuiet(): void
     {
         $campaign = $this->afterAHunt(masquerade: 2);
+        $campaign->completeFlowStep('stir', self::roll('1d6', 1), $this->release, self::at());
 
         $campaign->completeFlowStep('inquisition', self::roll('1d10', 3), $this->release, self::at());
 
-        self::assertSame(['stir'], [self::position($campaign)[1]]);
+        self::assertNull(self::flowRunOf($campaign)->forcedNextSceneType());
+        self::assertSame([null, null], self::position($campaign));
+    }
+
+    #[Test]
+    public function aClockFilledByTheTrackerForcesTheStrikeOnAQuietNight(): void
+    {
+        $campaign = $this->afterAHunt(masquerade: 0);
+        $this->fillTheClock($campaign);
+
+        $this->aQuietNight($campaign);
+
+        self::assertSame('hunters-strike', self::flowRunOf($campaign)->forcedNextSceneType());
+        self::assertSame(4, $this->tracker($campaign, 'hunters'));
+    }
+
+    #[Test]
+    public function aClockFilledByTheTrackerForcesTheStrikeOnTheOtherRoutesToo(): void
+    {
+        $campaign = $this->afterAHunt(masquerade: 0);
+        $this->fillTheClock($campaign);
+
+        // The night stirs (4 to 6): the event is a new arrival, which goes on to the clock check.
+        $campaign->completeFlowStep('stir', self::roll('1d6', 4), $this->release, self::at());
+        $campaign->completeFlowStep('event', StepResult::table($this->release->resolveOracleTable('night-events', new ScriptedRandomNumberGenerator(4))), $this->release, self::at());
+        self::assertSame('arrival', self::position($campaign)[1]);
+        $campaign->completeFlowStep('arrival', StepResult::table($this->release->resolveOracleTable('arrivals', new ScriptedRandomNumberGenerator(1))), $this->release, self::at());
+        self::assertSame('inquisition', self::position($campaign)[1]);
+        $campaign->completeFlowStep('inquisition', self::roll('1d10', 10), $this->release, self::at());
+
+        self::assertSame('hunters-strike', self::flowRunOf($campaign)->forcedNextSceneType());
+    }
+
+    #[Test]
+    public function theHunterActivityEventStillFillsTheClockAndStrikesAtFour(): void
+    {
+        $campaign = $this->afterAHunt(masquerade: 0);
+        $campaign->setTrackerValue($this->release->tracker('hunters') ?? self::fail('No hunters.'), 3, self::at());
+
+        $campaign->completeFlowStep('stir', self::roll('1d6', 6), $this->release, self::at());
+        $campaign->completeFlowStep('event', StepResult::table($this->release->resolveOracleTable('night-events', new ScriptedRandomNumberGenerator(6))), $this->release, self::at());
+        self::assertSame(4, $this->tracker($campaign, 'hunters'));
+        $campaign->completeFlowStep('inquisition', self::roll('1d10', 10), $this->release, self::at());
+
+        self::assertSame('hunters-strike', self::flowRunOf($campaign)->forcedNextSceneType());
+    }
+
+    #[Test]
+    public function theStrikeClosingCannotBeSkippedAndResetsTheClockSoItNeverStrikesTwiceForOneFill(): void
+    {
+        $campaign = $this->afterAHunt(masquerade: 0);
+        $this->fillTheClock($campaign);
+        $this->aQuietNight($campaign);
+        $this->playTheStrike($campaign);
+        self::assertSame(['closing', 'prompt-1'], self::position($campaign));
+
+        try {
+            $campaign->skipFlowStep('prompt-1', $this->release, self::at());
+            self::fail('The closing prompt was skipped.');
+        } catch (StepCannotBeSkipped) {
+            self::assertSame(4, $this->tracker($campaign, 'hunters'));
+        }
+
+        $campaign->completeFlowStep('prompt-1', self::prompt('Over the rooftops'), $this->release, self::at());
+        self::assertSame(0, $this->tracker($campaign, 'hunters'));
+
+        // The next world turn finds the clock empty: the strike is not forced again.
+        $this->aQuietNight($campaign);
+        self::assertNull(self::flowRunOf($campaign)->forcedNextSceneType());
+    }
+
+    #[Test]
+    public function aRaidAndAFullClockInTheSameTurnForceTheRaidAndKeepTheClockForTheNextTurn(): void
+    {
+        $campaign = $this->afterAHunt(masquerade: 5);
+        $this->fillTheClock($campaign);
+
+        // The Inquisition roll is the last step of the turn, so its scene wins over the strike.
+        $campaign->completeFlowStep('stir', self::roll('1d6', 1), $this->release, self::at());
+        $campaign->completeFlowStep('inquisition', self::roll('1d10', 1), $this->release, self::at());
+        self::assertSame('inquisition-raid', self::flowRunOf($campaign)->forcedNextSceneType());
+        self::assertSame(4, $this->tracker($campaign, 'hunters'));
+
+        // The raid plays out; the next turn, with no raid, forces the strike.
+        $campaign->pickSceneType('inquisition-raid', $this->release, self::at());
+        $campaign->completeFlowStep('prompt-1', self::prompt('The Elysium annex'), $this->release, self::at());
+        $this->perform($campaign, 'stealth', 6, 6, 6, 6, 6, 6);
+        $campaign->endFlowScene(7, $this->release, self::at());
+        $campaign->completeFlowStep('prompt-1', self::prompt('The city whispers'), $this->release, self::at());
+        self::assertSame(4, $this->tracker($campaign, 'hunters'));
+
+        $campaign->setTrackerValue($this->release->tracker('masquerade') ?? self::fail('No masquerade.'), 9, self::at());
+        $this->aQuietNight($campaign, inquisition: 10);
+
+        self::assertSame('hunters-strike', self::flowRunOf($campaign)->forcedNextSceneType());
     }
 
     #[Test]
     public function theRaidClosingTakesThreeOffTheMasqueradeAndNeverBelowZero(): void
     {
         $campaign = $this->afterAHunt(masquerade: 2);
-        $campaign->completeFlowStep('inquisition', self::roll('1d10', 1), $this->release, self::at());
         $campaign->completeFlowStep('stir', self::roll('1d6', 1), $this->release, self::at());
+        $campaign->completeFlowStep('inquisition', self::roll('1d10', 1), $this->release, self::at());
         $campaign->pickSceneType('inquisition-raid', $this->release, self::at());
         $campaign->completeFlowStep('prompt-1', self::prompt('The Elysium annex'), $this->release, self::at());
         $this->perform($campaign, 'stealth', 6, 6, 6, 6, 6, 6);
@@ -164,8 +260,8 @@ final class VtmNightCourtPresetFlowTest extends FlowRunTestCase
     public function theRaidClosingTakesThreeOffAMasqueradeAboveThree(): void
     {
         $campaign = $this->afterAHunt(masquerade: 9);
-        $campaign->completeFlowStep('inquisition', self::roll('1d10', 1), $this->release, self::at());
         $campaign->completeFlowStep('stir', self::roll('1d6', 1), $this->release, self::at());
+        $campaign->completeFlowStep('inquisition', self::roll('1d10', 1), $this->release, self::at());
         $campaign->pickSceneType('inquisition-raid', $this->release, self::at());
         $campaign->completeFlowStep('prompt-1', self::prompt('The Elysium annex'), $this->release, self::at());
         $this->perform($campaign, 'stealth', 6, 6, 6, 6, 6, 6);
@@ -218,7 +314,8 @@ final class VtmNightCourtPresetFlowTest extends FlowRunTestCase
     }
 
     /**
-     * A campaign at the world turn's Inquisition roll, after a Hunt that did not roll Hunger dice into trouble.
+     * A campaign at the world turn's first step, the roll that tells whether the night stirs, after a Hunt that did not
+     * roll Hunger dice into trouble.
      */
     private function afterAHunt(int $masquerade): Campaign
     {
@@ -226,9 +323,34 @@ final class VtmNightCourtPresetFlowTest extends FlowRunTestCase
         $this->perform($campaign, 'brawl', 7, 7, 7, 7, 7, 7);
         $campaign->setTrackerValue($this->release->tracker('masquerade') ?? self::fail('No masquerade.'), $masquerade, self::at());
         $campaign->endFlowScene(5, $this->release, self::at());
-        self::assertSame('inquisition', self::position($campaign)[1]);
+        self::assertSame('stir', self::position($campaign)[1]);
 
         return $campaign;
+    }
+
+    private function fillTheClock(Campaign $campaign): void
+    {
+        $campaign->setTrackerValue($this->release->tracker('hunters') ?? self::fail('No hunters.'), 4, self::at());
+    }
+
+    /**
+     * One world turn on a quiet night (1 to 3), then the Inquisition roll, which by default does not move.
+     */
+    private function aQuietNight(Campaign $campaign, int $inquisition = 10): void
+    {
+        $campaign->completeFlowStep('stir', self::roll('1d6', 1), $this->release, self::at());
+        $campaign->completeFlowStep('inquisition', self::roll('1d10', $inquisition), $this->release, self::at());
+    }
+
+    /**
+     * Picks the strike forced by the world turn, plays it with a success, and ends it: the closing's prompt is next.
+     */
+    private function playTheStrike(Campaign $campaign): void
+    {
+        $campaign->pickSceneType('hunters-strike', $this->release, self::at());
+        $campaign->completeFlowStep('prompt-1', self::prompt('Through the skylight'), $this->release, self::at());
+        $this->perform($campaign, 'brawl', 7, 7, 7, 7, 7, 7);
+        $campaign->endFlowScene(7, $this->release, self::at());
     }
 
     /**

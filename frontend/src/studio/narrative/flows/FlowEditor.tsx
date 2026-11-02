@@ -104,6 +104,8 @@ export function FlowEditor({
       params: { key: gameSystemKey, flow: current },
       search: { node: next.kind === 'settings' ? undefined : nodePath(next) },
       replace,
+      // A step scrolls itself into view; the router's reset to the top would undo that.
+      resetScroll: next.kind !== 'step',
     })
   }
 

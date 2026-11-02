@@ -50,7 +50,7 @@ const KEYED_TEXT = /^\[([^\]]*)\]\s*(.*)$/
  * One entry per non-blank line. Ranged tables read a leading range; lines without one follow on
  * from the previous range (one total each). Weighted tables give every line weight 1 and keep a
  * leading number in the text. With `withKey` (the schema version has entry keys) the text may start
- * with `[key]`; a key must follow the key rule and be new to the paste and, when adding, to the table.
+ * with `[key]` (`\[` at the start is a literal bracket; without `withKey` brackets are plain text); a key must follow the key rule and be new to the paste and, when adding, to the table.
  * Any bad line fails the whole paste: nothing is guessed or fixed.
  */
 export function parsePaste(
@@ -72,17 +72,22 @@ export function parsePaste(
       errors.push({ line: number, message: `Line ${String(number)}: ${message}` })
       return null
     }
-    if (!text.startsWith('[')) {
+    // Without entry keys, brackets are plain text.
+    if (!withKey) {
       return { text }
     }
-    if (!withKey) {
-      return fail('this table has no entry keys; remove the text in brackets.')
+    if (text.startsWith('\\[')) {
+      // An escaped bracket is a literal one: the backslash goes.
+      return { text: text.slice(1) }
+    }
+    if (!text.startsWith('[')) {
+      return { text }
     }
     const match = KEYED_TEXT.exec(text)
     const key = match?.[1] ?? ''
     if (!match || !KEY_RULE.test(key)) {
       return fail(
-        'the text in brackets at the start is not a valid entry key (lower case letters, digits and hyphens, up to 64).',
+        'the text in brackets at the start is not a valid entry key (lower case letters, digits and hyphens, up to 64). To start the text with a bracket, write \\[.',
       )
     }
     const rest = match[2] ?? ''

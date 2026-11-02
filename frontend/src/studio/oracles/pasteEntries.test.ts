@@ -170,11 +170,33 @@ describe('parsePaste', () => {
       )
     })
 
-    it('fails on any [key] when the schema version has no entry keys', () => {
+    it('keeps brackets as plain text when the schema version has no entry keys', () => {
       const { entries, errors } = parsePaste(ranged([]), '[rain] Rain\n2 [snow] Snow', 'replace')
+      expect(errors).toEqual([])
+      expect(entries).toEqual([
+        { text: '[rain] Rain', min: 1, max: 1 },
+        { text: '[snow] Snow', min: 2, max: 2 },
+      ])
+      expect(parsePaste(weighted(), '[x', 'replace').entries).toEqual([{ text: '[x', weight: 1 }])
+    })
+
+    it('reads an escaped bracket as a literal one and drops the backslash', () => {
+      const { entries, errors } = keyed(ranged([]), '\\[sic] Rain\n2 \\[snow] Snow\n[a] A \\[b]')
+      expect(errors).toEqual([])
+      expect(entries).toEqual([
+        { text: '[sic] Rain', min: 1, max: 1 },
+        { text: '[snow] Snow', min: 2, max: 2 },
+        { text: 'A \\[b]', min: 3, max: 3, key: 'a' },
+      ])
+      expect(keyed({ ...weighted(), entries: [] }, '\\[x').entries).toEqual([
+        { text: '[x', weight: 1 },
+      ])
+    })
+
+    it('still refuses an unescaped bracket that is no key, and says how to escape it', () => {
+      const { entries, errors } = keyed(ranged([]), '[x')
       expect(entries).toEqual([])
-      expect(errors.map(({ line }) => line)).toEqual([1, 2])
-      expect(errors[0]?.message).toContain('no entry keys')
+      expect(errors[0]?.message).toContain('write \\[')
     })
 
     it('fails on a key repeated in the paste, naming both lines', () => {

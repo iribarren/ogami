@@ -13,6 +13,7 @@ import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { checks, checksV1, draft, sheet, validDraft } from '../fixtures'
+import { checksKey } from './useGameSystemChecks'
 import { replaceText, typeText } from '@/test/typeText'
 
 /** The placeholders of the inputs drawn, so a test can count the band rows that rendered. */
@@ -2018,6 +2019,65 @@ describe('leaving a check with unsaved edits', () => {
     await waitFor(() => {
       expect(dialog()).not.toBeInTheDocument()
     })
+  })
+
+  it('opens on the version a save behind the question returned', async () => {
+    const saved = {
+      ...checks,
+      version: 6,
+      checks: [{ ...checks.checks[0], dice: '3d6' }, checks.checks[1]],
+    }
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const luck = recorder(() => Response.json(saved))
+    const { user, form } = await editedSkill({
+      [`PUT ${base}/checks/skill`]: async () => {
+        await gate
+        return Response.json(saved)
+      },
+      [`PUT ${base}/checks/luck`]: luck.handler,
+    })
+
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+    await user.click(screen.getByRole('button', { name: 'Edit luck' }))
+    await screen.findByRole('dialog', { name: 'Leave without saving?' })
+    release()
+    const opened = within(await screen.findByRole('form', { name: 'Edit luck' }))
+    await replaceText(user, opened.getByLabelText('Dice'), '2d6')
+    await user.click(opened.getByRole('button', { name: 'Save check' }))
+
+    await waitFor(() => {
+      expect(luck.sent).toHaveLength(1)
+    })
+    expect(luck.sent[0]).toMatchObject({ expectedVersion: 6 })
+  })
+
+  it('opens on the checks current at Leave, not at the click', async () => {
+    let reads = 0
+    const luck = recorder(() => Response.json({ ...checks, version: 7 }))
+    const { user, queryClient } = await editedSkill({
+      [`GET ${base}/checks`]: () =>
+        Response.json(++reads === 1 ? checks : { ...checks, version: 6 }),
+      [`PUT ${base}/checks/luck`]: luck.handler,
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Edit luck' }))
+    await screen.findByRole('dialog', { name: 'Leave without saving?' })
+    await queryClient.refetchQueries({ queryKey: checksKey('my-draft') })
+    await waitFor(() => {
+      expect(reads).toBe(2)
+    })
+    await user.click(screen.getByRole('button', { name: 'Leave without saving' }))
+    const opened = within(await screen.findByRole('form', { name: 'Edit luck' }))
+    await replaceText(user, opened.getByLabelText('Dice'), '2d6')
+    await user.click(opened.getByRole('button', { name: 'Save check' }))
+
+    await waitFor(() => {
+      expect(luck.sent).toHaveLength(1)
+    })
+    expect(luck.sent[0]).toMatchObject({ expectedVersion: 6 })
   })
 
   it('reads a saved form as clean', async () => {

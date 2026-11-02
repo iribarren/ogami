@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { ArrowDown, ArrowUp, Copy, Pencil, Plus, Trash2 } from 'lucide-react'
 import {
   useCallback,
@@ -63,6 +64,7 @@ import { checkAnswer } from './checkError'
 import { pushContext } from './pushContext'
 import { sampleDefaults } from './checkSandbox'
 import {
+  checksKey,
   CheckError,
   useDeleteCheck,
   useGameSystemChecks,
@@ -139,6 +141,7 @@ function CheckList({
 }) {
   const move = useMoveCheck(gameSystemKey)
   const latest = useGameSystemChecks(gameSystemKey)
+  const queryClient = useQueryClient()
   const [selected, setSelected] = useState<Selection>(null)
   const [conflict, setConflict] = useState<{ message: string; loaded: boolean } | null>(null)
   // Whether the open editor holds edits that were not saved, as it reports it.
@@ -166,9 +169,11 @@ function CheckList({
       // The answer to a change the editor reports from its own effect: there is no event to run it in.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setPending(null)
-      pending(data)
+      // From the cache: the save's answer is there before this render's `data` catches up, and
+      // the next form must start from the version it returned, or its own save would conflict.
+      pending(queryClient.getQueryData<GameSystemChecks>(checksKey(gameSystemKey)) ?? data)
     }
-  }, [pending, editorUnsaved, data])
+  }, [pending, editorUnsaved, data, queryClient, gameSystemKey])
 
   function open(
     original: string | null,

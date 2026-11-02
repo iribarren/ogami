@@ -68,6 +68,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T8 | 2 | G7: `CheckEditor` dirty, guard, and a confirm on picking another check | delegated writer | [x] | |
 | T9 | 2 | G7: `SheetCurrencyPanel` guard | delegated writer | [x] | |
 | T10 | 2 | Slice 1 finding: a reload clears what the test panel last said | inline: two lines per editor, already understood | [x] | |
+| T11 | 2 | Slice 2 finding: a guarded check action opens on the current version | inline: one effect and two tests | [x] | |
 
 ## Acceptance criteria
 
@@ -97,6 +98,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: T8 done. RED: 9 of 13 new tests failed (no question on Edit, New check, Duplicate, tab change, or the save-behind-the-dialog case); the untouched-switch, untouched New check, editor Duplicate and untouched tab change tests passed at once. The saved-form test failed at RED on its own selector, not on behaviour, and was fixed. Drafts hold plain data, so `JSON.stringify` compares them. Stories already run under `StoryProviders`.
 - 2026-11-02: T9 done. RED: the 2 asking tests failed (tab change, leaving the page); the clean, trimmed-unit, saved and removed tests passed at once, as they pin that the form is clean. The test that rendered the bare panel now drives the cache of the full app, since the guard needs a router.
 - 2026-11-02: T10 done, last rather than first. The results were never reset: the page has owned them since before slice 1, so a reload keeps them. Slice 1 lost only the reset of the panel's own error and inputs; a `key` on the panel restores it. RED: both new tests failed on the alert still shown.
+- 2026-11-02: T11 done. The finding asked for a test; the test found a bug: a save finishing behind the question opened the next check on the old version, because the save's promise resolves before React renders the new cache, and that check's save would answer a false 409. RED: expected version 6, sent 5. The effect now reads the cache. The Leave test passed at once; with the action changed to keep the click's data, both tests fail.
 
 ## Reviews
 

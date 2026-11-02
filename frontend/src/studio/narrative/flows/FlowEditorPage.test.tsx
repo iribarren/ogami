@@ -308,7 +308,70 @@ describe('the phase outline', () => {
     await replace(user, content().getByLabelText('Key'), 'night')
     await replace(user, content().getByLabelText('Name'), 'Dawn')
     expect(content().getByLabelText('Key')).toHaveValue('night')
-    expect(content().queryByText('The key follows the name until you edit it.')).toBeNull()
+    expect(
+      content().queryByText('The key follows the name until you edit it or save the flow.'),
+    ).toBeNull()
+  })
+
+  describe('the placeholder first phase of a flow', () => {
+    const fresh = {
+      key: 'fresh',
+      definition: {
+        key: 'fresh',
+        name: 'Fresh',
+        defaultView: 'focus',
+        oracles: [],
+        trackers: [],
+        phases: [
+          {
+            key: 'main',
+            name: 'Main',
+            mode: 'once',
+            selection: { rule: 'sequence', sceneTypes: ['ambush'] },
+          },
+        ],
+      },
+      usedBy: [],
+    }
+    const withFresh = { ...narrativeFlows, flows: [...narrativeFlows.flows, fresh] }
+    const handlers = { [`GET ${base}/narrative`]: json(withFresh) }
+
+    it('keeps the key of a stored main / Main when the flow is opened any other way', async () => {
+      const { user } = await openEditor('fresh', handlers)
+
+      await pickPhase(user, 1)
+      await replace(user, content().getByLabelText('Name'), 'Opening')
+      expect(content().getByLabelText('Key')).toHaveValue('main')
+    })
+
+    it('follows the name only straight after New flow, and stops at the first save', async () => {
+      const saved = recorder(() => Response.json(withFresh))
+      const { user, router } = await openEditor('heist', {
+        ...handlers,
+        [`PUT ${base}/narrative/flows/fresh`]: saved.handler,
+      })
+      await act(() =>
+        router.navigate({
+          to: '/studio/game-systems/$key/flows/$flow',
+          params: { key: 'my-draft', flow: 'fresh' },
+          state: { justCreated: true },
+        }),
+      )
+
+      await pickPhase(user, 1)
+      await replace(user, content().getByLabelText('Name'), 'Opening')
+      expect(content().getByLabelText('Key')).toHaveValue('opening')
+      await user.click(save())
+      await waitFor(() => {
+        expect(saved.sent).toHaveLength(1)
+      })
+      await waitFor(() => {
+        expect(router.state.location.state.justCreated).toBeUndefined()
+      })
+
+      await replace(user, content().getByLabelText('Name'), 'Dawn')
+      expect(content().getByLabelText('Key')).toHaveValue('opening')
+    })
   })
 
   it('moves a phase up or down and saves the new order', async () => {

@@ -15,10 +15,13 @@ import type { PhaseAnswer } from './flowError'
 export function PhasePanel({
   phase,
   answer,
+  others,
   onChange,
 }: {
   phase: PhaseDraft
   answer: PhaseAnswer | undefined
+  /** The flow's other phases: a followed key avoids their keys. */
+  others: readonly PhaseDraft[]
   onChange: (phase: PhaseDraft) => void
 }) {
   const modeId = useId()
@@ -34,7 +37,11 @@ export function PhasePanel({
           keyField
           value={phase.key}
           error={fields.key}
-          help={phase.follow === true ? 'The key follows the name until you edit it.' : undefined}
+          help={
+            phase.follow === true
+              ? 'The key follows the name until you edit it or save the flow.'
+              : undefined
+          }
           onChange={(key) => {
             onChange(editPhaseKey(phase, key))
           }}
@@ -44,7 +51,7 @@ export function PhasePanel({
           value={phase.name}
           error={fields.name}
           onChange={(name) => {
-            onChange(editPhaseName(phase, name))
+            onChange(editPhaseName(phase, name, others))
           }}
         />
         <TextField

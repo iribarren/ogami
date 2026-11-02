@@ -30,6 +30,7 @@ Out of scope: S15 (tall step cards), which goes to a follow-up issue with a road
 | S14 | Raise the condition band label cap from 80 to 100 to match checks, backwards compatible, plus a live counter | Parent |
 | S26 paste | Client side, no new endpoint: pasted fields go one by one through the existing `POST /sheet/fields`, each with the version the last one returned. A failure stops there and says what was added; the lines not added stay in the dialog | Parent |
 | S16 | Expand all / Collapse all on a check set's per-band effects, collapsed by default: open by default would make the tall cards of S15 taller | Parent |
+| T15 "just created" | A stored phase never follows its name by default. Only the editor opened straight after New flow marks a `main`/`Main` first phase as following, through TanStack Router history `state` (`justCreated`, typed `HistoryState`): not part of the URL, so a shared link or bookmark never carries it. It is dropped from the entry at the first save, and the first save also ends following for every phase | Parent |
 
 ## Slice plan
 
@@ -58,6 +59,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T11 | 2 | S22, S23: a new phase's key follows its name; a hint that a phase needs a Scene Type | delegated writer (slice 2) | [x] | — |
 | T12 | 2 | S8: push cost field select in sheet order | delegated writer (slice 2) | [x] | — |
 | T13 | 2 | S17, S21, P17: `sheet` effect hint in Setup; Skip option hint before adding; a new `condition` step starts with a tracker and a second band | delegated writer (slice 2) | [x] | — |
+| T15 | 2 | Slice 2 review findings of `review-b1745bc88fc144b9`: a published placeholder phase must not follow its name; a followed key stays valid and free; the paste dialog resets on open; paste no-answer and retry version tests | delegated writer (slice 2) | [x] | — |
 | T14 | 2 | Closing: S15 follow-up issue and roadmap line; roadmap B7m done; this doc closed | parent (closing doc commit) | [ ] | — |
 
 ## Progress
@@ -79,6 +81,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-02: T11 correction: a stored phase follows its name only when it is the new-flow placeholder (`PLACEHOLDER_PHASE`, key `main`, name `Main`, shared with `newFlowToItem`); any other stored key, even one equal to its name's slug, is never renamed. RED observed: the `setup`/`Setup` test failed against the first version; the page test I had changed is back to its original expectation.
 - 2026-11-02: T8 done: the condition band label cap is 100 in `Bands.php`, `GameSystemReleaseTranslator.php`, `docs/contracts/gamesystem-release.md` and `v2.schema.json` (the only copy of the schema); labels of 80 or fewer stay valid (the 80-character case is kept in the tests). New shared `CharCount` (`37/100`, destructive past the cap, same figures as text for assistive technology, typing never blocked) on the band label of `checks/BandsEditor.tsx` and `narrative/steps/BandsEditor.tsx` (through `TextField`'s new `limit`). RED observed: the 100/101 boundary tests failed (3 failures, 1 error) and the counter tests failed before the code.
 - 2026-11-02: QA fix after a full `make verify` (the earlier "ok" came from a filtered output and hid failures): the likelihood order test no longer calls the non-static `at()` from static closures (Rector had made them static), and phpstan casts, two ESLint `any` errors and a type error in the new tests are fixed. RED observed: PHPUnit error, PHPStan, ESLint and tsc reported them.
+- 2026-11-02: T15 done, frontend-only. Router history `state` `justCreated` (set by New flow) is the only way a stored `main`/`Main` follows; saving ends following; a followed key is cut to 64 (`ReleaseFields::key`), kept when the name derives none and numbered (`-2`) when another phase has it (`editPhaseName` takes the other phases); the paste dialog resets its settings on open. RED observed: stored-main-does-not-follow and the key limits/blank/duplicate tests in `flowDraft.test.ts`, the page test for a stored `main` opened normally (with the old default), and the paste dialog group reset (a stale group showed `Pick a group.`). No RED for the page test that follows after New flow and stops at the save (written with the code), nor for the paste no-answer path and the retry versions (`[7, 8, 8, 9]`): both passed on first run, no stale version found.
 
 ## Reviews
 

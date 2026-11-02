@@ -366,26 +366,64 @@ describe('the key of a phase following its name (S22, S23)', () => {
     flowToDraft({ ...kingsport, phases: [{ ...kingsport.phases[0], key, name }] })?.phases[0]
 
   it('follows the name of a new phase until the key is typed', () => {
-    const added = editPhaseName(newPhase([]), 'The Long Night!')
+    const added = editPhaseName(newPhase([]), 'The Long Night!', [])
     expect(added.key).toBe('the-long-night')
 
     const typed = editPhaseKey(added, 'night')
-    expect(editPhaseName(typed, 'Dawn')).toMatchObject({ key: 'night', name: 'Dawn' })
+    expect(editPhaseName(typed, 'Dawn', [])).toMatchObject({ key: 'night', name: 'Dawn' })
   })
 
   it('follows from the placeholder first phase a new flow starts with: main / Main', () => {
     const first = newFlowToItem({ key: 'f', name: 'F', sceneType: 's', sceneTypes: [] })
+    const phase = flowToDraft(first.item, { justCreated: true })?.phases[0]
+
+    expect(phase && editPhaseName(phase, 'Opening', []).key).toBe('opening')
+  })
+
+  it('does not follow a stored main / Main unless the flow was just created', () => {
+    const first = newFlowToItem({ key: 'f', name: 'F', sceneType: 's', sceneTypes: [] })
     const phase = flowToDraft(first.item)?.phases[0]
 
-    expect(phase && editPhaseName(phase, 'Opening').key).toBe('opening')
+    expect(phase?.follow).toBe(false)
+    expect(phase && editPhaseName(phase, 'Opening', []).key).toBe('main')
+    const stored = {
+      ...first.item,
+      phases: [
+        { ...(first.item.phases as object[])[0], key: 'main', name: 'Main' },
+        { ...(first.item.phases as object[])[0], key: 'main', name: 'Main' },
+      ],
+    }
+    expect(flowToDraft(stored, { justCreated: true })?.phases.map((p) => p.follow)).toEqual([
+      true,
+      false,
+    ])
+  })
+
+  it('keeps a followed key valid: cut to 64, kept when the name derives none, free of the other phases', () => {
+    const phase = newPhase([])
+    const long = editPhaseName(phase, 'a'.repeat(70), [])
+    expect(long.key).toBe('a'.repeat(64))
+    expect(editPhaseName(phase, 'ab '.repeat(30), []).key).toMatch(/^[a-z0-9-]{1,64}$/)
+
+    const named = editPhaseName(phase, 'Dawn', [])
+    expect(editPhaseName(named, '', [])).toMatchObject({ name: '', key: 'dawn' })
+    expect(editPhaseName(named, '¡¿!?', []).key).toBe('dawn')
+
+    const other = { ...newPhase([]), key: 'dawn' }
+    const taken = editPhaseName(phase, 'Dawn', [other])
+    expect(taken.key).toBe('dawn-2')
+    expect(editPhaseName(phase, 'Dawn', [other, { ...other, key: 'dawn-2' }]).key).toBe('dawn-3')
+    expect(editPhaseName(phase, 'a'.repeat(70), [{ ...other, key: 'a'.repeat(64) }]).key).toBe(
+      `${'a'.repeat(62)}-2`,
+    )
   })
 
   it('does not rename the key of any other stored phase, even one that matches its name', () => {
     const phase = stored('setup', 'Setup')
 
-    expect(phase && editPhaseName(phase, 'Prep').key).toBe('setup')
+    expect(phase && editPhaseName(phase, 'Prep', []).key).toBe('setup')
     expect(phase?.follow).toBe(false)
-    expect(editPhaseName(stored('custom', 'Setup') ?? newPhase([]), 'Prep').key).toBe('custom')
+    expect(editPhaseName(stored('custom', 'Setup') ?? newPhase([]), 'Prep', []).key).toBe('custom')
     // Only the exact placeholder follows: "main" under another name or "Main" under another key do not.
     expect(stored('main', 'Primary')?.follow).toBe(false)
     expect(stored('prime', 'Main')?.follow).toBe(false)

@@ -48,6 +48,7 @@ export function FlowEditor({
   initial,
   version,
   selected,
+  justCreated,
 }: {
   gameSystemKey: string
   narrative: GameSystemNarrative
@@ -56,6 +57,8 @@ export function FlowEditor({
   initial: FlowDraft
   version: number
   selected: string | undefined
+  /** The editor opened straight after New flow: its history entry says so until the first save. */
+  justCreated: boolean
 }) {
   const [draft, setDraft] = useState(initial)
   const [readAt, setReadAt] = useState(version)
@@ -144,7 +147,16 @@ export function FlowEditor({
       })
       setReadAt(saved.version)
       setCurrent(key)
-      setBaseline(JSON.stringify(draft))
+      // The keys are stored now: from here on a rename of a phase never changes its key.
+      const stored = {
+        ...draft,
+        phases: draft.phases.map((phase) => ({ ...phase, follow: false })),
+      }
+      setDraft((latest) => ({
+        ...latest,
+        phases: latest.phases.map((phase) => ({ ...phase, follow: false })),
+      }))
+      setBaseline(JSON.stringify(stored))
       setSavedAt(new Date())
     } catch (error) {
       const index = narrative.flows.findIndex((stored) => stored.key === current)
@@ -165,6 +177,19 @@ export function FlowEditor({
         })
       } catch {
         // The save went through; if the router refuses, the URL decides what the page shows.
+      }
+    } else if (justCreated) {
+      // Drops the signal from the history entry, so a browser reload does not follow again.
+      try {
+        await navigate({
+          to: '/studio/game-systems/$key/flows/$flow',
+          params: { key: gameSystemKey, flow: key },
+          search: { node: selected },
+          replace: true,
+          state: {},
+        })
+      } catch {
+        // The save went through; the signal only matters to a reload.
       }
     }
   }
@@ -274,7 +299,14 @@ export function FlowEditor({
               }}
             />
           ),
-          body: <PhasePanel phase={phase} answer={aligned[index]} onChange={change} />,
+          body: (
+            <PhasePanel
+              phase={phase}
+              answer={aligned[index]}
+              others={phases.filter((_, at) => at !== index)}
+              onChange={change}
+            />
+          ),
         }
       case 'selection':
         return {

@@ -17,7 +17,7 @@ const json =
 
 async function openPaste(handlers: Record<string, FakeHandler> = {}) {
   const user = userEvent.setup()
-  renderAppAt('/studio/game-systems/my-draft', {
+  const rendered = renderAppAt('/studio/game-systems/my-draft', {
     'GET /api/auth/me': signedInAs('GAME_MANAGER'),
     'GET /api/studio/game-systems': json([]),
     [`GET ${base}`]: json(draft),
@@ -27,7 +27,7 @@ async function openPaste(handlers: Record<string, FakeHandler> = {}) {
   })
   await user.click(await screen.findByRole('link', { name: 'Sheet' }))
   await user.click(await screen.findByRole('button', { name: 'Paste fields' }))
-  return user
+  return { user, ...rendered }
 }
 
 const inDialog = () => within(screen.getByRole('dialog'))
@@ -53,7 +53,7 @@ const refused =
 describe('pasting sheet fields', () => {
   it('previews the derived keys and sends nothing until the button is pressed', async () => {
     const { sent, handler } = answering()
-    const user = await openPaste({ [`POST ${base}/sheet/fields`]: handler })
+    const { user } = await openPaste({ [`POST ${base}/sheet/fields`]: handler })
 
     await typeText(user, names(), 'Hit Points\n\nLuck')
 
@@ -68,7 +68,7 @@ describe('pasting sheet fields', () => {
 
   it('adds the fields in order, each with the version the last answer returned', async () => {
     const { sent, handler } = answering(saved(8), saved(9))
-    const user = await openPaste({ [`POST ${base}/sheet/fields`]: handler })
+    const { user } = await openPaste({ [`POST ${base}/sheet/fields`]: handler })
 
     await typeText(user, names(), 'Grit\nLuck')
     await typeText(user, inDialog().getByLabelText('Max'), '5')
@@ -90,7 +90,7 @@ describe('pasting sheet fields', () => {
 
   it('sends the type and group chosen, and a free-text group when none are declared', async () => {
     const { sent, handler } = answering(saved(8))
-    const user = await openPaste({
+    const { user } = await openPaste({
       [`GET ${base}/sheet`]: json(sheetUngrouped),
       [`POST ${base}/sheet/fields`]: handler,
     })
@@ -112,7 +112,7 @@ describe('pasting sheet fields', () => {
 
   it('refuses a key of the sheet, a repeated key and a nameless line, per line, and sends nothing', async () => {
     const { sent, handler } = answering()
-    const user = await openPaste({ [`POST ${base}/sheet/fields`]: handler })
+    const { user } = await openPaste({ [`POST ${base}/sheet/fields`]: handler })
 
     await typeText(user, names(), 'Pow\nLuck\nLUCK\n!!!')
 
@@ -128,7 +128,7 @@ describe('pasting sheet fields', () => {
   })
 
   it('refuses a bound that is not a whole number before sending', async () => {
-    const user = await openPaste()
+    const { user } = await openPaste()
 
     await typeText(user, names(), 'Grit')
     await typeText(user, inDialog().getByLabelText('Min'), 'low')
@@ -144,7 +144,7 @@ describe('pasting sheet fields', () => {
       saved(9),
       saved(10),
     )
-    const user = await openPaste({ [`POST ${base}/sheet/fields`]: handler })
+    const { user } = await openPaste({ [`POST ${base}/sheet/fields`]: handler })
 
     await typeText(user, names(), 'Grit\nLuck\nNerve')
     await user.click(inDialog().getByRole('button', { name: 'Add 3 fields' }))
@@ -160,6 +160,8 @@ describe('pasting sheet fields', () => {
     await user.click(inDialog().getByRole('button', { name: 'Add 2 fields' }))
     expect(await inDialog().findByText('Added 2 of 2 fields.')).toBeVisible()
     expect(sent.map((request) => request.field.key)).toEqual(['grit', 'luck', 'luck', 'nerve'])
+    // The refused Luck did not move the version, so its retry sends the one Grit returned.
+    expect(sent.map((request) => request.expectedVersion)).toEqual([7, 8, 8, 9])
   })
 
   it('stops on a conflict midway and offers the reload, then retries with the latest version', async () => {
@@ -173,7 +175,7 @@ describe('pasting sheet fields', () => {
       saved(13),
     )
     let reads = 0
-    const user = await openPaste({
+    const { user } = await openPaste({
       [`POST ${base}/sheet/fields`]: handler,
       [`GET ${base}/sheet`]: () => {
         reads += 1
@@ -197,5 +199,59 @@ describe('pasting sheet fields', () => {
 
     expect(await inDialog().findByText('Added 1 of 1 field.')).toBeVisible()
     expect(sent.map((request) => request.expectedVersion)).toEqual([7, 8, 12])
+  })
+
+  it("starts from the sheet's current groups each time it opens", async () => {
+    const { user, queryClient } = await openPaste()
+    await user.click(inDialog().getByRole('button', { name: 'Close' }))
+
+    // The groups change while the dialog is closed, as after a rename in the sheet tab.
+    queryClient.setQueryData(['studio', 'game-systems', 'my-draft', 'sheet'], {
+      ...sheet,
+      groups: [{ name: 'Core', columns: 1, span: 1 }],
+    })
+    await user.click(await screen.findByRole('button', { name: 'Paste fields' }))
+    await typeText(user, names(), 'Grit')
+
+    expect(inDialog().queryByText('Pick a group.')).toBeNull()
+    expect(inDialog().getByRole('button', { name: 'Add 1 field' })).toBeEnabled()
+  })
+
+  it('reads the sheet again when a request got no answer, and does not send a line that landed twice', async () => {
+    const sent: { field: Record<string, unknown> }[] = []
+    let reads = 0
+    const { user } = await openPaste({
+      [`POST ${base}/sheet/fields`]: async (request) => {
+        sent.push((await request.json()) as (typeof sent)[number])
+        return Promise.reject(new TypeError('Failed to fetch'))
+      },
+      [`GET ${base}/sheet`]: () => {
+        reads += 1
+        // The first read opens the tab; the next one shows that Grit landed.
+        return Response.json(
+          reads === 1
+            ? sheet
+            : {
+                ...sheet,
+                version: 8,
+                fields: [
+                  ...sheet.fields,
+                  { key: 'grit', label: 'Grit', group: 'Stats', type: 'number' },
+                ],
+              },
+        )
+      },
+    })
+
+    await typeText(user, names(), 'Grit')
+    await user.click(inDialog().getByRole('button', { name: 'Add 1 field' }))
+
+    expect(await inDialog().findByText(/Stopped at “Grit”/)).toBeVisible()
+    await waitFor(() => {
+      expect(reads).toBe(2)
+    })
+    expect(await inDialog().findByText(/The key "grit" is already a field/)).toBeVisible()
+    expect(inDialog().getByRole('button', { name: 'Add 1 field' })).toBeDisabled()
+    expect(sent).toHaveLength(1)
   })
 })

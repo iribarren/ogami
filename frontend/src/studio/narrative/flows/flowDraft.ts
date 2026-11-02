@@ -48,8 +48,9 @@ export interface PhaseDraft {
   selection: SelectionDraft
   /**
    * While set, the key follows the name (`editPhaseName`). A new phase follows; a stored one only
-   * when it is the placeholder first phase of a new flow (`PLACEHOLDER_PHASE`). A stored key is
-   * never renamed otherwise: a published phase's key must not change on a rename.
+   * when the editor opened straight after New flow (`flowToDraft`'s `justCreated`) and it is the
+   * placeholder first phase (`PLACEHOLDER_PHASE`). A stored key is never renamed otherwise: a
+   * published phase's key must not change on a rename.
    */
   follow?: boolean
   /**
@@ -122,7 +123,7 @@ function selectionToDraft(value: unknown): SelectionDraft | null {
     : null
 }
 
-function phaseToDraft(value: unknown): PhaseDraft | null {
+function phaseToDraft(value: unknown, justCreated: boolean): PhaseDraft | null {
   if (!isObject(value)) {
     return null
   }
@@ -159,15 +160,44 @@ function phaseToDraft(value: unknown): PhaseDraft | null {
     description,
     mode,
     selection,
-    follow: key === PLACEHOLDER_PHASE.key && name === PLACEHOLDER_PHASE.name,
+    follow: justCreated && key === PLACEHOLDER_PHASE.key && name === PLACEHOLDER_PHASE.name,
     hooks,
     extra: unknownFields(value, phaseKnown),
   }
 }
 
-/** The phase with a new name; the key follows it while the phase has not had its key typed. */
-export function editPhaseName(phase: PhaseDraft, name: string): PhaseDraft {
-  return phase.follow === true ? { ...phase, name, key: slugOf(name) } : { ...phase, name }
+/** The longest phase key the publisher takes (`ReleaseFields::key`, `OracleTable::MAX_KEY_LENGTH`). */
+export const MAX_PHASE_KEY_LENGTH = 64
+
+const phaseKeyOf = (name: string) => slugOf(name).slice(0, MAX_PHASE_KEY_LENGTH).replace(/-$/, '')
+
+/** The key, or the key with the lowest number from 2 that no other phase has, as `newPhase` does. */
+function freePhaseKey(key: string, others: readonly PhaseDraft[]): string {
+  const taken = (candidate: string) => others.some((other) => other.key === candidate)
+  let number = 2
+  let free = key
+  while (taken(free)) {
+    const suffix = `-${String(number)}`
+    free = `${key.slice(0, MAX_PHASE_KEY_LENGTH - suffix.length).replace(/-$/, '')}${suffix}`
+    number += 1
+  }
+  return free
+}
+
+/**
+ * The phase with a new name; the key follows it while the phase has not had its key typed. The key
+ * stays valid and free: cut to the publisher's limit, kept when the name derives none, and
+ * numbered when `others` (the flow's other phases) already have it.
+ */
+export function editPhaseName(
+  phase: PhaseDraft,
+  name: string,
+  others: readonly PhaseDraft[],
+): PhaseDraft {
+  const derived = phaseKeyOf(name)
+  return phase.follow === true && derived !== ''
+    ? { ...phase, name, key: freePhaseKey(derived, others) }
+    : { ...phase, name }
 }
 
 /** The phase with a key typed by hand, which stops it following the name. */
@@ -175,8 +205,15 @@ export function editPhaseKey(phase: PhaseDraft, key: string): PhaseDraft {
   return { ...phase, key, follow: false }
 }
 
-/** The flow as form state; null when a field has a shape this editor does not read. */
-export function flowToDraft(definition: StoredItem): FlowDraft | null {
+/**
+ * The flow as form state; null when a field has a shape this editor does not read. `justCreated`
+ * is only for the editor opened straight after New flow: its placeholder first phase then follows
+ * its name. Any other opening leaves every stored key alone.
+ */
+export function flowToDraft(
+  definition: StoredItem,
+  { justCreated = false }: { justCreated?: boolean } = {},
+): FlowDraft | null {
   const key = textOf(definition, 'key')
   const name = textOf(definition, 'name')
   const description = textOf(definition, 'description')
@@ -185,7 +222,9 @@ export function flowToDraft(definition: StoredItem): FlowDraft | null {
   const oracles = stringsOf(definition, 'oracles')
   const trackers = stringsOf(definition, 'trackers')
   const phases = Array.isArray(definition.phases)
-    ? (definition.phases as unknown[]).map(phaseToDraft)
+    ? (definition.phases as unknown[]).map((phase, position) =>
+        phaseToDraft(phase, justCreated && position === 0),
+      )
     : null
   const isDefault = definition.default
   if (
@@ -339,7 +378,7 @@ export function newPhase(phases: PhaseDraft[]): PhaseDraft {
   }
 }
 
-/** The first phase a new flow starts with; its key follows its name until the author edits the key. */
+/** The first phase a new flow starts with; its key follows its name until the author edits the key or saves. */
 export const PLACEHOLDER_PHASE = { key: 'main', name: 'Main' } as const
 
 /** What the New flow dialog asks for: the first phase needs a Scene Type to pick from. */

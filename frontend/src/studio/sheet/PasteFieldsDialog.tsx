@@ -77,9 +77,11 @@ export function PasteFieldsDialog({
       return
     }
     setOpen(next)
-    if (!next) {
-      setText('')
+    if (next) {
+      // The groups may have changed since the last open: start from the sheet as it is now.
       setSettings(blank(sheet))
+    } else {
+      setText('')
       setOutcome(null)
       setReloadNote(null)
       save.reset()

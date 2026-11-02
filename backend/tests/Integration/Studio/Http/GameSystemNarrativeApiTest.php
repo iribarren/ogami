@@ -487,6 +487,43 @@ final class GameSystemNarrativeApiTest extends WebTestCase
     }
 
     #[Test]
+    public function twoSavesOfDifferentSceneTypesAtOneVersionKeepTheFirstOnesSteps(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+        $scene = static fn (string $key, string $step): array => [
+            'key' => $key,
+            'name' => ucfirst($key),
+            'purpose' => 'Do it.',
+            'oracles' => [],
+            'setup' => [],
+            'play' => [['key' => $step, 'kind' => 'prompt', 'title' => $step]],
+            'closing' => [],
+        ];
+        $this->client->jsonRequest('POST', self::BASE.'/mine/narrative/scene-types', ['expectedVersion' => 1, 'item' => $scene('chase', 'go')]);
+        $this->client->jsonRequest('POST', self::BASE.'/mine/narrative/scene-types', ['expectedVersion' => 2, 'item' => $scene('heist', 'plan')]);
+        self::assertResponseStatusCodeSame(201);
+        $before = $this->narrative();
+        self::assertSame(3, $before['version']);
+        $first = $scene('chase', 'go');
+        $first['play'][] = ['key' => 'hide', 'kind' => 'prompt', 'title' => 'hide'];
+        $second = $scene('heist', 'plan');
+        $second['play'][] = ['key' => 'flee', 'kind' => 'prompt', 'title' => 'flee'];
+
+        // Two tabs read version 3; the first to save wins, the second is refused rather than lost.
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/narrative/scene-types/chase', ['expectedVersion' => 3, 'item' => $first]);
+        self::assertResponseStatusCodeSame(200);
+        $this->client->jsonRequest('PUT', self::BASE.'/mine/narrative/scene-types/heist', ['expectedVersion' => 3, 'item' => $second]);
+        self::assertResponseStatusCodeSame(409);
+
+        $after = $this->narrative();
+        $keys = $this->keys($after, 'sceneTypes');
+        self::assertEquals($first, self::at($after, 'sceneTypes.'.array_search('chase', $keys, true).'.definition'), 'The first save keeps its steps.');
+        self::assertEquals($scene('heist', 'plan'), self::at($after, 'sceneTypes.'.array_search('heist', $keys, true).'.definition'), 'The refused save changed nothing.');
+        self::assertSame(4, $after['version']);
+    }
+
+    #[Test]
     public function aKeyAlreadyTakenInTheSectionIsAConflict(): void
     {
         $this->signIn('ann@example.com', ['GAME_MANAGER']);

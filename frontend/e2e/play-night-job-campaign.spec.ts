@@ -68,28 +68,10 @@ test('a solo player starts the campaign flow, plays street zero, then buys somet
   const market = guide.getByRole('region', { name: 'Current step: Hit the Night Market?' })
   await market.getByRole('button', { name: 'Yes' }).click()
 
-  // Act 1's world turn runs before the market scene is offered. Its roll is random: roll it, and
-  // if the street stirs, skip whatever event steps follow (the market stays the forced next scene).
-  const playMarket = page.getByRole('button', { name: 'Play Night Market' })
-  const rollStreet = guide
-    .getByRole('region', { name: 'Current step: Does the street stir?' })
-    .getByRole('button', { name: 'Roll 1d6' })
-  const skipEvent = guide
-    .getByRole('region', { name: /^Current step: (?!Does the street stir)/ })
-    .getByRole('button', { name: 'Skip' })
-  const worldStep = guide.getByRole('region', { name: /^Current step:/ })
-  for (let turn = 0; turn < 8; turn++) {
-    await expect(worldStep.or(playMarket)).toBeVisible()
-    if (await playMarket.isVisible()) {
-      break
-    }
-    const name = (await worldStep.getAttribute('aria-label')) ?? ''
-    await rollStreet.or(skipEvent).click()
-    await expect(guide.getByRole('region', { name, exact: true })).toBeHidden()
-  }
+  // The crew is busy with the market, so the street waits: no world turn before the scene.
+  await page.getByRole('button', { name: 'Play Night Market' }).click()
 
-  // The stock and its prices are random too: buy the cheapest item on offer that the 500 eb cover.
-  await playMarket.click()
+  // The stock and its prices are random: buy the cheapest item on offer that the 500 eb cover.
   await guide
     .getByRole('region', { name: 'Current step: What does the market look like tonight?' })
     .getByRole('button', { name: 'Skip' })

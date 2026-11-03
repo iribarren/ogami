@@ -27,6 +27,9 @@ use App\Randomness\Domain\Roll;
  * the situational modifier adds or removes dice, and the total is the number of successes. A pool
  * check can declare a push, which re-rolls the dice that failed for a cost.
  *
+ * A check can opt out of the situational modifier (`noSituationalModifier`): a roll that takes none, such as
+ * a death save, refuses any value but 0, as it refuses a difficulty the check does not declare.
+ *
  * A challenge check (ADR 0049) compares a score against the challenge dice: with a dice expression it is
  * an action roll (the dice, the modifier and the situational modifier), without one a progress roll
  * (the modifier alone, which it requires). The total is the number of challenge dice the score beats.
@@ -56,6 +59,7 @@ final readonly class Check
         public ?CheckPool $pool = null,
         public ?CheckPush $push = null,
         public ?CheckChallenge $challenge = null,
+        public bool $noSituationalModifier = false,
     ) {
         if ($pool instanceof CheckPool && $challenge instanceof CheckChallenge) {
             throw new \InvalidArgumentException(\sprintf('Check "%s" rolls a pool or challenge dice, not both.', $key));
@@ -118,6 +122,7 @@ final readonly class Check
      * @throws CheckDifficultyNotDeclared    when a difficulty is given and the check declares none
      * @throws CheckDifficultyOutOfRange     when the difficulty is outside the declared min..max
      * @throws SituationalModifierOutOfRange when the situational modifier is outside -100..100
+     * @throws SituationalModifierNotAllowed when the check takes none and the situational modifier is not 0
      * @throws CheckEvaluationFailed         when a formula or the dice cannot be evaluated, or the total overflows
      */
     public function perform(RandomNumberGenerator $random, ValueResolver $sheet, ?int $difficulty, int $situational): CheckResult
@@ -125,6 +130,10 @@ final readonly class Check
         $effective = $this->effectiveDifficulty($difficulty);
         if ($situational < self::MIN_SITUATIONAL || $situational > self::MAX_SITUATIONAL) {
             throw SituationalModifierOutOfRange::of($situational);
+        }
+
+        if ($this->noSituationalModifier && 0 !== $situational) {
+            throw SituationalModifierNotAllowed::forCheck($this->key);
         }
 
         try {

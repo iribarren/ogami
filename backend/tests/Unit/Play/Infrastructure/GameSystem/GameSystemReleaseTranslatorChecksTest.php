@@ -114,6 +114,25 @@ final class GameSystemReleaseTranslatorChecksTest extends TestCase
     }
 
     #[Test]
+    public function itReadsACheckThatTakesNoSituationalModifierAndDefaultsToFalse(): void
+    {
+        $snapshot = $this->translate([$this->luck(), [...$this->luck(), 'key' => 'steady', 'noSituationalModifier' => true], [...$this->luck(), 'key' => 'off', 'noSituationalModifier' => false], [...$this->luck(), 'key' => 'unset', 'noSituationalModifier' => null]]);
+
+        self::assertSame([false, true, false, false], array_map(static fn (Check $check): bool => $check->noSituationalModifier, $snapshot->checks()));
+    }
+
+    #[Test]
+    public function aNoSituationalModifierThatIsNotABooleanFailsClosed(): void
+    {
+        try {
+            $this->translate([[...$this->luck(), 'noSituationalModifier' => 'yes']]);
+            self::fail('The check was read.');
+        } catch (InvalidGameSystemRelease $invalid) {
+            self::assertSame(self::UNREADABLE.'checks[0].noSituationalModifier: must be a boolean.', $invalid->getMessage());
+        }
+    }
+
+    #[Test]
     public function aReleaseWithoutChecksHasNone(): void
     {
         self::assertSame([], $this->translate([])->checks());

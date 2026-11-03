@@ -14,7 +14,8 @@ use App\Studio\Domain\Release\ReleaseFields;
  * counts the dice at or above a threshold, with optional critical pairs and Hunger dice (ADR 0044),
  * an optional formula modifier over the sheet (never with a pool), an optional push a pool check
  * may take once with its cost and cap, challenge dice a score is compared against (ADR 0049) with an
- * optional momentum field a push burns, an optional difficulty the player sets at roll time, and outcome bands
+ * optional momentum field a push burns, an optional difficulty the player sets at roll time, an optional opt-out of
+ * the situational modifier (`noSituationalModifier`), and outcome bands
  * whose bounds are integers, trackers or formulas over the sheet (plus {check:difficulty} when the
  * check declares a difficulty). Returns the canonical checks and what check steps may name of each.
  *
@@ -44,7 +45,7 @@ final class Checks
     /** A check step outcome names a band or a special result, each once. */
     public const int MAX_OUTCOMES = self::MAX_BANDS + 3;
 
-    private const array CHECK = ['key' => true, 'label' => true, 'hint' => false, 'dice' => false, 'pool' => false, 'challenge' => false, 'modifier' => false, 'difficulty' => false, 'push' => false, 'bands' => true];
+    private const array CHECK = ['key' => true, 'label' => true, 'hint' => false, 'dice' => false, 'pool' => false, 'challenge' => false, 'modifier' => false, 'difficulty' => false, 'push' => false, 'noSituationalModifier' => false, 'bands' => true];
     private const array POOL = ['count' => true, 'sides' => true, 'successAt' => true, 'criticals' => false, 'hunger' => false];
     private const array CRITICALS = ['bonus' => true];
     private const array HUNGER = ['count' => true];
@@ -117,6 +118,11 @@ final class Checks
             if (isset($check['modifier'])) {
                 $modifier = ReleaseFields::text($check['modifier'], $path.'.modifier', 1, Formula::MAX_LENGTH);
                 Formulas::check($modifier, $path.'.modifier', $fieldTypes, $trackerKeys, null);
+            }
+
+            // Opting out is the exception: false is the default and leaves no trace in the canonical check.
+            if (isset($check['noSituationalModifier']) && !ReleaseFields::boolean($check['noSituationalModifier'], $path.'.noSituationalModifier')) {
+                unset($check['noSituationalModifier']);
             }
 
             $difficulty = isset($check['difficulty']) ? self::difficulty($check['difficulty'], $path.'.difficulty') : null;

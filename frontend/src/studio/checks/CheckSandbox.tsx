@@ -56,6 +56,7 @@ export function CheckSandbox({
   bands,
   difficulty,
   pool,
+  noSituationalModifier = false,
   sampleValues,
   dirty,
   ensureSaved,
@@ -69,6 +70,8 @@ export function CheckSandbox({
   difficulty: DifficultyDraft | null
   /** The pool the form declares, or null for a dice check. */
   pool: PoolDraft | null
+  /** The check takes no situational modifier: the field is hidden and nothing is sent for it. */
+  noSituationalModifier?: boolean
   sampleValues: SampleValues
   /** Whether the form holds edits that are not saved. */
   dirty: boolean
@@ -97,7 +100,8 @@ export function CheckSandbox({
     trackerSamples: sampleValues.trackerSamples,
     difficulty,
     difficultyText,
-    situationalText,
+    // Hidden for a check that takes none, so a value typed before the toggle is not sent.
+    situationalText: noSituationalModifier ? '' : situationalText,
     conditionTexts,
     bands,
     pool,
@@ -230,7 +234,9 @@ export function CheckSandbox({
           {sandbox.difficulty !== null && (
             <SampleInputField input={sandbox.difficulty} onChange={setDifficultyText} />
           )}
-          <SampleInputField input={sandbox.situational} onChange={setSituationalText} />
+          {!noSituationalModifier && (
+            <SampleInputField input={sandbox.situational} onChange={setSituationalText} />
+          )}
         </div>
         {pool !== null && sandbox.poolSize !== null && (
           <p className="text-sm">

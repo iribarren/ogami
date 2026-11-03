@@ -765,6 +765,7 @@ function CheckEditor({
   const modeId = useId()
   const kindId = useId()
   const difficultyId = useId()
+  const noSituationalId = useId()
 
   const position =
     original === null
@@ -1142,6 +1143,23 @@ function CheckEditor({
               </>
             )}
           </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <input
+                id={noSituationalId}
+                type="checkbox"
+                checked={draft.noSituationalModifier === true}
+                onChange={(event) => {
+                  change({ noSituationalModifier: event.target.checked })
+                }}
+              />
+              <Label htmlFor={noSituationalId}>No situational modifier</Label>
+            </div>
+            <p className="hint">
+              The player cannot add a situational modifier, or extra dice on a pool, when rolling
+              this check. Use it for a plain roll such as a death saving throw.
+            </p>
+          </div>
           {draft.challenge === null && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -1237,6 +1255,7 @@ function CheckEditor({
           bands={draft.bands}
           difficulty={draft.difficulty}
           pool={draft.pool}
+          noSituationalModifier={draft.noSituationalModifier === true}
           sampleValues={sampleValues}
           dirty={dirty}
           ensureSaved={async () => {

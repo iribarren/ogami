@@ -272,6 +272,7 @@ final class CampaignFlowChecksApiTest extends WebTestCase
         yield 'a difficulty under the min' => ['open', $ada + ['difficulty' => 8], 'Difficulty 8 is outside 9 to 29 of check "skill".'];
         yield 'a difficulty over the max' => ['open', $ada + ['difficulty' => 30], 'Difficulty 30 is outside 9 to 29 of check "skill".'];
         yield 'a situational modifier over 100' => ['open', $ada + ['situational' => 101], 'The situational modifier must be between -100 and 100, 101 given.'];
+        yield 'a situational modifier for a check that takes none' => ['steady', $ada + ['situational' => 2], 'Check "steady" takes no situational modifier.'];
         yield 'a check that cannot be evaluated' => ['broken', $ada, 'Check "broken" cannot be performed: The formula divides by zero.'];
         yield 'a pool count that cannot be evaluated' => ['poolbroken', $ada, 'Check "pool-broken" cannot be performed: The formula divides by zero.'];
     }
@@ -377,6 +378,7 @@ final class CampaignFlowChecksApiTest extends WebTestCase
             ...$base['checks'],
             ['key' => 'broken', 'label' => 'Broken', 'dice' => '1d6', 'modifier' => '{hands} / {zero}', 'bands' => [['key' => 'only', 'label' => 'Only']]],
             ['key' => 'grip', 'label' => 'Grip', 'pool' => ['count' => ['formula' => '{hands}'], 'sides' => 6, 'successAt' => 5], 'bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => 0], ['key' => 'some', 'label' => 'Some', 'upTo' => 2], ['key' => 'lots', 'label' => 'Lots']]],
+            ['key' => 'steady', 'label' => 'Steady', 'dice' => '1d20', 'noSituationalModifier' => true, 'bands' => [['key' => 'only', 'label' => 'Only']]],
             ['key' => 'pool-broken', 'label' => 'Pool broken', 'pool' => ['count' => ['formula' => '{hands} / {zero}'], 'sides' => 6, 'successAt' => 5], 'bands' => [['key' => 'only', 'label' => 'Only']]],
         ]);
         $step = static fn (string $check, array $changes = []): array => [
@@ -389,7 +391,7 @@ final class CampaignFlowChecksApiTest extends WebTestCase
         ]];
         $sheet = static fn (string $field, string $op, mixed $value): array => ['kind' => 'sheet', 'field' => $field, 'op' => $op, 'value' => $value];
         $failing = static fn (array ...$effects): array => ['difficulty' => 10, 'outcomes' => [['band' => 'fail', 'effects' => $effects]]];
-        $sceneTypes = ['open' => $step('skill'), 'fixed' => $step('skill', $fixed), 'tracked' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+9']]), 'plain' => $step('luck'), 'pooled' => $step('grip'), 'poolbroken' => $step('pool-broken'), 'wild' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+30']]), 'unevaluable' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm} / 0']]), 'broken' => $step('broken'), 'wounding' => $step('skill', $failing($sheet('hands', 'subtract', ['dice' => '1d4']), $sheet('nerve', 'subtract', 3))), 'shaken' => $step('skill', $failing($sheet('nerve', 'subtract', 1), $sheet('hands', 'set', ['formula' => '{hands} / {zero}'])))];
+        $sceneTypes = ['open' => $step('skill'), 'fixed' => $step('skill', $fixed), 'tracked' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+9']]), 'plain' => $step('luck'), 'steady' => $step('steady'), 'pooled' => $step('grip'), 'poolbroken' => $step('pool-broken'), 'wild' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm}+30']]), 'unevaluable' => $step('skill', ['difficulty' => ['formula' => '{tracker:alarm} / 0']]), 'broken' => $step('broken'), 'wounding' => $step('skill', $failing($sheet('hands', 'subtract', ['dice' => '1d4']), $sheet('nerve', 'subtract', 3))), 'shaken' => $step('skill', $failing($sheet('nerve', 'subtract', 1), $sheet('hands', 'set', ['formula' => '{hands} / {zero}'])))];
         $content = ReleaseArrays::with($content, 'sceneTypes', array_map(
             static fn (string $key, array $play): array => ['key' => $key, 'name' => ucfirst($key), 'purpose' => 'A '.$key.' scene.', 'oracles' => [], 'setup' => [], 'play' => $play, 'closing' => []],
             array_keys($sceneTypes),

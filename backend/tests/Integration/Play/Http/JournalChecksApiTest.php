@@ -79,6 +79,7 @@ final class JournalChecksApiTest extends WebTestCase
                 ],
             ],
             ['key' => 'luck', 'label' => 'Luck', 'dice' => 'd%', 'bands' => [['key' => 'bad', 'label' => 'Bad', 'upTo' => 20], ['key' => 'good', 'label' => 'Good']]],
+            ['key' => 'steady', 'label' => 'Steady', 'dice' => '1d20', 'noSituationalModifier' => true, 'bands' => [['key' => 'only', 'label' => 'Only']]],
             ['key' => 'broken', 'label' => 'Broken', 'dice' => '1d6', 'modifier' => '{reflexes} / {debt}', 'bands' => [['key' => 'only', 'label' => 'Only']]],
             ['key' => 'grit', 'label' => 'Grit', 'hint' => 'Count the sixes.', 'pool' => ['count' => ['formula' => '{reflexes} + {luck}'], 'sides' => 6, 'successAt' => 5], 'bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => 0], ['key' => 'hit', 'label' => 'Hit']]],
             ['key' => 'hands', 'label' => 'Hands', 'pool' => ['count' => 2, 'sides' => 10, 'successAt' => 8], 'bands' => [['key' => 'miss', 'label' => 'Miss', 'upTo' => 0], ['key' => 'hit', 'label' => 'Hit']]],
@@ -109,13 +110,28 @@ final class JournalChecksApiTest extends WebTestCase
                 'push' => null,
                 'difficulty' => ['label' => 'Difficulty Value', 'default' => 13, 'min' => 9, 'max' => 29],
                 'challenge' => null,
+                'noSituationalModifier' => false,
             ],
-            ['key' => 'luck', 'label' => 'Luck', 'hint' => null, 'dice' => '1d100', 'pool' => null, 'push' => null, 'difficulty' => null, 'challenge' => null],
-            ['key' => 'broken', 'label' => 'Broken', 'hint' => null, 'dice' => '1d6', 'pool' => null, 'push' => null, 'difficulty' => null, 'challenge' => null],
-            ['key' => 'grit', 'label' => 'Grit', 'hint' => 'Count the sixes.', 'dice' => null, 'pool' => ['count' => null, 'countFormula' => '{reflexes} + {luck}', 'countText' => 'Reflexes + Luck', 'sides' => 6, 'successAt' => 5], 'push' => null, 'difficulty' => null, 'challenge' => null],
-            ['key' => 'hands', 'label' => 'Hands', 'hint' => null, 'dice' => null, 'pool' => ['count' => 2, 'countFormula' => null, 'countText' => null, 'sides' => 10, 'successAt' => 8], 'push' => null, 'difficulty' => null, 'challenge' => null],
-            ['key' => 'slip', 'label' => 'Slip', 'hint' => null, 'dice' => null, 'pool' => ['count' => null, 'countFormula' => '{reflexes} / {debt}', 'countText' => 'Reflexes / Debt', 'sides' => 6, 'successAt' => 6], 'push' => null, 'difficulty' => null, 'challenge' => null],
+            ['key' => 'luck', 'label' => 'Luck', 'hint' => null, 'dice' => '1d100', 'pool' => null, 'push' => null, 'difficulty' => null, 'challenge' => null, 'noSituationalModifier' => false],
+            ['key' => 'steady', 'label' => 'Steady', 'hint' => null, 'dice' => '1d20', 'pool' => null, 'push' => null, 'difficulty' => null, 'challenge' => null, 'noSituationalModifier' => true],
+            ['key' => 'broken', 'label' => 'Broken', 'hint' => null, 'dice' => '1d6', 'pool' => null, 'push' => null, 'difficulty' => null, 'challenge' => null, 'noSituationalModifier' => false],
+            ['key' => 'grit', 'label' => 'Grit', 'hint' => 'Count the sixes.', 'dice' => null, 'pool' => ['count' => null, 'countFormula' => '{reflexes} + {luck}', 'countText' => 'Reflexes + Luck', 'sides' => 6, 'successAt' => 5], 'push' => null, 'difficulty' => null, 'challenge' => null, 'noSituationalModifier' => false],
+            ['key' => 'hands', 'label' => 'Hands', 'hint' => null, 'dice' => null, 'pool' => ['count' => 2, 'countFormula' => null, 'countText' => null, 'sides' => 10, 'successAt' => 8], 'push' => null, 'difficulty' => null, 'challenge' => null, 'noSituationalModifier' => false],
+            ['key' => 'slip', 'label' => 'Slip', 'hint' => null, 'dice' => null, 'pool' => ['count' => null, 'countFormula' => '{reflexes} / {debt}', 'countText' => 'Reflexes / Debt', 'sides' => 6, 'successAt' => 6], 'push' => null, 'difficulty' => null, 'challenge' => null, 'noSituationalModifier' => false],
         ], $campaign['checks'] ?? null);
+    }
+
+    #[Test]
+    public function aCheckThatTakesNoSituationalModifierStillRollsWithZeroOrNone(): void
+    {
+        [$id, , $ada] = $this->campaignInAScene();
+        $this->random->script(9, 12);
+
+        foreach ([['check' => 'steady', 'character' => $ada], ['check' => 'steady', 'character' => $ada, 'situational' => 0]] as $body) {
+            $this->client->jsonRequest('POST', \sprintf('/api/campaigns/%s/journal/checks', $id), $body);
+
+            self::assertResponseStatusCodeSame(201);
+        }
     }
 
     #[Test]
@@ -380,6 +396,7 @@ final class JournalChecksApiTest extends WebTestCase
         yield 'a difficulty over the max' => [['check' => 'skill', 'character' => '%ada%', 'difficulty' => 30], 'Difficulty 30 is outside 9 to 29 of check "skill".'];
         yield 'a situational modifier under -100' => [['check' => 'skill', 'character' => '%ada%', 'situational' => -101], 'The situational modifier must be between -100 and 100, -101 given.'];
         yield 'a situational modifier over 100' => [['check' => 'skill', 'character' => '%ada%', 'situational' => 101], 'The situational modifier must be between -100 and 100, 101 given.'];
+        yield 'a situational modifier for a check that takes none' => [['check' => 'steady', 'character' => '%ada%', 'situational' => -1], 'Check "steady" takes no situational modifier.'];
         yield 'a modifier that cannot be evaluated' => [['check' => 'broken', 'character' => '%ada%'], 'Check "broken" cannot be performed: The formula divides by zero.'];
         yield 'a pool count that cannot be evaluated' => [['check' => 'slip', 'character' => '%ada%'], 'Check "slip" cannot be performed: The formula divides by zero.'];
         yield 'a situational modifier over 100 on a pool' => [['check' => 'grit', 'character' => '%ada%', 'situational' => 101], 'The situational modifier must be between -100 and 100, 101 given.'];

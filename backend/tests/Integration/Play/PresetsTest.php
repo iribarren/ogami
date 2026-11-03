@@ -735,6 +735,9 @@ final class PresetsTest extends KernelTestCase
         self::assertSame(['miss', 'hit'], array_map(static fn (\App\Play\Domain\GameSystem\Check\CheckBand $band): string => $band->key, $snapshot->check('defend')->bands ?? []));
         self::assertSame(['fail', 'success', 'rise'], array_map(static fn (\App\Play\Domain\GameSystem\Check\CheckBand $band): string => $band->key, $snapshot->check('death-save')->bands ?? []));
 
+        // Only the death save opts out of the situational modifier.
+        self::assertSame(['death-save'], array_values(array_map(static fn (\App\Play\Domain\GameSystem\Check\Check $check): string => $check->key, array_filter($snapshot->checks(), static fn (\App\Play\Domain\GameSystem\Check\Check $check): bool => $check->noSituationalModifier))));
+
         // SRD prices rounded up to whole gold; every entry fits the pack's categories.
         $prices = [];
         foreach ($snapshot->gear() as $entry) {

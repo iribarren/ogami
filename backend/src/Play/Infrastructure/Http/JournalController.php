@@ -29,6 +29,7 @@ use App\Play\Domain\GameSystem\Check\CheckDifficultyOutOfRange;
 use App\Play\Domain\GameSystem\Check\CheckEvaluationFailed;
 use App\Play\Domain\GameSystem\Check\CheckNotPushable;
 use App\Play\Domain\GameSystem\Check\InvalidCheckPicks;
+use App\Play\Domain\GameSystem\Check\SituationalModifierNotAllowed;
 use App\Play\Domain\GameSystem\Check\SituationalModifierOutOfRange;
 use App\Play\Domain\GameSystem\Check\UnknownCheck;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -328,7 +329,7 @@ final readonly class JournalController
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (NoCurrentScene|JournalEntryAlreadyExists|RandomEventAlreadyRolled $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_CONFLICT);
-        } catch (InvalidJournalEntryId|NotARandomEventQuestion|InvalidJournalEntryContent|InvalidNoteAttachment|InvalidDiceExpression|InvalidLikelihoodOracle|ChaosFactorBoundToTracker|UnknownCheck|InvalidCharacter|UnknownCharacter|CheckDifficultyNotDeclared|CheckDifficultyOutOfRange|SituationalModifierOutOfRange|CheckEvaluationFailed $exception) {
+        } catch (InvalidJournalEntryId|NotARandomEventQuestion|InvalidJournalEntryContent|InvalidNoteAttachment|InvalidDiceExpression|InvalidLikelihoodOracle|ChaosFactorBoundToTracker|UnknownCheck|InvalidCharacter|UnknownCharacter|CheckDifficultyNotDeclared|CheckDifficultyOutOfRange|SituationalModifierOutOfRange|SituationalModifierNotAllowed|CheckEvaluationFailed $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }

@@ -49,6 +49,7 @@ final readonly class CheckTestRoll
         public ?CheckTestPool $pool = null,
         public ?CheckTestPush $push = null,
         public ?CheckTestChallenge $challenge = null,
+        public bool $noSituationalModifier = false,
     ) {
         if ($challenge instanceof CheckTestChallenge) {
             $this->assertChallenge($key, $challenge, $dice, $pool, $difficulty);
@@ -116,6 +117,7 @@ final readonly class CheckTestRoll
                 null === $pool ? null : self::readPool($pool, $where),
                 null === $push ? null : self::readPush($push, $where),
                 null === $challenge ? null : self::readChallenge($challenge, $where),
+                self::flag($check['noSituationalModifier'] ?? null, $where.' has a noSituationalModifier'),
             );
         } catch (InvalidDiceExpression|InvalidFormula $invalid) {
             throw CheckTestRollFailed::unreadable(\sprintf('%s has %s that does not parse: %s', $where, $invalid instanceof InvalidDiceExpression ? 'dice' : 'a formula', rtrim($invalid->getMessage(), '.')), $invalid);
@@ -351,6 +353,10 @@ final readonly class CheckTestRoll
         if ($situational < self::MIN_SITUATIONAL || $situational > self::MAX_SITUATIONAL) {
             throw InvalidTestRoll::outside('situational', self::MIN_SITUATIONAL, self::MAX_SITUATIONAL, $situational);
         }
+
+        if ($this->noSituationalModifier && 0 !== $situational) {
+            throw InvalidTestRoll::at('situational', 'this check takes no situational modifier');
+        }
     }
 
     /**
@@ -441,6 +447,14 @@ final readonly class CheckTestRoll
             null !== $this->difficulty->min => InvalidTestRoll::at('difficulty', \sprintf('must be at least %d, got %d', $this->difficulty->min, $given)),
             default => InvalidTestRoll::at('difficulty', \sprintf('must be at most %d, got %d', $this->difficulty->max ?? 0, $given)),
         };
+    }
+
+    /**
+     * @throws CheckTestRollFailed when the stored value is neither absent nor a boolean
+     */
+    private static function flag(mixed $stored, string $where): bool
+    {
+        return null === $stored ? false : (\is_bool($stored) ? $stored : throw CheckTestRollFailed::unreadable($where.' that is not a boolean'));
     }
 
     private static function difficulty(mixed $stored, string $where): ?CheckDifficultyRange

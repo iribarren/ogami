@@ -238,6 +238,45 @@ describe('the checks tab', () => {
     expect(await screen.findByRole('form', { name: 'Edit fortune' })).toBeVisible()
   })
 
+  it('toggles "No situational modifier" and saves it with the check', async () => {
+    const { sent, handler } = recorder(Response.json({ ...checks, version: 6 }))
+    const { user } = await openChecks({ [`PUT ${base}/checks/luck`]: handler })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit luck' }))
+    const form = within(screen.getByRole('form', { name: 'Edit luck' }))
+    expect(form.getByLabelText('No situational modifier')).not.toBeChecked()
+    await user.click(form.getByLabelText('No situational modifier'))
+    await user.click(form.getByRole('button', { name: 'Save check' }))
+
+    expect(sent).toEqual([
+      {
+        expectedVersion: 5,
+        check: {
+          key: 'luck',
+          label: 'Luck',
+          dice: 'd%',
+          bands: checks.checks[1]?.bands,
+          noSituationalModifier: true,
+        },
+      },
+    ])
+  })
+
+  it('opens a check that takes no situational modifier with the toggle on', async () => {
+    const steady = { ...checks.checks[1], noSituationalModifier: true }
+    const { user } = await openChecks({
+      [`GET ${base}/checks`]: json({ ...checks, checks: [checks.checks[0], steady] }),
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Edit luck' }))
+
+    expect(
+      within(screen.getByRole('form', { name: 'Edit luck' })).getByLabelText(
+        'No situational modifier',
+      ),
+    ).toBeChecked()
+  })
+
   it('shows the publisher refusal of the dice on the dice input', async () => {
     const { user } = await openChecks({
       [`PUT ${base}/checks/skill`]: json(

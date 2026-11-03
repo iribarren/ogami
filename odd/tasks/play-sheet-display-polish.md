@@ -51,7 +51,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T1 | Journal: labels and currency unit in the Focus view; no-op sheet changes neither recorded nor shown | delegated: 2+ non-trivial files | [x] | |
 | T2 | Character form: a value or a plain explanation instead of a `startMax` formula | delegated: 2+ non-trivial files | [x] | |
 | T3 | Header: `Session N ended` between sessions | delegated: slice runs under one writer | [x] | |
-| T4 | `noSituationalModifier`: contract, Studio, Play, form, West Marches' death save | | [ ] | |
+| T4 | `noSituationalModifier`: contract, Studio, Play, form, West Marches' death save | delegated: 2+ non-trivial files | [x] | |
 
 ## Applicable checks
 
@@ -64,6 +64,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-03: T1 done. RED: 2 handler tests failed without the filter, then GREEN; frontend tests added with the fix (stored all-no-op entries hidden in Journal and Focus).
 - 2026-11-03: T2 done. Code written with the tests, so no separate RED; the panel test's old literal-formula assertion is the changed behaviour. Derived modifiers on the form (`CharacterForm.tsx:200`) left alone.
 - 2026-11-03: T3 done. RED: 2 CampaignPage tests failed without the change. The e2e checks (`campaigns.spec.ts:25`, `play-session.spec.ts:19`) use fresh campaigns: unchanged.
+- 2026-11-03: T4 done. Studio draft stores the flag as sent; only the published release drops `false`. Play refuses with `SituationalModifierNotAllowed` (422 on journal and FlowRun routes); a push or burn cannot add a modifier (no `perform`). Tests written with the code, no separate RED.
 
 ## Reviews
 

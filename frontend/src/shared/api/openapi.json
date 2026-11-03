@@ -13748,7 +13748,8 @@
                     "pool",
                     "push",
                     "difficulty",
-                    "challenge"
+                    "challenge",
+                    "noSituationalModifier"
                 ],
                 "properties": {
                     "key": {
@@ -13807,6 +13808,11 @@
                         ],
                         "nullable": true,
                         "description": "The challenge dice the score is compared against; null for a check that does not roll them."
+                    },
+                    "noSituationalModifier": {
+                        "description": "Whether the check takes no situational modifier (or extra dice on a pool check): a roll with one is refused with a 422.",
+                        "type": "boolean",
+                        "example": false
                     }
                 },
                 "type": "object"
@@ -17684,6 +17690,12 @@
                         ],
                         "nullable": true,
                         "description": "Absent or null when the check has no difficulty."
+                    },
+                    "noSituationalModifier": {
+                        "description": "True when the check takes no situational modifier (nor extra dice on a pool check), as a death save; absent or false when the player may add one. Must be a boolean.",
+                        "type": "boolean",
+                        "example": true,
+                        "nullable": true
                     },
                     "bands": {
                         "type": "array",

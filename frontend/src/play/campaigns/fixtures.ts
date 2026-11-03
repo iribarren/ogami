@@ -340,6 +340,20 @@ export const skillCheck: CampaignCheck = {
   push: null,
   difficulty: { label: 'Difficulty Value', default: 13, min: 9, max: 29 },
   challenge: null,
+  noSituationalModifier: false,
+}
+
+/** A plain d20 roll that takes no situational modifier, as a death saving throw. */
+export const steadyCheck: CampaignCheck = {
+  key: 'steady',
+  label: 'Steady',
+  hint: 'Plain d20.',
+  dice: '1d20',
+  pool: null,
+  push: null,
+  difficulty: null,
+  challenge: null,
+  noSituationalModifier: true,
 }
 
 /** A check that declares no difficulty. */
@@ -352,6 +366,7 @@ export const luckCheck: CampaignCheck = {
   push: null,
   difficulty: null,
   challenge: null,
+  noSituationalModifier: false,
 }
 
 /** A pool check whose dice come from the sheet: Agility + Stealth − Physical d6, a success on 5+. */
@@ -370,6 +385,7 @@ export const sneakCheck: CampaignCheck = {
   push: null,
   difficulty: null,
   challenge: null,
+  noSituationalModifier: false,
 }
 
 /** A pool check with a fixed count: 4d6, a success on 6+. */
@@ -382,6 +398,7 @@ export const gripCheck: CampaignCheck = {
   push: null,
   difficulty: null,
   challenge: null,
+  noSituationalModifier: false,
 }
 
 /** A pool check that can be pushed: 3d6, a success on 5+; the push costs a Condition of the field "wounds" the player picks. */
@@ -394,6 +411,7 @@ export const gritCheck: CampaignCheck = {
   push: { label: 'Take a Condition', picks: ['wounds'], maxDice: null },
   difficulty: null,
   challenge: null,
+  noSituationalModifier: false,
 }
 
 /** A progress roll (ADR 0049): no action die and no pool, only challenge dice the score is compared against. */
@@ -406,6 +424,7 @@ export const fulfillCheck: CampaignCheck = {
   push: null,
   difficulty: null,
   challenge: { count: 2, sides: 10, scoreMax: null, momentumLabel: null, momentum: null },
+  noSituationalModifier: false,
 }
 
 /** A number field for momentum (ADR 0049): from -6 to 10, starting at 2. */
@@ -446,6 +465,7 @@ export const edgeCheck: CampaignCheck = {
   push: { label: 'Burn momentum', picks: [], maxDice: null },
   difficulty: null,
   challenge: { count: 2, sides: 10, scoreMax: 10, momentumLabel: 'Momentum', momentum: 'momentum' },
+  noSituationalModifier: false,
 }
 
 /**
@@ -461,6 +481,7 @@ export const persuadeCheck: CampaignCheck = {
   push: { label: 'Spend Willpower', picks: [], maxDice: 3 },
   difficulty: { label: 'Difficulty', default: 3, min: 1, max: 10 },
   challenge: null,
+  noSituationalModifier: false,
 }
 
 /** `freeJournal` as a release newer than the one `lostMineCampaign` is pinned to. */

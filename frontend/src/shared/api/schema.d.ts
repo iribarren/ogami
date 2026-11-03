@@ -2897,6 +2897,11 @@ export interface components {
             difficulty: components["schemas"]["CheckDifficultyResponse"] | null;
             /** @description The challenge dice the score is compared against; null for a check that does not roll them. */
             challenge: components["schemas"]["CheckChallengeResponse"] | null;
+            /**
+             * @description Whether the check takes no situational modifier (or extra dice on a pool check): a roll with one is refused with a 422.
+             * @example false
+             */
+            noSituationalModifier: boolean;
         };
         NpcResponse: {
             /** Format: uuid */
@@ -4793,6 +4798,11 @@ export interface components {
             modifier?: string | null;
             /** @description Absent or null when the check has no difficulty. */
             difficulty?: components["schemas"]["GameSystemCheckDifficulty"] | null;
+            /**
+             * @description True when the check takes no situational modifier (nor extra dice on a pool check), as a death save; absent or false when the player may add one. Must be a boolean.
+             * @example true
+             */
+            noSituationalModifier?: boolean | null;
             bands: components["schemas"]["GameSystemCheckBand"][];
         };
         CheckFieldResponse: {

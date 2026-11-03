@@ -229,6 +229,18 @@ final class GameSystemCheckApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aCheckThatTakesNoSituationalModifierIsSavedAndReadBack(): void
+    {
+        $this->signIn('ann@example.com', ['GAME_MANAGER']);
+        $this->draft('mine');
+
+        $this->client->jsonRequest('POST', self::BASE.'/mine/checks', ['expectedVersion' => 1, 'check' => [...$this->grit(), 'noSituationalModifier' => true]]);
+        self::assertResponseStatusCodeSame(201);
+        self::assertTrue(self::at($this->json(), 'checks.2.noSituationalModifier'));
+        self::assertEquals($this->json(), $this->checks());
+    }
+
+    #[Test]
     public function aCheckIsReplacedAndRenamedInPlaceAndTheRestIsKept(): void
     {
         $this->signIn('ann@example.com', ['GAME_MANAGER']);
@@ -563,6 +575,8 @@ final class GameSystemCheckApiTest extends WebTestCase
         yield 'criticals unknown property' => [[...$vampire, 'pool' => [...$pool, 'criticals' => ['bonus' => 2, 'x' => 1]]], 'checks[2].pool.criticals.x: '];
         yield 'hunger count negative' => [[...$vampire, 'pool' => [...$pool, 'hunger' => ['count' => -1]]], 'checks[2].pool.hunger.count: '];
         yield 'hunger formula of a ghost field' => [[...$vampire, 'pool' => [...$pool, 'hunger' => ['count' => ['formula' => '{ghost}']]]], 'checks[2].pool.hunger.count.formula: '];
+        yield 'noSituationalModifier a string' => [[...$grit, 'noSituationalModifier' => 'yes'], 'checks[2].noSituationalModifier: '];
+        yield 'noSituationalModifier a number' => [[...$grit, 'noSituationalModifier' => 1], 'checks[2].noSituationalModifier: '];
         yield 'push cap 0' => [[...$vampire, 'push' => ['label' => 'Pay', 'maxDice' => 0]], 'checks[2].push.maxDice: '];
         yield 'push cap above 100' => [[...$vampire, 'push' => ['label' => 'Pay', 'maxDice' => 101]], 'checks[2].push.maxDice: '];
     }

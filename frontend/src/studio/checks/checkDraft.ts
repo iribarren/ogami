@@ -120,6 +120,11 @@ export interface CheckDraft {
   storedNullChallenge?: boolean
   /** Null while the check has no difficulty. */
   difficulty: DifficultyDraft | null
+  /**
+   * The check takes no situational modifier (nor extra dice on a pool). Absent while the check never
+   * said, which a save writes as it was; a stored `false` is kept as `false`.
+   */
+  noSituationalModifier?: boolean
   bands: BandDraft[]
 }
 
@@ -504,7 +509,16 @@ function readPush(push: unknown): PushDraft | null {
 /** The stored check as form state, or null when a property has a shape the form cannot hold. */
 export function readCheck(stored: StoredCheck): CheckDraft | null {
   const { key, label, hint, dice, modifier, difficulty, bands, pool, push, challenge } = stored
+  const { noSituationalModifier } = stored
   if (typeof key !== 'string' || typeof label !== 'string') {
+    return null
+  }
+  // A flag of another type is for the publisher to refuse, not for the form to guess.
+  if (
+    noSituationalModifier !== undefined &&
+    noSituationalModifier !== null &&
+    typeof noSituationalModifier !== 'boolean'
+  ) {
     return null
   }
   // Exactly one of dice, pool and challenge (a challenge with or without dice); a pool check has
@@ -587,6 +601,7 @@ export function readCheck(stored: StoredCheck): CheckDraft | null {
     ...(push === null ? { storedNullPush: true } : {}),
     ...(challenge === null ? { storedNullChallenge: true } : {}),
     difficulty: declared,
+    ...(typeof noSituationalModifier === 'boolean' ? { noSituationalModifier } : {}),
     bands: readBands as BandDraft[],
   }
 }
@@ -712,6 +727,9 @@ export function writeCheck(draft: CheckDraft): { check: StoredCheck } | { errors
       }
     }
     check.difficulty = difficulty
+  }
+  if (draft.noSituationalModifier !== undefined) {
+    check.noSituationalModifier = draft.noSituationalModifier
   }
   const bands = writeBands(draft.bands, errors)
   if (bands !== null) {

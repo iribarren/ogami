@@ -41,6 +41,7 @@ use App\Play\Domain\GameSystem\Check\CheckDifficultyNotDeclared;
 use App\Play\Domain\GameSystem\Check\CheckDifficultyOutOfRange;
 use App\Play\Domain\GameSystem\Check\CheckEvaluationFailed;
 use App\Play\Domain\GameSystem\Check\InvalidCheckPicks;
+use App\Play\Domain\GameSystem\Check\SituationalModifierNotAllowed;
 use App\Play\Domain\GameSystem\Check\SituationalModifierOutOfRange;
 use App\Play\Domain\GameSystem\UnknownGameSystemOracle;
 use App\Play\Domain\Journal\CheckAlreadyPushed;
@@ -375,7 +376,7 @@ final readonly class FlowRunController
             return new JsonResponse(FlowRunErrorResponse::with(FlowRunErrorCode::InsufficientFunds, $exception->getMessage())->toArray(), Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (InventoryFull $exception) {
             return new JsonResponse(FlowRunErrorResponse::with(FlowRunErrorCode::InventoryFull, $exception->getMessage())->toArray(), Response::HTTP_UNPROCESSABLE_ENTITY);
-        } catch (InvalidStepResult|FlowFormulaFailed|ChaosFactorBoundToTracker|InvalidLikelihoodOracle|InvalidJournalEntryContent|InvalidDiceExpression|CheckDifficultyNotDeclared|CheckDifficultyOutOfRange|SituationalModifierOutOfRange|CheckEvaluationFailed|InvalidCheckPicks $exception) {
+        } catch (InvalidStepResult|FlowFormulaFailed|ChaosFactorBoundToTracker|InvalidLikelihoodOracle|InvalidJournalEntryContent|InvalidDiceExpression|CheckDifficultyNotDeclared|CheckDifficultyOutOfRange|SituationalModifierOutOfRange|SituationalModifierNotAllowed|CheckEvaluationFailed|InvalidCheckPicks $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 
+import { finishRoll } from './finish-roll.ts'
 import { player, signIn } from './sign-in.ts'
 
 // Users and the "Night Court" preset are seeded by `make e2e-seed`. The run through the Flow (a
@@ -63,9 +64,7 @@ test('a solo player starts Night Court, sees the Dark Pack credits and rolls a H
   const dialog = page.getByRole('dialog', { name: 'Roll a check for Vi' })
   await dialog.getByLabel('Check').selectOption({ label: 'Brawl (Strength)' })
   await dialog.getByRole('button', { name: 'Roll' }).click()
-  await expect(dialog.getByRole('article', { name: 'Check Brawl (Strength)' })).toBeVisible()
-  await dialog.getByRole('button', { name: /^(Keep|Done)$/ }).click()
-  await expect(dialog).toBeHidden()
+  await finishRoll(dialog)
 
   await page.getByRole('radio', { name: 'Journal view' }).check()
   const journal = page.getByRole('region', { name: 'Journal' })

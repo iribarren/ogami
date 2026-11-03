@@ -23,7 +23,9 @@ const MAX_SCENE_TITLE_LENGTH = 100
 function playPosition(campaign: Campaign) {
   const session = campaign.sessions.find(({ number }) => number === campaign.currentSessionNumber)
   if (session === undefined) {
-    return 'No session yet'
+    // Between sessions: say which one ended, and only a campaign with none has not begun.
+    const last = campaign.sessions.at(-1)
+    return last === undefined ? 'No session yet' : `Session ${String(last.number)} ended`
   }
   const scene = session.scenes.find(({ number }) => number === campaign.currentSceneNumber)
   const sessionLabel = `Session ${String(session.number)}`

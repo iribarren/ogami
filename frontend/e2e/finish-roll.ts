@@ -9,7 +9,7 @@ export async function finishRoll(dialog: Locator) {
   const close = dialog.getByRole('button', { name: /^(Keep|Done)$/ })
   await expect(async () => {
     if (await close.isVisible()) {
-      await close.click()
+      await close.click({ timeout: 1_000 })
     }
     await expect(dialog).toBeHidden({ timeout: 1_000 })
   }).toPass({ timeout: 15_000 })

@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import { availableParallelism } from 'node:os'
 import { fileURLToPath, URL } from 'node:url'
 
 import tailwindcss from '@tailwindcss/vite'
@@ -36,5 +37,9 @@ export default defineConfig({
     css: false,
     // Keeps a 5s asyncUtilTimeout wait (src/test/setup.ts) under the per-test timeout.
     testTimeout: 20000,
+    // Running out of memory froze every worker at once, and each then failed the test it was on
+    // at testTimeout (#366). Four workers use about 1.4 GiB less than seven for about 12% more wall
+    // time. A runner with fewer cores keeps Vitest's default of one worker per core minus one.
+    maxWorkers: Math.min(4, Math.max(1, availableParallelism() - 1)),
   },
 })

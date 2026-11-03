@@ -330,6 +330,28 @@ describe('JournalEntryView check entries', () => {
     ])
   })
 
+  it('leaves out a stored sheet change that changed nothing and rolled no dice', () => {
+    const noOps = {
+      ...sanityLossEntry,
+      content: {
+        ...sanityLossEntry.content,
+        changes: [
+          { field: 'hp', before: 7, after: 7, dice: null },
+          { field: 'hp', before: 7, after: 7, dice: { expression: '1d8', total: 4 } },
+          { field: 'sanity', before: 65, after: 61, dice: null },
+        ],
+      },
+    }
+    render(<JournalEntryView entry={noOps} sheet={[{ key: 'sanity', label: 'Sanity' }]} />)
+
+    const entry = screen.getByRole('article', { name: 'Sheet Vi' })
+    expect(
+      within(entry)
+        .getAllByRole('listitem')
+        .map((line) => line.textContent),
+    ).toEqual(['Vi: hp 7 → 7 (1d8: 4)', 'Vi: Sanity 65 → 61'])
+  })
+
   it('renders a shop visit: bought and sold lines with unit prices, and the money before and after', () => {
     render(<JournalEntryView entry={shopEntry} />)
 

@@ -4,6 +4,7 @@ import { previousSceneCast } from '../cast/previousSceneCast'
 import { SceneCast } from '../cast/SceneCast'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { isAttached } from '../journal/attachments'
+import { isEmptySheetChange } from '../journal/sheetChanges'
 import { JournalEntryView } from '../journal/JournalEntryView'
 import { NoteAttachments } from '../journal/NoteAttachments'
 import { isListedRandomEvent } from '../journal/randomEvents'
@@ -103,7 +104,8 @@ function SceneSoFar({ campaign, sceneNumber }: { campaign: Campaign; sceneNumber
       entry.sessionNumber === campaign.currentSessionNumber &&
       entry.sceneNumber === sceneNumber &&
       !isListedRandomEvent(journal.data ?? [], entry) &&
-      !isAttached(journal.data ?? [], entry),
+      !isAttached(journal.data ?? [], entry) &&
+      !isEmptySheetChange(entry),
   )
   if (sceneNumber === null || entries.length === 0) {
     return null
@@ -116,9 +118,15 @@ function SceneSoFar({ campaign, sceneNumber }: { campaign: Campaign; sceneNumber
       <ol className="space-y-3">
         {entries.map((entry) => (
           <li key={entry.id}>
-            <JournalEntryView entry={entry} tags={campaign.tags}>
+            <JournalEntryView
+              entry={entry}
+              tags={campaign.tags}
+              sheet={campaign.pinnedRelease.sheet}
+              currencyUnit={campaign.pinnedRelease.currency?.unit ?? null}
+            >
               <NoteAttachments
                 campaignId={campaign.id}
+                sheet={campaign.pinnedRelease.sheet}
                 note={entry}
                 entries={journal.data ?? []}
                 tables={campaign.oracleTables}

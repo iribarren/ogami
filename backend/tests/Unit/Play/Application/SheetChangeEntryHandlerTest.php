@@ -60,6 +60,41 @@ final class SheetChangeEntryHandlerTest extends FlowRunTestCase
     }
 
     #[Test]
+    public function effectsThatChangedNothingAreLeftOutOfTheSheetChangeEntry(): void
+    {
+        // Hit points start at their maximum 12: setting them to 12 changes nothing, setting Sanity to Power does.
+        $this->store(mandatory: true, effects: [$this->setHp(12), $this->setSanityToPower()]);
+
+        $this->complete(new CompleteFlowStep('campaign-1', 'user-1', 'entry-000', 'you', null, null, null, null, null, 'ida'));
+
+        $entries = $this->entries->ofCampaign(CampaignId::fromString('campaign-1'));
+        self::assertSame([['field' => 'sanity', 'before' => 99, 'after' => 60, 'dice' => null]], $entries[1]->content()->toArray()['changes']);
+    }
+
+    #[Test]
+    public function aStepWhoseEffectsAllChangedNothingWritesNoSheetChangeEntry(): void
+    {
+        $this->store(mandatory: true, effects: [$this->setHp(12)]);
+
+        $this->complete(new CompleteFlowStep('campaign-1', 'user-1', 'entry-000', 'you', null, null, null, null, null, 'ida'));
+
+        $entries = $this->entries->ofCampaign(CampaignId::fromString('campaign-1'));
+        self::assertSame([['entry-000', 'note']], array_map(static fn (JournalEntry $entry): array => [$entry->id()->toString(), $entry->content()->kind()], $entries));
+    }
+
+    #[Test]
+    public function anEffectThatRolledDiceStaysEvenWhenTheValueHeld(): void
+    {
+        // Hit points are at their maximum, so adding 1d4 (rolled 3) changes nothing, but the dice tell why.
+        $this->store(mandatory: true, effects: [['kind' => 'sheet', 'field' => 'hp', 'op' => 'add', 'value' => ['dice' => '1d4']]]);
+
+        new CompleteFlowStepHandler($this->journal, $this->campaigns, new ScriptedRandomNumberGenerator(3), $this->clock, new SequentialJournalEntryIdGenerator())(new CompleteFlowStep('campaign-1', 'user-1', 'entry-000', 'you', null, null, null, null, null, 'ida'));
+
+        $entries = $this->entries->ofCampaign(CampaignId::fromString('campaign-1'));
+        self::assertSame([['field' => 'hp', 'before' => 12, 'after' => 12, 'dice' => ['expression' => '1d4', 'total' => 3]]], $entries[1]->content()->toArray()['changes']);
+    }
+
+    #[Test]
     public function aTakenIdForTheSheetChangeEntryFailsLikeTheStepEntryAndSavesNothing(): void
     {
         $this->store(mandatory: true);
@@ -102,9 +137,28 @@ final class SheetChangeEntryHandlerTest extends FlowRunTestCase
         return $this->campaigns->ofId(CampaignId::fromString('campaign-1')) ?? throw new \LogicException('No campaign.');
     }
 
-    private function store(bool $mandatory): void
+    /**
+     * @return array<string, mixed>
+     */
+    private function setHp(int $value): array
     {
-        $release = $this->sheetRelease($mandatory);
+        return ['kind' => 'sheet', 'field' => 'hp', 'op' => 'set', 'value' => $value];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function setSanityToPower(): array
+    {
+        return ['kind' => 'sheet', 'field' => 'sanity', 'op' => 'set', 'value' => ['formula' => '{pow}']];
+    }
+
+    /**
+     * @param list<array<string, mixed>>|null $effects the Effects of the "you" step, the fixture's own when null
+     */
+    private function store(bool $mandatory, ?array $effects = null): void
+    {
+        $release = $this->sheetRelease($mandatory, $effects);
         $this->campaigns = new InMemoryCampaignRepository();
         $this->entries = new InMemoryJournalEntryRepository();
         $this->releases = new InMemoryPublishedGameSystemReleases();
@@ -121,13 +175,20 @@ final class SheetChangeEntryHandlerTest extends FlowRunTestCase
         $this->campaigns->add($campaign);
     }
 
-    private function sheetRelease(bool $mandatory): GameSystemSnapshot
+    /**
+     * @param list<array<string, mixed>>|null $effects
+     */
+    private function sheetRelease(bool $mandatory, ?array $effects = null): GameSystemSnapshot
     {
         /** @var array<string, mixed> $content */
         $content = ReleaseViews::fixtureContent('valid/v2-sheet-effects');
         $content = ReleaseArrays::with($content, 'flows', [['key' => 'play', 'name' => 'Play', 'defaultView' => 'journal', 'oracles' => [], 'trackers' => ['dread'], 'phases' => [
             ['key' => 'prologue', 'name' => 'Prologue', 'mode' => 'once', 'selection' => ['rule' => 'player', 'sceneTypes' => ['setup']]],
         ]]]);
+
+        if (null !== $effects) {
+            $content = ReleaseArrays::with($content, 'sceneTypes.0.setup.0.effects', $effects);
+        }
 
         /** @var array<string, mixed> $translated */
         $translated = ReleaseArrays::with($content, 'sceneTypes.0.setup.0.mandatory', $mandatory);

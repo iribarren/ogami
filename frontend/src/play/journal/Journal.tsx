@@ -7,6 +7,7 @@ import { type Campaign } from '../campaigns/useCampaigns'
 import { groupJournal } from './groupJournal'
 import { JournalEntryView } from './JournalEntryView'
 import { isAttached } from './attachments'
+import { isEmptySheetChange } from './sheetChanges'
 import { NoteAttachments } from './NoteAttachments'
 import { isListedRandomEvent } from './randomEvents'
 import { RandomEventOffer } from './RandomEventOffer'
@@ -63,9 +64,12 @@ export function Journal({
   })
   const latestRecordedId = recorded.at(-1)
   const groups = groupJournal(sessions, entries)
-  // A random event is listed under its question and an attached result under its note.
+  // A random event is listed under its question and an attached result under its note; a sheet change
+  // that changed nothing shows nothing.
   const shownInPlace = (entry: JournalEntry) =>
-    !isListedRandomEvent(entries, entry) && !isAttached(entries, entry)
+    !isListedRandomEvent(entries, entry) &&
+    !isAttached(entries, entry) &&
+    !isEmptySheetChange(entry)
 
   if (groups.length === 0) {
     return (

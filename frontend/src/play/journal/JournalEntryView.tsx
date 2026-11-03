@@ -8,6 +8,7 @@ import { IconTile } from '@/shared/ui/icon-tile'
 import { isBeatenBy } from '../checks/pushing'
 import { DiceGroups } from '../dice/DiceGroups'
 import { specialResultLabels } from './specialResults'
+import { visibleChanges } from './sheetChanges'
 import { DieShape } from '@/shared/ui/die-shape'
 import type {
   CheckContent,
@@ -214,7 +215,11 @@ function ShopView({
 /** What a Flow step's sheet Effects changed: one line per field, with the dice each rolled. */
 function SheetChangeView({ content, sheet }: { content: SheetChangeContent; sheet: FieldLabels }) {
   return (
-    <ChangeLines characterName={content.characterName} changes={content.changes} sheet={sheet} />
+    <ChangeLines
+      characterName={content.characterName}
+      changes={visibleChanges(content.changes)}
+      sheet={sheet}
+    />
   )
 }
 

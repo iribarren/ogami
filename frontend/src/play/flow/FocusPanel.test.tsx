@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { lostMineCampaign } from '../campaigns/fixtures'
+import { lostMineCampaign, momentumField } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import {
   fateDouble,
@@ -14,8 +14,10 @@ import {
   lockedDoorAnswer,
   lostMineJournal,
   noteAttaching,
+  sanityLossEntry,
   stormyWeather,
 } from '../journal/fixtures'
+import type { SheetChangeContent } from '../journal/useJournal'
 import { atStep, atTheScenePick, guided, inOpenPlay, promptStep, rollStep } from './fixtures'
 
 const path = `/api/campaigns/${lostMineCampaign.id}`
@@ -209,6 +211,39 @@ describe('focus mode', () => {
     expect(note.getByRole('list', { name: 'Attached results' })).toHaveTextContent('Hail')
     expect(soFar.getAllByText('Hail')).toHaveLength(1)
     expect(soFar.getByText(/Is the door locked/)).toBeInTheDocument()
+  })
+
+  it('names a sheet change by its field label, not its key, and hides one that changed nothing', async () => {
+    const campaign = guided(atStep(promptStep), 'focus')
+    const withSheet = {
+      ...campaign,
+      pinnedRelease: { ...campaign.pinnedRelease, sheet: [momentumField] },
+    }
+    const change = (id: string, changes: SheetChangeContent['changes']) => ({
+      ...sanityLossEntry,
+      id,
+      content: { ...sanityLossEntry.content, changes },
+    })
+    renderPlay(withSheet, {}, [
+      change('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7a01', [
+        { field: 'momentum', before: 2, after: 3, dice: null },
+        { field: 'momentum', before: 3, after: 3, dice: null },
+        { field: 'momentum', before: 3, after: 3, dice: { expression: '1d4', total: 2 } },
+      ]),
+      // Recorded before no-ops were dropped: nothing but no-ops, so no card at all.
+      change('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f7a02', [
+        { field: 'momentum', before: 3, after: 3, dice: null },
+      ]),
+    ])
+
+    const focus = within(await focusRegion())
+    const soFar = within(await focus.findByRole('region', { name: 'So far' }))
+    // One card only: the second entry held nothing but a no-op.
+    const card = within(soFar.getByRole('article', { name: 'Sheet Vi' }))
+    expect(card.getAllByRole('listitem').map((line) => line.textContent)).toEqual([
+      'Vi: Momentum 2 → 3',
+      'Vi: Momentum 3 → 3 (1d4: 2)',
+    ])
   })
 
   it('shows no summary at the scene pick, where the last scene has ended', async () => {

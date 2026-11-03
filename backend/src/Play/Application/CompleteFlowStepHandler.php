@@ -134,7 +134,8 @@ final readonly class CompleteFlowStepHandler implements CommandHandler
         $at = $this->clock->now();
         [$result, $content] = $this->resultOf($command, $view, $campaign, $release, $at);
         $entry = $this->journal->entry($command->entryId, $campaign, $content, $at, FlowStepSnapshot::of($step->key, $view->title, $view->prompt));
-        $changes = $campaign->completeFlowStep($step->key, $result, $release, $at, $this->random, $entry->id()->toString());
+        // An Effect that changed nothing and rolled no dice is not worth an entry.
+        $changes = SheetChange::withoutNoOps($campaign->completeFlowStep($step->key, $result, $release, $at, $this->random, $entry->id()->toString()));
         $sheetEntry = [] === $changes ? null : $this->journal->following($entry, $this->entryIds->generate()->toString(), $this->sheetChangeContent($result, $campaign, $changes));
         $outcomeEntry = $this->journal->flowOutcome($this->entryIds, $campaign, $sheetEntry ?? $entry);
         // The campaign is saved first: adding the entry flushes the whole unit of work, so a concurrent

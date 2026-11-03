@@ -1,0 +1,73 @@
+# Feature: play-sheet-display-polish
+
+- **Locator:** `odd/tasks/play-sheet-display-polish.md` · Engram topic `odd/play-sheet-display-polish/tasks`
+- **Issue:** [#340](https://github.com/iribarren/ogami/issues/340) · **Branch:** `feat/play-sheet-display-polish-1-display-and-plain-checks` · **Status:** in progress
+- **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
+- **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
+- **Previous feature:** `preset-west-marches` (#337, PR #339), whose Chrome play pass found these
+
+## Objective
+
+Roadmap backlog B18. Fix five issues in Play's general UI: raw sheet field keys and no-op changes in the journal, raw formulas on the Character form, a situational modifier a check cannot turn off, and a wrong header between sessions.
+
+## Problem and why
+
+- West Marches defaults to the Focus view, and `FocusPanel` is the only `JournalEntryView` call site that omits `sheet`, so the player reads internal keys.
+- Nothing filters a sheet Effect that changed nothing, so a long rest on a healthy adventurer buries what changed under lines such as `hp 7 → 7`.
+- `creation.ts` interpolates a track's `startMax` formula into the field's hint, so the player reads formula syntax.
+- ADR 0024 says the player "can always add" a situational modifier. A plain roll such as a death save has no way to refuse it, so West Marches' tip has to tell the player not to use the field.
+- After a session ends `currentSessionNumber` is null, so the header says "No session yet" even when earlier sessions exist.
+
+## Decisions
+
+| Item | Decision | By |
+|---|---|---|
+| 4 | Checks can opt out of the situational modifier with an optional release property | User, 2026-11-03 |
+| 4 name | `noSituationalModifier: true`; absent or false keeps today's behaviour, so existing releases are unchanged. A negative flag fits the sheet and check validators, which drop `false` values | Parent |
+| 4 refusal | A non-zero value on an opted-out check is refused with a 422, as a difficulty on a check without one is. Zero stays allowed | Parent |
+| 4 signal | No inference from the data: "no modifier and no difficulty" also matches all 23 `percentile-horror` checks, which rely on the situational modifier | Parent |
+| 2 no-op | A change is a no-op when `before` equals `after` and it rolled no dice. `hp 7 → 7 (1d8: 4)` stays: it tells why nothing changed | Parent |
+| 2 place | Filter in the two Flow handlers before their empty check, not in `SheetChangeContent::of` (stored entries load through it and it throws on an empty list) and not in `checkedChanges` (push and burn share it). The frontend also hides no-ops, because stored journals keep them | Parent |
+| 3 wording | Computable: `Set at creation: 7`. Otherwise `Set at creation from Hit die and Con modifier`. Never formula syntax | Parent |
+| 5 wording | `Session N ended`, naming the last session. `No session yet` only when there are no sessions | Parent |
+
+## Constraints
+
+- Campaigns stay pinned to their release, so West Marches campaigns on v2 see the modifier until they upgrade.
+- No API change except the new check property.
+
+## Slice plan
+
+Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice.
+
+| # | Branch | PR title | Tasks | Forecast |
+|---|---|---|---|---|
+| 1 | `feat/play-sheet-display-polish-1-display-and-plain-checks` | `feat(play): play-sheet-display-polish 1/1 sheet display and plain checks` | T1–T4 | ~1,150: this doc ~80; T1 ~120; T2 ~100; T3 ~20; T4 ~400 plus docs ~30 and generated OpenAPI and TS ~400 |
+
+## Tasks
+
+| ID | Task | Route | Done | Commit |
+|---|---|---|---|---|
+| T1 | Journal: labels and currency unit in the Focus view; no-op sheet changes neither recorded nor shown | delegated: 2+ non-trivial files | [x] | |
+| T2 | Character form: a value or a plain explanation instead of a `startMax` formula | | [ ] | |
+| T3 | Header: `Session N ended` between sessions | | [ ] | |
+| T4 | `noSituationalModifier`: contract, Studio, Play, form, West Marches' death save | | [ ] | |
+
+## Applicable checks
+
+- `make verify` once at the end; CI runs the full suites.
+- Focused PHPUnit and Vitest while iterating, test first.
+
+## Progress
+
+- 2026-11-03: Mapped the five items and took the decision on item 4. One slice, delegated writer: two or more non-trivial files.
+- 2026-11-03: T1 done. RED: 2 handler tests failed without the filter, then GREEN; frontend tests added with the fix (stored all-no-op entries hidden in Journal and Focus).
+
+## Reviews
+
+| Slice | Lineage | Outcome | Findings | PR |
+|---|---|---|---|---|
+
+## Next step
+
+Writer delivers T1–T4; then native review, PR.

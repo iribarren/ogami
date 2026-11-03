@@ -118,6 +118,20 @@ describe('Journal', () => {
     expect(screen.getByRole('article', { name: 'Sheet Vi' })).toBeInTheDocument()
   })
 
+  it('shows no card for a stored sheet change that holds only no-ops', () => {
+    const noOps = {
+      ...sanityLossEntry,
+      content: {
+        ...sanityLossEntry.content,
+        changes: [{ field: 'hp', before: 7, after: 7, dice: null }],
+      },
+    }
+    renderJournal(null, [noOps])
+
+    expect(screen.queryByRole('article', { name: 'Sheet Vi' })).not.toBeInTheDocument()
+    expect(screen.getAllByText('Nothing recorded in this scene yet.').length).toBeGreaterThan(0)
+  })
+
   it('names the Flow step once for the step entry and the outcome the Flow added', () => {
     const check = { ...skillCheckEntry, flowStep: flowOutcomeEntry.flowStep }
     renderJournal(null, [check, flowOutcomeEntry])

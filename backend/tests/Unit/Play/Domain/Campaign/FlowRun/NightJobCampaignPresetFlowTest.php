@@ -637,6 +637,24 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
     }
 
     #[Test]
+    public function aNightMarketSwappedForAnotherSceneKeepsTheStreetClosedOnlyUntilTheNextDowntime(): void
+    {
+        $campaign = $this->actOne();
+        $this->closeDowntime($campaign, 'yes');
+        $campaign->pickSceneType('night-market', $this->release, self::at());
+        $campaign->switchSceneType($this->release->sceneType('social') ?? self::fail('No social.'), $this->release, self::at());
+        $this->endScene($campaign, skipping: ['talk', 'reaction']);
+
+        // The swap dropped the scene that would have freed the street, and nothing is forced now.
+        self::assertSame(1, $campaign->trackerValue($this->tracker('busy')));
+        self::assertNull(self::flowRunOf($campaign)->forcedNextSceneType());
+
+        // A Downtime is only ever picked freely, so it frees the street before it forces anything.
+        $this->closeDowntime($campaign, 'no');
+        self::assertSame([0, 'street'], [$campaign->trackerValue($this->tracker('busy')), self::flowRunOf($campaign)->stepKey()]);
+    }
+
+    #[Test]
     public function goBigIsNotAskedWhileDowntimeForcesASceneButAfterTheNightMarketWhenTheRentIsNotDue(): void
     {
         $campaign = $this->actOne();

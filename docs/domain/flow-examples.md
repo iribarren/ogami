@@ -383,7 +383,7 @@ Money is the Character's `eddies`, the sheet currency; gear sits in the `gear` a
 
 ```
 Downtime closing
-  → month +1
+  → month +1, busy set 0   (a Downtime is only ever picked freely, so nothing it could interrupt is running)
   choice "Hit the Night Market?"  yes → nextScene Night Market, busy set 1; no → —
   condition month: upTo 3 → —; rest → nextScene Month's end, busy set 1
 

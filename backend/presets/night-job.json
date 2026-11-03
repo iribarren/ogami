@@ -569,7 +569,7 @@
         {"key": "spend", "kind": "prompt", "title": "How do you spend the downtime?", "inspiration": ["night-market-stalls", "night-market-finds"]}
       ],
       "closing": [
-        {"key": "days", "kind": "prompt", "title": "A week slips by. What changed?", "tip": "Answering moves the Month clock by one.", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "month", "op": "add", "value": 1}]},
+        {"key": "days", "kind": "prompt", "title": "A week slips by. What changed?", "tip": "Answering moves the Month clock by one.", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "month", "op": "add", "value": 1}, {"kind": "tracker", "tracker": "busy", "op": "set", "value": 0}]},
         {"key": "market", "kind": "choice", "title": "Hit the Night Market?", "tip": "Yes visits the Night Market before the rent comes due.", "options": [{"key": "yes", "label": "Yes", "next": "end", "effects": [{"kind": "nextScene", "sceneType": "night-market"}, {"kind": "tracker", "tracker": "busy", "op": "set", "value": 1}]}, {"key": "no", "label": "No"}], "skip": "no"},
         {"key": "rent-due", "kind": "condition", "title": "Is the rent due?", "tracker": "month", "bands": [{"upTo": 3}, {"effects": [{"kind": "nextScene", "sceneType": "months-end"}, {"kind": "tracker", "tracker": "busy", "op": "set", "value": 1}]}]}
       ]

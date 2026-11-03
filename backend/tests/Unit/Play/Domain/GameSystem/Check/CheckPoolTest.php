@@ -13,6 +13,7 @@ use App\Play\Domain\GameSystem\Check\CheckEvaluationFailed;
 use App\Play\Domain\GameSystem\Check\CheckPool;
 use App\Play\Domain\GameSystem\Check\ModifierTerm;
 use App\Play\Domain\GameSystem\Check\PoolResult;
+use App\Play\Domain\GameSystem\Check\SituationalModifierNotAllowed;
 use App\Play\Domain\GameSystem\Check\SituationalModifierOutOfRange;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
@@ -69,6 +70,19 @@ final class CheckPoolTest extends TestCase
         self::assertInstanceOf(PoolResult::class, $result->pool);
         self::assertSame([2, []], [$result->pool->count, $result->pool->terms]);
         self::assertSame('weak', $result->band->key, 'Two successes are up to the second bound.');
+    }
+
+    #[Test]
+    public function aPoolCheckThatTakesNoSituationalModifierRefusesExtraDiceButAllowsZero(): void
+    {
+        $sealed = new Check('sealed', 'Sealed', null, null, null, null, [new CheckBand('only', 'Only')], new CheckPool(2, 6, 5), noSituationalModifier: true);
+
+        self::assertSame(2, $sealed->perform(new ScriptedRandomNumberGenerator(5, 6), $this->sheet(), null, 0)->pool?->count);
+
+        $this->expectException(SituationalModifierNotAllowed::class);
+
+        // No die is scripted: a roll would throw a LogicException instead.
+        $sealed->perform(new ScriptedRandomNumberGenerator(), $this->sheet(), null, 1);
     }
 
     /**

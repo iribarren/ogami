@@ -14,6 +14,7 @@ import {
   lockedDoorAnswer,
   lostMineJournal,
   noteAttaching,
+  shopEntry,
   sanityLossEntry,
   stormyWeather,
 } from '../journal/fixtures'
@@ -244,6 +245,22 @@ describe('focus mode', () => {
       'Vi: Momentum 2 → 3',
       'Vi: Momentum 3 → 3 (1d4: 2)',
     ])
+  })
+
+  it('shows the currency unit after the money of a shop entry in the scene so far', async () => {
+    const campaign = guided(atStep(promptStep), 'focus')
+    renderPlay(
+      {
+        ...campaign,
+        pinnedRelease: { ...campaign.pinnedRelease, currency: { field: 'eddies', unit: 'eb' } },
+      },
+      {},
+      [shopEntry],
+    )
+
+    const focus = within(await focusRegion())
+    const soFar = within(await focus.findByRole('region', { name: 'So far' }))
+    expect(soFar.getByText('Vi: 100 → 105 eb')).toBeInTheDocument()
   })
 
   it('shows no summary at the scene pick, where the last scene has ended', async () => {

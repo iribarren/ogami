@@ -190,7 +190,6 @@ describe('the "Roll a check" dialog of the Characters panel', () => {
     const dialog = await openDialog(user)
 
     expect(dialog.queryByLabelText('Situational modifier')).not.toBeInTheDocument()
-    expect(dialog.queryByLabelText('Extra dice')).not.toBeInTheDocument()
     await user.click(dialog.getByRole('button', { name: 'Roll' }))
     await waitFor(() => {
       expect(sent).toEqual([{ check: 'steady', character: viCharacter.id }])

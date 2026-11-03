@@ -52,6 +52,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T2 | Character form: a value or a plain explanation instead of a `startMax` formula | delegated: 2+ non-trivial files | [x] | |
 | T3 | Header: `Session N ended` between sessions | delegated: slice runs under one writer | [x] | |
 | T4 | `noSituationalModifier`: contract, Studio, Play, form, West Marches' death save | delegated: 2+ non-trivial files | [x] | |
+| T5 | Review findings: pending-check no-ops, canonical flag, pool opt-out, Focus currency | delegated: follows the slice's writer | [x] | |
 
 ## Applicable checks
 
@@ -65,6 +66,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-03: T2 done. Code written with the tests, so no separate RED; the panel test's old literal-formula assertion is the changed behaviour. Derived modifiers on the form (`CharacterForm.tsx:200`) left alone.
 - 2026-11-03: T3 done. RED: 2 CampaignPage tests failed without the change. The e2e checks (`campaigns.spec.ts:25`, `play-session.spec.ts:19`) use fresh campaigns: unchanged.
 - 2026-11-03: T4 done. Studio draft stores the flag as sent; only the published release drops `false`. Play refuses with `SituationalModifierNotAllowed` (422 on journal and FlowRun routes); a push or burn cannot add a modifier (no `perform`). Tests written with the code, no separate RED.
+- 2026-11-03: T5 done (tests only, one comment). Pending-check no-op filter: 2 API tests fail without it, pass with it. Canonical flag: an explicit null never reached the `isset`, because `ReleaseFields::object()` drops nulls, so the new true/false/null test passed at once (no RED); comment corrected. Pool opt-out: unit test fails with the refusal removed; `CheckForm.test.tsx` added, the "before the extra dice" suffix was already gated by the flag; the vacuous dialog assertion removed. Focus: the shop entry test fails without `currencyUnit`.
 
 ## Reviews
 

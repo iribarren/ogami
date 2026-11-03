@@ -147,6 +147,32 @@ final class CampaignFlowCheckPushApiTest extends WebTestCase
     }
 
     #[Test]
+    public function keepDropsBandEffectsThatChangedNothingAndWritesNoSheetChangeEntryWhenAllDid(): void
+    {
+        // Stress is 0: the "weak" band of "holding" sets it to 0, which changes nothing, so the outcome follows the roll.
+        $this->rolled('holding');
+
+        $this->keep(['stepKey' => 'roll-it']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([['check', 'roll-it'], ['flowOutcome', 'roll-it']], $this->kinds($this->journal()));
+        self::assertSame(0, $this->values()['stress'] ?? null);
+    }
+
+    #[Test]
+    public function keepLeavesOnlyTheBandEffectsThatChangedSomethingInTheSheetChangeEntry(): void
+    {
+        $this->rolled('partly');
+
+        $this->keep(['stepKey' => 'roll-it']);
+
+        self::assertResponseIsSuccessful();
+        $journal = $this->journal();
+        self::assertSame([['check', 'roll-it'], ['sheet-change', 'roll-it'], ['flowOutcome', 'roll-it']], $this->kinds($journal));
+        self::assertSame([['stress', 0, 2]], array_map(static fn (mixed $change): array => [self::at($change, 'field'), self::at($change, 'before'), self::at($change, 'after')], (array) self::at($journal[1], 'content', 'changes')));
+    }
+
+    #[Test]
     public function aPushReRollsTheFailedDiceWithTheCostAndCompletesTheStepOnThePushedBand(): void
     {
         $this->rolled('gritty');
@@ -537,6 +563,8 @@ final class CampaignFlowCheckPushApiTest extends WebTestCase
             'thirsty' => $step('thirst'),
             'cursed' => $step('cursed'),
             'fragile' => $step('grit', [['band' => 'strong', 'effects' => [$stress(['formula' => '{agility} / ({zero} - 1)'], 'set')]]]),
+            'holding' => $step('grit', [['band' => 'weak', 'effects' => [$stress(0, 'set')]]]),
+            'partly' => $step('grit', [['band' => 'weak', 'effects' => [$stress(0, 'set'), $stress(2)]]]),
             'brittle' => $step('grit', [['band' => 'weak', 'effects' => [$stress(['formula' => '{agility} / ({zero} - 1)'], 'set')]]]),
         ];
         // The step branches on a bestial failure ahead of the band, to "compulsion", the last step.

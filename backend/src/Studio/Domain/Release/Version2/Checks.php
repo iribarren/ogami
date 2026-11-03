@@ -120,7 +120,8 @@ final class Checks
                 Formulas::check($modifier, $path.'.modifier', $fieldTypes, $trackerKeys, null);
             }
 
-            // Opting out is the exception: false is the default and leaves no trace in the canonical check.
+            // Opting out is the exception: false is the default and leaves no trace in the canonical check, as an explicit null
+            // does (ReleaseFields::object() drops nulls); a non-boolean is refused.
             if (isset($check['noSituationalModifier']) && !ReleaseFields::boolean($check['noSituationalModifier'], $path.'.noSituationalModifier')) {
                 unset($check['noSituationalModifier']);
             }

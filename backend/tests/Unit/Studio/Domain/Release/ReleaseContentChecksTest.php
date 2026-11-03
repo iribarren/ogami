@@ -40,6 +40,31 @@ final class ReleaseContentChecksTest extends TestCase
         self::assertSame('checks', array_key_last(ReleaseContent::fromArray($release)->toArray()));
     }
 
+    /**
+     * @return iterable<string, array{bool|null, bool}> the authored flag and whether the canonical check keeps it
+     */
+    public static function situationalModifierOptOuts(): iterable
+    {
+        yield 'true is kept' => [true, true];
+        yield 'false leaves no trace' => [false, false];
+        yield 'null leaves no trace' => [null, false];
+    }
+
+    #[Test]
+    #[DataProvider('situationalModifierOptOuts')]
+    public function aPublishedCheckKeepsNoSituationalModifierOnlyWhenTrue(?bool $authored, bool $kept): void
+    {
+        $release = ReleaseArrays::with(ReleaseArrays::fixture('valid/v2-checks'), 'checks.1.noSituationalModifier', $authored);
+
+        /** @var array{checks: list<array<string, mixed>>} $content */
+        $content = ReleaseContent::fromArray($release)->toArray();
+
+        self::assertSame($kept, \array_key_exists('noSituationalModifier', $content['checks'][1]));
+        if ($kept) {
+            self::assertTrue($content['checks'][1]['noSituationalModifier']);
+        }
+    }
+
     #[Test]
     public function aStepDifficultyAtTheBoundOfTheCheckRangeIsValid(): void
     {

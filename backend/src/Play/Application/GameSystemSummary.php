@@ -8,7 +8,7 @@ use App\Play\Domain\GameSystem\Credits;
 
 /**
  * The latest published release of a GameSystem, as Play offers it when a campaign is created, with
- * the Flows a campaign can play and the credits it carries (ListGameSystems reads them from the release; the port lists none).
+ * the Flows a campaign can play and the credits it carries (the port lists them with the release; none when Play cannot read it).
  */
 final readonly class GameSystemSummary
 {

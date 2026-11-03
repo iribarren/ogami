@@ -56,6 +56,21 @@ final class ListPublishedGameSystemsHandlerTest extends TestCase
     }
 
     #[Test]
+    public function eachSummaryCarriesTheReleaseViewOfItsRelease(): void
+    {
+        $this->publish('r-1', 'ironsworn', 'Ironsworn', 3, '2026-10-04T10:00:00+00:00');
+
+        $summaries = ($this->handler)(new ListPublishedGameSystems());
+
+        self::assertSame('r-1', $summaries[0]->release->releaseId);
+        self::assertSame('ironsworn', $summaries[0]->release->gameSystemKey);
+        self::assertSame(3, $summaries[0]->release->version);
+        self::assertSame(1, $summaries[0]->release->schemaVersion);
+        self::assertSame('Ironsworn', $summaries[0]->name);
+        self::assertSame(['key' => 'ironsworn', 'name' => 'Ironsworn'], $summaries[0]->release->content['gameSystem']);
+    }
+
+    #[Test]
     public function theListIsOrderedByNameThenKey(): void
     {
         $this->publish('r-1', 'zeta', 'Same name', 1, '2026-10-05T10:00:00+00:00');

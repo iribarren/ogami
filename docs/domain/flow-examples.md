@@ -316,7 +316,7 @@ A long campaign: the crew starts small, survives on gigs and rises in three acts
 
 | Part | Content |
 |---|---|
-| Trackers | `rep` counter 0–10; `heat` counter 0–10, hint "At 8+ someone sends a hit squad"; `alarm` clock 6 and `edge` counter 0–3 (as in example 2); `lifestyle` counter with levels Kibble / Prepak / Good prepak / Fresh food; `housing` counter with named levels; `month` clock 4; `gig` counter 0–1 ("On a gig") |
+| Trackers | `rep` counter 0–10; `heat` counter 0–10, hint "At 8+ someone sends a hit squad"; `alarm` clock 6 and `edge` counter 0–3 (as in example 2); `lifestyle` counter with levels Kibble / Prepak / Good prepak / Fresh food; `housing` counter with named levels; `month` clock 4; `busy` counter 0–1 ("Busy": 1 while a gig or a scene the player must play next is running) |
 | Sheet | `eddies` number (min 0, default 500), the currency with unit "eb"; `gear` inventory (20 slots, categories Gear and Food); `cyberware` inventory (10 stacks, category Chrome) |
 | Gear catalog | Gear (used pistol, armor jacket, burner agent, climbing gear), Food (kibble, real coffee) and Chrome (cheap cyberoptic, neural link), each with a cost and slots |
 | Fact slots | `turf`, `crew-name`, `big-job`, `twist` (text); `fixer`, `nemesis` (npc) |
@@ -340,26 +340,26 @@ Focus mode progress reads e.g. `Act 1: Making a name › making-a-name › Legwo
 **Act 1: a gig is a `nextScene` chain**
 
 ```
-Gig offer   closing: choice "Take it?"  yes → alarm set 0, gig set 1, nextScene Legwork; no → —
+Gig offer   closing: choice "Take it?"  yes → alarm set 0, busy set 1, nextScene Legwork; no → —
 Legwork     closing: choice "More legwork, or go?"  more → nextScene Legwork; go → nextScene Job
 Job         a compressed heist (oracle, alarm, edge)  → nextScene Payday
-Payday      condition alarm: upTo 3 → gig set 0, rep +2; rest → gig set 0, rep +1
+Payday      condition alarm: upTo 3 → busy set 0, rep +2; rest → busy set 0, rep +1
             choice "Collect the pay"  yes → eddies +(200 + 50 * rep)   (a sheet effect: the player picks the Character)
             prompt "Any loose ends?" → createThread
 Recruit     prompt "Who joins, and what do they do?" → createNpc [crew, plus a specialty tag]
 
 worldTurn
-  condition gig: upTo 0 → —; rest → end   (the street waits while a gig runs)
+  condition busy: upTo 0 → —; rest → end   (the street waits while a gig or a forced scene is pending)
   roll 1d6: upTo 4 → —; rest → table street-events, branching per entry:
     Rival crew    → pick NPC [rival] → prompt "What is {picked} after?"
     Gang war      → prompt "Whose streets burn?"
     Corp sweep    → heat +1
     Special gig   → nextScene Gig offer
     Grudge        → createNpc → fillFact nemesis
-  condition heat: upTo 7 → —; rest → nextScene Hit squad   (Hit squad closing: heat set 4, gig set 0)
+  condition heat: upTo 7 → —; rest → nextScene Hit squad   (Hit squad closing: heat set 4, busy set 0)
 
 sceneClosing (the act ends)
-  condition gig: upTo 0 → —; rest → end
+  condition busy: upTo 0 → —; rest → end
   condition rep: upTo 4 → —
     rest → condition count NPC [crew]: upTo 1 → —
       rest → choice "Go big?"  yes → endPhase; no → —
@@ -370,7 +370,7 @@ sceneClosing (the act ends)
 ```
 planning phaseOpening
   prompt "Act 2: The big job. What is it?" → fillFact big-job
-  → gig set 0, alarm set 0, edge set 0
+  → busy set 0, alarm set 0, edge set 0
 
 Betrayal
   pick NPC [fixer]  none → pick NPC [client]
@@ -383,9 +383,9 @@ Money is the Character's `eddies`, the sheet currency; gear sits in the `gear` a
 
 ```
 Downtime closing
-  choice "Hit the Night Market?"  yes → nextScene Night Market; no → —
   → month +1
-  condition month: upTo 3 → —; rest → nextScene Month's end
+  choice "Hit the Night Market?"  yes → nextScene Night Market, busy set 1; no → —
+  condition month: upTo 3 → —; rest → nextScene Month's end, busy set 1
 
 Gear up closing
   → nextScene Night Market
@@ -394,15 +394,16 @@ Night Market
   shop "What do you buy or sell?"
     offer categories Gear, Food, Chrome; stock 1d4+2 entries rolled when reached; sellRate 50
     one transaction for the Character: sells, then buys; gear lands in the inventory that accepts its category
+  closing: condition month: upTo 3 → busy set 0; rest → nextScene Month's end   (busy stays 1)
 
 Month's end
   condition housing: one band per level → choice "Pay the rent?"
-    pay  → eddies −rent (a sheet effect, refused when the Character cannot afford it), month set 0
-    skip → lifestyle −1, month set 0, pick NPC [fixer] → createThread "Debt to {picked}"
+    pay  → eddies −rent (a sheet effect, refused when the Character cannot afford it), month set 0, busy set 0
+    skip → lifestyle −1, month set 0, busy set 0, pick NPC [fixer] → createThread "Debt to {picked}"
   choice "Move up?"  yes → housing +1
 ```
 
-`month` is reset on both options, otherwise Month's end would come back after every Downtime. A rent the Character cannot pay is refused (`insufficient_funds`), so the player takes the debt instead. Month's end runs its steps in `play`: a Scene Type's `setup` has no Character to pay.
+`month` is reset on both options, otherwise Month's end would come back after every Downtime. A FlowRun keeps only the last forced scene, so the Night Market or Month's end that Downtime forces would be lost to the hit squad or the special gig that the Act 1 world turn forces right after. `busy` guards it: Downtime sets it with the forced scene, the world turn and "Go big?" wait while it is 1, and the Night Market (rent not due) or Month's end frees it. The Night Market reached from Gear up in Act 2 finds it already 0. A rent the Character cannot pay is refused (`insufficient_funds`), so the player takes the debt instead. Month's end runs its steps in `play`: a Scene Type's `setup` has no Character to pay.
 
 ### What it shows
 

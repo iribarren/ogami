@@ -240,19 +240,19 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
     }
 
     #[Test]
-    public function theGigTrackerIsOnFromTakingTheOfferAndStaysOffWhenTheOfferIsTurnedDown(): void
+    public function theBusyTrackerIsOnFromTakingTheOfferAndStaysOffWhenTheOfferIsTurnedDown(): void
     {
         $campaign = $this->actOne();
         $campaign->pickSceneType('gig-offer', $this->release, self::at());
         $this->endScene($campaign, skipping: ['client', 'gig']);
         $campaign->completeFlowStep('take-it', StepResult::choice('no'), $this->release, self::at());
-        self::assertSame(0, $campaign->trackerValue($this->tracker('gig')));
+        self::assertSame(0, $campaign->trackerValue($this->tracker('busy')));
         $this->quietStreet($campaign);
 
         $this->takeAGig($campaign);
-        self::assertSame(1, $campaign->trackerValue($this->tracker('gig')));
+        self::assertSame(1, $campaign->trackerValue($this->tracker('busy')));
         $campaign->pickSceneType('legwork', $this->release, self::at());
-        self::assertSame(1, $campaign->trackerValue($this->tracker('gig')));
+        self::assertSame(1, $campaign->trackerValue($this->tracker('busy')));
     }
 
     #[Test]
@@ -264,22 +264,22 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $campaign->pickSceneType('job', $this->release, self::at());
         $this->endScene($campaign, skipping: ['plan', 'trouble']);
         $campaign->completeFlowStep('ending', self::prompt('Clean getaway'), $this->release, self::at());
-        self::assertSame(1, $campaign->trackerValue($this->tracker('gig')));
+        self::assertSame(1, $campaign->trackerValue($this->tracker('busy')));
 
         $campaign->pickSceneType('gig-payday', $this->release, self::at());
 
-        self::assertSame(0, $campaign->trackerValue($this->tracker('gig')));
+        self::assertSame(0, $campaign->trackerValue($this->tracker('busy')));
     }
 
     #[Test]
     public function aDroppedGigNeverBlocksActTwo(): void
     {
         $campaign = $this->actOne();
-        $campaign->setTrackerValue($this->tracker('gig'), 1, self::at());
+        $campaign->setTrackerValue($this->tracker('busy'), 1, self::at());
         $campaign->moveOn('making-a-name', $this->release, self::at());
         $campaign->completeFlowStep('big-job', self::prompt('The Arasaka vault'), $this->release, self::at());
 
-        self::assertSame(0, $campaign->trackerValue($this->tracker('gig')));
+        self::assertSame(0, $campaign->trackerValue($this->tracker('busy')));
     }
 
     #[Test]
@@ -353,13 +353,13 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $campaign->switchSceneType($this->release->sceneType('social') ?? self::fail('No social scene type.'), $this->release, self::at());
         $this->endScene($campaign, skipping: ['talk', 'reaction']);
 
-        // Gig still 1: neither the world turn nor "Go big?" runs, and the chain is gone.
-        self::assertSame(1, $campaign->trackerValue($this->tracker('gig')));
+        // Busy still 1: neither the world turn nor "Go big?" runs, and the chain is gone.
+        self::assertSame(1, $campaign->trackerValue($this->tracker('busy')));
         self::assertNull(self::flowRunOf($campaign)->forcedNextSceneType());
         self::assertSame('scenePick', self::flowRunOf($campaign)->stage()->value);
 
         // Editing the tracker by hand reopens both gates.
-        $campaign->setTrackerValue($this->tracker('gig'), 0, self::at());
+        $campaign->setTrackerValue($this->tracker('busy'), 0, self::at());
         $campaign->pickSceneType('social', $this->release, self::at());
         $this->endScene($campaign, skipping: ['talk', 'reaction']);
         self::assertSame('go-big', self::flowRunOf($campaign)->stepKey());
@@ -449,7 +449,6 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $this->endScene($campaign, skipping: ['spend']);
         $campaign->completeFlowStep('days', self::prompt('Lying low'), $this->release, self::at());
         $campaign->completeFlowStep('market', StepResult::choice('no'), $this->release, self::at());
-        $this->quietStreet($campaign);
         $campaign->pickSceneType('months-end', $this->release, self::at());
 
         // A cargo container costs 1,000 eb and Vi has 500: nothing changes.
@@ -463,10 +462,11 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         }
 
         self::assertEquals($unchanged, $campaign);
+        self::assertSame(1, $campaign->trackerValue($this->tracker('busy')));
 
         // Skipping it lowers the lifestyle, restarts the month and borrows from the fixer.
         $campaign->completeFlowStep('rent-container', StepResult::choice('skip'), $this->release, self::at());
-        self::assertSame([0, 0, 'debt'], [$campaign->trackerValue($this->tracker('lifestyle')), $campaign->trackerValue($this->tracker('month')), self::flowRunOf($campaign)->stepKey()]);
+        self::assertSame([0, 0, 0, 'debt'], [$campaign->trackerValue($this->tracker('lifestyle')), $campaign->trackerValue($this->tracker('month')), $campaign->trackerValue($this->tracker('busy')), self::flowRunOf($campaign)->stepKey()]);
         $campaign->completeFlowStep('debt', $this->pickAll($campaign), $this->release, self::at());
         self::assertSame(['Debt to Mama Lux'], array_map(static fn (Thread $thread): string => $thread->name(), $campaign->threads()));
         $campaign->skipFlowStep('eat', $this->release, self::at());
@@ -543,7 +543,6 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $this->endScene($campaign, skipping: ['spend']);
         $campaign->completeFlowStep('days', self::prompt('Lying low'), $this->release, self::at());
         $campaign->completeFlowStep('market', StepResult::choice('yes'), $this->release, self::at());
-        $this->quietStreet($campaign);
 
         // The market comes first; the Month clock is full, so it leads on to Month's end.
         self::assertSame('night-market', self::flowRunOf($campaign)->forcedNextSceneType());
@@ -551,9 +550,122 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $campaign->skipFlowStep('crowd', $this->release, self::at(), new ScriptedRandomNumberGenerator(...self::STALLS));
         $campaign->completeFlowStep('stalls', StepResult::shop('vi', [], []), $this->release, self::at());
         $this->endScene($campaign);
-        $this->quietStreet($campaign);
 
         self::assertSame('months-end', self::flowRunOf($campaign)->forcedNextSceneType());
+    }
+
+    #[Test]
+    public function aDowntimeThatForcesTheNightMarketKeepsItAgainstAHitSquad(): void
+    {
+        $campaign = $this->actOne();
+        $campaign->setTrackerValue($this->tracker('heat'), 8, self::at());
+        $this->closeDowntime($campaign, 'yes');
+
+        // The world turn does not run: no street roll, so no hit squad replaces the market.
+        self::assertSame(['night-market', 'scenePick'], [self::flowRunOf($campaign)->forcedNextSceneType(), self::flowRunOf($campaign)->stage()->value]);
+        self::assertNotSame('street', self::flowRunOf($campaign)->stepKey());
+        self::assertSame(1, $campaign->trackerValue($this->tracker('busy')));
+    }
+
+    #[Test]
+    public function aDowntimeThatFillsTheMonthClockKeepsMonthsEndAgainstAHitSquad(): void
+    {
+        $campaign = $this->actOne();
+        $campaign->setTrackerValue($this->tracker('heat'), 8, self::at());
+        $campaign->setTrackerValue($this->tracker('month'), 3, self::at());
+        $this->closeDowntime($campaign, 'no');
+
+        self::assertSame(['months-end', 'scenePick'], [self::flowRunOf($campaign)->forcedNextSceneType(), self::flowRunOf($campaign)->stage()->value]);
+        self::assertNotSame('street', self::flowRunOf($campaign)->stepKey());
+        self::assertSame(1, $campaign->trackerValue($this->tracker('busy')));
+    }
+
+    #[Test]
+    public function aSpecialGigStreetEventCannotReplaceAForcedSceneBecauseTheWorldTurnDoesNotRun(): void
+    {
+        $campaign = $this->actOne();
+        $campaign->setTrackerValue($this->tracker('month'), 3, self::at());
+        $this->closeDowntime($campaign, 'no');
+
+        // Not at the "street" step: there is no roll that could force a gig offer over Month's end.
+        self::assertSame(['months-end', 'scenePick'], [self::flowRunOf($campaign)->forcedNextSceneType(), self::flowRunOf($campaign)->stage()->value]);
+        self::assertNotSame('street', self::flowRunOf($campaign)->stepKey());
+    }
+
+    #[Test]
+    public function aNightMarketAfterDowntimeWithTheRentNotDueFreesTheStreetAndTheDelayedHitSquadComes(): void
+    {
+        $campaign = $this->actOne();
+        $campaign->setTrackerValue($this->tracker('heat'), 8, self::at());
+        $this->closeDowntime($campaign, 'yes');
+        $this->playTheNightMarket($campaign);
+
+        // The market is over and the rent is not due: the street is back, and the squad is delayed, not lost.
+        self::assertSame([0, 'street'], [$campaign->trackerValue($this->tracker('busy')), self::flowRunOf($campaign)->stepKey()]);
+        $this->quietStreet($campaign);
+        self::assertSame('hit-squad', self::flowRunOf($campaign)->forcedNextSceneType());
+    }
+
+    #[Test]
+    public function aNightMarketAfterDowntimeWithTheRentDueLeadsToMonthsEndAndThenTheHitSquadComes(): void
+    {
+        $campaign = $this->actOne();
+        $campaign->setTrackerValue($this->tracker('heat'), 8, self::at());
+        $campaign->setTrackerValue($this->tracker('month'), 3, self::at());
+        $this->closeDowntime($campaign, 'yes');
+        $this->playTheNightMarket($campaign);
+
+        self::assertSame(['months-end', 'scenePick', 1], [self::flowRunOf($campaign)->forcedNextSceneType(), self::flowRunOf($campaign)->stage()->value, $campaign->trackerValue($this->tracker('busy'))]);
+        $campaign->pickSceneType('months-end', $this->release, self::at());
+        $campaign->completeFlowStep('rent-hotel', StepResult::choice('pay', 'vi'), $this->release, self::at());
+        $this->endScene($campaign, skipping: ['eat', 'move-up']);
+
+        self::assertSame([0, 'street'], [$campaign->trackerValue($this->tracker('busy')), self::flowRunOf($campaign)->stepKey()]);
+        $this->quietStreet($campaign);
+        self::assertSame('hit-squad', self::flowRunOf($campaign)->forcedNextSceneType());
+    }
+
+    #[Test]
+    public function aDowntimeThatForcesNothingLeavesTheStreetFreeAndTheWorldTurnRuns(): void
+    {
+        $campaign = $this->actOne();
+        $this->closeDowntime($campaign, 'no');
+
+        self::assertSame([0, 'street'], [$campaign->trackerValue($this->tracker('busy')), self::flowRunOf($campaign)->stepKey()]);
+        $this->quietStreet($campaign);
+        self::assertNull(self::flowRunOf($campaign)->forcedNextSceneType());
+    }
+
+    #[Test]
+    public function goBigIsNotAskedWhileDowntimeForcesASceneButAfterTheNightMarketWhenTheRentIsNotDue(): void
+    {
+        $campaign = $this->actOne();
+        $campaign->setTrackerValue($this->tracker('rep'), 4, self::at());
+        $this->recruit($campaign, 'Ada', 'netrunner');
+        $this->quietStreet($campaign);
+        $this->recruit($campaign, 'Rook', 'nomad');
+        $this->quietStreet($campaign);
+        $campaign->setTrackerValue($this->tracker('rep'), 5, self::at());
+
+        $this->closeDowntime($campaign, 'yes');
+        self::assertNotSame('go-big', self::flowRunOf($campaign)->stepKey());
+        self::assertSame('night-market', self::flowRunOf($campaign)->forcedNextSceneType());
+
+        $this->playTheNightMarket($campaign);
+        self::assertSame('go-big', self::flowRunOf($campaign)->stepKey());
+    }
+
+    #[Test]
+    public function aNightMarketFromGearUpInActTwoLeavesTheStreetFree(): void
+    {
+        $campaign = $this->inPlanning();
+        $campaign->pickSceneType('gear-up', $this->release, self::at());
+        $this->endScene($campaign, skipping: ['need']);
+        $campaign->completeFlowStep('market', StepResult::choice('yes'), $this->release, self::at());
+        $this->playTheNightMarket($campaign);
+
+        self::assertSame(0, $campaign->trackerValue($this->tracker('busy')));
+        self::assertSame('scenePick', self::flowRunOf($campaign)->stage()->value);
     }
 
     #[Test]
@@ -662,6 +774,28 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep('take-it', StepResult::choice('yes'), $this->release, self::at());
     }
 
+    /**
+     * A Downtime played and closed: the week slips by and the market is visited or not.
+     */
+    private function closeDowntime(Campaign $campaign, string $market): void
+    {
+        $campaign->pickSceneType('downtime', $this->release, self::at());
+        $this->endScene($campaign, skipping: ['spend']);
+        $campaign->completeFlowStep('days', self::prompt('Lying low'), $this->release, self::at());
+        $campaign->completeFlowStep('market', StepResult::choice($market), $this->release, self::at());
+    }
+
+    /**
+     * The forced Night Market played with nothing bought, and the scene ended.
+     */
+    private function playTheNightMarket(Campaign $campaign): void
+    {
+        $campaign->pickSceneType('night-market', $this->release, self::at());
+        $campaign->skipFlowStep('crowd', $this->release, self::at(), new ScriptedRandomNumberGenerator(...self::STALLS));
+        $campaign->completeFlowStep('stalls', StepResult::shop('vi', [], []), $this->release, self::at());
+        $this->endScene($campaign);
+    }
+
     private function createYourCharacter(Campaign $campaign, ?int $eddies = null): void
     {
         $campaign->addCharacter(CharacterId::fromString('vi'), 'Vi', [], [], ['role' => 'Netrunner'] + (null === $eddies ? [] : ['eddies' => $eddies]), $this->release);
@@ -741,7 +875,6 @@ final class NightJobCampaignPresetFlowTest extends FlowRunTestCase
         $this->endScene($campaign, skipping: ['spend']);
         $campaign->completeFlowStep('days', self::prompt('Lying low'), $this->release, self::at());
         $campaign->completeFlowStep('market', StepResult::choice('no'), $this->release, self::at());
-        $this->quietStreet($campaign);
         $campaign->pickSceneType('months-end', $this->release, self::at());
 
         return $campaign;

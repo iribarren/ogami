@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 
+import { finishRoll } from './finish-roll.ts'
 import { player, signIn } from './sign-in.ts'
 
 // Users and the "Lanterns of the Mire" preset are seeded by `make e2e-seed`. The run through the
@@ -47,10 +48,7 @@ test('a solo player starts Lanterns of the Mire, creates their investigator and 
   const dialog = page.getByRole('dialog', { name: 'Roll a check for Edda Voss' })
   await dialog.getByLabel('Check').selectOption({ label: 'Brawl (Vigour)' })
   await dialog.getByRole('button', { name: 'Roll' }).click()
-  // A roll with a failed die offers Push or Keep, one with all dice succeeding only Done.
-  await expect(dialog.getByRole('article', { name: 'Check Brawl (Vigour)' })).toBeVisible()
-  await dialog.getByRole('button', { name: /^(Keep|Done)$/ }).click()
-  await expect(dialog).toBeHidden()
+  await finishRoll(dialog)
 
   await page.getByRole('radio', { name: 'Journal view' }).check()
   await expect(page.getByRole('region', { name: 'Journal' })).toContainText('Brawl (Vigour)')

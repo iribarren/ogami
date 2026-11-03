@@ -8,6 +8,11 @@ import { defineConfig, devices } from '@playwright/test'
  */
 export default defineConfig({
   testDir: './e2e',
+  // The default 30 s is too tight: the specs drive a Vite dev server, and with the workers running
+  // side by side several of them take around that long without anything being wrong.
+  timeout: 60_000,
+  // Same reason: after a reload the dev server and the API can take the whole default 5 s to answer.
+  expect: { timeout: 10_000 },
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,

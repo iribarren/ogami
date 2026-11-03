@@ -39,6 +39,7 @@ final readonly class ListPublishedGameSystemsHandler implements QueryHandler
             $description,
             $release->version(),
             $release->publishedAt(),
+            PublishedReleaseViews::of($release, $content),
         );
     }
 }

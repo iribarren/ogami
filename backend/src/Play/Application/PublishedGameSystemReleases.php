@@ -26,6 +26,8 @@ interface PublishedGameSystemReleases
 
     /**
      * The latest release of every GameSystem, ordered by name ignoring case, then key: the release catalog.
+     * Each summary carries the Flows and credits of its release, none when Play cannot read that release
+     * (it is still listed; creating a campaign with it fails).
      *
      * @return list<GameSystemSummary>
      */

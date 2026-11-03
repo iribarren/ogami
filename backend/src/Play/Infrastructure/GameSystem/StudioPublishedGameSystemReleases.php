@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Play\Infrastructure\GameSystem;
 
+use App\Play\Application\FlowSummaryView;
 use App\Play\Application\GameSystemSummary;
 use App\Play\Application\PublishedGameSystemReleases;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\InvalidGameSystemRelease;
+use App\Play\Domain\GameSystem\UnsupportedReleaseSchemaVersion;
 use App\Shared\Application\Bus\QueryBus;
 use App\Studio\Application\GetPublishedRelease;
 use App\Studio\Application\ListPublishedGameSystems;
@@ -45,13 +47,26 @@ final readonly class StudioPublishedGameSystemReleases implements PublishedGameS
     public function latest(): array
     {
         return array_map(
-            static fn (PublishedGameSystemSummary $summary): GameSystemSummary => new GameSystemSummary(
-                $summary->gameSystemKey,
-                $summary->name,
-                $summary->description,
-                $summary->version,
-            ),
+            $this->withFlows(...),
             $this->queries->ask(new ListPublishedGameSystems()),
+        );
+    }
+
+    private function withFlows(PublishedGameSystemSummary $summary): GameSystemSummary
+    {
+        try {
+            $release = $this->translator->translate($summary->release);
+        } catch (InvalidGameSystemRelease|UnsupportedReleaseSchemaVersion) {
+            return new GameSystemSummary($summary->gameSystemKey, $summary->name, $summary->description, $summary->version);
+        }
+
+        return new GameSystemSummary(
+            $summary->gameSystemKey,
+            $summary->name,
+            $summary->description,
+            $summary->version,
+            array_map(FlowSummaryView::of(...), $release->flows()),
+            $release->credits(),
         );
     }
 }

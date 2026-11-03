@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Support\Play;
 
+use App\Play\Application\FlowSummaryView;
 use App\Play\Application\GameSystemSummary;
 use App\Play\Application\PublishedGameSystemReleases;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -43,7 +44,14 @@ final class InMemoryPublishedGameSystemReleases implements PublishedGameSystemRe
         foreach (array_keys($this->snapshots) as $key) {
             $latest = $this->get((string) $key);
             $version = $latest->releaseVersion();
-            $summaries[] = new GameSystemSummary($latest->gameSystemKey(), $latest->name(), $this->descriptions[$key][$version] ?? null, $version);
+            $summaries[] = new GameSystemSummary(
+                $latest->gameSystemKey(),
+                $latest->name(),
+                $this->descriptions[$key][$version] ?? null,
+                $version,
+                array_map(FlowSummaryView::of(...), $latest->flows()),
+                $latest->credits(),
+            );
         }
 
         usort($summaries, static fn (GameSystemSummary $a, GameSystemSummary $b): int => [mb_strtolower($a->name), $a->gameSystemKey] <=> [mb_strtolower($b->name), $b->gameSystemKey]);

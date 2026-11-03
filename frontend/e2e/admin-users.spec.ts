@@ -9,7 +9,7 @@ const invitedPassword = 'invited-password-1'
 // never meet "invitation pending", "already exists" or the reset rate limiter), which keeps the
 // scenarios independent and lets them run in parallel; no serial describe is needed.
 // Each scenario signs in the owner, invites and accepts through the dev server, which compiles on
-// first use; 30 seconds is not enough when they run in parallel.
+// first use; the default timeout is not enough when they run in parallel.
 test.setTimeout(90_000)
 
 const uniqueEmail = (label: string) => `e2e-${label}-${String(Date.now())}@example.test`

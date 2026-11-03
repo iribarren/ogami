@@ -30,7 +30,7 @@ async function addTable(page: Page, key: string, name: string) {
 test('a game manager imports a library Scene Type over an oracle the draft overrides, follows a pack change and publishes', async ({
   page,
 }) => {
-  // Two authors, an import, an update and a publish: more than the default 30 s once the other
+  // Two authors, an import, an update and a publish: more than the default timeout once the other
   // specs run beside it.
   test.setTimeout(90_000)
   // Unique per run: the dev database keeps the GameSystems and packs of earlier runs.

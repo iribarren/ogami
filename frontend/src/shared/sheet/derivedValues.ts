@@ -27,6 +27,44 @@ export function integer(text: string): number | undefined {
 }
 
 /**
+ * How a formula reads the form: number and track drafts, the count marked of the conditions fields,
+ * Tracker values, and derived values already in `results`. A reference without a value reads as undefined.
+ */
+function readerOf(
+  fields: Map<string, SheetFieldView>,
+  drafts: Record<string, Draft>,
+  trackers: TrackerReading[],
+  results: Record<string, DerivedResult>,
+) {
+  return (reference: Reference): number | undefined => {
+    if (reference.kind === 'check') {
+      // Only a check's bands read it; in a derived value it is invalid and has no value.
+      return undefined
+    }
+    if (reference.kind === 'tracker') {
+      return trackers.find(({ key }) => key === reference.key)?.value
+    }
+    const field = fields.get(reference.key)
+    const draft = drafts[reference.key]
+    if (field?.type === 'derived' && reference.kind === 'field') {
+      const result = results[reference.key]
+      return result !== undefined && 'value' in result ? result.value : undefined
+    }
+    if (field?.type === 'number' && reference.kind === 'field' && typeof draft === 'string') {
+      return integer(draft)
+    }
+    if (field?.type === 'conditions' && reference.kind === 'field' && Array.isArray(draft)) {
+      // A formula reads the count marked, as the server does.
+      return draft.length
+    }
+    if (field?.type === 'track' && typeof draft === 'object' && !Array.isArray(draft)) {
+      return integer(reference.kind === 'trackMax' ? draft.max : draft.current)
+    }
+    return undefined
+  }
+}
+
+/**
  * The derived values of the sheet as the form holds it, computed as the player types: the same
  * formulas and reference semantics as the server (`DerivedValues`), over the drafts of the number
  * and track fields, the count marked of the conditions fields and the Campaign's Tracker values. A value that cannot be computed, or depends
@@ -63,32 +101,7 @@ export function computeDerived(
     }
   }
 
-  const read = (reference: Reference): number | undefined => {
-    if (reference.kind === 'check') {
-      // Only a check's bands read it; in a derived value it is invalid and has no value.
-      return undefined
-    }
-    if (reference.kind === 'tracker') {
-      return trackers.find(({ key }) => key === reference.key)?.value
-    }
-    const field = fields.get(reference.key)
-    const draft = drafts[reference.key]
-    if (field?.type === 'derived' && reference.kind === 'field') {
-      const result = results[reference.key]
-      return result !== undefined && 'value' in result ? result.value : undefined
-    }
-    if (field?.type === 'number' && reference.kind === 'field' && typeof draft === 'string') {
-      return integer(draft)
-    }
-    if (field?.type === 'conditions' && reference.kind === 'field' && Array.isArray(draft)) {
-      // A formula reads the count marked, as the server does.
-      return draft.length
-    }
-    if (field?.type === 'track' && typeof draft === 'object' && !Array.isArray(draft)) {
-      return integer(reference.kind === 'trackMax' ? draft.max : draft.current)
-    }
-    return undefined
-  }
+  const read = readerOf(fields, drafts, trackers, results)
 
   for (const key of order) {
     const formula = formulas.get(key)
@@ -118,4 +131,27 @@ export function computeDerived(
     }
   }
   return results
+}
+
+/**
+ * The value of a formula over the sheet as the form holds it, or undefined when it cannot be
+ * computed: a reference without a value, an invalid formula or arithmetic that fails. Nothing here throws.
+ */
+export function evaluateOnForm(
+  sheet: SheetFieldView[],
+  formulaText: string,
+  drafts: Record<string, Draft>,
+  trackers: TrackerReading[],
+): number | undefined {
+  try {
+    const read = readerOf(
+      new Map(sheet.map((field) => [field.key, field])),
+      drafts,
+      trackers,
+      computeDerived(sheet, drafts, trackers),
+    )
+    return parseFormula(formulaText).evaluate(read)
+  } catch {
+    return undefined
+  }
 }

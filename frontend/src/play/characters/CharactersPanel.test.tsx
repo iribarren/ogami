@@ -688,9 +688,12 @@ describe('creating a Character by the rules of the sheet', () => {
     expect(panel.getByLabelText('Strength')).toHaveTextContent('Rolled at creation: 3d6*5')
     expect(panel.getByLabelText('Constitution')).toHaveTextContent('Rolled at creation: (2d6+6)*5')
     expect(panel.getByLabelText('Luck')).toHaveTextContent('Rolled at creation: 3d6*5')
+    // The server rolls Strength and Constitution, so the form cannot tell the hit points: it names
+    // what they come from, not the formula.
     expect(panel.getByLabelText('Hit points')).toHaveTextContent(
-      'Set at creation: ({str} + {con}) / 10',
+      'Set at creation from Strength and Constitution',
     )
+    expect(panel.getByLabelText('Hit points')).not.toHaveTextContent('{')
     expect(panel.queryByText(/Characteristic points:/)).not.toBeInTheDocument()
     await user.type(panel.getByLabelText('Role'), 'Spy')
     await user.click(panel.getByRole('button', { name: 'Save' }))
@@ -718,6 +721,8 @@ describe('creating a Character by the rules of the sheet', () => {
     await user.clear(panel.getByLabelText('Constitution'))
     await user.type(panel.getByLabelText('Constitution'), '60')
     expect(panel.getByText('Characteristic points: 100 / 100')).toBeInTheDocument()
+    // The points are the player's own, so the hit points (40 + 60) / 10 can be told as they are typed.
+    expect(panel.getByLabelText('Hit points')).toHaveTextContent('Set at creation: 10')
     await user.click(panel.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {

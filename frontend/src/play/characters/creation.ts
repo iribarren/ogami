@@ -1,5 +1,7 @@
+import { parseFormula } from '@/shared/lib/formula'
+import { evaluateOnForm } from '@/shared/sheet/derivedValues'
 import type { Draft } from '@/shared/sheet/sheetValues'
-import type { SheetFieldView } from '@/shared/sheet/types'
+import type { SheetFieldView, TrackerReading } from '@/shared/sheet/types'
 
 import type { Campaign } from '../campaigns/useCampaigns'
 
@@ -53,13 +55,77 @@ export function creationPlan(
     if (field.type === 'number' && rolls(field) && !spentKeys.has(field.key)) {
       setAtCreation.set(field.key, `Rolled at creation: ${field.roll ?? ''}`)
     } else if (field.type === 'track' && (field.startMax ?? null) !== null) {
-      setAtCreation.set(field.key, `Set at creation: ${field.startMax ?? ''}`)
+      // The form completes the note once it holds the drafts (`creationNotes`).
+      setAtCreation.set(field.key, 'Set at creation')
     } else if (budget !== undefined) {
       bounded.set(field.key, budget)
     }
   }
 
   return { choice, ready: !choice || chosen !== null, method, setAtCreation, bounded, spent }
+}
+
+/** "A", "A and B" or "A, B and C". */
+function plainList(labels: string[]) {
+  return labels.length < 2
+    ? (labels[0] ?? '')
+    : `${labels.slice(0, -1).join(', ')} and ${labels.at(-1) ?? ''}`
+}
+
+/** The server's bounds for a start max (`CharacterValues::MAX_TRACK`). */
+const MAX_TRACK = 999
+
+/**
+ * What the form says about each field the server sets at creation. A track's start max is its value
+ * when the form can compute it, clamped as the server does; otherwise the fields its formula reads,
+ * in plain words, never the formula. The values the server rolls are not in the drafts' hands, so they
+ * are dropped before evaluating: the drafts hold their default or budget-bound start, and a formula
+ * over them would show a plausible but wrong value.
+ */
+export function creationNotes(
+  plan: CreationPlan,
+  fields: SheetFieldView[],
+  drafts: Record<string, Draft>,
+  trackers: TrackerReading[],
+): Record<string, string> {
+  const known = Object.fromEntries(
+    Object.entries(drafts).filter(([key]) => !plan.setAtCreation.has(key)),
+  )
+  return Object.fromEntries(
+    [...plan.setAtCreation].map(([key, note]) => {
+      const field = fields.find((candidate) => candidate.key === key)
+      if (field?.type !== 'track' || (field.startMax ?? null) === null) {
+        return [key, note]
+      }
+      const formula = field.startMax ?? ''
+      const value = evaluateOnForm(fields, formula, known, trackers)
+      if (value !== undefined) {
+        return [key, `Set at creation: ${String(Math.max(0, Math.min(MAX_TRACK, value)))}`]
+      }
+      return [key, `Set at creation${readsText(formula, fields)}`]
+    }),
+  )
+}
+
+/** " from A and B" for the fields a formula reads; nothing when it reads none or cannot be parsed. */
+function readsText(formula: string, fields: SheetFieldView[]) {
+  let keys: string[]
+  try {
+    keys = [
+      ...new Set(
+        parseFormula(formula)
+          .references.filter(({ kind }) => kind === 'field' || kind === 'trackMax')
+          .map(({ key }) => key),
+      ),
+    ]
+  } catch {
+    return ''
+  }
+  const labels = keys.map((key) => fields.find((field) => field.key === key)?.label)
+  // A field that cannot be named leaves the plain note rather than a half-named one.
+  return keys.length === 0 || labels.some((label) => label === undefined)
+    ? ''
+    : ` from ${plainList(labels.filter((label) => label !== undefined))}`
 }
 
 /** `field` with its bounds narrowed by the budget's: what the player may give it at creation. */

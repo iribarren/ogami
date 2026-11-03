@@ -49,7 +49,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | ID | Task | Route | Done | Commit |
 |---|---|---|---|---|
 | T1 | Journal: labels and currency unit in the Focus view; no-op sheet changes neither recorded nor shown | delegated: 2+ non-trivial files | [x] | |
-| T2 | Character form: a value or a plain explanation instead of a `startMax` formula | | [ ] | |
+| T2 | Character form: a value or a plain explanation instead of a `startMax` formula | delegated: 2+ non-trivial files | [x] | |
 | T3 | Header: `Session N ended` between sessions | | [ ] | |
 | T4 | `noSituationalModifier`: contract, Studio, Play, form, West Marches' death save | | [ ] | |
 
@@ -62,6 +62,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - 2026-11-03: Mapped the five items and took the decision on item 4. One slice, delegated writer: two or more non-trivial files.
 - 2026-11-03: T1 done. RED: 2 handler tests failed without the filter, then GREEN; frontend tests added with the fix (stored all-no-op entries hidden in Journal and Focus).
+- 2026-11-03: T2 done. Code written with the tests, so no separate RED; the panel test's old literal-formula assertion is the changed behaviour. Derived modifiers on the form (`CharacterForm.tsx:200`) left alone.
 
 ## Reviews
 

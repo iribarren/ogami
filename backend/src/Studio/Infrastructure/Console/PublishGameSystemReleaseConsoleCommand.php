@@ -67,7 +67,10 @@ final class PublishGameSystemReleaseConsoleCommand extends Command
 
             return Command::FAILURE;
         } catch (GameSystemManagedInStudio $exception) {
-            $io->error($exception->getMessage());
+            // --if-changed compared the content first (ADR 0036), so here the file and the release differ.
+            $io->error(true === $input->getOption('if-changed')
+                ? \sprintf('%s %s does not match its latest release. If the file is right, make the same change in Studio and publish it. Then run app:gamesystem:export to rewrite the file.', $exception->getMessage(), $file)
+                : $exception->getMessage());
 
             return Command::FAILURE;
         } catch (GameSystemReleaseAlreadyExists $exception) {

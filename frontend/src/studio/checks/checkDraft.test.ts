@@ -105,6 +105,25 @@ describe('writeCheck', () => {
     expect(result).not.toHaveProperty('check.difficulty')
   })
 
+  it('writes noSituationalModifier as stored: true, false, and nothing while it was never said', () => {
+    expect(writeCheck(drafted({ ...stored, noSituationalModifier: true }))).toEqual({
+      check: { ...stored, noSituationalModifier: true },
+    })
+    expect(writeCheck(drafted({ ...stored, noSituationalModifier: false }))).toEqual({
+      check: { ...stored, noSituationalModifier: false },
+    })
+    expect(writeCheck(drafted(stored))).not.toHaveProperty('check.noSituationalModifier')
+    // A stored null is absent.
+    expect(writeCheck(drafted({ ...stored, noSituationalModifier: null }))).not.toHaveProperty(
+      'check.noSituationalModifier',
+    )
+  })
+
+  it('cannot read a noSituationalModifier that is not a boolean', () => {
+    expect(readCheck({ ...stored, noSituationalModifier: 'yes' })).toBeNull()
+    expect(readCheck({ ...stored, noSituationalModifier: 1 })).toBeNull()
+  })
+
   it('omits empty optionals and trims text', () => {
     const draft = { ...blankCheck(), key: ' grit ', label: ' Grit ', dice: ' 2d6 ', hint: '  ' }
 

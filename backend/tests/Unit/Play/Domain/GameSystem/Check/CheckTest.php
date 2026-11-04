@@ -15,6 +15,7 @@ use App\Play\Domain\GameSystem\Check\CheckEvaluationFailed;
 use App\Play\Domain\GameSystem\Check\CheckResult;
 use App\Play\Domain\GameSystem\Check\CheckValues;
 use App\Play\Domain\GameSystem\Check\ModifierTerm;
+use App\Play\Domain\GameSystem\Check\SituationalModifierNotAllowed;
 use App\Play\Domain\GameSystem\Check\SituationalModifierOutOfRange;
 use App\Play\Domain\GameSystem\Sheet\DerivedField;
 use App\Play\Domain\GameSystem\Sheet\NumberField;
@@ -164,6 +165,20 @@ final class CheckTest extends TestCase
         $this->expectException(SituationalModifierOutOfRange::class);
 
         $this->skill()->perform(new ScriptedRandomNumberGenerator(), $this->sheet(), null, $situational);
+    }
+
+    #[Test]
+    public function aCheckThatTakesNoSituationalModifierRefusesAnyButZeroBeforeRolling(): void
+    {
+        $steady = new Check('steady', 'Steady', null, DiceExpression::fromString('1d20'), null, null, [new CheckBand('only', 'Only')], noSituationalModifier: true);
+
+        self::assertSame(0, $steady->perform(new ScriptedRandomNumberGenerator(3), $this->sheet(), null, 0)->situational);
+
+        $this->expectException(SituationalModifierNotAllowed::class);
+        $this->expectExceptionMessageIsOrContains('Check "steady" takes no situational modifier.');
+
+        // No number is scripted: a roll would throw a LogicException instead.
+        $steady->perform(new ScriptedRandomNumberGenerator(), $this->sheet(), null, -1);
     }
 
     /**

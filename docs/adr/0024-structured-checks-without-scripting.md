@@ -1,6 +1,6 @@
 # 0024. Structured checks without scripting
 
-- **Status:** Accepted, amended by [0041](0041-dice-pools-pushes-and-conditions.md) and [0049](0049-challenge-dice-and-burning-momentum.md) (challenge dice)
+- **Status:** Accepted, amended by [0041](0041-dice-pools-pushes-and-conditions.md), [0049](0049-challenge-dice-and-burning-momentum.md) (challenge dice) and the `noSituationalModifier` amendment below
 - **Date:** 2026-10-13
 
 ## Context
@@ -79,7 +79,7 @@ checks  at most 50; keys unique
 ### Roll-time inputs: a difficulty and a situational modifier
 
 - **Difficulty.** When a check declares one, the player sets it before rolling, prefilled with `default` and kept within `min..max` (±1,000 when no bounds are given). Bands read it as `{check:difficulty}`. A check without a difficulty refuses one (422).
-- **Situational modifier.** The player can always add an integer from −100 to 100, default 0, for the fiction's edge or hindrance. In a roll-under game a bonus is written as a negative number.
+- **Situational modifier.** The player can add an integer from −100 to 100, default 0, for the fiction's edge or hindrance, unless the check opts out (amended below). In a roll-under game a bonus is written as a negative number.
 - **Evaluation failures.** If the modifier or a band bound fails to evaluate (division by zero, overflow), the check is refused with a clear 422 and nothing is rolled or logged.
 
 ### Who rolls
@@ -117,3 +117,12 @@ A step's entry carries the usual flow-step snapshot.
 - The Formula kernel gains one reference kind, `{check:key}`, in both evaluators and the conformance file.
 - Studio's check editor (feature 17) edits exactly this shape, and its test-roll sandbox uses the same Play-independent pieces.
 - Systems with exploding dice, stat-sized pools, success counting or opposed rolls do not fit yet. The real system played in feature 13 decides which gap, if any, gets filled first.
+
+## Amendment: checks that take no situational modifier
+
+The roll-time situational modifier was always available. A plain roll such as a death saving throw has no use for it, and West Marches' tip had to tell the player to leave the field alone. A check now opts out with an optional boolean property, `noSituationalModifier`:
+
+- Absent or `false` keeps the behaviour above, so existing releases are unchanged. A published release does not keep `false`.
+- `true` hides the field in Play (and Extra dice on a pool check) and refuses a non-zero value with a 422, as a difficulty on a check without one is refused. Zero stays allowed.
+- The flag is explicit. It is not inferred from a check having no modifier and no difficulty: a roll-under game such as `percentile-horror` relies on the situational modifier on such checks.
+- A non-boolean value is refused by Studio on save and by Play's reader.

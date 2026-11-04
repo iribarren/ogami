@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { fulfillCheck, gripCheck, luckCheck, sneakCheck } from '../campaigns/fixtures'
+import { fulfillCheck, gripCheck, luckCheck, sneakCheck, steadyCheck } from '../campaigns/fixtures'
 import type { Campaign } from '../campaigns/useCampaigns'
 import { nightJobCampaign, nightJobWithChecks, viCharacter } from '../characters/fixtures'
 import {
@@ -180,6 +180,38 @@ describe('the "Roll a check" dialog of the Characters panel', () => {
 
     await waitFor(() => {
       expect(sent).toEqual([{ check: 'grip', character: viCharacter.id, situational: -1 }])
+    })
+  })
+
+  it('hides the situational modifier of a check that takes none', async () => {
+    const user = userEvent.setup()
+    const { sent } = renderCharacters({ ...nightJobCampaign, checks: [steadyCheck] }, recorded)
+
+    const dialog = await openDialog(user)
+
+    expect(dialog.queryByLabelText('Situational modifier')).not.toBeInTheDocument()
+    await user.click(dialog.getByRole('button', { name: 'Roll' }))
+    await waitFor(() => {
+      expect(sent).toEqual([{ check: 'steady', character: viCharacter.id }])
+    })
+  })
+
+  it('does not send a modifier typed for another check once the player picks one that takes none', async () => {
+    const user = userEvent.setup()
+    const { sent } = renderCharacters(
+      { ...nightJobCampaign, checks: [luckCheck, steadyCheck] },
+      recorded,
+    )
+
+    const dialog = await openDialog(user)
+    await user.clear(dialog.getByLabelText('Situational modifier'))
+    await user.type(dialog.getByLabelText('Situational modifier'), '3')
+    await user.selectOptions(dialog.getByLabelText('Check'), 'steady')
+    expect(dialog.queryByLabelText('Situational modifier')).not.toBeInTheDocument()
+    await user.click(dialog.getByRole('button', { name: 'Roll' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([{ check: 'steady', character: viCharacter.id }])
     })
   })
 

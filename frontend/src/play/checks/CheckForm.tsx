@@ -65,6 +65,10 @@ export function CheckForm({
     characters?.length === 1 ? (characters[0]?.id ?? '') : '',
   )
 
+  // A check can opt out of the situational modifier. The state outlives a change of check, so a value
+  // typed for another check is neither shown nor sent for this one.
+  const takesSituational = check?.noSituationalModifier !== true
+
   const selected = characters?.find(({ id: characterId }) => characterId === character)
   const selectedPoolSize = selected?.poolSize
 
@@ -86,7 +90,7 @@ export function CheckForm({
       roll.difficulty = Number(difficulty)
     }
     // Zero is the server's default, so it is not sent.
-    if (situational.trim() !== '' && Number(situational) !== 0) {
+    if (takesSituational && situational.trim() !== '' && Number(situational) !== 0) {
       roll.situational = Number(situational)
     }
     onSubmit(roll)
@@ -144,7 +148,7 @@ export function CheckForm({
                 {selected?.name} rolls {selectedPoolSize} {selectedPoolSize === 1 ? 'die' : 'dice'}
               </strong>
             )}
-            {selectedPoolSize != null && Number(situational) !== 0 && (
+            {selectedPoolSize != null && takesSituational && Number(situational) !== 0 && (
               // The size is the server's, worked out without the modifier typed below.
               <span className="ml-1 text-muted-foreground">(before the extra dice)</span>
             )}
@@ -171,26 +175,28 @@ export function CheckForm({
               {check.difficulty.label}: <strong>{fixedDifficulty}</strong>
             </p>
           ))}
-        <div className="space-y-1">
-          <Label htmlFor={`${id}-situational`}>
-            {check?.pool != null ? 'Extra dice' : 'Situational modifier'}
-          </Label>
-          <Input
-            id={`${id}-situational`}
-            type="number"
-            step={1}
-            {...situationalRange}
-            value={situational}
-            onChange={(event) => {
-              setSituational(event.target.value)
-            }}
-          />
-          {check?.pool != null && (
-            <p className="text-sm text-muted-foreground">
-              Adds dice to the pool; a negative number takes dice away (from 1 to 100 dice).
-            </p>
-          )}
-        </div>
+        {takesSituational && (
+          <div className="space-y-1">
+            <Label htmlFor={`${id}-situational`}>
+              {check?.pool != null ? 'Extra dice' : 'Situational modifier'}
+            </Label>
+            <Input
+              id={`${id}-situational`}
+              type="number"
+              step={1}
+              {...situationalRange}
+              value={situational}
+              onChange={(event) => {
+                setSituational(event.target.value)
+              }}
+            />
+            {check?.pool != null && (
+              <p className="text-sm text-muted-foreground">
+                Adds dice to the pool; a negative number takes dice away (from 1 to 100 dice).
+              </p>
+            )}
+          </div>
+        )}
         <Button
           type="submit"
           disabled={check === undefined || (characters !== undefined && character === '')}

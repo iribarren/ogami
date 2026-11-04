@@ -25,6 +25,7 @@ final readonly class CheckView
         public ?CheckPoolView $pool = null,
         public ?CheckPushView $push = null,
         public ?CheckChallengeView $challenge = null,
+        public bool $noSituationalModifier = false,
     ) {
     }
 
@@ -41,6 +42,7 @@ final readonly class CheckView
             $check->pool instanceof CheckPool ? CheckPoolView::of($check->pool, $labels) : null,
             $check->push instanceof CheckPush ? CheckPushView::of($check->push) : null,
             $check->challenge instanceof CheckChallenge ? CheckChallengeView::of($check->challenge, $labels) : null,
+            $check->noSituationalModifier,
         );
     }
 }

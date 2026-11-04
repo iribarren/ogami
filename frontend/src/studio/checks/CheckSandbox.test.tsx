@@ -178,6 +178,27 @@ describe('the test roll sandbox', () => {
     expect(sent[0]?.body).toEqual({ sheet: {}, trackers: {}, difficulty: 13, situational: 0 })
   })
 
+  it('hides the situational modifier of a check that takes none and sends none', async () => {
+    const { sent, record } = calls()
+    const saved = {
+      ...checks,
+      version: 6,
+      checks: [{ ...checks.checks[0], noSituationalModifier: true }, checks.checks[1]],
+    }
+    const { user, sandbox, form } = await editCheck('skill', {
+      [`PUT ${base}/checks/skill`]: record('save', Response.json(saved)),
+      [rollPath]: record('roll', Response.json(rolled)),
+    })
+    expect(sandbox.getByLabelText('Situational modifier')).toBeVisible()
+
+    await user.click(form.getByLabelText('No situational modifier'))
+    expect(sandbox.queryByLabelText('Situational modifier')).toBeNull()
+    await user.click(roll(sandbox))
+
+    await sandbox.findByRole('list', { name: 'Test roll results' })
+    expect(sent[1]?.body).toEqual({ sheet: {}, trackers: {}, difficulty: 13 })
+  })
+
   it('saves the unsaved edits first, then rolls the saved check', async () => {
     const { sent, record } = calls()
     const saved = {

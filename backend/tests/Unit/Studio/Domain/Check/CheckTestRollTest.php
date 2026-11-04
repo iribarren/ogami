@@ -157,6 +157,27 @@ final class CheckTestRollTest extends TestCase
     }
 
     #[Test]
+    public function aCheckThatTakesNoSituationalModifierRefusesAnyButZero(): void
+    {
+        $steady = CheckTestRoll::fromStored(['key' => 'steady', 'dice' => '1d20', 'noSituationalModifier' => true, 'bands' => [['key' => 'only', 'label' => 'Only']]]);
+
+        self::assertSame(0, $steady->perform(new ScriptedRandomNumberGenerator(3), $this->sheet(), null, 0)->situational);
+
+        $this->expectException(InvalidTestRoll::class);
+        $this->expectExceptionMessageIsOrContains('situational: this check takes no situational modifier');
+
+        $steady->perform(new ScriptedRandomNumberGenerator(3), $this->sheet(), null, 1);
+    }
+
+    #[Test]
+    public function aStoredNoSituationalModifierThatIsNotABooleanIsUnreadable(): void
+    {
+        $this->expectException(CheckTestRollFailed::class);
+
+        CheckTestRoll::fromStored(['key' => 'steady', 'dice' => '1d20', 'noSituationalModifier' => 'yes', 'bands' => [['key' => 'only', 'label' => 'Only']]]);
+    }
+
+    #[Test]
     public function aSituationalModifierAtTheLimitsIsAccepted(): void
     {
         self::assertSame(-100, $this->skill()->perform(new ScriptedRandomNumberGenerator(1), $this->sheet(), null, -100)->situational);

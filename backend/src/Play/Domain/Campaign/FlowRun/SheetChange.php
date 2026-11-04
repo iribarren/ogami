@@ -24,6 +24,27 @@ final readonly class SheetChange
     }
 
     /**
+     * Whether the Effect changed nothing and rolled no dice. A change that rolled dice stays even when
+     * the value held: the dice tell why nothing changed.
+     */
+    public function isNoOp(): bool
+    {
+        return $this->before === $this->after && null === $this->diceExpression && null === $this->diceTotal;
+    }
+
+    /**
+     * The changes that changed something or rolled dice, in order: a journal entry records only those.
+     *
+     * @param list<SheetChange> $changes
+     *
+     * @return list<SheetChange>
+     */
+    public static function withoutNoOps(array $changes): array
+    {
+        return array_values(array_filter($changes, static fn (self $change): bool => !$change->isNoOp()));
+    }
+
+    /**
      * @return array{field: string, before: int, after: int, dice: ?array{expression: string, total: int}}
      */
     public function toArray(): array

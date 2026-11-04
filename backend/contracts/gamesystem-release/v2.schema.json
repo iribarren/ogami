@@ -833,6 +833,10 @@
           "description": "Only with a pool, or with challenge.momentum where it burns momentum (checked by the domain).",
           "anyOf": [{ "$ref": "#/$defs/checkPush" }, { "type": "null" }]
         },
+        "noSituationalModifier": {
+          "description": "True when the check takes no situational modifier (nor extra dice on a pool check), as a death save; absent, false or null when the player may add one.",
+          "type": ["boolean", "null"]
+        },
         "bands": {
           "type": "array",
           "minItems": 1,

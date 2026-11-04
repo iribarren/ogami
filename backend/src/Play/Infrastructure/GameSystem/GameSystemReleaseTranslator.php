@@ -1498,7 +1498,7 @@ final readonly class GameSystemReleaseTranslator
         foreach ($list as $index => $item) {
             $path = \sprintf('checks[%d]', $index);
             $check = $this->object($view, $item, $path);
-            $this->assertProperties($view, $check, $path, ['key', 'label', 'hint', 'dice', 'modifier', 'pool', 'challenge', 'push', 'difficulty', 'bands']);
+            $this->assertProperties($view, $check, $path, ['key', 'label', 'hint', 'dice', 'modifier', 'pool', 'challenge', 'push', 'difficulty', 'noSituationalModifier', 'bands']);
             $key = $this->key($view, $check['key'] ?? null, $path.'.key');
             if (isset($checks[$key])) {
                 throw $this->invalid($view, $path.'.key', \sprintf('duplicate check key "%s".', $key));
@@ -1517,7 +1517,7 @@ final readonly class GameSystemReleaseTranslator
             $push = null === ($check['push'] ?? null) ? null : $this->checkPush($view, $check, $path, $fields, $trackerKeys, $pool instanceof CheckPool, $challenge);
             $bands = $this->checkBands($view, $check['bands'] ?? null, $path.'.bands', $fields, $trackerKeys, $difficulty instanceof CheckDifficulty);
             try {
-                $checks[$key] = new Check($key, $label, $hint, $dice, $modifier, $difficulty, $bands, $pool, $push, $challenge);
+                $checks[$key] = new Check($key, $label, $hint, $dice, $modifier, $difficulty, $bands, $pool, $push, $challenge, $this->flag($view, $check['noSituationalModifier'] ?? null, $path.'.noSituationalModifier'));
             } catch (\InvalidArgumentException $invalid) {
                 throw $this->invalid($view, $path.'.bands', $invalid->getMessage());
             }

@@ -17,7 +17,7 @@ use OpenApi\Attributes as OA;
  * progress roll (challenge dice with no action die). A pool check may declare a push. The Outcome bands are not exposed: the result of
  * performing the check names the band.
  */
-#[OA\Schema(required: ['key', 'label', 'hint', 'dice', 'pool', 'push', 'difficulty', 'challenge'])]
+#[OA\Schema(required: ['key', 'label', 'hint', 'dice', 'pool', 'push', 'difficulty', 'challenge', 'noSituationalModifier'])]
 final readonly class CheckResponse
 {
     private function __construct(
@@ -37,6 +37,8 @@ final readonly class CheckResponse
         public ?CheckDifficultyResponse $difficulty,
         #[OA\Property(ref: new Model(type: CheckChallengeResponse::class), description: 'The challenge dice the score is compared against; null for a check that does not roll them.', nullable: true)]
         public ?CheckChallengeResponse $challenge,
+        #[OA\Property(description: 'Whether the check takes no situational modifier (or extra dice on a pool check): a roll with one is refused with a 422.', example: false)]
+        public bool $noSituationalModifier,
     ) {
     }
 
@@ -51,6 +53,7 @@ final readonly class CheckResponse
             $view->push instanceof CheckPushView ? CheckPushResponse::fromView($view->push) : null,
             $view->difficulty instanceof \App\Play\Application\CheckDifficultyView ? CheckDifficultyResponse::fromView($view->difficulty) : null,
             $view->challenge instanceof CheckChallengeView ? CheckChallengeResponse::fromView($view->challenge) : null,
+            $view->noSituationalModifier,
         );
     }
 }

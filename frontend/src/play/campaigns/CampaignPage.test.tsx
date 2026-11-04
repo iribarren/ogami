@@ -345,6 +345,7 @@ describe('the Play screen', () => {
 
     expect(await screen.findByRole('button', { name: 'Start session' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'End session' })).not.toBeInTheDocument()
+    expect(playPosition()).toHaveTextContent('Session 2 ended')
   })
 
   it('offers End session, not Start session, while a session is under way in free play', async () => {
@@ -371,7 +372,8 @@ describe('the Play screen', () => {
     await user.click(await screen.findByRole('button', { name: 'End session' }))
 
     expect(await screen.findByRole('button', { name: 'Start session' })).toBeInTheDocument()
-    expect(playPosition()).toHaveTextContent('No session yet')
+    // The campaign has played two sessions: the header names the one that ended.
+    expect(playPosition()).toHaveTextContent('Session 2 ended')
     expect(screen.queryByRole('button', { name: 'End session' })).not.toBeInTheDocument()
   })
 

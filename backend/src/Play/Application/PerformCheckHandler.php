@@ -15,6 +15,7 @@ use App\Play\Domain\GameSystem\Check\CheckDifficultyNotDeclared;
 use App\Play\Domain\GameSystem\Check\CheckDifficultyOutOfRange;
 use App\Play\Domain\GameSystem\Check\CheckEvaluationFailed;
 use App\Play\Domain\GameSystem\Check\ReferenceLabels;
+use App\Play\Domain\GameSystem\Check\SituationalModifierNotAllowed;
 use App\Play\Domain\GameSystem\Check\SituationalModifierOutOfRange;
 use App\Play\Domain\GameSystem\Check\UnknownCheck;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -44,6 +45,7 @@ final readonly class PerformCheckHandler implements CommandHandler
      * @throws CheckDifficultyNotDeclared      when a difficulty is sent for a check that declares none
      * @throws CheckDifficultyOutOfRange       when the difficulty is outside the min..max of the check
      * @throws SituationalModifierOutOfRange   when the Situational modifier is outside -100..100
+     * @throws SituationalModifierNotAllowed   when the check takes no situational modifier and one is sent
      * @throws CheckEvaluationFailed           when the modifier or a band of the check cannot be evaluated for the Character
      * @throws GameSystemReleaseNotFound       when the pinned release can no longer be read
      * @throws UnsupportedReleaseSchemaVersion

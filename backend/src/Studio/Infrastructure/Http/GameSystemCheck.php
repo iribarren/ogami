@@ -41,6 +41,8 @@ final readonly class GameSystemCheck
         public ?string $modifier,
         #[OA\Property(ref: new Model(type: GameSystemCheckDifficulty::class), description: 'Absent or null when the check has no difficulty.', nullable: true)]
         public ?GameSystemCheckDifficulty $difficulty,
+        #[OA\Property(description: 'True when the check takes no situational modifier (nor extra dice on a pool check), as a death save; absent or false when the player may add one. Must be a boolean.', example: true)]
+        public ?bool $noSituationalModifier,
         #[OA\Property(type: 'array', items: new OA\Items(ref: new Model(type: GameSystemCheckBand::class)), maxItems: 10, minItems: 1)]
         public array $bands,
     ) {

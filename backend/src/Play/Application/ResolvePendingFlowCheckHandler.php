@@ -85,7 +85,8 @@ final readonly class ResolvePendingFlowCheckHandler implements CommandHandler
             $special = $result->special;
         }
 
-        $changes = $campaign->resolvePendingFlowCheck($command->stepKey, $bandKey, $release, $at, $this->random, $special);
+        // An Effect that changed nothing and rolled no dice is not worth an entry.
+        $changes = SheetChange::withoutNoOps($campaign->resolvePendingFlowCheck($command->stepKey, $bandKey, $release, $at, $this->random, $special));
         $sheetEntry = [] === $changes ? null : $this->journal->following($entry, $this->entryIds->generate()->toString(), $this->sheetChangeContent($campaign, $pending->characterId, $changes));
         $outcomeEntry = $this->journal->flowOutcome($this->entryIds, $campaign, $sheetEntry ?? $entry);
         // The campaign is saved first (CheckPusher::keep() saves it with the push), as in CompleteFlowStepHandler.

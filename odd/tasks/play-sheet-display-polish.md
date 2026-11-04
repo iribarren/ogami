@@ -1,7 +1,7 @@
 # Feature: play-sheet-display-polish
 
 - **Locator:** `odd/tasks/play-sheet-display-polish.md` · Engram topic `odd/play-sheet-display-polish/tasks`
-- **Issue:** [#340](https://github.com/iribarren/ogami/issues/340) · **Branch:** `feat/play-sheet-display-polish-1-display-and-plain-checks` · **Status:** in progress
+- **Issue:** [#340](https://github.com/iribarren/ogami/issues/340) · **Branch:** `feat/play-sheet-display-polish-1-display-and-plain-checks` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-west-marches` (#337, PR #339), whose Chrome play pass found these
@@ -48,11 +48,11 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Task | Route | Done | Commit |
 |---|---|---|---|---|
-| T1 | Journal: labels and currency unit in the Focus view; no-op sheet changes neither recorded nor shown | delegated: 2+ non-trivial files | [x] | |
-| T2 | Character form: a value or a plain explanation instead of a `startMax` formula | delegated: 2+ non-trivial files | [x] | |
-| T3 | Header: `Session N ended` between sessions | delegated: slice runs under one writer | [x] | |
-| T4 | `noSituationalModifier`: contract, Studio, Play, form, West Marches' death save | delegated: 2+ non-trivial files | [x] | |
-| T5 | Review findings: pending-check no-ops, canonical flag, pool opt-out, Focus currency | delegated: follows the slice's writer | [x] | |
+| T1 | Journal: labels and currency unit in the Focus view; no-op sheet changes neither recorded nor shown | delegated: 2+ non-trivial files | [x] | `2eb15507` |
+| T2 | Character form: a value or a plain explanation instead of a `startMax` formula | delegated: 2+ non-trivial files | [x] | `8c7a1ee6` |
+| T3 | Header: `Session N ended` between sessions | delegated: slice runs under one writer | [x] | `d6334a5d` |
+| T4 | `noSituationalModifier`: contract, Studio, Play, form, West Marches' death save | delegated: 2+ non-trivial files | [x] | `f15b42bb` |
+| T5 | Review findings: pending-check no-ops, canonical flag, pool opt-out, Focus currency | delegated: follows the slice's writer | [x] | `d8b89d3c`, `5841a74d` |
 
 ## Applicable checks
 
@@ -67,12 +67,15 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-03: T3 done. RED: 2 CampaignPage tests failed without the change. The e2e checks (`campaigns.spec.ts:25`, `play-session.spec.ts:19`) use fresh campaigns: unchanged.
 - 2026-11-03: T4 done. Studio draft stores the flag as sent; only the published release drops `false`. Play refuses with `SituationalModifierNotAllowed` (422 on journal and FlowRun routes); a push or burn cannot add a modifier (no `perform`). Tests written with the code, no separate RED.
 - 2026-11-03: T5 done (tests only, one comment). Pending-check no-op filter: 2 API tests fail without it, pass with it. Canonical flag: an explicit null never reached the `isset`, because `ReleaseFields::object()` drops nulls, so the new true/false/null test passed at once (no RED); comment corrected. Pool opt-out: unit test fails with the refusal removed; `CheckForm.test.tsx` added, the "before the extra dice" suffix was already gated by the flag; the vacuous dialog assertion removed. Focus: the shop entry test fails without `currencyUnit`.
+- 2026-11-03: CI found `studio-check-editor.spec.ts` matching two `Modifier` labels once the new checkbox existed; fixed with an exact match, spec passes locally. Not exercised by hand in a browser.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | Findings | PR |
 |---|---|---|---|---|
+| 1, T1–T4 | `review-dd60e7f45dc39ce2` | Approved and acknowledged | 1 warning, 3 suggestions, all on missing test proof: fixed in T5. Its claims of a missing import and of a null kept in the canonical check were wrong: the import exists, and `ReleaseFields::object()` drops nulls | [#371](https://github.com/iribarren/ogami/pull/371) |
+| 1, T5 and e2e fix | None | Skipped by the user: tests and one comment, 148 lines | None | [#371](https://github.com/iribarren/ogami/pull/371) |
 
 ## Next step
 
-Writer delivers T1–T4; then native review, PR.
+None. Follow-up [#372](https://github.com/iribarren/ogami/issues/372) tracks derived values on the Character form under Roll, which predate this feature.

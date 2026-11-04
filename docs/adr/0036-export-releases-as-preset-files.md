@@ -21,3 +21,5 @@
 - `make presets` keeps working on the authoring database and seeds fresh databases from the committed file.
 - A fresh database's copy is file-managed and cannot be edited in Studio, as ADR 0028 says; a manager copies it under a new key.
 - The skip compares content only: a Studio release newer than the file with other content makes `make presets` fail until the file is exported again, which is the intended warning.
+- A hand edit of the exported file fails the same way on the authoring database, and a fresh database never shows it. Run `make presets` after editing a preset file; if it refuses the file, make the same change in Studio, publish it and export again.
+- One refused file does not hold back the others: `make presets` publishes every other preset, names the ones it refused and then fails.

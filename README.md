@@ -63,7 +63,7 @@ Sign-in uses an HttpOnly session cookie. Behind a reverse proxy, set `TRUSTED_PR
 
 ### GameSystem presets
 
-`make presets` publishes the shipped GameSystem presets (`backend/presets/*.json`: Free journal, Mythic-style) to the dev database. It skips a preset whose content has not changed, so it is safe to rerun. See the [release contract](docs/contracts/gamesystem-release.md).
+`make presets` publishes the shipped GameSystem presets (`backend/presets/*.json`: Free journal, Mythic-style) to the dev database. It skips a preset whose content has not changed, so it is safe to rerun. If it refuses a preset, it still publishes the others, names the refused ones and fails. See the [release contract](docs/contracts/gamesystem-release.md).
 
 ### Ports and environment
 

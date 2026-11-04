@@ -200,6 +200,25 @@ final class PublishGameSystemReleaseConsoleCommandTest extends KernelTestCase
         self::assertNotInstanceOf(GameSystemRelease::class, $this->releases()->latestFor('example-journal'));
     }
 
+    #[Test]
+    public function itTellsHowToRealignAFileThatDoesNotMatchTheStudioRelease(): void
+    {
+        $gameSystems = self::getContainer()->get(GameSystemRepository::class);
+        $gameSystems->add(GameSystem::createBlank(GameSystemId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5a'), 'example-journal', 'Mine', null, 'ann', new \DateTimeImmutable()));
+
+        $this->tester->execute(['file' => self::EXAMPLE, '--if-changed' => true]);
+
+        self::assertStringContainsString(
+            'does not match its latest release. If the file is right, make the same change in Studio and publish it. Then run app:gamesystem:export to rewrite the file.',
+            $this->display(),
+        );
+
+        // Without --if-changed the content is never compared, so the same advice would be a guess.
+        $this->tester->execute(['file' => self::EXAMPLE]);
+
+        self::assertStringNotContainsString('does not match', $this->display());
+    }
+
     /**
      * Publishes through a repository where another publish happens around the console's own.
      *

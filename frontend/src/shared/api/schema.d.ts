@@ -3364,7 +3364,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /**
-             * @description The key of the Fact slot that is gone.
+             * @description The key of the Fact slot that is gone or now holds another type.
              * @example prince
              */
             slotKey: string;

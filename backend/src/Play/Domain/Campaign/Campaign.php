@@ -1777,7 +1777,7 @@ final class Campaign
         $draft->threads = array_map(static fn (Thread $thread): Thread => $thread->edited($thread->name(), $planner->keptTags($thread->tags(), ItemKind::Thread), $thread->freeTags(), $thread->weight()), $this->threads);
         $draft->places = array_map(static fn (Place $place): Place => $place->edited($place->name(), $place->notes(), $planner->keptTags($place->tags(), ItemKind::Place), $place->freeTags(), $place->weight()), $this->places);
         $draft->trackerValues = $planner->keptTrackerValues($this->trackerValues);
-        $draft->facts = array_map(fn (Fact $fact): Fact => null !== $fact->slot() && !$target->factSlot($fact->slot()) instanceof FactSlot ? $planner->freed($fact, $this->npcs, $this->threads, $this->places) : $fact, $this->facts);
+        $draft->facts = array_map(fn (Fact $fact): Fact => $planner->keepsSlot($fact) ? $fact : $planner->freed($fact, $this->npcs, $this->threads, $this->places), $this->facts);
         $draft->flowKey = $planner->targetFlowKey($this->flowKey);
         $draft->flowRun = null === $draft->flowKey ? null : FlowRun::start();
         if (FlowRunStatus::Paused === $this->flowRun?->status()) {

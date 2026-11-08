@@ -17,6 +17,7 @@ use App\Play\Domain\Campaign\Lists\Place;
 use App\Play\Domain\Campaign\Lists\Thread;
 use App\Play\Domain\Campaign\PinnedRelease;
 use App\Play\Domain\GameSystem\FactSlot;
+use App\Play\Domain\GameSystem\FactSlotType;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
 use App\Play\Domain\GameSystem\GameSystemSnapshot;
 use App\Play\Domain\GameSystem\GearEntry;
@@ -159,7 +160,34 @@ final readonly class ReleaseUpgradePlanner
     }
 
     /**
-     * The free fact a slot fact becomes when its slot is gone: its text (the subject's name for a
+     * Whether a fact stays as it is: a free fact, or a slot fact whose slot the target declares with a
+     * type that fits its value (a text in a `text` slot, an NPC, Thread or Place subject in an `npc`,
+     * `thread` or `place` slot). A slot that is gone or changed type frees its fact, as does a value
+     * that never fitted.
+     */
+    public function keepsSlot(Fact $fact): bool
+    {
+        if (null === $fact->slot()) {
+            return true;
+        }
+
+        $slot = $this->target->factSlot($fact->slot());
+        if (!$slot instanceof FactSlot) {
+            return false;
+        }
+
+        $kind = $fact->subject()?->kind;
+
+        return match ($slot->type) {
+            FactSlotType::Text => !$kind instanceof FactLinkKind,
+            FactSlotType::Npc => FactLinkKind::Npc === $kind,
+            FactSlotType::Thread => FactLinkKind::Thread === $kind,
+            FactSlotType::Place => FactLinkKind::Place === $kind,
+        };
+    }
+
+    /**
+     * The free fact a slot fact becomes when its slot is gone or of another type: its text (the subject's name for a
      * subject fact, as it has no text) and its label (the old slot's name when it had none), with its
      * links, plus the subject as a link when it fits.
      *
@@ -509,8 +537,8 @@ final readonly class ReleaseUpgradePlanner
     {
         $unslotted = [];
         foreach ($facts as $fact) {
-            if (null !== $fact->slot() && !$this->target->factSlot($fact->slot()) instanceof FactSlot) {
-                $unslotted[] = new UnslottedFact($fact->id()->toString(), $fact->slot(), $this->freedLabel($fact), $this->freedText($fact, $npcs, $threads, $places));
+            if (!$this->keepsSlot($fact)) {
+                $unslotted[] = new UnslottedFact($fact->id()->toString(), (string) $fact->slot(), $this->freedLabel($fact), $this->freedText($fact, $npcs, $threads, $places));
             }
         }
 

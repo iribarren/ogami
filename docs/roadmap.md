@@ -507,6 +507,10 @@ Done: `studio-step-card-height`, #356 in one slice (PR #376). Scene Type and Flo
 
 Done: `studio-unsaved-work`, #360 in two slices (PRs #361, #362). Both oracle editors keep the version they read, so a stale draft answers 409 instead of overwriting newer entries. The Flow and oracle editors, `MetadataForm`, `CheckEditor` and `SheetCurrencyPanel` ask before losing a draft, and in every section a read in flight cannot replace a save in the cache. Follow-up: [#363](https://github.com/iribarren/ogami/issues/363).
 
+**B7r. studio-draft-on-conflict**
+
+Done: `studio-draft-on-conflict`, #363 in one slice (PR #377). `CheckEditor` keeps its draft on a 409 and replaces it only when the person reloads; a failed reload, a deleted or unreadable check keeps the draft with a note, and a move 409 reopens the editor only when it holds no unsaved edits. `SheetCurrencyPanel` keeps the version and the stored currency its inputs started from, keeps an edit when another change sets the currency, and replaces it only on reload.
+
 **B8. rules-dice-pools**
 
 ```text

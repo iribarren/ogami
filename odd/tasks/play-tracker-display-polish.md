@@ -1,7 +1,7 @@
 # Feature: play-tracker-display-polish
 
 - **Locator:** `odd/tasks/play-tracker-display-polish.md` · Engram topic `odd/play-tracker-display-polish/tasks`
-- **Issue:** [#353](https://github.com/iribarren/ogami/issues/353) · **Branch:** `fix/play-tracker-display-polish-1-display` · **Status:** in progress
+- **Issue:** [#353](https://github.com/iribarren/ogami/issues/353) · **Branch:** `fix/play-tracker-display-polish-1-display` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Previous feature:** `preset-ironsworn` (#341, PR #352), whose Chrome play pass found these
@@ -49,13 +49,13 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Task | Route | Done | Commit |
 |---|---|---|---|---|
-| T1 | Tracker level labels in `{tracker:x}` placeholders and in the journal's tracker note; Ironsworn's free-slot wording | delegated: slice runs under one writer | [x] | |
-| T2 | `ListPanel` badges count open items only | delegated: slice runs under one writer | [x] | |
-| T3 | Cancelled action die struck through in the journal and the sandbox | delegated: slice runs under one writer | [x] | |
-| T4 | A choice's skip option is not offered beside Skip | delegated: slice runs under one writer | [x] | |
-| T5 | No Character select with one Character | delegated: slice runs under one writer | [x] | |
-| T6 | Sandbox burn offer names the challenge dice it beats | delegated: slice runs under one writer | [x] | |
-| T7 | Review findings: level fallback parity, sheet-changing skip option kept, Effect text label test | delegated: follows the slice's writer | [x] | |
+| T1 | Tracker level labels in `{tracker:x}` placeholders and in the journal's tracker note; Ironsworn's free-slot wording | delegated: slice runs under one writer | [x] | `4067e77c` |
+| T2 | `ListPanel` badges count open items only | delegated: slice runs under one writer | [x] | `dfd21de7` |
+| T3 | Cancelled action die struck through in the journal and the sandbox | delegated: slice runs under one writer | [x] | `bd050f75` |
+| T4 | A choice's skip option is not offered beside Skip | delegated: slice runs under one writer | [x] | `bb7694d5` |
+| T5 | No Character select with one Character | delegated: slice runs under one writer | [x] | `90902280` |
+| T6 | Sandbox burn offer names the challenge dice it beats | delegated: slice runs under one writer | [x] | `8cb2621c`, `01538191` |
+| T7 | Review findings: level fallback parity, sheet-changing skip option kept, Effect text label test | delegated: follows the slice's writer | [x] | `9e742a1c` |
 
 ## Applicable checks
 
@@ -73,12 +73,15 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-08: T5 done. RED: three `SheetEffectStep` tests failed on the old select, GREEN after; the answers still send the only Character's id.
 - 2026-11-08: T6 done. RED: the burn-offer sandbox test failed on the old code, GREEN after; `diceBeatenBy` is exported and unit-tested (written with the code, no separate RED).
 - 2026-11-08: T7 done. Finding 1: `Tracker::levelAt` returns null past the last bounded level (the placeholder then prints the number), so `levelLabelAt` already matched it; the comment wrongly claimed a last-level fallback and is fixed, and `levelLabelAt.test.ts` pins the behaviour (no separate RED). Finding 2: RED, the new `FlowStepResponseTest` case failed with the skip option dropped, GREEN after. Finding 3: proof test in `FlowRunControlFlowTest`, passed at once (no separate RED).
+- 2026-11-08: Slice 1 reviewed (T1–T6 approved, T7 skipped by the user) and opened as PR #375. Feature done.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | Findings | PR |
 |---|---|---|---|---|
+| 1, T1–T6 | `review-02ea62af6d69e660` | Approved and acknowledged | 1 warning, 2 suggestions: fixed in T7. The warning's premise was wrong: `Tracker::levelAt` has no last-level fallback either, so only the frontend comment was misleading | [#375](https://github.com/iribarren/ogami/pull/375) |
+| 1, T7 | None | Skipped by the user: review fixes, 92 lines | None | [#375](https://github.com/iribarren/ogami/pull/375) |
 
 ## Next step
 
-T1–T6 on `fix/play-tracker-display-polish-1-display`, then review and PR.
+None. Every review finding is fixed in T7.

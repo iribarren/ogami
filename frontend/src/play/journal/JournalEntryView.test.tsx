@@ -610,6 +610,19 @@ describe('JournalEntryView icon tile', () => {
       expect(screen.getByText('Miss')).toBeInTheDocument()
     })
 
+    it('strikes the dice of a cancelled action die through, and only then', () => {
+      const { unmount } = render(<JournalEntryView entry={cancelledDieEntry} />)
+
+      expect(
+        within(screen.getByText('Dice').nextElementSibling as HTMLElement).getByText('1d6').tagName,
+      ).toBe('DEL')
+      unmount()
+
+      render(<JournalEntryView entry={edgeRollEntry} />)
+
+      expect(screen.getByText('Dice').nextElementSibling?.querySelector('del')).toBeNull()
+    })
+
     it('shows a match as a special result', () => {
       render(<JournalEntryView entry={matchEntry} />)
 

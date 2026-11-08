@@ -348,7 +348,13 @@ function CheckView({ content, sheet }: { content: CheckContent; sheet: FieldLabe
         ) : (
           hasActionDie && (
             <Detail term="Dice">
-              <span className="font-mono">{content.expression}</span> = {content.diceTotal}
+              {/* A cancelled action die counts 0: its dice stay readable, struck through. */}
+              {challenge?.cancelled === true ? (
+                <del className="font-mono">{content.expression}</del>
+              ) : (
+                <span className="font-mono">{content.expression}</span>
+              )}{' '}
+              = {content.diceTotal}
             </Detail>
           )
         )}

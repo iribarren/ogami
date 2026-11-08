@@ -596,7 +596,13 @@ function ChallengeFacts({
 
   return (
     <>
-      {actionDie !== null && <span>Action die {actionDie}</span>}
+      {actionDie !== null &&
+        (challenge.cancelled ? (
+          // A cancelled action die counts 0: it stays readable, struck through.
+          <del>Action die {actionDie}</del>
+        ) : (
+          <span>Action die {actionDie}</span>
+        ))}
       {challenge.cancelled && (
         <span>
           Cancelled: momentum {challenge.momentum ?? 0} cancelled the action die, which counts 0

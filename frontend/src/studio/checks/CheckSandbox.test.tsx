@@ -1043,7 +1043,7 @@ describe('the test roll sandbox of a challenge check (ADR 0049)', () => {
     await user.click(roll(sandbox))
 
     const results = within(await sandbox.findByRole('list', { name: 'Test roll results' }))
-    expect(results.getByText('Action die 4')).toBeVisible()
+    expect(results.getByText('Action die 4').tagName).toBe('DEL')
     expect(
       results.getByText('Cancelled: momentum -4 cancelled the action die, which counts 0'),
     ).toBeVisible()

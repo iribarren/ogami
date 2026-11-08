@@ -51,7 +51,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|
 | T1 | Tracker level labels in `{tracker:x}` placeholders and in the journal's tracker note; Ironsworn's free-slot wording | delegated: slice runs under one writer | [x] | |
 | T2 | `ListPanel` badges count open items only | delegated: slice runs under one writer | [x] | |
-| T3 | Cancelled action die struck through in the journal and the sandbox | | [ ] | |
+| T3 | Cancelled action die struck through in the journal and the sandbox | delegated: slice runs under one writer | [x] | |
 | T4 | A choice's skip option is not offered beside Skip | | [ ] | |
 | T5 | No Character select with one Character | | [ ] | |
 | T6 | Sandbox burn offer names the challenge dice it beats | | [ ] | |
@@ -67,6 +67,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-08: Mapped the six items (explorer); one slice, delegated writer: two or more non-trivial files.
 - 2026-11-08: T1 done. RED: `PlaceholdersTest` failed before the change (new `trackers` argument), GREEN after; the journal test was written with the code (no separate RED). `make presets` ran with no refusal.
 - 2026-11-08: T2 done. RED: the badge test failed on the old code, GREEN after.
+- 2026-11-08: T3 done. RED: the journal and sandbox tests failed on the old code, GREEN after.
 
 ## Reviews
 

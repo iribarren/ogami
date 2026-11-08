@@ -705,6 +705,22 @@ describe('creating a Character by the rules of the sheet', () => {
     })
   })
 
+  it('does not compute a derived value from a rolled field the server has not rolled yet', async () => {
+    const withInitiative: Campaign = {
+      ...creationCampaign,
+      pinnedRelease: {
+        ...creationCampaign.pinnedRelease,
+        sheet: [...creationSheet, { ...initiativeField, formula: '{str} / 5' }],
+      },
+    }
+    const { user, panel } = await addCharacter(withInitiative)
+
+    await user.click(panel.getByRole('radio', { name: 'Roll' }))
+
+    expect(panel.getByLabelText('Initiative')).toHaveTextContent('set at creation')
+    expect(panel.getByLabelText('Initiative')).not.toHaveTextContent(/\d/)
+  })
+
   it('sends the spent values by points and leaves the rolls outside the budget to the server', async () => {
     const sent: unknown[] = []
     const { user, panel } = await addCharacter(creationCampaign, sent)

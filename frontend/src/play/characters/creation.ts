@@ -1,5 +1,5 @@
 import { parseFormula } from '@/shared/lib/formula'
-import { evaluateOnForm } from '@/shared/sheet/derivedValues'
+import { computeDerived, evaluateOnForm, type DerivedResult } from '@/shared/sheet/derivedValues'
 import type { Draft } from '@/shared/sheet/sheetValues'
 import type { SheetFieldView, TrackerReading } from '@/shared/sheet/types'
 
@@ -88,9 +88,7 @@ export function creationNotes(
   drafts: Record<string, Draft>,
   trackers: TrackerReading[],
 ): Record<string, string> {
-  const known = Object.fromEntries(
-    Object.entries(drafts).filter(([key]) => !plan.setAtCreation.has(key)),
-  )
+  const known = withoutSetAtCreation(plan, drafts)
   return Object.fromEntries(
     [...plan.setAtCreation].map(([key, note]) => {
       const field = fields.find((candidate) => candidate.key === key)
@@ -107,20 +105,49 @@ export function creationNotes(
   )
 }
 
+/** The drafts the player holds, less the fields the server sets: theirs are only a default or a start. */
+function withoutSetAtCreation(plan: CreationPlan, drafts: Record<string, Draft>) {
+  return Object.fromEntries(Object.entries(drafts).filter(([key]) => !plan.setAtCreation.has(key)))
+}
+
+/**
+ * The derived values of a new Character's form. A formula that reads a field the server sets has no
+ * value yet, so it says `set at creation` rather than a number made of the field's default. Derived
+ * values that read such a derived value keep the `depends on` reason; the others are live as typed.
+ */
+export function derivedOnForm(
+  plan: CreationPlan,
+  fields: SheetFieldView[],
+  drafts: Record<string, Draft>,
+  trackers: TrackerReading[],
+): Record<string, DerivedResult> {
+  const results = computeDerived(fields, withoutSetAtCreation(plan, drafts), trackers)
+  return Object.fromEntries(
+    Object.entries(results).map(([key, result]) => {
+      const formula = fields.find((field) => field.key === key)?.formula ?? ''
+      const unset =
+        'reason' in result &&
+        result.reason === 'incomplete value' &&
+        readKeys(formula).some((read) => plan.setAtCreation.has(read))
+      return [key, unset ? { reason: 'set at creation' } : result]
+    }),
+  )
+}
+
+/** The keys of the fields a formula reads, tracks' maximums included; none when it cannot be parsed. */
+function readKeys(formula: string): string[] {
+  try {
+    return parseFormula(formula)
+      .references.filter(({ kind }) => kind === 'field' || kind === 'trackMax')
+      .map(({ key }) => key)
+  } catch {
+    return []
+  }
+}
+
 /** " from A and B" for the fields a formula reads; nothing when it reads none or cannot be parsed. */
 function readsText(formula: string, fields: SheetFieldView[]) {
-  let keys: string[]
-  try {
-    keys = [
-      ...new Set(
-        parseFormula(formula)
-          .references.filter(({ kind }) => kind === 'field' || kind === 'trackMax')
-          .map(({ key }) => key),
-      ),
-    ]
-  } catch {
-    return ''
-  }
+  const keys = [...new Set(readKeys(formula))]
   const labels = keys.map((key) => fields.find((field) => field.key === key)?.label)
   // A field that cannot be named leaves the plain note rather than a half-named one.
   return keys.length === 0 || labels.some((label) => label === undefined)

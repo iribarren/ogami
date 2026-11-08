@@ -37,8 +37,11 @@ Open http://localhost:8080: the SPA, with the API under `/api` on the same origi
 
 ```bash
 make qa test e2e     # static checks, unit/integration/Behat/Vitest, Playwright
+make e2e-reset       # drop and re-seed the e2e database (ogami_e2e)
 make verify          # only the checks the changed files need (CI runs everything)
 ```
+
+`make e2e` drives its own `php-e2e` service on a separate database, `ogami_e2e`, on the same Postgres server: the dev database `ogami` (and http://localhost:8080) is untouched.
 
 `make help` lists every command; [CLAUDE.md](CLAUDE.md#commands) groups them by task.
 
@@ -57,7 +60,7 @@ make console ARGS="app:user:create you@example.com --role=SOLO_PLAYER"
 | `GAME_MANAGER` | Studio (`/studio`) |
 | `OWNER` | Admin (`/admin`) |
 
-Roles are independent: repeat `--role` to give several. `--password=…` skips the prompt; `--if-missing` succeeds without changes when the email exists; `--reset-existing` instead sets the existing user's password and roles to the given ones and enables it (the two cannot be combined). `make e2e` seeds its own users with `--reset-existing` and publishes the presets (`make e2e-seed`; the password is `E2E_PASSWORD`, whose only default is in the `Makefile`).
+Roles are independent: repeat `--role` to give several. `--password=…` skips the prompt; `--if-missing` succeeds without changes when the email exists; `--reset-existing` instead sets the existing user's password and roles to the given ones and enables it (the two cannot be combined). `make e2e` seeds its own users in the `ogami_e2e` database with `--reset-existing` and publishes the presets there (`make e2e-seed`; the password is `E2E_PASSWORD`, whose only default is in the `Makefile`).
 
 Sign-in uses an HttpOnly session cookie. Behind a reverse proxy, set `TRUSTED_PROXIES` (backend environment) to the proxy addresses so client IPs, HTTPS and login throttling work.
 

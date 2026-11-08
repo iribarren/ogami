@@ -77,13 +77,19 @@ console: ## Run the Symfony console (ARGS="debug:router")
 
 PRESETS := $(wildcard backend/presets/*.json)
 
+# Migrates the database and publishes every preset through the given console command, skipping unchanged ones.
+# $(1): the command that runs `php bin/console` in the right container and database.
+define publish-presets
+$(1) doctrine:migrations:migrate --no-interaction --allow-no-migration --quiet
+@failed=""; for preset in $(patsubst backend/%,%,$(PRESETS)); do \
+	$(1) app:gamesystem:publish $$preset --if-changed || failed="$$failed $$preset"; \
+done; \
+if [ -n "$$failed" ]; then echo "Not published:$$failed" >&2; exit 1; fi
+endef
+
 .PHONY: presets
 presets: backend-install ## Publish the shipped GameSystem presets (backend/presets) to the dev database, skipping unchanged ones
-	$(PHP_EXEC) php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --quiet
-	@failed=""; for preset in $(patsubst backend/%,%,$(PRESETS)); do \
-		$(PHP_EXEC) php bin/console app:gamesystem:publish $$preset --if-changed || failed="$$failed $$preset"; \
-	done; \
-	if [ -n "$$failed" ]; then echo "Not published:$$failed" >&2; exit 1; fi
+	$(call publish-presets,$(PHP_EXEC) php bin/console)
 
 # Installs Composer dependencies on a fresh clone (or after composer.lock changes).
 backend/vendor/autoload.php: backend/composer.lock
@@ -167,15 +173,29 @@ storybook-build: frontend-install ## Build the static Storybook into frontend/st
 # Password of the seeded e2e users and the only default for it: the playwright service and the e2e tests read it from the environment.
 export E2E_PASSWORD ?= e2e-password-123
 
+# The e2e tests run against php-e2e, which uses its own database (<POSTGRES_DB>_e2e) on the same server; the dev database is never touched.
+E2E_EXEC := $(DOCKER_COMPOSE) --profile e2e exec $(TTY) php-e2e php bin/console
+
+.PHONY: e2e-up
+e2e-up: backend-install
+	$(DOCKER_COMPOSE) --profile e2e up -d --wait php-e2e
+
 .PHONY: e2e-seed
-e2e-seed: presets ## Migrate the dev database, publish the GameSystem presets and create the e2e users (idempotent; resets drifted users)
-	$(PHP_EXEC) php bin/console app:gamesystem:publish tests/Fixtures/E2e/corner-shop.json --if-changed
-	$(PHP_EXEC) php bin/console app:user:create e2e-player@example.test --role=SOLO_PLAYER --password="$(E2E_PASSWORD)" --reset-existing --no-interaction
-	$(PHP_EXEC) php bin/console app:user:create e2e-manager@example.test --role=GAME_MANAGER --password="$(E2E_PASSWORD)" --reset-existing --no-interaction
-	$(PHP_EXEC) php bin/console app:user:create e2e-owner@example.test --role=OWNER --password="$(E2E_PASSWORD)" --reset-existing --no-interaction
+e2e-seed: e2e-up ## Create and migrate the e2e database, publish the GameSystem presets and create the e2e users (idempotent; resets drifted users)
+	$(E2E_EXEC) doctrine:database:create --if-not-exists --no-interaction
+	$(call publish-presets,$(E2E_EXEC))
+	$(E2E_EXEC) app:gamesystem:publish tests/Fixtures/E2e/corner-shop.json --if-changed
+	$(E2E_EXEC) app:user:create e2e-player@example.test --role=SOLO_PLAYER --password="$(E2E_PASSWORD)" --reset-existing --no-interaction
+	$(E2E_EXEC) app:user:create e2e-manager@example.test --role=GAME_MANAGER --password="$(E2E_PASSWORD)" --reset-existing --no-interaction
+	$(E2E_EXEC) app:user:create e2e-owner@example.test --role=OWNER --password="$(E2E_PASSWORD)" --reset-existing --no-interaction
+
+.PHONY: e2e-reset
+e2e-reset: e2e-up ## Drop the e2e database and seed it again from scratch (the dev database is untouched)
+	$(E2E_EXEC) doctrine:database:drop --force --if-exists --no-interaction
+	$(MAKE) e2e-seed
 
 .PHONY: e2e
-e2e: frontend-install e2e-seed ## Seed the e2e users and presets, then run the Playwright tests against the running stack (ARGS="--grep smoke")
+e2e: frontend-install e2e-seed ## Seed the e2e database, then run the Playwright tests against php-e2e (ARGS="--grep smoke")
 	$(DOCKER_COMPOSE) run --rm $(TTY) playwright node_modules/.bin/playwright test $(ARGS)
 
 ##@ API contract (ADR 0005)

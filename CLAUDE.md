@@ -93,7 +93,8 @@ Everything runs in Docker through `make` (it exports your UID/GID; a bare `docke
 | Fix style | `make backend-fix`, `make frontend-fix` | Apply Rector/CS-Fixer, ESLint/Prettier (Rector may need two passes) |
 | Tests | `make test` | PHPUnit (unit + integration on `ogami_test`), Behat, Vitest |
 | Scoped checks | `make verify` | Checks only what changed since `main` (committed, staged, unstaged, untracked): backend QA + PHPUnit narrowed to the touched context (Studio also runs Play) + Behat, `api-check`, frontend QA, Vitest `related` for `frontend/src` changes (full for other frontend files), nothing for docs. Root files (`Makefile`, `compose*.yaml`, `docker/`, `scripts/`) run everything. `make verify-test` tests these scope rules. `BASE=` changes the comparison branch, `DRY_RUN=1` prints the plan. Runs every step, prints a summary, exits 1 on any failure. CI still runs the full suites |
-| E2E | `make e2e` | Playwright smoke tests in the `playwright` container against the running stack |
+| E2E | `make e2e` | Seeds the separate `ogami_e2e` database (the dev DB is untouched), then runs the Playwright tests in the `playwright` container against the `php-e2e` service |
+| E2E | `make e2e-seed`, `make e2e-reset` | Migrate, publish presets and create the e2e users in `ogami_e2e` / drop that database and seed it again |
 | Presets | `make presets` | Publish the GameSystem presets in `backend/presets/` as releases (skips unchanged ones). Run it after editing a preset file: if Studio owns the key on your database, it refuses a file that differs from Studio's latest release, and CI cannot see this ([ADR 0036](docs/adr/0036-export-releases-as-preset-files.md)) |
 | API contract | `make api` | After changing an endpoint: export the OpenAPI spec and regenerate `frontend/src/shared/api/schema.d.ts`; commit both |
 | Frontend builds | `make frontend-build`, `make storybook`, `make storybook-build` | Production SPA build; Storybook dev server / static build |

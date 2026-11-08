@@ -23,9 +23,9 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
-    // Host names Caddy forwards besides localhost: `php` is the in-network origin
-    // the Playwright container uses.
-    allowedHosts: ['php'],
+    // Host names Caddy forwards besides localhost: `php-e2e` is the in-network origin
+    // the Playwright container uses (`php` is kept for tools that reach the dev app that way).
+    allowedHosts: ['php', 'php-e2e'],
     // HMR needs no extra settings: the client connects back to the page origin
     // (http://localhost:8080 or http://php), and Caddy proxies the WebSocket.
   },

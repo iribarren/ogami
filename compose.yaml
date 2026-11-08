@@ -9,17 +9,32 @@
 #   MAILPIT_PORT        Mailpit web UI on the host (default 8026, compose.override.yaml)
 #   STORYBOOK_PORT      Storybook on the host (default 6006, compose.override.yaml; `make storybook`)
 #   POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD   dev credentials (default ogami)
+#                       `make e2e` uses its own database, ${POSTGRES_DB}_e2e (service php-e2e)
 #   XDEBUG_MODE         off (default) | debug | coverage | develop
 name: ogami
 
+# What php and php-e2e share: the same image, dependencies and healthcheck.
+x-php: &php
+  build:
+    context: .
+    dockerfile: docker/php/Dockerfile
+    args:
+      UID: ${UID:-1000}
+      GID: ${GID:-1000}
+  depends_on:
+    database:
+      condition: service_healthy
+  healthcheck:
+    # Caddy's admin endpoint answers as soon as the server is up.
+    test: ["CMD", "curl", "-fsS", "http://localhost:2019/metrics"]
+    interval: 10s
+    timeout: 3s
+    retries: 5
+    start_period: 10s
+
 services:
   php:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
-      args:
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
+    <<: *php
     environment:
       SERVER_NAME: ":80"
       DATABASE_URL: postgresql://${POSTGRES_USER:-ogami}:${POSTGRES_PASSWORD:-ogami}@database:5432/${POSTGRES_DB:-ogami}?serverVersion=18&charset=utf8
@@ -32,16 +47,22 @@ services:
       - caddy_config:/config
     ports:
       - "${HTTP_PORT:-8080}:80"
-    depends_on:
-      database:
-        condition: service_healthy
-    healthcheck:
-      # Caddy's admin endpoint answers as soon as the server is up.
-      test: ["CMD", "curl", "-fsS", "http://localhost:2019/metrics"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-      start_period: 10s
+
+  # The app the e2e tests drive (`make e2e`): the same code as php, but on its own
+  # database, so the tests never write into the dev one. No host port; the SPA is
+  # served through it too (Caddy proxies to node). It has no caddy_data/caddy_config
+  # volumes: sharing them with php would make two Caddy instances use one state dir.
+  php-e2e:
+    <<: *php
+    profiles: [e2e]
+    environment:
+      SERVER_NAME: ":80"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ogami}:${POSTGRES_PASSWORD:-ogami}@database:5432/${POSTGRES_DB:-ogami}_e2e?serverVersion=18&charset=utf8
+      MAILER_DSN: smtp://mailpit:1025
+      XDEBUG_MODE: "off"
+    volumes:
+      - ./backend:/app
+      - ./docker/php/frontend.d:/etc/frankenphp/frontend.d:ro
 
   database:
     image: postgres:18-alpine
@@ -93,7 +114,7 @@ services:
     environment:
       HOME: /tmp
       CI: ${CI:-}
-      E2E_BASE_URL: http://php
+      E2E_BASE_URL: http://php-e2e
       # Password of the users `make e2e-seed` creates. No default here: the Makefile (`E2E_PASSWORD`) holds the only one.
       E2E_PASSWORD: ${E2E_PASSWORD:-}
       # Mailpit's HTTP API, where the e2e tests read the account emails.
@@ -105,7 +126,7 @@ services:
     init: true
     command: ["node_modules/.bin/playwright", "test"]
     depends_on:
-      php:
+      php-e2e:
         condition: service_healthy
       node:
         condition: service_healthy

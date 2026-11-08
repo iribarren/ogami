@@ -41,6 +41,7 @@ import {
   type StepKind,
 } from './stepDraft'
 import { aboutEffects, type StepError } from './stepError'
+import { hasGuideNotes, stepSummary } from './stepSummary'
 
 /** The bands' problems: what the guides and the server say about each band's limit and next. */
 function bandProblems(guide: StepGuide, mine: StepError[]): BandProblems {
@@ -464,13 +465,20 @@ const StepCard = memo(function StepCard({
     step.kind === 'stored' ? (typeof record.kind === 'string' ? record.kind : 'unknown') : step.kind
   const title = step.kind === 'stored' ? record.title : step.title
   const bound = step.kind === 'stored' ? '' : boundName(step, context)
+  // A stored step keeps its plain header; the others say what they hold, so a closed card can be scanned.
+  const summary = stepSummary(step)
+  // Whatever the server or the client guides flag, shown whether the card is open or not.
+  const needsFix = step.kind !== 'stored' && (mine.length > 0 || hasGuideNotes(guide))
   const header = (
     <>
       <StepKindTile kind={kind} />
       <span className="min-w-0 flex-1">
         <span className="block list-row-title">{typeof title === 'string' ? title : ''}</span>
-        <span className="block list-row-key">{stepKey(step) || '(no key)'}</span>
+        <span className="block truncate list-row-key">
+          {`${stepKey(step) || '(no key)'}${summary === '' ? '' : ` · ${summary}`}`}
+        </span>
       </span>
+      {needsFix && <Badge variant="destructive">Needs a fix</Badge>}
       <Badge variant="secondary">{kind}</Badge>
       {bound !== '' && <Badge variant="outline">{bound}</Badge>}
     </>

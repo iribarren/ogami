@@ -2220,3 +2220,42 @@ describe('the step list editor', () => {
     })
   })
 })
+
+describe('the step card header', () => {
+  const headerOf = (number: number) => {
+    const toggle = card(number).getAllByRole('button')[0]
+    if (!toggle) {
+      throw new Error(`No disclosure on step ${String(number)}.`)
+    }
+    return within(toggle)
+  }
+
+  it('says under the title what the step holds', () => {
+    render(<Harness stored={stepListBackward} />)
+
+    expect(headerOf(1).getByText('first')).toBeInTheDocument()
+    expect(headerOf(3).getByText('third · 2 bands')).toBeInTheDocument()
+    expect(headerOf(2).getByText('second · next: first')).toBeInTheDocument()
+  })
+
+  it('flags a step with a guide note, open or not', () => {
+    render(<Harness stored={stepListBackward} />)
+
+    expect(headerOf(1).queryByText('Needs a fix')).not.toBeInTheDocument()
+    expect(headerOf(2).getByText('Needs a fix')).toBeInTheDocument()
+    expect(headerOf(3).getByText('Needs a fix')).toBeInTheDocument()
+  })
+
+  it('flags a step with a server message', () => {
+    render(
+      <Harness
+        stored={[{ key: 'a', kind: 'prompt', title: 'A' }]}
+        errors={[
+          mapStepError('sceneTypes[0].play', 'sceneTypes[0].play[0].title: must not be empty'),
+        ]}
+      />,
+    )
+
+    expect(headerOf(1).getByText('Needs a fix')).toBeInTheDocument()
+  })
+})

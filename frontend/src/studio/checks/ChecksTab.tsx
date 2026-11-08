@@ -5,6 +5,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
   type SubmitEvent,
@@ -117,6 +118,9 @@ export function ChecksTab({
   )
 }
 
+/** What a refetch of the checks found for the open editor. */
+type CheckReload = 'loaded' | 'failed' | 'gone' | 'unreadable'
+
 /**
  * The check being edited (a stored one by its key, or a new one) and the checks it was opened at.
  * The editor keeps that version until it is opened again: a refetch must not make a stale draft
@@ -143,9 +147,15 @@ function CheckList({
   const latest = useGameSystemChecks(gameSystemKey)
   const queryClient = useQueryClient()
   const [selected, setSelected] = useState<Selection>(null)
-  const [conflict, setConflict] = useState<{ message: string; loaded: boolean } | null>(null)
+  const [conflict, setConflict] = useState<{
+    message: string
+    loaded: boolean
+    unreadable: string | null
+  } | null>(null)
   // Whether the open editor holds edits that were not saved, as it reports it.
   const [editorUnsaved, setEditorUnsaved] = useState(false)
+  // The same, readable when a refetch resolves: the callback that started it saw an older render.
+  const unsavedNow = useRef(false)
   // What the person asked for while the editor held unsaved edits, waiting for their answer.
   const [pending, setPending] = useState<((fresh: GameSystemChecks) => void) | null>(null)
 
@@ -213,12 +223,19 @@ function CheckList({
   }
 
   /**
-   * Another request changed the draft: say so and reload, so the open editor starts again from
-   * the latest check (or closes when it is gone) and its next save carries the new version.
+   * A move was refused because another request changed the draft: say so and refetch, so the list
+   * is current. The open editor starts again from the latest check only when it holds no unsaved
+   * edits; otherwise it keeps its draft and version, and its next save conflicts and offers the
+   * reload.
    */
-  function onConflict(message: string) {
-    void reload().then((loaded) => {
-      setConflict({ message, loaded })
+  function onMoveConflict(message: string) {
+    const key = selected?.original ?? ''
+    void reload(true).then((result) => {
+      setConflict({
+        message,
+        loaded: result !== 'failed',
+        unreadable: result === 'unreadable' ? key : null,
+      })
     })
   }
 
@@ -256,23 +273,43 @@ function CheckList({
     )
   }
 
-  /** Refetches the checks and opens the editor again on them; a failure keeps what is shown. */
-  async function reload() {
+  /**
+   * Refetches the checks for the editor open now. `fromList` is the list reloading under it: the
+   * editor then starts again on the fresh checks only when it holds no unsaved edits (read when the
+   * refetch resolves, not when it started), and a check that is gone closes it. The editor's own
+   * reload keeps it either way. A refetch only touches the editor it started for: one opened
+   * meanwhile has its own check and edits. When the check is gone or unreadable, or the editor holds
+   * edits, it keeps its draft and version and the result says why, so it can tell the person: a
+   * draft and the version it read change together or not at all.
+   */
+  async function reload(fromList: boolean): Promise<CheckReload> {
+    const started = selected
     const result = await latest.refetch()
     const fresh = result.data
     if (result.isError || fresh === undefined) {
-      return false
+      return 'failed'
     }
-    setSelected((current) => {
-      if (current === null) {
-        return null
+    const reopen = !fromList || !unsavedNow.current
+    const original = started?.original ?? null
+    const stored = original === null ? undefined : fresh.checks.find((c) => c.key === original)
+    if (original !== null && stored === undefined) {
+      if (reopen && fromList) {
+        // A check that is gone leaves nothing to edit.
+        setSelected((current) => (current?.opened === started?.opened ? null : current))
       }
-      // A check that is gone leaves nothing to edit.
-      return current.original !== null && !fresh.checks.some((c) => c.key === current.original)
-        ? null
-        : { ...current, start: fresh, opened: current.opened + 1 }
-    })
-    return true
+      return 'gone'
+    }
+    if (stored !== undefined && readCheck(stored) === null) {
+      return 'unreadable'
+    }
+    if (reopen) {
+      setSelected((current) =>
+        current !== null && current.opened === started?.opened
+          ? { ...current, start: fresh, opened: current.opened + 1 }
+          : current,
+      )
+    }
+    return 'loaded'
   }
 
   return (
@@ -286,18 +323,28 @@ function CheckList({
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">
           <p>
             {conflict.message}{' '}
-            {conflict.loaded
-              ? 'The latest version was loaded.'
-              : "Couldn't load the latest version: what is shown may be out of date."}
+            {conflict.unreadable !== null
+              ? `The latest version was loaded, but the check ${conflict.unreadable} changed to a shape this editor cannot read: the editor keeps its draft and version, so a save still conflicts.`
+              : conflict.loaded
+                ? 'The latest version was loaded.'
+                : "Couldn't load the latest version: what is shown may be out of date."}
           </p>
           {!conflict.loaded && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
-                void reload().then((loaded) => {
-                  if (loaded) {
-                    setConflict((current) => current && { ...current, loaded })
+                const key = selected?.original ?? ''
+                void reload(true).then((result) => {
+                  if (result !== 'failed') {
+                    setConflict(
+                      (current) =>
+                        current && {
+                          ...current,
+                          loaded: true,
+                          unreadable: result === 'unreadable' ? key : null,
+                        },
+                    )
                   }
                 })
               }}
@@ -368,7 +415,7 @@ function CheckList({
                         onError: (error) => {
                           if (error instanceof StudioError && error.status === 409) {
                             move.reset()
-                            onConflict(error.message)
+                            onMoveConflict(error.message)
                           }
                         },
                       },
@@ -398,8 +445,11 @@ function CheckList({
               onSaved={(saved, key) => {
                 adopt(selected.opened, saved, key)
               }}
-              onConflict={onConflict}
-              onUnsavedChange={setEditorUnsaved}
+              onReload={() => reload(false)}
+              onUnsavedChange={(unsaved) => {
+                unsavedNow.current = unsaved
+                setEditorUnsaved(unsaved)
+              }}
               onDuplicate={duplicateDraft}
               deleteAction={
                 selected.original !== null && (
@@ -646,7 +696,7 @@ function CheckEditor({
   prefill,
   sampleValues,
   onSaved,
-  onConflict,
+  onReload,
   onUnsavedChange,
   onDuplicate,
   deleteAction,
@@ -658,7 +708,8 @@ function CheckEditor({
   prefill: CheckDraft | null
   sampleValues: SampleValues
   onSaved: (saved: GameSystemChecks, key: string) => void
-  onConflict: (message: string) => void
+  /** Refetches the checks and, when they load, reopens the editor on them (this form goes). */
+  onReload: () => Promise<CheckReload>
   /** Whether the form holds edits that were not saved; false again when the editor goes. */
   onUnsavedChange: (unsaved: boolean) => void
   /** The editor head's Duplicate: copies the draft as shown, not the stored check. */
@@ -667,6 +718,10 @@ function CheckEditor({
   deleteAction: ReactNode
 }) {
   const save = useSaveCheck(gameSystemKey)
+  // Another request changed the draft since this form read it: the form keeps its edits and its
+  // version, and only a reload replaces them.
+  const [conflicted, setConflicted] = useState(false)
+  const [reloadNote, setReloadNote] = useState<string | null>(null)
   const [draft, setDraft] = useState<CheckDraft>(() => {
     if (original === null) {
       return prefill ?? blankCheck()
@@ -838,12 +893,14 @@ function CheckEditor({
 
   /**
    * Saves the check and goes on from what the API returned: the saved check's key, or null when
-   * the save was refused (a 422 shows on the form, a 409 reloads the editor).
+   * the save was refused (a 422 shows on the form, a 409 offers the reload).
    */
   async function commit(check: StoredCheck): Promise<string | null> {
     setErrors({})
     setLocalBands({})
     setPublishedBands({})
+    setConflicted(false)
+    setReloadNote(null)
     try {
       const saved = await save.mutateAsync({ expectedVersion: start.version, original, check })
       // The returned read model says which check was saved.
@@ -852,11 +909,27 @@ function CheckEditor({
       return key
     } catch (failure) {
       if (failure instanceof StudioError && failure.status === 409) {
-        onConflict(failure.message)
+        setConflicted(true)
       } else if (failure instanceof CheckError && failure.status === 422) {
         setPublishedBands(checkAnswer(failure.message, position).fields.band ?? {})
       }
       return null
+    }
+  }
+
+  /** Replaces the form with the latest stored check; any other answer keeps the draft. */
+  async function reload() {
+    const result = await onReload()
+    if (result === 'failed') {
+      setReloadNote("Couldn't reload the latest version. Try again.")
+    } else if (result === 'gone') {
+      setReloadNote(
+        `The check ${original ?? ''} no longer exists. Your changes are kept: Duplicate saves them as a new check.`,
+      )
+    } else if (result === 'unreadable') {
+      setReloadNote(
+        `The check ${original ?? ''} changed to a shape this editor cannot read. Your changes are kept; the next save still conflicts.`,
+      )
     }
   }
 
@@ -1243,6 +1316,27 @@ function CheckEditor({
           )}
         </div>
         <div className="action-bar">
+          {reloadNote !== null && (
+            <p role="alert" className="text-sm text-destructive">
+              {reloadNote}
+            </p>
+          )}
+          {conflicted && (
+            <>
+              <p className="text-sm text-destructive">
+                Reloading replaces your unsaved edits with the latest stored check.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  void reload()
+                }}
+              >
+                Reload the latest version
+              </Button>
+            </>
+          )}
           <Button type="submit" disabled={save.isPending}>
             {original === null ? 'Create check' : 'Save check'}
           </Button>

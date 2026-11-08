@@ -38,14 +38,38 @@ export const SheetCurrencyPanel = memo(function SheetCurrencyPanel({
   const [field, setField] = useState(currency?.field ?? '')
   const [unit, setUnit] = useState(currency?.unit ?? '')
   const [problem, setProblem] = useState<string | null>(null)
-  // The inputs follow the stored currency whenever it changes (a save, a removal, a refetch after
-  // another request): an unsaved edit is dropped then, as the stored value is the newer truth.
-  const stored = `${currency?.field ?? ''}\n${currency?.unit ?? ''}`
-  const [seen, setSeen] = useState(stored)
-  if (seen !== stored) {
-    setSeen(stored)
+  // The stored currency the inputs started from, and the sheet version it was read at (what a save
+  // or a removal sends). While the stored currency is still `base`, other sheet edits do not make
+  // a currency save conflict, so `readAt` follows the live version. Once the stored currency moves
+  // away from `base` (a refetch after another request), an unsaved edit is kept with the version
+  // it was made at: a save then conflicts, and only a reload replaces the edit with the new
+  // currency (the inputs, `base` and `readAt` change together or not at all). An edit that already
+  // equals the stored currency loses nothing: that is how a save's own answer is taken, whenever
+  // the cache gets it, so no callback of the save has to run for `base` and `readAt` to follow.
+  const [base, setBase] = useState({ field: currency?.field ?? '', unit: currency?.unit ?? '' })
+  const [readAt, setReadAt] = useState(sheet.version)
+  const storedChanged =
+    (currency?.field ?? '') !== base.field || (currency?.unit ?? '') !== base.unit
+  const dirty = field !== base.field || unit.trim() !== base.unit
+  const matchesStored = field === (currency?.field ?? '') && unit.trim() === (currency?.unit ?? '')
+  if (!storedChanged) {
+    if (readAt !== sheet.version) {
+      setReadAt(sheet.version)
+    }
+  } else if (!dirty || matchesStored) {
+    // Nothing typed, or typed the stored value itself: the stored value is the newer truth.
+    setBase({ field: currency?.field ?? '', unit: currency?.unit ?? '' })
     setField(currency?.field ?? '')
     setUnit(currency?.unit ?? '')
+    setReadAt(sheet.version)
+    setProblem(null)
+  }
+  // Replaces the inputs, `base` and `readAt` with a sheet just read, dropping any unsaved edit.
+  function take(read: GameSystemSheet) {
+    setBase({ field: read.currency?.field ?? '', unit: read.currency?.unit ?? '' })
+    setReadAt(read.version)
+    setField(read.currency?.field ?? '')
+    setUnit(read.currency?.unit ?? '')
     setProblem(null)
   }
   // The draft the last save sent: a 422 answer says nothing about a draft that has changed since.
@@ -56,8 +80,7 @@ export const SheetCurrencyPanel = memo(function SheetCurrencyPanel({
       : [],
   )
   const draft = `${field}\n${unit}`
-  // A save trims the unit and the form keeps what was typed, so the unit is compared trimmed.
-  const dirty = field !== (currency?.field ?? '') || unit.trim() !== (currency?.unit ?? '')
+  // A save trims the unit and the form keeps what was typed, so `dirty` compares the unit trimmed.
   const error = save.error ?? remove.error
   // Only a refused save is placed on the inputs, and only while the draft is the one it judged;
   // any other error (a refused removal, a 404, a library pack) shows its message as it is.
@@ -81,7 +104,8 @@ export const SheetCurrencyPanel = memo(function SheetCurrencyPanel({
     setProblem(null)
     setSent(draft)
     remove.reset()
-    save.mutate({ expectedVersion: sheet.version, field, unit: trimmed === '' ? null : trimmed })
+    // No callback for the answer: the render-phase sync above takes it from the sheet.
+    save.mutate({ expectedVersion: readAt, field, unit: trimmed === '' ? null : trimmed })
   }
 
   return (
@@ -117,6 +141,12 @@ export const SheetCurrencyPanel = memo(function SheetCurrencyPanel({
             error={answer?.inputs.unit}
             help="Shown after an amount, e.g. eb. Leave empty for none."
           />
+          {storedChanged && dirty && (
+            <p role="alert" className="text-sm text-destructive">
+              The stored currency changed since you started editing. Reloading replaces your edit
+              with it.
+            </p>
+          )}
           {message !== null && message !== '' && (
             <p role="alert" className="text-sm text-destructive">
               {message}
@@ -134,24 +164,17 @@ export const SheetCurrencyPanel = memo(function SheetCurrencyPanel({
                 onClick={() => {
                   save.reset()
                   setProblem(null)
-                  remove.mutate(
-                    { expectedVersion: sheet.version },
-                    {
-                      onSuccess: () => {
-                        setField('')
-                        setUnit('')
-                      },
-                    },
-                  )
+                  remove.mutate({ expectedVersion: readAt }, { onSuccess: take })
                 }}
               >
                 Remove currency
               </Button>
             )}
-            {isVersionConflict(error) && (
+            {(isVersionConflict(error) || (storedChanged && dirty)) && (
               <ReloadLatest
                 gameSystemKey={gameSystemKey}
-                onLoaded={() => {
+                onLoaded={(read) => {
+                  take(read)
                   save.reset()
                   remove.reset()
                 }}

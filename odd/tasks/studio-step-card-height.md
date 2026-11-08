@@ -48,7 +48,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | ID | Task | Route | Done | Commit |
 |---|---|---|---|---|
 | T1 | `stepSummary` and the summary line plus "Needs a fix" badge in the step card header | delegated: slice runs under one writer (2+ non-trivial files) | [x] | |
-| T2 | Cards start collapsed (added steps open, problems open), list-level Expand all steps / Collapse all steps on a shared `ExpandRequest` | delegated: slice runs under one writer | [ ] | |
+| T2 | Cards start collapsed (added steps open, problems open), list-level Expand all steps / Collapse all steps on a shared `ExpandRequest` | delegated: slice runs under one writer | [x] | |
 | T3 | Existing Vitest and e2e specs open the cards they edit; stories updated | delegated: slice runs under one writer | [ ] | |
 
 ## Applicable checks
@@ -59,7 +59,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 ## Progress
 
 - 2026-11-08: Explored `StepListEditor`, `OutcomeEditor`, `PickCheckFields` (S16 pattern) and the two users of the list. User chose option A. One slice, delegated writer.
-- 2026-11-08: T1 done. RED: `stepSummary` tests failed on the missing module, header tests failed on the missing summary and badge; GREEN: `src/studio` Vitest 2007 passed. `hasGuideNotes` shares the module with `stepSummary`.
+- 2026-11-08: T1 done. RED: `stepSummary` tests failed on the missing module, header tests failed on the missing summary and badge; GREEN: `src/studio` Vitest 2007 passed. `hasGuideNotes` shares the module with `stepSummary`.- 2026-11-08: T2 done. RED: the 9 new open-state and Expand/Collapse tests failed before the change; GREEN: all 10 pass. Existing tests that edit mounted steps now fail until T3. `ExpandRequest` moved to `expandRequest.ts`; the list gives a card `startOpen` when its origin is null and `expand`.
 
 ## Reviews
 

@@ -78,6 +78,15 @@ function Saver({ stored }: { stored: unknown[] }) {
 // A label query, not a role query: role names cost a jsdom getComputedStyle per candidate.
 const card = (number: number) => within(screen.getByLabelText(`Step ${String(number)}`))
 
+/** The disclosure of a card: its first button. */
+function toggle(number: number) {
+  const button = card(number).getAllByRole('button')[0]
+  if (!button) {
+    throw new Error(`No disclosure on step ${String(number)}.`)
+  }
+  return button
+}
+
 /** Opens the Add step menu and picks a kind, the way a person does. */
 async function addStep(user: UserEvent, kind = 'prompt') {
   await user.click(screen.getByRole('button', { name: 'Add step' }))
@@ -2257,5 +2266,118 @@ describe('the step card header', () => {
     )
 
     expect(headerOf(1).getByText('Needs a fix')).toBeInTheDocument()
+  })
+})
+
+describe('the step cards at mount', () => {
+  const three = [
+    { key: 'a', kind: 'prompt', title: 'A' },
+    { key: 'b', kind: 'prompt', title: 'B' },
+    { key: 'c', kind: 'prompt', title: 'C' },
+  ]
+  // An open card shows its fields; a closed one unmounts them.
+  const isOpen = (number: number) => card(number).queryByLabelText('Title') !== null
+
+  it('starts every step it was given collapsed', () => {
+    render(<Harness stored={three} />)
+
+    expect([1, 2, 3].map(isOpen)).toEqual([false, false, false])
+    expect(card(2).getByText('b')).toBeInTheDocument()
+  })
+
+  it('starts a step the author adds open, from the menu', async () => {
+    const user = userEvent.setup()
+    render(<Harness stored={three} />)
+
+    await addStep(user)
+
+    expect([1, 2, 3, 4].map(isOpen)).toEqual([false, false, false, true])
+  })
+
+  it('starts a step created from a Next select open', async () => {
+    const user = userEvent.setup()
+    render(<Harness stored={three.slice(0, 1)} />)
+    await user.click(toggle(1))
+    await chooseOption(user, 'Next', 'New step…', card(1))
+    await user.click(await screen.findByRole('menuitem', { name: 'prompt' }))
+
+    expect(isOpen(2)).toBe(true)
+  })
+
+  it('starts a step with a message open and flags it', () => {
+    render(
+      <Harness
+        stored={three}
+        errors={[mapStepError('sceneTypes[0].play', 'sceneTypes[0].play[1].title: nope')]}
+      />,
+    )
+
+    expect([1, 2, 3].map(isOpen)).toEqual([false, true, false])
+    expect(card(2).getByText('Needs a fix')).toBeInTheDocument()
+    expect(card(1).queryByText('Needs a fix')).not.toBeInTheDocument()
+  })
+
+  it('starts a step with a guide note open and flags it', () => {
+    render(<Harness stored={stepListBackward} />)
+
+    expect([1, 2, 3].map(isOpen)).toEqual([false, true, true])
+    expect(card(2).getByText('Needs a fix')).toBeInTheDocument()
+  })
+
+  it('starts the current step open', () => {
+    render(
+      <StepListEditor
+        steps={stepsToDrafts(three)}
+        context={stepPickers}
+        current={2}
+        onChange={vi.fn()}
+      />,
+    )
+
+    expect([1, 2, 3].map(isOpen)).toEqual([false, false, true])
+  })
+})
+
+describe('Expand all steps and Collapse all steps', () => {
+  const steps = [
+    { key: 'a', kind: 'prompt', title: 'A' },
+    { key: 'b', kind: 'prompt', title: 'B' },
+  ]
+  const isOpen = (number: number) => card(number).queryByLabelText('Title') !== null
+
+  it('are offered only for two steps or more', () => {
+    render(<Harness stored={steps.slice(0, 1)} />)
+
+    expect(screen.queryByRole('button', { name: 'Expand all steps' })).not.toBeInTheDocument()
+  })
+
+  it('open and close every card', async () => {
+    const user = userEvent.setup()
+    render(<Harness stored={steps} />)
+
+    await user.click(screen.getByRole('button', { name: 'Expand all steps' }))
+    expect([1, 2].map(isOpen)).toEqual([true, true])
+    await user.click(screen.getByRole('button', { name: 'Collapse all steps' }))
+    expect([1, 2].map(isOpen)).toEqual([false, false])
+  })
+
+  it('leave a card the author toggles afterwards as the author left it', async () => {
+    const user = userEvent.setup()
+    render(<Harness stored={steps} />)
+
+    await user.click(screen.getByRole('button', { name: 'Expand all steps' }))
+    await user.click(toggle(1))
+
+    expect([1, 2].map(isOpen)).toEqual([false, true])
+  })
+
+  it('do not open a step added after the press when the press was Collapse all steps', async () => {
+    const user = userEvent.setup()
+    render(<Harness stored={steps} />)
+
+    await user.click(screen.getByRole('button', { name: 'Collapse all steps' }))
+    await addStep(user)
+
+    expect([1, 2, 3].map(isOpen)).toEqual([false, false, true])
   })
 })

@@ -79,6 +79,11 @@ function CampaignState({ campaign }: { campaign: ReturnType<typeof useCampaign> 
   }
 }
 
+/** The items still open: a closed one is out of the way in its panel, so it is out of the badge too. */
+function openCount(items: { status: 'open' | 'closed' }[]) {
+  return items.filter(({ status }) => status === 'open').length
+}
+
 function BackLink() {
   return (
     <Link
@@ -209,7 +214,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
             id="threads"
             title="Threads"
             icon={<Route />}
-            count={campaign.threads.length}
+            count={openCount(campaign.threads)}
             help="The open questions and goals your story follows. Add one when something needs resolving, such as a mystery, a promise or a rival, and close it when it is settled."
           >
             <ListPanel campaign={campaign} kind="thread" />
@@ -218,7 +223,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
             id="places"
             title="Places"
             icon={<MapPin />}
-            count={campaign.places.length}
+            count={openCount(campaign.places)}
             help="The towns, sites and rooms your story visits. Add one when the party finds it, and close it when it is cleared or lost."
           >
             <ListPanel campaign={campaign} kind="place" />
@@ -227,7 +232,7 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
             id="npcs"
             title="NPCs"
             icon={<Users />}
-            count={campaign.npcs.length}
+            count={openCount(campaign.npcs)}
             help="The people met in play. Add them as they appear; the flow adds some too."
           >
             <ListPanel campaign={campaign} kind="npc" />

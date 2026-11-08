@@ -5,6 +5,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { atStep, guided, promptStep } from '../flow/fixtures'
+import { lostMineWithLists } from '../lists/fixtures'
 import { lostMineJournal, recordedEntry, shopEntry } from '../journal/fixtures'
 import {
   fanPreset,
@@ -136,6 +137,20 @@ describe('the Play screen', () => {
 
     await screen.findByRole('heading', { level: 1, name: 'The lost mine' })
     expect(document.documentElement).not.toHaveAttribute('data-theme')
+  })
+
+  it('counts only the open items in the Threads, Places and NPCs badges', async () => {
+    renderPlayScreen(lostMineWithLists)
+
+    const tools = await screen.findByRole('complementary', { name: 'Play tools' })
+    // The fixture holds 2 Threads, 2 Places and 3 NPCs, of which 1, 1 and 2 are open.
+    for (const [name, open] of [
+      ['Threads', '1'],
+      ['Places', '1'],
+      ['NPCs', '2'],
+    ]) {
+      expect(within(within(tools).getByRole('region', { name })).getByText(open)).toBeVisible()
+    }
   })
 
   it('keeps the tools in a Play tools sidebar of collapsible panels, with counts where known', async () => {

@@ -499,6 +499,10 @@ Done: `night-court-followups`, #309 in two slices (PRs #357–#358). Studio: `[k
 
 Done: `studio-scene-type-lost-steps`, #310 in one slice (PR #359). The exact cause of S21 stays unproved, because the worker's network log is gone; no way to lose steps was found on the server. Scene Type editor: create opens the editor, leaving with unsaved changes asks first, a reload after a conflict warns and clears "Saved at", a rename keeps its "Saved at", a read in flight no longer overwrites a save in the cache, and the form no longer fills from a stale cache. The other Studio editors follow in [#360](https://github.com/iribarren/ogami/issues/360) (B7q).
 
+**B7p. studio-step-card-height**
+
+Done: `studio-step-card-height`, #356 in one slice (PR #376). Scene Type and Flow hook step cards start collapsed, with a one-line summary (next, effects, outcomes, options, branches or bands), a "Needs a fix" badge and Expand all steps / Collapse all steps; added steps and steps with problems start open; see [odd/tasks/studio-step-card-height.md](../odd/tasks/studio-step-card-height.md).
+
 **B7q. studio-unsaved-work**
 
 Done: `studio-unsaved-work`, #360 in two slices (PRs #361, #362). Both oracle editors keep the version they read, so a stale draft answers 409 instead of overwriting newer entries. The Flow and oracle editors, `MetadataForm`, `CheckEditor` and `SheetCurrencyPanel` ask before losing a draft, and in every section a read in flight cannot replace a save in the cache. Follow-up: [#363](https://github.com/iribarren/ogami/issues/363).

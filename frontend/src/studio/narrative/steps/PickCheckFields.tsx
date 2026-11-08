@@ -7,6 +7,7 @@ import { SegmentedControl, SegmentedControlItem } from '@/shared/ui/segmented-co
 import { TextField } from '../TextField'
 import { ValueInput } from './BandsEditor'
 import type { KindProps, Of } from './BranchingFields'
+import type { ExpandRequest } from './expandRequest'
 import { CheckList, PickField, SelectField } from './fields'
 import { OutcomeEditor } from './OutcomeEditor'
 import {
@@ -120,12 +121,6 @@ export function PickFields({ step, ...p }: KindProps & { step: Of<'pick'> }) {
       ))}
     </>
   )
-}
-
-/** The last press of Expand all (open) or Collapse all; `press` counts them, 0 for none yet. */
-interface ExpandRequest {
-  open: boolean
-  press: number
 }
 
 /** One band of the chosen check: collapsed until it has something to show. */

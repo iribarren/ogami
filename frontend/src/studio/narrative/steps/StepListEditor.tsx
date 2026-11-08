@@ -16,6 +16,7 @@ import { AnswerHint, answerHint } from './answerHint'
 import { BandsEditor, NextPicker, type BandProblems } from './BandsEditor'
 import { ChoiceFields, OracleFields, TableFields } from './BranchingFields'
 import { moveItem } from './draftParts'
+import type { ExpandRequest } from './expandRequest'
 import { CheckFields, PickFields } from './PickCheckFields'
 import { NewStepContext } from './newStepContext'
 import { ShopFields } from './ShopFields'
@@ -41,6 +42,7 @@ import {
   type StepKind,
 } from './stepDraft'
 import { aboutEffects, type StepError } from './stepError'
+import { hasGuideNotes, stepSummary } from './stepSummary'
 
 /** The bands' problems: what the guides and the server say about each band's limit and next. */
 function bandProblems(guide: StepGuide, mine: StepError[]): BandProblems {
@@ -398,6 +400,8 @@ const StepCard = memo(function StepCard({
   index,
   total,
   current,
+  startOpen,
+  expand,
   answer,
   guide,
   mine,
@@ -414,6 +418,10 @@ const StepCard = memo(function StepCard({
   index: number
   total: number
   current: boolean
+  /** Open on mount, for a step the author has just added. */
+  startOpen: boolean
+  /** The newest "Expand all steps" or "Collapse all steps" press: a card follows it once, then is the author's again. */
+  expand: ExpandRequest
   /** The list's `errors` array: a new one is a new answer from the server. */
   answer: StepError[]
   guide: StepGuide
@@ -433,12 +441,20 @@ const StepCard = memo(function StepCard({
 }) {
   const number = String(index + 1)
   const card = useRef<HTMLLIElement>(null)
-  // A card the person closed opens again when the step becomes the current one, or when a new
-  // answer from the server has messages for it, so what the outline or "Go to the first" points
-  // at is never hidden. The same answer on a later render does not reopen it.
-  const [open, setOpen] = useState(true)
+  // The card opens on mount for a step the author added, the current one, or one with something to
+  // fix, so no problem is hidden; the others start collapsed. A card the person closed opens again
+  // when the step becomes the current one, or when a new answer from the server has messages for
+  // it, so what the outline or "Go to the first" points at is never hidden. The same answer on a
+  // later render does not reopen it.
+  const flagged = mine.length > 0 || hasGuideNotes(guide)
+  const [open, setOpen] = useState(startOpen || current || flagged)
   const [wasCurrent, setWasCurrent] = useState(current)
   const [seenAnswer, setSeenAnswer] = useState(answer)
+  const [seenPress, setSeenPress] = useState(expand.press)
+  if (seenPress !== expand.press) {
+    setSeenPress(expand.press)
+    setOpen(expand.open)
+  }
   if (wasCurrent !== current) {
     setWasCurrent(current)
     if (current) {
@@ -464,13 +480,20 @@ const StepCard = memo(function StepCard({
     step.kind === 'stored' ? (typeof record.kind === 'string' ? record.kind : 'unknown') : step.kind
   const title = step.kind === 'stored' ? record.title : step.title
   const bound = step.kind === 'stored' ? '' : boundName(step, context)
+  // A stored step keeps its plain header; the others say what they hold, so a closed card can be scanned.
+  const summary = stepSummary(step)
+  // Whatever the server or the client guides flag, shown whether the card is open or not.
+  const needsFix = step.kind !== 'stored' && flagged
   const header = (
     <>
       <StepKindTile kind={kind} />
       <span className="min-w-0 flex-1">
         <span className="block list-row-title">{typeof title === 'string' ? title : ''}</span>
-        <span className="block list-row-key">{stepKey(step) || '(no key)'}</span>
+        <span className="block truncate list-row-key">
+          {`${stepKey(step) || '(no key)'}${summary === '' ? '' : ` · ${summary}`}`}
+        </span>
       </span>
+      {needsFix && <Badge variant="destructive">Needs a fix</Badge>}
       <Badge variant="secondary">{kind}</Badge>
       {bound !== '' && <Badge variant="outline">{bound}</Badge>}
     </>
@@ -596,6 +619,7 @@ export function StepListEditor({
   const [answered, setAnswered] = useState(errors)
   const [origin, setOrigin] = useState<(number | null)[]>(() => steps.map((_, at) => at))
   const [stale, setStale] = useState<number[]>([])
+  const [expand, setExpand] = useState<ExpandRequest>({ open: false, press: 0 })
   // Where each step's branches or options (by the step's origin) came from, once any moved or went.
   const [itemOrigin, setItemOrigin] = useState<Record<number, (number | null)[]>>({})
   if (answered !== errors) {
@@ -717,6 +741,23 @@ export function StepListEditor({
         <p className="text-muted-foreground">No steps yet.</p>
       ) : (
         <NewStepContext.Provider value={newStepFor}>
+          {steps.length > 1 && (
+            <div className="flex gap-2">
+              {([true, false] as const).map((open) => (
+                <Button
+                  key={String(open)}
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setExpand(({ press }) => ({ open, press: press + 1 }))
+                  }}
+                >
+                  {open ? 'Expand all steps' : 'Collapse all steps'}
+                </Button>
+              ))}
+            </div>
+          )}
           <ol className="space-y-3">
             {steps.map((step, index) => (
               // The list is edited in place and has no ids: the position is the identity.
@@ -726,6 +767,9 @@ export function StepListEditor({
                 index={index}
                 total={steps.length}
                 current={current === index}
+                // A step added since the list mounted (no position before) starts open.
+                startOpen={origin.length === steps.length && origin[index] === null}
+                expand={expand}
                 answer={errors}
                 guide={guides[index] ?? { bands: {}, scenes: {}, nexts: {}, items: {} }}
                 mine={mine[index] ?? noErrors}

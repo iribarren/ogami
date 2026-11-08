@@ -1,7 +1,7 @@
 # Feature: studio-step-card-height
 
 - **Locator:** `odd/tasks/studio-step-card-height.md` · Engram topic `odd/studio-step-card-height/tasks`
-- **Issue:** [#356](https://github.com/iribarren/ogami/issues/356) · **Branch:** `feat/studio-step-card-height-1-cards` · **Status:** in progress
+- **Issue:** [#356](https://github.com/iribarren/ogami/issues/356) · **Branch:** `feat/studio-step-card-height-1-cards` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Origin:** `preset-vaesen` finding S15, carried by `vaesen-ux-followups` (#300, PR #355); roadmap B7p
@@ -47,10 +47,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Task | Route | Done | Commit |
 |---|---|---|---|---|
-| T1 | `stepSummary` and the summary line plus "Needs a fix" badge in the step card header | delegated: slice runs under one writer (2+ non-trivial files) | [x] | |
-| T2 | Cards start collapsed (added steps open, problems open), list-level Expand all steps / Collapse all steps on a shared `ExpandRequest` | delegated: slice runs under one writer | [x] | |
-| T3 | Existing Vitest and e2e specs open the cards they edit; stories updated | delegated: slice runs under one writer | [x] | |
-| T4 | Review findings: e2e opens a card only while closed, `stepSummary` counts lists only, the test helper moves to `src/test/` | inline: mechanical, ~40 lines | [x] | |
+| T1 | `stepSummary` and the summary line plus "Needs a fix" badge in the step card header | delegated: slice runs under one writer (2+ non-trivial files) | [x] | `db8c73ad` |
+| T2 | Cards start collapsed (added steps open, problems open), list-level Expand all steps / Collapse all steps on a shared `ExpandRequest` | delegated: slice runs under one writer | [x] | `f7c4b00b` |
+| T3 | Existing Vitest and e2e specs open the cards they edit; stories updated | delegated: slice runs under one writer | [x] | `ec9ee083` |
+| T4 | Review findings: e2e opens a card only while closed, `stepSummary` counts lists only, the test helper moves to `src/test/` | inline: mechanical, ~40 lines | [x] | `e6387111` |
 
 ## Applicable checks
 
@@ -64,12 +64,15 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-08: T2 done. RED: the 9 new open-state and Expand/Collapse tests failed before the change; GREEN: all 10 pass. Existing tests that edit mounted steps now fail until T3. `ExpandRequest` moved to `expandRequest.ts`; the list gives a card `startOpen` when its origin is null and `expand`.
 - 2026-11-08: T3 done. RED: the old tests failed on collapsed cards (about 30 in `src/studio`); GREEN: `src/studio` Vitest 2017 passed. Helper `openStepCards` (`steps/openCards.ts`, presses each closed card's disclosure) used by `renderOpen` in `StepListEditor.test.tsx`, the renders test and both page tests' `openEditor`. Stories: each play opens the cards first. e2e edited, not run: `studio-flow-editor.spec.ts`, `studio-shop-editor.spec.ts`.
 - 2026-11-08: T4 done. Finding 2's test was written before the guard and passed at once (an unreadable choice or check is already kept as a stored step); the guard keeps `stepSummary` safe if that changes. e2e uses `openStepCard` (`e2e/open-step-card.ts`), which presses the disclosure only while it reads closed; not run locally, CI runs it. `openStepCards` moved to `src/test/openStepCards.ts`.
+- 2026-11-08: Slice 1 reviewed (T1–T3 approved, T4 skipped by the user) and opened as PR #376. Feature done.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | Findings | PR |
 |---|---|---|---|---|
+| 1, T1–T3 | `review-ec924a705e8703f8` | Approved and acknowledged | 2 warnings, 1 suggestion: e2e pressed the disclosure unconditionally, `stepSummary` read `.length` of non-arrays, a test helper in `src/` beside app code. All fixed in T4 | [#376](https://github.com/iribarren/ogami/pull/376) |
+| 1, T4 | None | Skipped by the user: review fixes, 87 lines | None | [#376](https://github.com/iribarren/ogami/pull/376) |
 
 ## Next step
 
-Slice 1: T1–T3 under one writer, then native review and PR.
+None. Every review finding is fixed in T4.

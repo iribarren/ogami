@@ -111,6 +111,7 @@ describe('derivedOnForm', () => {
     loreField,
     derived('loreup', '{lore} + 1'),
     derived('hpmax', '{hp.max} + 1'),
+    derived('mixed', '{str} + {lore}'),
   ]
   const on = (method: 'roll' | 'points', drafts: Record<string, string>) =>
     derivedOnForm(creationPlan(sheet, budgets, method), sheet, drafts, [])
@@ -126,6 +127,11 @@ describe('derivedOnForm', () => {
 
   it('computes a derived value that reads only what the player sets, as typed', () => {
     expect(on('roll', { lore: '3' }).loreup).toEqual({ value: 4 })
+  })
+
+  it('keeps incomplete value while a field the player sets is still blank', () => {
+    expect(on('roll', { lore: '' }).mixed).toEqual({ reason: 'incomplete value' })
+    expect(on('roll', { lore: '2' }).mixed).toEqual({ reason: 'set at creation' })
   })
 
   it('keeps depends on for a derived value over one set at creation', () => {

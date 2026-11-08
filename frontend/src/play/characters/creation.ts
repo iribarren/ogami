@@ -112,7 +112,8 @@ function withoutSetAtCreation(plan: CreationPlan, drafts: Record<string, Draft>)
 
 /**
  * The derived values of a new Character's form. A formula that reads a field the server sets has no
- * value yet, so it says `set at creation` rather than a number made of the field's default. Derived
+ * value yet, so it says `set at creation` rather than a number made of the field's default, unless it
+ * also reads a field the player has left blank: that one stays `incomplete value`. Derived
  * values that read such a derived value keep the `depends on` reason; the others are live as typed.
  */
 export function derivedOnForm(
@@ -122,12 +123,30 @@ export function derivedOnForm(
   trackers: TrackerReading[],
 ): Record<string, DerivedResult> {
   const results = computeDerived(fields, withoutSetAtCreation(plan, drafts), trackers)
+  // With any value at all in the server's fields, a formula still missing one waits on the player.
+  const assumed = computeDerived(
+    fields,
+    {
+      ...drafts,
+      ...Object.fromEntries(
+        [...plan.setAtCreation.keys()].map((key) => [
+          key,
+          fields.find((field) => field.key === key)?.type === 'track'
+            ? { current: '0', max: '0' }
+            : '0',
+        ]),
+      ),
+    },
+    trackers,
+  )
+  const incomplete = (result: DerivedResult | undefined) =>
+    result !== undefined && 'reason' in result && result.reason === 'incomplete value'
   return Object.fromEntries(
     Object.entries(results).map(([key, result]) => {
       const formula = fields.find((field) => field.key === key)?.formula ?? ''
       const unset =
-        'reason' in result &&
-        result.reason === 'incomplete value' &&
+        incomplete(result) &&
+        !incomplete(assumed[key]) &&
         readKeys(formula).some((read) => plan.setAtCreation.has(read))
       return [key, unset ? { reason: 'set at creation' } : result]
     }),

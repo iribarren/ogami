@@ -65,7 +65,7 @@ async function card(step: FlowStep) {
 }
 
 describe('a choice option that changes a sheet', () => {
-  it('asks for the Character only once that option is picked, preselected when there is one', async () => {
+  it('asks for the Character only once that option is picked, and not with only one', async () => {
     const user = userEvent.setup()
     const sent = renderStep(sheetChoiceStep)
 
@@ -73,7 +73,7 @@ describe('a choice option that changes a sheet', () => {
     expect(step.queryByLabelText('Character')).not.toBeInTheDocument()
     await user.click(step.getByRole('button', { name: 'Learned' }))
 
-    expect(step.getByLabelText('Character')).toHaveValue(viCharacter.id)
+    expect(step.queryByLabelText('Character')).not.toBeInTheDocument()
     await user.click(step.getByRole('button', { name: 'Confirm' }))
 
     await waitFor(() => {
@@ -141,12 +141,12 @@ describe('a choice option that changes a sheet', () => {
 })
 
 describe('a prompt that changes a sheet', () => {
-  it('asks for the Character, preselected when there is one, and sends it with the answer', async () => {
+  it('names the only Character without asking, and sends it with the answer', async () => {
     const user = userEvent.setup()
     const sent = renderStep(sheetPromptStep)
 
     const step = await card(sheetPromptStep)
-    expect(step.getByLabelText('Character')).toHaveValue(viCharacter.id)
+    expect(step.queryByLabelText('Character')).not.toBeInTheDocument()
     await user.type(step.getByLabelText('Your answer'), 'A scar')
     await user.click(step.getByRole('button', { name: 'Record' }))
 
@@ -166,8 +166,9 @@ describe('a prompt that changes a sheet', () => {
     await gainCharacters([viCharacter])
 
     await waitFor(() => {
-      expect(step.getByLabelText('Character')).toHaveValue(viCharacter.id)
+      expect(step.getByRole('button', { name: 'Record' })).toBeEnabled()
     })
+    expect(step.queryByLabelText('Character')).not.toBeInTheDocument()
     await user.click(step.getByRole('button', { name: 'Record' }))
     await waitFor(() => {
       expect(sent).toEqual([{ stepKey: 'cost', text: 'A scar', characterId: viCharacter.id }])

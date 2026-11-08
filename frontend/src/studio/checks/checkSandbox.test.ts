@@ -4,6 +4,7 @@ import type { Sample } from '../sheet/useSheetSamples'
 import type { BandDraft, DifficultyDraft } from './checkDraft'
 import {
   burnScoreOf,
+  diceBeatenBy,
   canBurnTestRoll,
   resolveSandbox,
   sampleDefaults,
@@ -481,6 +482,14 @@ describe('the burn offer of a test roll', () => {
   it('is not offered when the momentum beats no more dice than the score', () => {
     expect(canBurnTestRoll(roll({ score: 9 }))).toBe(false)
     expect(canBurnTestRoll(roll({ momentum: 4 }))).toBe(false)
+  })
+
+  it('counts the challenge dice a score beats, a tie going to the die', () => {
+    const dice = [{ face: 5 }, { face: 8 }, { face: 8 }]
+
+    expect(diceBeatenBy(dice, 5)).toBe(0)
+    expect(diceBeatenBy(dice, 6)).toBe(1)
+    expect(diceBeatenBy(dice, 9)).toBe(3)
   })
 
   it('reads the momentum as the check caps it', () => {

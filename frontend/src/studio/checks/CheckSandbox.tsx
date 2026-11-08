@@ -15,6 +15,7 @@ import { useRollHistory } from '../oracles/useRollHistory'
 import type { BandDraft, DifficultyDraft, PoolDraft } from './checkDraft'
 import {
   burnScoreOf,
+  diceBeatenBy,
   canBurnTestRoll,
   resolveSandbox,
   type Bound,
@@ -522,6 +523,12 @@ function RollResult({
             The score becomes {burnScoreOf(challenge.momentum ?? 0, challenge.scoreMax)}, from{' '}
             {challenge.score}.
           </span>
+          <span className="text-muted-foreground">
+            It would beat{' '}
+            {diceBeatenBy(challenge.dice, burnScoreOf(challenge.momentum ?? 0, challenge.scoreMax))}{' '}
+            of {challenge.dice.length} challenge dice, against{' '}
+            {diceBeatenBy(challenge.dice, challenge.score)} with the roll.
+          </span>
         </div>
       )}
       <ol aria-label="Bands" className="space-y-1">
@@ -596,7 +603,13 @@ function ChallengeFacts({
 
   return (
     <>
-      {actionDie !== null && <span>Action die {actionDie}</span>}
+      {actionDie !== null &&
+        (challenge.cancelled ? (
+          // A cancelled action die counts 0: it stays readable, struck through.
+          <del>Action die {actionDie}</del>
+        ) : (
+          <span>Action die {actionDie}</span>
+        ))}
       {challenge.cancelled && (
         <span>
           Cancelled: momentum {challenge.momentum ?? 0} cancelled the action die, which counts 0

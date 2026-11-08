@@ -69,7 +69,8 @@ final class CampaignFlowChoiceSheetEffectsApiTest extends WebTestCase
 
         $step = self::at($this->campaign(), 'flowRun', 'step');
 
-        self::assertSame([['yes', true], ['no', false], ['maybe', false]], array_map(static fn (mixed $option): array => [self::at($option, 'key'), self::at($option, 'changesSheet')], $this->list($step, 'options')));
+        // "no" is the step's skip, which the Skip button already does: it is not offered as an option too.
+        self::assertSame([['yes', true], ['maybe', false]], array_map(static fn (mixed $option): array => [self::at($option, 'key'), self::at($option, 'changesSheet')], $this->list($step, 'options')));
         self::assertFalse(self::at($step, 'changesSheet'));
     }
 

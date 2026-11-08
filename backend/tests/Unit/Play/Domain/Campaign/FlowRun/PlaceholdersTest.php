@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Play\Domain\Campaign\FlowRun;
 
 use App\Play\Domain\Campaign\FlowRun\Placeholders;
+use App\Play\Domain\GameSystem\Tracker;
+use App\Play\Domain\GameSystem\TrackerLevel;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -61,6 +63,17 @@ final class PlaceholdersTest extends TestCase
         $placeholders = new Placeholders([], [], ['city' => 'Prague', 'prince' => '']);
 
         self::assertSame('The city of Prague, ruled by .', $placeholders->render('The city of {fact:city}, ruled by {fact:prince}.'));
+    }
+
+    #[Test]
+    public function aTrackerWithLevelsReadsAsItsLevelLabelAndOtherwiseAsItsNumber(): void
+    {
+        $rank = Tracker::counter('rank', 'Rank', null, 0, 4, 0, [new TrackerLevel(0, 'Free'), new TrackerLevel(2, 'Dangerous'), new TrackerLevel(null, 'Epic')]);
+        $alarm = Tracker::counter('alarm', 'Alarm', null, 0, 9, 0);
+        $placeholders = new Placeholders(['rank' => 2, 'alarm' => 3, 'free' => 0], [], [], trackers: [$rank, $alarm]);
+
+        self::assertSame('Dangerous at 3', $placeholders->render('{tracker:rank} at {tracker:alarm}'));
+        self::assertSame('0', new Placeholders(['free' => 0], [], [], trackers: [$rank])->render('{tracker:free}'));
     }
 
     /**

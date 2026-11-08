@@ -7,6 +7,7 @@ import { IconTile } from '@/shared/ui/icon-tile'
 
 import { isBeatenBy } from '../checks/pushing'
 import { DiceGroups } from '../dice/DiceGroups'
+import { levelLabelAt, type TrackerLevels } from '../trackers/useTrackers'
 import { specialResultLabels } from './specialResults'
 import { visibleChanges } from './sheetChanges'
 import { DieShape } from '@/shared/ui/die-shape'
@@ -100,6 +101,7 @@ export function JournalEntryView({
   entry,
   tags = [],
   sheet = [],
+  trackers = [],
   currencyUnit = null,
   children,
 }: {
@@ -108,6 +110,8 @@ export function JournalEntryView({
   tags?: TagLabels
   /** The release's sheet fields, so a sheet change shows labels instead of keys. */
   sheet?: FieldLabels
+  /** The release's Trackers, so a Tracker note shows the level labels as the panel does. */
+  trackers?: TrackerLevels
   /**
    * The unit of the release's currency ("eb"), which a shop entry shows after the money. The entry
    * does not carry it (it records amounts); the pinned release does. None: the bare amounts.
@@ -127,6 +131,7 @@ export function JournalEntryView({
           content={entry.content}
           tags={tags}
           sheet={sheet}
+          trackers={trackers}
           currencyUnit={currencyUnit}
         />
         {children}
@@ -142,11 +147,13 @@ function EntryContent({
   content,
   tags,
   sheet,
+  trackers,
   currencyUnit,
 }: {
   content: JournalEntry['content']
   tags: TagLabels
   sheet: FieldLabels
+  trackers: TrackerLevels
   currencyUnit: string | null
 }) {
   switch (content.kind) {
@@ -169,7 +176,7 @@ function EntryContent({
     case 'shop':
       return <ShopView content={content} currencyUnit={currencyUnit} />
     case 'flowOutcome':
-      return <FlowOutcomeView content={content} />
+      return <FlowOutcomeView content={content} trackers={trackers} />
   }
 }
 
@@ -248,24 +255,37 @@ function ChangeLines({
 }
 
 /** What the Flow decided on its own, one muted line per note, in the order it decided. */
-export function FlowOutcomeView({ content }: { content: FlowOutcomeContent }) {
+export function FlowOutcomeView({
+  content,
+  trackers = [],
+}: {
+  content: FlowOutcomeContent
+  /** The release's Trackers, whose level labels follow the values of a Tracker note. */
+  trackers?: TrackerLevels
+}) {
   return (
     <ul className="space-y-0.5 text-sm text-muted-foreground">
       {content.notes.map((note, index) => (
         <li key={index} className="tabular-nums">
-          {flowNoteLine(note)}
+          {flowNoteLine(note, trackers)}
         </li>
       ))}
     </ul>
   )
 }
 
-function flowNoteLine(note: FlowOutcomeContent['notes'][number]) {
+/** "2 Dangerous" for a Tracker with levels, as the panel shows it, else the bare number. */
+function trackerValueWithLevel(trackers: TrackerLevels, key: string, value: number) {
+  const label = levelLabelAt(trackers, key, value)
+  return label === null ? String(value) : `${String(value)} ${label}`
+}
+
+function flowNoteLine(note: FlowOutcomeContent['notes'][number], trackers: TrackerLevels) {
   switch (note.kind) {
     case 'band':
       return note.label
     case 'tracker':
-      return `${note.name} ${String(note.from)} → ${String(note.to)}`
+      return `${note.name} ${trackerValueWithLevel(trackers, note.key, note.from)} → ${trackerValueWithLevel(trackers, note.key, note.to)}`
     case 'switch':
       return `Scene Type: ${note.from} → ${note.to}`
     case 'nextScene':
@@ -328,7 +348,13 @@ function CheckView({ content, sheet }: { content: CheckContent; sheet: FieldLabe
         ) : (
           hasActionDie && (
             <Detail term="Dice">
-              <span className="font-mono">{content.expression}</span> = {content.diceTotal}
+              {/* A cancelled action die counts 0: its dice stay readable, struck through. */}
+              {challenge?.cancelled === true ? (
+                <del className="font-mono">{content.expression}</del>
+              ) : (
+                <span className="font-mono">{content.expression}</span>
+              )}{' '}
+              = {content.diceTotal}
             </Detail>
           )
         )}

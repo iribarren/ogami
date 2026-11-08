@@ -32,6 +32,7 @@ export function Journal({
   sceneTypes,
   tags,
   sheet,
+  trackers,
   npcs,
   characters,
   oracleTables,
@@ -46,6 +47,8 @@ export function Journal({
   tags: Campaign['tags']
   /** The release's sheet fields, which name the fields of a sheet change entry. */
   sheet: Campaign['pinnedRelease']['sheet']
+  /** The release's Trackers, whose level labels a Tracker note shows. */
+  trackers: Campaign['trackers']
   /** The campaign's NPCs, which the cast of the current scene draws from. */
   npcs: Campaign['npcs']
   /** The campaign's Characters, which the cast of the current scene also draws from. */
@@ -130,6 +133,7 @@ export function Journal({
                           entry={entry}
                           tags={tags}
                           sheet={sheet}
+                          trackers={trackers}
                           currencyUnit={currencyUnit}
                         >
                           <NoteAttachments

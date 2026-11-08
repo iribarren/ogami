@@ -1,5 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 
+import { edgeTracker, heatTracker } from '../campaigns/fixtures'
+
 import {
   burnableRollEntry,
   burnedEntry,
@@ -416,6 +418,30 @@ describe('JournalEntryView check entries', () => {
     expect(within(entry).getByRole('list')).not.toHaveClass('uppercase')
   })
 
+  it('names the level of a Tracker value as the panel does, and only a number without levels', () => {
+    const entry = {
+      ...flowOutcomeEntry,
+      content: {
+        kind: 'flowOutcome' as const,
+        notes: [
+          { kind: 'tracker' as const, key: 'heat', name: 'Heat', from: 0, to: 3 },
+          { kind: 'tracker' as const, key: 'edge', name: 'Edge', from: 1, to: 2 },
+          { kind: 'tracker' as const, key: 'gone', name: 'Gone', from: 1, to: 2 },
+        ],
+      },
+    }
+    render(<JournalEntryView entry={entry} trackers={[heatTracker, edgeTracker]} />)
+
+    const lines = within(screen.getByRole('article', { name: 'Flow outcome' })).getAllByRole(
+      'listitem',
+    )
+    expect(lines.map((line) => line.textContent)).toEqual([
+      'Heat 0 Warm → 3 Hot',
+      'Edge 1 → 2',
+      'Gone 1 → 2',
+    ])
+  })
+
   it('shows a penalty with its minus sign', () => {
     const { content } = skillCheckEntry
     if (content.kind !== 'check') {
@@ -582,6 +608,19 @@ describe('JournalEntryView icon tile', () => {
       )
       expect(screen.getByText('Score').nextElementSibling).toHaveTextContent('2')
       expect(screen.getByText('Miss')).toBeInTheDocument()
+    })
+
+    it('strikes the dice of a cancelled action die through, and only then', () => {
+      const { unmount } = render(<JournalEntryView entry={cancelledDieEntry} />)
+
+      expect(
+        within(screen.getByText('Dice').nextElementSibling as HTMLElement).getByText('1d6').tagName,
+      ).toBe('DEL')
+      unmount()
+
+      render(<JournalEntryView entry={edgeRollEntry} />)
+
+      expect(screen.getByText('Dice').nextElementSibling?.querySelector('del')).toBeNull()
     })
 
     it('shows a match as a special result', () => {

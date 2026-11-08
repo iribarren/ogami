@@ -49,7 +49,13 @@ function currentSceneType(campaign: Campaign, flowRun: FlowRun) {
  * and not only in the journal. It shows with no current step too, when the outcome ended the
  * phase or the Flow. It sits below the step, so it appearing or going never moves the step's actions.
  */
-function LatestFlowOutcome({ campaignId }: { campaignId: string }) {
+function LatestFlowOutcome({
+  campaignId,
+  trackers,
+}: {
+  campaignId: string
+  trackers: Campaign['trackers']
+}) {
   const journal = useJournal(campaignId)
   const latest = journal.data?.at(-1)
   if (latest?.content.kind !== 'flowOutcome') {
@@ -58,7 +64,7 @@ function LatestFlowOutcome({ campaignId }: { campaignId: string }) {
   return (
     <section aria-label="Flow outcome" className="space-y-1">
       <p className="type-label">Flow outcome</p>
-      <FlowOutcomeView content={latest.content} />
+      <FlowOutcomeView content={latest.content} trackers={trackers} />
     </section>
   )
 }
@@ -132,7 +138,7 @@ export function GuidedBody({ campaign, flowRun, command }: PartProps) {
         />
       )}
       {/* Below the cards: above them it comes and goes with each action and moves their buttons. */}
-      <LatestFlowOutcome campaignId={campaign.id} />
+      <LatestFlowOutcome campaignId={campaign.id} trackers={campaign.trackers} />
       {command.error && answersTheCard(command.variables) && (
         <p role="alert" className="text-sm text-destructive">
           {command.error.message}

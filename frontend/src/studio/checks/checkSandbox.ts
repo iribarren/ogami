@@ -408,7 +408,7 @@ export function burnScoreOf(momentum: number, scoreMax: number | null): number {
 }
 
 /** How many challenge dice a score beats: the die must show strictly less, as a tie goes to the die. */
-function diceBeatenBy(dice: readonly { face: number }[], score: number): number {
+export function diceBeatenBy(dice: readonly { face: number }[], score: number): number {
   return dice.filter(({ face }) => face < score).length
 }
 

@@ -141,6 +141,17 @@ final class FlowRunControlFlowTest extends FlowRunTestCase
     }
 
     #[Test]
+    public function anEffectTextRendersATrackerWithLevelsAsItsLevelLabel(): void
+    {
+        // A proof test: it passed at once, the rendering was written with the placeholder change.
+        $campaign = $this->inScene('ranked');
+
+        $campaign->completeFlowStep('ranked', self::prompt('Done'), $this->release, self::at());
+
+        self::assertSame('A Dangerous foe', $campaign->currentScene()?->title());
+    }
+
+    #[Test]
     public function aSkippedChoiceFollowsItsSkipOptionWithOnlyThatOptionsEffects(): void
     {
         $campaign = $this->inScene('crossroads');
@@ -388,7 +399,7 @@ final class FlowRunControlFlowTest extends FlowRunTestCase
         $tracker = static fn (string $key, string $op, int|array $value): array => ['kind' => 'tracker', 'tracker' => $key, 'op' => $op, 'value' => $value];
         $title = static fn (string $title): array => ['kind' => 'sceneTitle', 'title' => $title];
         $switch = static fn (string $sceneType): array => ['kind' => 'switchSceneType', 'sceneType' => $sceneType];
-        $sceneTypes = ['ask', 'search', 'gamble', 'crossroads', 'watch', 'heist', 'escape', 'again', 'titles'];
+        $sceneTypes = ['ask', 'search', 'gamble', 'crossroads', 'watch', 'heist', 'escape', 'again', 'titles', 'ranked'];
 
         return [
             'schemaVersion' => 2,
@@ -410,6 +421,7 @@ final class FlowRunControlFlowTest extends FlowRunTestCase
                 ['key' => 'heat', 'name' => 'Heat', 'kind' => 'counter', 'min' => 0, 'max' => 5, 'initial' => 0],
                 ['key' => 'limit', 'name' => 'Limit', 'kind' => 'counter', 'min' => 0, 'max' => 9, 'initial' => 4],
                 ['key' => 'alarm', 'name' => 'Alarm', 'kind' => 'clock', 'segments' => 4],
+                ['key' => 'rank', 'name' => 'Rank', 'kind' => 'counter', 'min' => 0, 'max' => 3, 'initial' => 2, 'levels' => [['upTo' => 1, 'label' => 'Easy'], ['label' => 'Dangerous']]],
             ],
             'factSlots' => [],
             'sceneTypes' => [
@@ -444,6 +456,7 @@ final class FlowRunControlFlowTest extends FlowRunTestCase
                 $sceneType('heist', [$prompt('plan', 'What is the plan?', ['next' => 'later', 'effects' => [$switch('escape'), $tracker('heat', 'add', 1)]]), $prompt('skipped', 'Skipped'), $prompt('later', 'Later')]),
                 $sceneType('escape', [$prompt('run', 'Run!', ['effects' => [$switch('heist'), $title('Run')]])]),
                 $sceneType('again', [$prompt('again', 'Again?', ['effects' => [$switch('again')]])]),
+                $sceneType('ranked', [$prompt('ranked', 'Rank it', ['effects' => [$title('A {tracker:rank} foe')]])]),
                 $sceneType('titles', [
                     $prompt('name', 'Name it', ['effects' => [$title('{answer}{answer}')]]),
                     ['key' => 'blank', 'kind' => 'table', 'title' => 'Roll', 'table' => 'loot', 'effects' => [$title('  {answer} ')]],
@@ -452,7 +465,7 @@ final class FlowRunControlFlowTest extends FlowRunTestCase
                     $prompt('wrap', 'Wrap up', ['effects' => [$tracker('heat', 'add', 2), $title('Wrapped at {tracker:heat}')]]),
                 ]],
             ],
-            'flows' => [['key' => 'control', 'name' => 'Control', 'defaultView' => 'journal', 'oracles' => ['loot', 'traps', 'fate'], 'trackers' => ['heat', 'limit', 'alarm'], 'phases' => [
+            'flows' => [['key' => 'control', 'name' => 'Control', 'defaultView' => 'journal', 'oracles' => ['loot', 'traps', 'fate'], 'trackers' => ['heat', 'limit', 'alarm', 'rank'], 'phases' => [
                 ['key' => 'roam', 'name' => 'Roaming', 'mode' => 'loop', 'selection' => ['rule' => 'player', 'sceneTypes' => $sceneTypes]],
             ]], ['key' => 'full', 'name' => 'Full', 'defaultView' => 'journal', 'oracles' => [], 'trackers' => ['heat'], 'phases' => [
                 ['key' => 'wrapping', 'name' => 'Wrapping', 'mode' => 'loop', 'selection' => ['rule' => 'sequence', 'sceneTypes' => ['wrap']]],

@@ -31,6 +31,7 @@ function renderJournal(
       sceneTypes={sceneTypes}
       tags={lostMineCampaign.tags}
       sheet={lostMineCampaign.pinnedRelease.sheet}
+      trackers={lostMineCampaign.trackers}
       npcs={lostMineCampaign.npcs}
       characters={lostMineCampaign.characters}
       oracleTables={lostMineCampaign.oracleTables}

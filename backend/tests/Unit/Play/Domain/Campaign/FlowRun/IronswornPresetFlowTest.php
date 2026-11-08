@@ -678,9 +678,9 @@ final class IronswornPresetFlowTest extends FlowRunTestCase
 
         $prompt = $campaign->flowRunView($this->release)?->step->prompt ?? self::fail('No prompt.');
 
-        // A tracker renders as its number, so the prompt names the rank to look for, not a level label.
-        self::assertStringStartsWith("Vow 1:  (rank 0, 0 of 40 ticks)\nVow 2:  (rank 0, 0 of 40 ticks)", $prompt);
-        self::assertStringEndsWith('Pick a slot with rank 0, which holds no vow.', $prompt);
+        // A tracker with levels renders as its level label, so the prompt names the Free slots by their label.
+        self::assertStringStartsWith("Vow 1:  (rank Free, 0 of 40 ticks)\nVow 2:  (rank Free, 0 of 40 ticks)", $prompt);
+        self::assertStringEndsWith('Pick a Free slot, which holds no vow.', $prompt);
     }
 
     #[Test]

@@ -16,6 +16,7 @@ import type { SheetFieldView, SheetTemplateView } from '@/shared/sheet/types'
 
 import {
   creationNotes,
+  derivedOnForm,
   creationPlan,
   outOfRange,
   pointsSpent,
@@ -198,7 +199,11 @@ export function CharacterForm({
         <SheetFields
           template={shown}
           drafts={drafts}
-          derived={computeDerived(sheet.fields, drafts, trackers)}
+          derived={
+            plan === null
+              ? computeDerived(sheet.fields, drafts, trackers)
+              : derivedOnForm(plan, sheet.fields, drafts, trackers)
+          }
           notes={plan === null ? {} : creationNotes(plan, sheet.fields, drafts, trackers)}
           onChange={(key, draft) => {
             setDrafts({ ...drafts, [key]: draft })

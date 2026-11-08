@@ -62,6 +62,8 @@ test('a game manager adds a shop step that offers a gear entry and a category wi
   const reloaded = page
     .getByRole('region', { name: 'Play', exact: true })
     .getByRole('group', { name: 'Step 2' })
+  // Step cards start collapsed after a reload: open the shop step.
+  await reloaded.getByRole('button').first().click()
   await expect(reloaded.getByLabel('Title', { exact: true })).toHaveValue('The back room')
   await expect(reloaded.getByRole('checkbox', { name: 'Ration' })).toBeChecked()
   await expect(reloaded.getByRole('checkbox', { name: 'Medical' })).toBeChecked()

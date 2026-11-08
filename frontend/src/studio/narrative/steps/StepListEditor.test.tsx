@@ -1,6 +1,6 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, type RenderResult } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 
 import {
   stepList,
@@ -13,6 +13,7 @@ import {
   stepPickers,
   stepPickersEconomy,
 } from '../../fixtures'
+import { openStepCards } from './openCards'
 import { StepListEditor } from './StepListEditor'
 import { DISJOINT_DIFFICULTY, stepKinds, stepsToDrafts, stepsToItems } from './stepDraft'
 import type { StepContext } from './stepContext'
@@ -75,6 +76,13 @@ function Saver({ stored }: { stored: unknown[] }) {
   )
 }
 
+/** Renders the editor with every card open, as after an author pressed each disclosure. */
+function renderOpen(ui: ReactElement): RenderResult {
+  const view = render(ui)
+  openStepCards()
+  return view
+}
+
 // A label query, not a role query: role names cost a jsdom getComputedStyle per candidate.
 const card = (number: number) => within(screen.getByLabelText(`Step ${String(number)}`))
 
@@ -106,7 +114,7 @@ describe('the step items', () => {
     badges(number).find((item) => item.textContent === text)
 
   it('names the table, oracle or check a step is bound to, and nothing for the others', () => {
-    render(<Harness stored={[...stepListBranching, ...stepListPickCheck]} />)
+    renderOpen(<Harness stored={[...stepListBranching, ...stepListPickCheck]} />)
 
     expect(badge(1, 'oracle')).toBeDefined()
     expect(badge(1, 'Fate')).toBeDefined()
@@ -119,7 +127,7 @@ describe('the step items', () => {
 
   it('shows the key when a bound name is gone, and nothing while none is picked', async () => {
     const user = userEvent.setup()
-    render(<Harness stored={[{ ...stepListBranching[1], table: 'vanished' }]} />)
+    renderOpen(<Harness stored={[{ ...stepListBranching[1], table: 'vanished' }]} />)
 
     expect(badge(1, 'vanished')).toBeDefined()
     await addStep(user, 'table')
@@ -164,7 +172,7 @@ describe('the step items', () => {
         </>
       )
     }
-    render(<Answers />)
+    renderOpen(<Answers />)
     await user.click(card(1).getByRole('button', { name: /^Set the scene/ }))
     expect(card(1).queryByLabelText('Title')).not.toBeInTheDocument()
 
@@ -184,7 +192,7 @@ describe('the step items', () => {
 
   it('shows the title with the key and the kind, behind a disclosure that closes the fields', async () => {
     const user = userEvent.setup()
-    render(<Harness stored={[stepList[0]]} />)
+    renderOpen(<Harness stored={[stepList[0]]} />)
 
     const toggle = card(1).getByRole('button', { name: /^Set the scene/ })
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
@@ -198,7 +206,7 @@ describe('the step items', () => {
 
   it('offers every kind in the Add step menu, each with its tile', async () => {
     const user = userEvent.setup()
-    render(<Harness stored={[]} />)
+    renderOpen(<Harness stored={[]} />)
 
     await user.click(screen.getByRole('button', { name: 'Add step' }))
 
@@ -213,7 +221,7 @@ describe('the step items', () => {
 
   it('says in the Add step menu, before a choice is added, that a suggested one needs a Skip option (S21)', async () => {
     const user = userEvent.setup()
-    render(<Harness stored={[]} />)
+    renderOpen(<Harness stored={[]} />)
 
     await user.click(screen.getByRole('button', { name: 'Add step' }))
 
@@ -233,7 +241,7 @@ describe('the step items', () => {
       tracker: 'heat',
       bands: [{ upTo: 3, label: 'Low' }, { label: 'High' }],
     }
-    render(<Harness stored={[condition]} />)
+    renderOpen(<Harness stored={[condition]} />)
     const band = within(card(1).getByRole('group', { name: 'Band 1' }))
 
     expect(band.getByText('3 of 100 characters')).toBeInTheDocument()
@@ -245,7 +253,7 @@ describe('the step items', () => {
 
   it('adds a condition step on the first tracker of the draft, with a band to fill in (P17)', async () => {
     const user = userEvent.setup()
-    render(<Harness stored={[]} />)
+    renderOpen(<Harness stored={[]} />)
 
     await addStep(user, 'condition')
 
@@ -258,7 +266,7 @@ describe('the step items', () => {
 
   it('moves a step with icon buttons that keep their names and show them as tooltips', async () => {
     const user = userEvent.setup()
-    render(<Harness stored={[stepList[0], stepList[3]]} />)
+    renderOpen(<Harness stored={[stepList[0], stepList[3]]} />)
 
     const down = screen.getByRole('button', { name: 'Move step 1 down' })
     expect(down.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
@@ -269,7 +277,7 @@ describe('the step items', () => {
 
 describe('the step list editor', () => {
   it('gives an untouched list back exactly as it was stored', () => {
-    render(<Harness stored={stepList} />)
+    renderOpen(<Harness stored={stepList} />)
 
     expect(latest.written).toEqual({ steps: stepList })
     expect(screen.getAllByRole('group', { name: /^Step \d$/ })).toHaveLength(4)
@@ -278,7 +286,7 @@ describe('the step list editor', () => {
   it('scrolls the current step into view, and only that one', () => {
     const scroll = vi.spyOn(Element.prototype, 'scrollIntoView')
     const steps = stepsToDrafts(stepList)
-    const { rerender } = render(
+    const { rerender } = renderOpen(
       <StepListEditor steps={steps} context={stepPickers} onChange={() => undefined} />,
     )
     expect(scroll).not.toHaveBeenCalled()
@@ -294,7 +302,7 @@ describe('the step list editor', () => {
 
   it('adds a step of the chosen kind, moves it and deletes it', async () => {
     const user = userEvent.setup()
-    render(<Harness stored={[stepList[3]]} />)
+    renderOpen(<Harness stored={[stepList[3]]} />)
 
     await addStep(user, 'roll')
     expect(card(2).getByLabelText('Key')).toHaveValue('roll-1')
@@ -309,7 +317,7 @@ describe('the step list editor', () => {
 
   it('flags a next that goes backward after a move, before saving, and offers later steps only', async () => {
     const user = userEvent.setup()
-    render(
+    renderOpen(
       <Harness
         stored={[
           { key: 'a', kind: 'character', title: 'A', next: 'b' },
@@ -342,7 +350,7 @@ describe('the step list editor', () => {
 
     it('appends a step of the kind asked and points the step at it, in one edit', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={[{ key: 'a', kind: 'character', title: 'A' }]} />)
+      renderOpen(<Harness stored={[{ key: 'a', kind: 'character', title: 'A' }]} />)
 
       await chooseOption(user, 'Next', NEW, card(1))
       expect(kinds()).toEqual([...stepKinds])
@@ -356,7 +364,7 @@ describe('the step list editor', () => {
 
     it('gives the new step a key no step has, and puts it last', async () => {
       const user = userEvent.setup()
-      render(
+      renderOpen(
         <Harness
           stored={[
             { key: 'a', kind: 'character', title: 'A' },
@@ -376,7 +384,7 @@ describe('the step list editor', () => {
 
     it('leaves Next as it was when the kind menu is cancelled', async () => {
       const user = userEvent.setup()
-      render(
+      renderOpen(
         <Harness
           stored={[
             { key: 'a', kind: 'character', title: 'A', next: 'b' },
@@ -397,7 +405,7 @@ describe('the step list editor', () => {
 
     it('creates the target of a choice option', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={[stepListBranching[2]]} />)
+      renderOpen(<Harness stored={[stepListBranching[2]]} />)
 
       await chooseOption(
         user,
@@ -418,7 +426,7 @@ describe('the step list editor', () => {
 
     it('creates the target of a check band, and keeps the band outcome it had', async () => {
       const user = userEvent.setup()
-      render(
+      renderOpen(
         <Harness
           stored={[
             {
@@ -448,7 +456,7 @@ describe('the step list editor', () => {
 
     it('creates the target of a roll band', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={[stepList[1]]} />)
+      renderOpen(<Harness stored={[stepList[1]]} />)
 
       await chooseOption(user, 'Next', NEW, within(card(1).getByRole('group', { name: 'Band 1' })))
       await pickKind(user, 'prompt')
@@ -460,7 +468,7 @@ describe('the step list editor', () => {
 
     it('does not offer a shop in a setup, as the Add step menu does not', async () => {
       const user = userEvent.setup()
-      render(<Harness setup stored={[{ key: 'a', kind: 'character', title: 'A' }]} />)
+      renderOpen(<Harness setup stored={[{ key: 'a', kind: 'character', title: 'A' }]} />)
 
       await chooseOption(user, 'Next', NEW, card(1))
 
@@ -469,7 +477,7 @@ describe('the step list editor', () => {
   })
 
   it('shows a backward next on a step and on a band in the fixture', () => {
-    render(<Harness stored={stepListBackward} />)
+    renderOpen(<Harness stored={stepListBackward} />)
 
     expect(card(2).getByText(/next only goes forward/)).toBeInTheDocument()
     expect(card(3).getByText(/next only goes forward/)).toBeInTheDocument()
@@ -477,7 +485,7 @@ describe('the step list editor', () => {
 
   it('picks next, and switches between mandatory and suggested, except on a condition', async () => {
     const user = userEvent.setup()
-    render(<Harness stored={stepList} />)
+    renderOpen(<Harness stored={stepList} />)
 
     await chooseOption(user, 'Next', 'who', card(1))
     await user.click(card(1).getByRole('radio', { name: 'Suggested' }))
@@ -489,7 +497,7 @@ describe('the step list editor', () => {
 
   it('shows the last band as the rest, and edits limits as a number, a tracker or a formula', async () => {
     const user = userEvent.setup()
-    render(<Harness stored={stepList} />)
+    renderOpen(<Harness stored={stepList} />)
     const band = (number: number) =>
       within(card(2).getByRole('group', { name: `Band ${String(number)}` }))
 
@@ -516,7 +524,7 @@ describe('the step list editor', () => {
 
   it('edits the optional label of a band and drops the field when it is emptied', async () => {
     const user = userEvent.setup()
-    render(<Harness stored={stepList} />)
+    renderOpen(<Harness stored={stepList} />)
     const band = (number: number) =>
       within(card(2).getByRole('group', { name: `Band ${String(number)}` }))
 
@@ -539,7 +547,7 @@ describe('the step list editor', () => {
         'sceneTypes[2].play[1].bands[0].label: must be at most 80 characters, 81 given',
       ),
     ]
-    render(<Harness stored={stepList} errors={errors} />)
+    renderOpen(<Harness stored={stepList} errors={errors} />)
 
     expect(
       within(card(2).getByRole('group', { name: 'Band 1' })).getByText(
@@ -550,7 +558,7 @@ describe('the step list editor', () => {
 
   it('flags limits that do not increase, without blocking anything', async () => {
     const user = userEvent.setup()
-    render(<Harness stored={stepList} />)
+    renderOpen(<Harness stored={stepList} />)
     const first = within(card(2).getByRole('group', { name: 'Band 1' }))
 
     await replaceText(user, first.getByLabelText('Up to'), '5')
@@ -566,7 +574,7 @@ describe('the step list editor', () => {
 
   it('keeps a step of another kind read-only, and still moves and deletes it', async () => {
     const user = userEvent.setup()
-    render(<Harness stored={stepListWithOtherKinds} />)
+    renderOpen(<Harness stored={stepListWithOtherKinds} />)
 
     expect(card(2).getByText('pick')).toBeInTheDocument()
     expect(card(2).queryByLabelText('Key')).not.toBeInTheDocument()
@@ -586,7 +594,7 @@ describe('the step list editor', () => {
       { key: 't', kind: 'table', title: 'T', table: 'moods', branches: 'none' },
       { key: 'c', kind: 'choice', title: 'C', options: 'none' },
     ]
-    render(<Saver stored={unreadable} />)
+    renderOpen(<Saver stored={unreadable} />)
 
     expect(card(1).getByText(/cannot edit yet/)).toBeInTheDocument()
     expect(card(1).queryByRole('button', { name: 'Add branch' })).not.toBeInTheDocument()
@@ -604,7 +612,7 @@ describe('the step list editor', () => {
       'sceneTypes[2].play[1].effects[3]: no such effect',
       'sceneTypes[2].play: at most 50 steps',
     ].map((text) => mapStepError('sceneTypes[2].play', text))
-    render(<Harness stored={stepList} errors={errors} />)
+    renderOpen(<Harness stored={stepList} errors={errors} />)
 
     expect(card(1).getByText('must not be blank')).toBeInTheDocument()
     expect(
@@ -632,7 +640,7 @@ describe('the step list editor', () => {
         bands: [{ upTo: 1, colour: 'red' }, {}],
       },
     ]
-    render(<Harness stored={stored} />)
+    renderOpen(<Harness stored={stored} />)
 
     await user.type(card(1).getByLabelText('Title'), '!')
 
@@ -641,7 +649,7 @@ describe('the step list editor', () => {
 
   it('saves what was picked for a condition count, inspiration tables and roll dice', async () => {
     const user = userEvent.setup()
-    render(<Harness stored={stepList} />)
+    renderOpen(<Harness stored={stepList} />)
 
     await user.click(card(1).getByRole('checkbox', { name: 'Moods' }))
     await user.click(card(1).getByRole('checkbox', { name: 'Places' }))
@@ -667,7 +675,7 @@ describe('the step list editor', () => {
 
     it('sends the bands in the new order', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepList} />)
+      renderOpen(<Harness stored={stepList} />)
 
       await user.click(card(2).getByRole('button', { name: 'Move band 1 down' }))
 
@@ -678,7 +686,7 @@ describe('the step list editor', () => {
 
     it('keeps a limit with its band when the band becomes the last one, and flags it', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepList} />)
+      renderOpen(<Harness stored={stepList} />)
 
       await user.click(card(2).getByRole('button', { name: 'Move band 2 down' }))
 
@@ -700,7 +708,7 @@ describe('the step list editor', () => {
 
     it('keeps the limit of the band that stays when the last one is deleted', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepList} />)
+      renderOpen(<Harness stored={stepList} />)
 
       await user.click(card(2).getByRole('button', { name: 'Delete band 3' }))
       await user.click(card(2).getByRole('button', { name: 'Delete band 1' }))
@@ -719,7 +727,7 @@ describe('the step list editor', () => {
 
     it('follows its step when steps move, and goes with it when the step is deleted', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepList} errors={errors} />)
+      renderOpen(<Harness stored={stepList} errors={errors} />)
       expect(card(2).getByText('must not be blank')).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Move step 2 down' }))
@@ -735,7 +743,7 @@ describe('the step list editor', () => {
 
     it('is not shown on a step added after the answer, and band messages go when bands move', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepList} errors={errors} />)
+      renderOpen(<Harness stored={stepList} errors={errors} />)
       const first = within(card(3).getByRole('group', { name: 'Band 1' }))
       expect(first.getByText('must be an integer')).toBeInTheDocument()
 
@@ -750,7 +758,7 @@ describe('the step list editor', () => {
   it('offers each next once and warns about repeated and reserved keys, with no duplicate React keys', async () => {
     const user = userEvent.setup()
     const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    render(
+    renderOpen(
       <Harness
         stored={[
           { key: 'x', kind: 'character', title: 'X' },
@@ -795,7 +803,7 @@ describe('the step list editor', () => {
       'sceneTypes[2].play[1].bands[7].upTo: must be an integer',
       'sceneTypes[2].play[0].bands[0].effects[0]: no bands here',
     ].map((text) => mapStepError('sceneTypes[2].play', text))
-    render(<Harness stored={stepList} errors={errors} />)
+    renderOpen(<Harness stored={stepList} errors={errors} />)
 
     expect(card(2).getByText('tracker: unknown tracker')).toBeInTheDocument()
     expect(card(2).getByText('upTo: must be an integer')).toBeInTheDocument()
@@ -804,7 +812,7 @@ describe('the step list editor', () => {
 
   it('refuses a mark with no option next to its option, and sends nothing', async () => {
     const user = userEvent.setup()
-    render(
+    renderOpen(
       <Saver
         stored={[
           {
@@ -826,7 +834,7 @@ describe('the step list editor', () => {
 
   it('shows a value that is not a whole number next to it and sends nothing', async () => {
     const user = userEvent.setup()
-    render(<Saver stored={stepList} />)
+    renderOpen(<Saver stored={stepList} />)
     const effects = within(card(1).getByRole('group', { name: 'Effects' }))
     const band = within(card(2).getByRole('group', { name: 'Band 1 effects' }))
 
@@ -854,7 +862,7 @@ describe('the step list editor', () => {
 
     it('edits the effects of a step and of a band, and saves them', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepList} />)
+      renderOpen(<Harness stored={stepList} />)
       const band = within(card(2).getByRole('group', { name: 'Band 1' }))
 
       await chooseOption(user, 'New effect kind', 'sceneTitle', effectsOf(1))
@@ -870,7 +878,7 @@ describe('the step list editor', () => {
 
     it('allows sheet effects in a character and a prompt step, not in a roll or a condition', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepList} />)
+      renderOpen(<Harness stored={stepList} />)
       const kinds = async (step: number) =>
         (await listOptions(user, effectsOf(step).getByLabelText('New effect kind'))).map(
           (option) => option.value,
@@ -889,7 +897,7 @@ describe('the step list editor', () => {
     it('offers no sheet effect to a prompt step in a Scene Type setup, and flags one already there', async () => {
       const user = userEvent.setup()
       const sheet = { kind: 'sheet', field: 'stress', op: 'add', value: 1 }
-      render(<Harness setup stored={[{ ...stepList[0], effects: [sheet] }, stepList[3]]} />)
+      renderOpen(<Harness setup stored={[{ ...stepList[0], effects: [sheet] }, stepList[3]]} />)
       const kinds = async (step: number) =>
         (await listOptions(user, effectsOf(step).getByLabelText('New effect kind'))).map(
           (option) => option.value,
@@ -903,20 +911,20 @@ describe('the step list editor', () => {
 
     it('says why a Scene Type setup offers no sheet effect, on a step and on a choice option, and not elsewhere (S17)', () => {
       const why = /Setup runs before a Character is known/
-      const { unmount } = render(<Harness setup stored={[stepList[0], stepList[3]]} />)
+      const { unmount } = renderOpen(<Harness setup stored={[stepList[0], stepList[3]]} />)
 
       expect(effectsOf(1).getByText(why)).toBeInTheDocument()
       // A character step offers sheet effects in a setup: nothing to explain.
       expect(effectsOf(2).queryByText(why)).not.toBeInTheDocument()
       unmount()
-      const { unmount: unmountList } = render(
+      const { unmount: unmountList } = renderOpen(
         <Harness setup stored={stepListSheetEffects.slice(0, 1)} />,
       )
       expect(
         within(screen.getByRole('group', { name: 'Option 1 outcome effects' })).getByText(why),
       ).toBeInTheDocument()
       unmountList()
-      render(<Harness stored={[stepList[0]]} />)
+      renderOpen(<Harness stored={[stepList[0]]} />)
       expect(screen.queryByText(why)).not.toBeInTheDocument()
     })
 
@@ -931,12 +939,12 @@ describe('the step list editor', () => {
             within(screen.getByRole('group', { name: group })).getByLabelText('New effect kind'),
           )
         ).map((option) => option.value)
-      const { unmount } = render(<Harness stored={[choice]} />)
+      const { unmount } = renderOpen(<Harness stored={[choice]} />)
 
       expect(await kinds('Option 1 outcome effects')).not.toContain('sheet')
       expect(await kinds('Option 2 outcome effects')).toContain('sheet')
       unmount()
-      const inSetup = render(<Harness setup stored={[choice]} />)
+      const inSetup = renderOpen(<Harness setup stored={[choice]} />)
       expect(await kinds('Option 2 outcome effects')).not.toContain('sheet')
       inSetup.unmount()
       // A sheet effect already on the skip option stays and says why it is refused.
@@ -944,7 +952,7 @@ describe('the step list editor', () => {
         { key: 'left', label: 'Left', effects: [sheet] },
         { key: 'right', label: 'Right' },
       ]
-      render(<Harness stored={[{ ...choice, options }]} />)
+      renderOpen(<Harness stored={[{ ...choice, options }]} />)
       expect(
         within(screen.getByRole('group', { name: 'Option 1 outcome effects' })).getByText(
           /only allowed in a character step/,
@@ -968,7 +976,9 @@ describe('the step list editor', () => {
           },
         ],
       }
-      render(<Harness context={context} stored={[{ key: 'a', kind: 'character', title: 'A' }]} />)
+      renderOpen(
+        <Harness context={context} stored={[{ key: 'a', kind: 'character', title: 'A' }]} />,
+      )
       const effects = effectsOf(1)
 
       await chooseOption(user, 'New effect kind', 'sheet', effects)
@@ -999,7 +1009,7 @@ describe('the step list editor', () => {
         'sceneTypes[2].play[0].effects[0]: no good',
         'sceneTypes[2].play[0].effects[1]: also no good',
       ].map((text) => mapStepError('sceneTypes[2].play', text))
-      render(
+      renderOpen(
         <Harness
           stored={[
             {
@@ -1027,7 +1037,7 @@ describe('the step list editor', () => {
 
     it('picks the oracle and a level of it, and writes the answers that have branches', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepListBranching} />)
+      renderOpen(<Harness stored={stepListBranching} />)
       expect(latest.written).toEqual({ steps: stepListBranching })
 
       expect(
@@ -1054,7 +1064,7 @@ describe('the step list editor', () => {
 
     it('keeps the exceptional answers collapsed until needed, with a hint, and omits empty answers', async () => {
       const user = userEvent.setup()
-      render(
+      renderOpen(
         <Harness
           stored={[
             {
@@ -1083,7 +1093,7 @@ describe('the step list editor', () => {
       const stored = [
         { key: 'o', kind: 'oracle', title: 'O', oracle: 'fate', likelihood: 'certain' },
       ]
-      render(<Harness stored={stored} />)
+      renderOpen(<Harness stored={stored} />)
 
       expect(card(1).getByLabelText('Likelihood level')).toHaveValue('certain')
       expect(card(1).getByText('Not a level of this oracle.')).toBeInTheDocument()
@@ -1100,7 +1110,7 @@ describe('the step list editor', () => {
 
     it('edits the entry branches and otherwise, and writes them in their order', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepListBranching} />)
+      renderOpen(<Harness stored={stepListBranching} />)
 
       await user.click(card(2).getByRole('button', { name: 'Add branch' }))
       await chooseOption(user, 'Entry', 'patrol', branch(3))
@@ -1138,7 +1148,7 @@ describe('the step list editor', () => {
           branches: [{ entry: 'ghost' }],
         },
       ]
-      render(<Harness stored={stored} />)
+      renderOpen(<Harness stored={stored} />)
 
       expect(card(1).getByText('Not an entry of this table.')).toBeInTheDocument()
       expect(saved(0)).toEqual(stored[0])
@@ -1149,7 +1159,7 @@ describe('the step list editor', () => {
 
     it('picks the table, which gives the entries to pick from', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={[{ key: 't', kind: 'table', title: 'T', table: 'places' }]} />)
+      renderOpen(<Harness stored={[{ key: 't', kind: 'table', title: 'T', table: 'places' }]} />)
 
       await user.click(card(1).getByRole('button', { name: 'Add branch' }))
 
@@ -1171,7 +1181,7 @@ describe('the step list editor', () => {
 
     it('adds rows of a Scene Type and a table, and writes them as a map next to the default table', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={[plain]} />)
+      renderOpen(<Harness stored={[plain]} />)
 
       await turnedOn(user)
       await chooseOption(user, 'Scene Type', 'Chase', row(1))
@@ -1188,7 +1198,7 @@ describe('the step list editor', () => {
 
     it('flags a Scene Type given twice, refuses an empty row on save and drops the map when turned off', async () => {
       const user = userEvent.setup()
-      render(<Saver stored={[plain]} />)
+      renderOpen(<Saver stored={[plain]} />)
 
       await turnedOn(user)
       await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -1206,7 +1216,7 @@ describe('the step list editor', () => {
 
     it('has no new branch while a map is there, and refuses the ones a stored map came with', async () => {
       const user = userEvent.setup()
-      render(
+      renderOpen(
         <Saver stored={[{ ...stepListBranching[1], tableBySceneType: { chase: 'places' } }]} />,
       )
 
@@ -1221,7 +1231,7 @@ describe('the step list editor', () => {
 
     it('shows the map of a stored step and sends it back unchanged', () => {
       const stored = { ...plain, tableBySceneType: { hideout: 'moods', chase: 'places' } }
-      render(<Harness stored={[stored]} />)
+      renderOpen(<Harness stored={[stored]} />)
 
       expect(saved(0)).toEqual(stored)
       expect(row(1).getByRole('combobox', { name: 'Scene Type' })).toHaveTextContent('Hideout')
@@ -1237,7 +1247,7 @@ describe('the step list editor', () => {
 
     it('starts with two options and holds the count between two and ten', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={[]} />)
+      renderOpen(<Harness stored={[]} />)
 
       await addStep(user, 'choice')
       expect(card(1).getByLabelText('Skip')).toHaveValue('')
@@ -1260,7 +1270,7 @@ describe('the step list editor', () => {
 
     it('renames the skipped option with its key, flags a skip that names nothing, and saves', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepListBranching} />)
+      renderOpen(<Harness stored={stepListBranching} />)
 
       await replaceText(user, option(1).getByLabelText('Option key'), 'west')
       expect(card(3).getByLabelText('Skip')).toHaveValue('west')
@@ -1285,7 +1295,7 @@ describe('the step list editor', () => {
 
     it('flags repeated keys and a suggested choice without skip', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepListBranching} />)
+      renderOpen(<Harness stored={stepListBranching} />)
 
       await user.type(
         option(2).getByLabelText('Option key'),
@@ -1307,7 +1317,7 @@ describe('the step list editor', () => {
       paths.map((text) => mapStepError('sceneTypes[2].play', text))
 
     it('shows each message on its answer, entry, option and field', () => {
-      render(
+      renderOpen(
         <Harness
           stored={stepListBranching}
           errors={errors(
@@ -1346,7 +1356,7 @@ describe('the step list editor', () => {
     })
 
     it('lists a message about a part the step does not have on the card', () => {
-      render(
+      renderOpen(
         <Harness
           stored={stepListBranching}
           errors={errors(
@@ -1366,7 +1376,7 @@ describe('the step list editor', () => {
     })
 
     it('lists a message about a field the row does not have, and shows every message of a field it has', () => {
-      render(
+      renderOpen(
         <Harness
           stored={stepListBranching}
           errors={errors(
@@ -1396,7 +1406,7 @@ describe('the step list editor', () => {
 
     it('follows its branch or option through moves, and goes when that one is deleted', async () => {
       const user = userEvent.setup()
-      render(
+      renderOpen(
         <Harness
           stored={stepListBranching}
           errors={errors(
@@ -1452,7 +1462,7 @@ describe('the step list editor', () => {
 
     it('offers the specials the pool of the check can produce, and none for a check that cannot', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={[stepOf()]} context={context} />)
+      renderOpen(<Harness stored={[stepOf()]} context={context} />)
 
       expect(addButtons()).toEqual([
         'Add outcome for Critical',
@@ -1469,13 +1479,13 @@ describe('the step list editor', () => {
     })
 
     it('offers no special, and shows no group, while the pools are not known', () => {
-      render(<Harness stored={[stepOf()]} />)
+      renderOpen(<Harness stored={[stepOf()]} />)
 
       expect(screen.queryByRole('group', { name: 'Special results' })).not.toBeInTheDocument()
     })
 
     it('offers a set only the specials every check of it can produce', () => {
-      render(
+      renderOpen(
         <Harness
           stored={[stepOf({ check: undefined, checks: ['skill', 'finesse'] })]}
           context={context}
@@ -1487,7 +1497,7 @@ describe('the step list editor', () => {
 
     it('adds the outcome of a special after the bands, edits it, and removes it', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={[stepOf()]} context={context} />)
+      renderOpen(<Harness stored={[stepOf()]} context={context} />)
 
       await user.click(specials().getByRole('button', { name: 'Add outcome for Bestial failure' }))
       await chooseOption(
@@ -1527,7 +1537,7 @@ describe('the step list editor', () => {
     it('adds every missing special at once, as copies of the top band and the lowest, leaving an existing one alone', async () => {
       const user = userEvent.setup()
       const effect = { kind: 'sheet', field: 'stress', op: 'add', value: 1 }
-      render(
+      renderOpen(
         <Harness
           stored={[
             stepOf({
@@ -1572,7 +1582,7 @@ describe('the step list editor', () => {
           { special: 'critical', next: 'mine' },
         ],
       })
-      render(<Harness stored={[stored]} context={context} />)
+      renderOpen(<Harness stored={[stored]} context={context} />)
 
       await user.click(specials().getByRole('button', { name: 'Add all special results' }))
 
@@ -1588,7 +1598,7 @@ describe('the step list editor', () => {
 
     it('hides Add all with one special missing, and a single Add starts as a copy of its band', async () => {
       const user = userEvent.setup()
-      render(
+      renderOpen(
         <Harness
           stored={[
             stepOf({
@@ -1625,7 +1635,7 @@ describe('the step list editor', () => {
           { special: 'messyCritical', next: 'end' },
         ],
       })
-      render(<Harness stored={[stored]} context={context} />)
+      renderOpen(<Harness stored={[stored]} context={context} />)
 
       expect(card(1).getByRole('group', { name: 'Outcome Messy critical' })).toBeInTheDocument()
       expect(addButtons()).toEqual(['Add outcome for Critical', 'Add outcome for Bestial failure'])
@@ -1641,7 +1651,7 @@ describe('the step list editor', () => {
           { special: 'critical', next: 'end' },
         ],
       })
-      render(<Harness stored={[stored]} context={context} />)
+      renderOpen(<Harness stored={[stored]} context={context} />)
 
       expect(
         card(1).getByText('This check cannot produce this special result.'),
@@ -1667,7 +1677,7 @@ describe('the step list editor', () => {
           { special: 'critical', next: 'end' },
         ],
       })
-      render(
+      renderOpen(
         <Harness
           stored={[stored]}
           context={context}
@@ -1690,14 +1700,14 @@ describe('the step list editor', () => {
       paths.map((text) => mapStepError('sceneTypes[2].play', text))
 
     it('gives the fixture steps back as stored', () => {
-      render(<Harness stored={stepListPickCheck} />)
+      renderOpen(<Harness stored={stepListPickCheck} />)
 
       expect(latest.written).toEqual({ steps: stepListPickCheck })
     })
 
     it('edits what a pick is of, its mode, tags and count, and omits the default count', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepListPickCheck} />)
+      renderOpen(<Harness stored={stepListPickCheck} />)
 
       await chooseOption(user, 'Pick of', 'place', card(1))
       await chooseOption(user, 'Mode', 'choose', card(1))
@@ -1717,7 +1727,7 @@ describe('the step list editor', () => {
     })
 
     it('says what the tags of a pick match: none is any open item, several must all be carried', () => {
-      render(<Harness stored={stepListPickCheck} />)
+      renderOpen(<Harness stored={stepListPickCheck} />)
 
       expect(
         card(1).getByText(
@@ -1728,7 +1738,7 @@ describe('the step list editor', () => {
 
     it('guides a count whose max is below its min, and edits the found and none outcomes without sheet effects', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepListPickCheck} />)
+      renderOpen(<Harness stored={stepListPickCheck} />)
 
       await replaceText(user, card(1).getByLabelText('Count min'), '5')
       await chooseOption(user, 'Next', 'end', inside(1, 'None'))
@@ -1746,7 +1756,7 @@ describe('the step list editor', () => {
 
     it('shows a check count that is not whole next to it and sends nothing', async () => {
       const user = userEvent.setup()
-      render(<Saver stored={stepListPickCheck} />)
+      renderOpen(<Saver stored={stepListPickCheck} />)
 
       await replaceText(user, card(1).getByLabelText('Count min'), 'x')
       await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -1757,7 +1767,7 @@ describe('the step list editor', () => {
 
     it('lists the bands of the chosen check in its order and re-renders them when the check changes', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepListPickCheck} />)
+      renderOpen(<Harness stored={stepListPickCheck} />)
       const triggers = () =>
         within(card(2).getByRole('group', { name: 'Outcomes' }))
           .getAllByRole('button', { name: /^(fail|partial|success|lose|win)$/ })
@@ -1776,7 +1786,7 @@ describe('the step list editor', () => {
 
     it('expands and collapses every band at once, collapsed being the default', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepListPickCheck} />)
+      renderOpen(<Harness stored={stepListPickCheck} />)
       const outcomes = () => within(card(2).getByRole('group', { name: 'Outcomes' }))
       const opened = () =>
         outcomes().queryAllByRole('group', { name: /^Outcome (fail|partial|success)$/ })
@@ -1796,7 +1806,7 @@ describe('the step list editor', () => {
 
     it('shows the difficulty only for a check that declares one, with its range, and guides a value outside it', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepListPickCheck} />)
+      renderOpen(<Harness stored={stepListPickCheck} />)
 
       expect(card(2).getByText(/Default 13, from 9 to 29/)).toBeInTheDocument()
       await replaceText(user, card(2).getByLabelText('Difficulty'), '40')
@@ -1813,7 +1823,7 @@ describe('the step list editor', () => {
 
     it('writes an outcome per band in band order and offers sheet effects in check outcomes only', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepListPickCheck} />)
+      renderOpen(<Harness stored={stepListPickCheck} />)
 
       await user.click(
         within(card(2).getByRole('group', { name: 'Outcomes' })).getByText('partial'),
@@ -1845,7 +1855,7 @@ describe('the step list editor', () => {
           ],
         },
       ]
-      render(<Harness stored={stored} />)
+      renderOpen(<Harness stored={stored} />)
 
       expect(card(1).getByText('Not a band of this check.')).toBeInTheDocument()
       expect(card(1).getByText('Another outcome has this band.')).toBeInTheDocument()
@@ -1859,7 +1869,7 @@ describe('the step list editor', () => {
 
     it('flags a check the game system does not have, and keeps the step editable', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={[{ ...stepListPickCheck[1], check: 'gone' }]} />)
+      renderOpen(<Harness stored={[{ ...stepListPickCheck[1], check: 'gone' }]} />)
 
       expect(card(1).getByText('Not a check of this game system.')).toBeInTheDocument()
       await user.type(card(1).getByLabelText('Title'), '!')
@@ -1872,7 +1882,7 @@ describe('the step list editor', () => {
         { key: 'p', kind: 'pick', title: 'P', of: 'npc', mode: 'random', count: { min: 2 } },
         { key: 'k', kind: 'check', title: 'K', check: 'skill', outcomes: 'none' },
       ]
-      render(<Saver stored={unreadable} />)
+      renderOpen(<Saver stored={unreadable} />)
 
       expect(card(1).getByText(/cannot edit yet/)).toBeInTheDocument()
       expect(card(2).getByText(/cannot edit yet/)).toBeInTheDocument()
@@ -1882,7 +1892,7 @@ describe('the step list editor', () => {
     })
 
     it('shows each server message on its field, outcome row or the card', () => {
-      render(
+      renderOpen(
         <Harness
           stored={stepListPickCheck}
           errors={errors(
@@ -1922,7 +1932,7 @@ describe('the step list editor', () => {
         { key: 'b', kind: 'check', title: 'B', check: '' },
         { key: 'c', kind: 'check', title: 'C', check: 'luck' },
       ]
-      render(
+      renderOpen(
         <Harness
           stored={hidden}
           errors={errors(
@@ -1940,7 +1950,7 @@ describe('the step list editor', () => {
     })
 
     it('lists a message about a field the kind of step does not have on the card', () => {
-      render(
+      renderOpen(
         <Harness
           stored={stepListPickCheck}
           errors={errors(
@@ -1968,7 +1978,7 @@ describe('the step list editor', () => {
           ],
         },
       ]
-      render(
+      renderOpen(
         <Harness
           stored={stored}
           errors={errors(
@@ -1987,7 +1997,7 @@ describe('the step list editor', () => {
 
     it('flags a next that goes backward in a pick branch and a check outcome', () => {
       const back = 'Pick a later step: next only goes forward.'
-      render(
+      renderOpen(
         <Harness
           stored={[
             { key: 'a', kind: 'character', title: 'A' },
@@ -2003,7 +2013,7 @@ describe('the step list editor', () => {
 
     it('switches a check step to a set, offering only the checks with the bands of the first', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepListPickCheck} />)
+      renderOpen(<Harness stored={stepListPickCheck} />)
 
       await user.click(card(2).getByRole('radio', { name: 'A set of checks' }))
       const offered = () =>
@@ -2042,7 +2052,7 @@ describe('the step list editor', () => {
         title: 'K',
         checks: ['skill', 'finesse', 'luck', 'gone'],
       }
-      render(<Harness stored={[stored]} />)
+      renderOpen(<Harness stored={[stored]} />)
 
       // Luck has other bands than Skill and would not be offered; it is held, so it is.
       expect(card(1).getByRole('checkbox', { name: 'Luck' })).toBeChecked()
@@ -2068,7 +2078,7 @@ describe('the step list editor', () => {
         ),
       }
       const stored = { key: 'k', kind: 'check', title: 'K', checks: ['skill', 'finesse'] }
-      render(<Harness stored={[stored]} context={context} />)
+      renderOpen(<Harness stored={[stored]} context={context} />)
 
       expect(card(1).getByText(DISJOINT_DIFFICULTY)).toBeInTheDocument()
       expect(card(1).queryByText(/from 20 to 15/)).not.toBeInTheDocument()
@@ -2078,7 +2088,7 @@ describe('the step list editor', () => {
 
     it('asks for 2 to 10 checks before saving a set, and goes back to one check', async () => {
       const user = userEvent.setup()
-      render(<Saver stored={[stepListPickCheck[1]]} />)
+      renderOpen(<Saver stored={[stepListPickCheck[1]]} />)
 
       await user.click(screen.getByRole('radio', { name: 'A set of checks' }))
       expect(screen.getByText('A check set needs 2 to 10 distinct checks.')).toBeInTheDocument()
@@ -2093,7 +2103,7 @@ describe('the step list editor', () => {
 
     it('opens a stored set and sends it back unchanged', () => {
       const stored = { key: 'k', kind: 'check', title: 'K', checks: ['skill', 'finesse'] }
-      render(<Harness stored={[stored]} />)
+      renderOpen(<Harness stored={[stored]} />)
 
       expect(card(1).getByRole('checkbox', { name: 'Skill check' })).toBeChecked()
       expect(card(1).getByRole('checkbox', { name: 'Finesse check' })).toBeChecked()
@@ -2102,7 +2112,7 @@ describe('the step list editor', () => {
 
     it('adds a pick and a check step', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={[]} />)
+      renderOpen(<Harness stored={[]} />)
 
       for (const kind of ['pick', 'check']) {
         await addStep(user, kind)
@@ -2118,14 +2128,14 @@ describe('the step list editor', () => {
       paths.map((text) => mapStepError('sceneTypes[2].play', text))
 
     it('gives the fixture back as stored', () => {
-      render(<Harness stored={stepListShop} context={stepPickersEconomy} />)
+      renderOpen(<Harness stored={stepListShop} context={stepPickersEconomy} />)
 
       expect(latest.written).toEqual({ steps: stepListShop })
     })
 
     it('picks gear and categories from the catalog and writes the keys', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepListShop} context={stepPickersEconomy} />)
+      renderOpen(<Harness stored={stepListShop} context={stepPickersEconomy} />)
 
       expect(card(1).getByRole('checkbox', { name: 'Rope' })).toBeChecked()
       expect(card(1).getByRole('checkbox', { name: 'Weapons' })).toBeChecked()
@@ -2140,7 +2150,7 @@ describe('the step list editor', () => {
 
     it('switches the stock between none, a number and dice, and omits an empty sell rate', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepListShop} context={stepPickersEconomy} />)
+      renderOpen(<Harness stored={stepListShop} context={stepPickersEconomy} />)
 
       await chooseOption(user, 'Stock', 'A fixed number of entries', card(1))
       await replaceText(user, card(1).getByLabelText('Stock count'), '2')
@@ -2154,7 +2164,7 @@ describe('the step list editor', () => {
 
     it('shows a stock or sell rate that is not whole next to it and sends nothing', async () => {
       const user = userEvent.setup()
-      render(<Saver stored={stepListShop} />)
+      renderOpen(<Saver stored={stepListShop} />)
 
       await replaceText(user, card(1).getByLabelText('Sell rate (%)'), 'half')
       await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -2165,7 +2175,7 @@ describe('the step list editor', () => {
 
     it('has no requirement control and no sheet effect', async () => {
       const user = userEvent.setup()
-      render(<Harness stored={stepListShop} context={stepPickersEconomy} />)
+      renderOpen(<Harness stored={stepListShop} context={stepPickersEconomy} />)
 
       expect(card(1).queryByRole('radio', { name: 'Mandatory' })).not.toBeInTheDocument()
       const kinds = (await listOptions(user, card(1).getByLabelText('New effect kind'))).map(
@@ -2176,14 +2186,14 @@ describe('the step list editor', () => {
 
     it('adds an empty shop, and offers it everywhere but a Scene Type setup', async () => {
       const user = userEvent.setup()
-      const { unmount } = render(<Harness stored={[]} context={stepPickersEconomy} />)
+      const { unmount } = renderOpen(<Harness stored={[]} context={stepPickersEconomy} />)
 
       await addStep(user, 'shop')
 
       expect(saved(0)).toMatchObject({ key: 'shop-1', kind: 'shop' })
       expect(saved(0)).not.toHaveProperty('offer')
       unmount()
-      render(<Harness stored={[]} setup />)
+      renderOpen(<Harness stored={[]} setup />)
       await user.click(screen.getByRole('button', { name: 'Add step' }))
       expect(await screen.findByRole('menuitem', { name: 'prompt' })).toBeInTheDocument()
       expect(screen.queryByRole('menuitem', { name: 'shop' })).not.toBeInTheDocument()
@@ -2191,21 +2201,21 @@ describe('the step list editor', () => {
 
     it('says a shop needs a currency, and that the catalog is empty', () => {
       const bare = { ...stepPickersEconomy, economy: { gear: [], currency: false } }
-      render(<Harness stored={stepListShop} context={bare} />)
+      renderOpen(<Harness stored={stepListShop} context={bare} />)
 
       expect(card(1).getByText(/needs a currency/)).toBeInTheDocument()
       expect(card(1).getByText(/catalog is empty/)).toBeInTheDocument()
     })
 
     it('keeps a gear key the catalog lost listed, and says nothing before the sheet loads', () => {
-      render(<Harness stored={stepListShop} />)
+      renderOpen(<Harness stored={stepListShop} />)
 
       expect(card(1).getByRole('checkbox', { name: 'rope' })).toBeChecked()
       expect(card(1).queryByText(/needs a currency/)).not.toBeInTheDocument()
     })
 
     it('puts each publisher message on its input', () => {
-      render(
+      renderOpen(
         <Harness
           stored={stepListShop}
           context={stepPickersEconomy}

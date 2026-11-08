@@ -40,15 +40,18 @@ test('a game manager edits a Scene Type step and a flow phase of a copied preset
   await sceneTypes.getByRole('link', { name: 'Social' }).click()
   await expect(page).toHaveURL(`/studio/game-systems/${key}/scene-types/social`)
 
-  const title = page
+  // Step cards start collapsed: open the first one, as a person does.
+  const step = page
     .getByRole('region', { name: 'Play', exact: true })
     .getByRole('group', { name: 'Step 1' })
-    .getByLabel('Title', { exact: true })
+  const title = step.getByLabel('Title', { exact: true })
+  await step.getByRole('button').first().click()
   await title.fill(stepTitle)
   await saveWith(page, title, `/narrative/scene-types/social`)
 
   // What was saved is what the draft holds, not just what the form shows.
   await page.reload()
+  await step.getByRole('button').first().click()
   await expect(title).toHaveValue(stepTitle)
 
   // A flow phase.

@@ -39,6 +39,16 @@ function Editable({
   return <StepListEditor steps={steps} context={context} errors={mapped} onChange={setSteps} />
 }
 
+/** Step cards start collapsed: a play opens them, as a person does, before it reaches into their fields. */
+async function openCards(root: HTMLElement) {
+  for (const card of within(root).getAllByRole('group', { name: /^Step \d+$/ })) {
+    const [disclosure] = within(card).getAllByRole('button')
+    if (disclosure?.getAttribute('aria-expanded') === 'false') {
+      await userEvent.click(disclosure)
+    }
+  }
+}
+
 const meta = {
   title: 'Studio/StepListEditor',
   component: Editable,
@@ -65,6 +75,7 @@ export const BranchingKinds: Story = {
   args: { stored: stepListBranching },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    await openCards(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Add option' }))
     await expect(canvas.getAllByLabelText('Option key')).toHaveLength(3)
   },
@@ -75,6 +86,7 @@ export const PickAndCheck: Story = {
   args: { stored: stepListPickCheck },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    await openCards(canvasElement)
     await chooseOption(userEvent.setup(), 'Check', 'luck', canvas)
     await expect(canvas.getByText('This check declares no difficulty.')).toBeInTheDocument()
   },
@@ -99,6 +111,7 @@ export const SheetEffectsOnChoicesAndPrompts: Story = {
   args: { stored: stepListSheetEffects },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    await openCards(canvasElement)
     const kinds = (name: string) =>
       within(canvas.getByRole('group', { name })).getByLabelText('New effect kind')
     await userEvent.click(kinds('Option 2 outcome effects'))
@@ -113,6 +126,7 @@ export const CheckSet: Story = {
   args: { stored: stepListCheckSet },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    await openCards(canvasElement)
     await expect(canvas.getByRole('checkbox', { name: 'Finesse check' })).toBeChecked()
     await expect(canvas.queryByRole('checkbox', { name: 'Luck' })).not.toBeInTheDocument()
   },
@@ -123,6 +137,7 @@ export const TableBySceneType: Story = {
   args: { stored: stepListTableBySceneType },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    await openCards(canvasElement)
     await expect(canvas.getByRole('button', { name: 'Add branch' })).toBeDisabled()
   },
 }
@@ -132,6 +147,7 @@ export const SpecialResults: Story = {
   args: { stored: stepListSpecials, context: stepPickersHunger as StepContext },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    await openCards(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Add outcome for Critical' }))
     await expect(canvas.getByRole('group', { name: 'Outcome Critical' })).toBeVisible()
     await expect(canvas.getByRole('group', { name: 'Outcome Bestial failure' })).toBeVisible()
@@ -143,6 +159,7 @@ export const ShopStep: Story = {
   args: { stored: stepListShop, context: stepPickersEconomy },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    await openCards(canvasElement)
     await expect(canvas.getByRole('checkbox', { name: 'Rope' })).toBeChecked()
     await expect(canvas.getByLabelText('Stock dice')).toHaveValue('1d4+1')
   },

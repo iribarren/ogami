@@ -9,6 +9,7 @@ import { draft as gameSystem, narrativeFlows, validDraft } from '../../fixtures'
 import { narrativeKey } from '../useGameSystemNarrative'
 import { SelectionEditor } from './SelectionEditor'
 import { typeText } from '@/test/typeText'
+import { openStepCards } from '../steps/openCards'
 
 // The step cards' Requirement radios sit inside this page's form, where Radix measures them.
 vi.stubGlobal(
@@ -36,6 +37,8 @@ async function openEditor(flow: string, handlers: Record<string, FakeHandler> = 
     ...handlers,
   })
   await screen.findByRole('form', { name: 'Flow' })
+  // Step cards start collapsed: open them, as a person does, before editing their fields.
+  openStepCards()
   return { user, ...rendered }
 }
 
@@ -870,6 +873,7 @@ describe('the hooks of a phase', () => {
     })
 
     await user.click(hook('Scene opening (1 step)'))
+    openStepCards()
     await replace(user, content().getByLabelText('Title'), 'Look closer')
     await user.click(save())
 
@@ -939,6 +943,7 @@ describe('the hooks of a phase', () => {
     })
 
     await user.click(hook('World turn (1 step)'))
+    openStepCards()
 
     const specials = within(await content().findByRole('group', { name: 'Special results' }))
     expect(

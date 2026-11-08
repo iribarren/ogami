@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { useState } from 'react'
 
 import { stepPickers } from '../../fixtures'
+import { openStepCards } from './openCards'
 import { StepListEditor } from './StepListEditor'
 import { stepsToDrafts } from './stepDraft'
 
@@ -48,6 +49,8 @@ describe('the step cards', () => {
   it('renders only the edited card when one step changes', () => {
     render(<Harness />)
     expect(drawn.tiles).toBe(stored.length)
+    // The cards start collapsed: open them, as a person does, before counting an edit.
+    openStepCards()
     drawn.tiles = 0
 
     fireEvent.change(title(1), { target: { value: 'Changed' } })
@@ -58,6 +61,7 @@ describe('the step cards', () => {
 
   it('keeps both of two quick edits on different cards', () => {
     render(<Harness />)
+    openStepCards()
 
     fireEvent.change(title(2), { target: { value: 'Second' } })
     fireEvent.change(title(5), { target: { value: 'Fifth' } })

@@ -11,6 +11,7 @@ import { createFakeApiClient, type FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { ambush, draft, narrativeScenes, validDraft } from '../../fixtures'
+import { openStepCards } from '../steps/openCards'
 import { narrativeKey } from '../useGameSystemNarrative'
 
 // The step cards' Requirement radios sit inside this page's form, where Radix measures them.
@@ -38,6 +39,8 @@ async function openEditor(scene: string, handlers: Record<string, FakeHandler> =
     ...handlers,
   })
   await screen.findByRole('form', { name: 'Scene Type' })
+  // Step cards start collapsed: open them, as a person does, before editing their fields.
+  openStepCards()
   return { user, ...rendered }
 }
 

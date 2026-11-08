@@ -72,7 +72,7 @@ final readonly class Placeholders
         $value = $this->values[$key] ?? throw new \LogicException(\sprintf('The pinned release has no Tracker "%s".', $key));
         foreach ($this->trackers as $tracker) {
             if ($tracker->key === $key) {
-                return $tracker->levelAt($value)?->label ?? (string) $value;
+                return $tracker->levelAt($value)->label ?? (string) $value;
             }
         }
 

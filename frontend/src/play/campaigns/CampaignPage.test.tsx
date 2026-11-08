@@ -144,11 +144,12 @@ describe('the Play screen', () => {
 
     const tools = await screen.findByRole('complementary', { name: 'Play tools' })
     // The fixture holds 2 Threads, 2 Places and 3 NPCs, of which 1, 1 and 2 are open.
-    for (const [name, open] of [
+    const badges: [string, string][] = [
       ['Threads', '1'],
       ['Places', '1'],
       ['NPCs', '2'],
-    ]) {
+    ]
+    for (const [name, open] of badges) {
       expect(within(within(tools).getByRole('region', { name })).getByText(open)).toBeVisible()
     }
   })

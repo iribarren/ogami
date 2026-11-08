@@ -17,6 +17,7 @@ use App\Studio\Application\ListPublishedGameSystems;
 use App\Studio\Application\PublishedGameSystemSummary;
 use App\Studio\Application\PublishedReleaseNotFound;
 use App\Studio\Application\PublishedReleaseUnreadable;
+use App\Studio\Application\PublishedReleaseView;
 
 /**
  * Reads published GameSystem releases from Studio's Published Language (GetPublishedRelease on the
@@ -54,6 +55,10 @@ final readonly class StudioPublishedGameSystemReleases implements PublishedGameS
 
     private function withFlows(PublishedGameSystemSummary $summary): GameSystemSummary
     {
+        if (!$summary->release instanceof PublishedReleaseView) {
+            return new GameSystemSummary($summary->gameSystemKey, $summary->name, $summary->description, $summary->version);
+        }
+
         try {
             $release = $this->translator->translate($summary->release);
         } catch (InvalidGameSystemRelease|UnsupportedReleaseSchemaVersion) {

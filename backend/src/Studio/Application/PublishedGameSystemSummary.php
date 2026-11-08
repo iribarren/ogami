@@ -9,7 +9,9 @@ namespace App\Studio\Application;
  * Language; it holds no Studio Domain types.
  *
  * $release is the same release as other contexts read it, so a context listing GameSystems needs no
- * second query per GameSystem.
+ * second query per GameSystem. It is null when the stored content no longer parses: Studio validates
+ * before publishing, so that is a broken contract (compare PublishedReleaseUnreadable), and the
+ * GameSystem is then listed by its key.
  */
 final readonly class PublishedGameSystemSummary
 {
@@ -19,7 +21,7 @@ final readonly class PublishedGameSystemSummary
         public ?string $description,
         public int $version,
         public \DateTimeImmutable $publishedAt,
-        public PublishedReleaseView $release,
+        public ?PublishedReleaseView $release,
     ) {
     }
 }

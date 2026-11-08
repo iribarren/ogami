@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 import { chooseOption } from './choose-option.ts'
+import { openStepCard } from './open-step-card.ts'
 import { manager, signIn } from './sign-in.ts'
 
 // Users and the "E2E Corner shop" release (backend/tests/Fixtures/E2e) are seeded by
@@ -63,7 +64,7 @@ test('a game manager adds a shop step that offers a gear entry and a category wi
     .getByRole('region', { name: 'Play', exact: true })
     .getByRole('group', { name: 'Step 2' })
   // Step cards start collapsed after a reload: open the shop step.
-  await reloaded.getByRole('button').first().click()
+  await openStepCard(reloaded)
   await expect(reloaded.getByLabel('Title', { exact: true })).toHaveValue('The back room')
   await expect(reloaded.getByRole('checkbox', { name: 'Ration' })).toBeChecked()
   await expect(reloaded.getByRole('checkbox', { name: 'Medical' })).toBeChecked()

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { openStepCard } from './open-step-card.ts'
 import { manager, signIn } from './sign-in.ts'
 
 // Users and the "night-job" preset are seeded by `make e2e-seed`. Its "social" Scene Type opens
@@ -45,13 +46,13 @@ test('a game manager edits a Scene Type step and a flow phase of a copied preset
     .getByRole('region', { name: 'Play', exact: true })
     .getByRole('group', { name: 'Step 1' })
   const title = step.getByLabel('Title', { exact: true })
-  await step.getByRole('button').first().click()
+  await openStepCard(step)
   await title.fill(stepTitle)
   await saveWith(page, title, `/narrative/scene-types/social`)
 
   // What was saved is what the draft holds, not just what the form shows.
   await page.reload()
-  await step.getByRole('button').first().click()
+  await openStepCard(step)
   await expect(title).toHaveValue(stepTitle)
 
   // A flow phase.

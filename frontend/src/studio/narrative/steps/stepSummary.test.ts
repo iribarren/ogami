@@ -61,4 +61,11 @@ describe('the step summary', () => {
   it('has nothing to say about a stored step', () => {
     expect(summary({ key: 's', kind: 'mystery', next: 'b' })).toBe('')
   })
+
+  it('never counts the characters of options or outcomes it cannot read', () => {
+    expect(summary({ key: 'c', kind: 'choice', options: 'none' })).not.toMatch(/option/)
+    expect(summary({ key: 'k', kind: 'check', check: 'x', outcomes: 'none' })).not.toMatch(
+      /outcome/,
+    )
+  })
 })

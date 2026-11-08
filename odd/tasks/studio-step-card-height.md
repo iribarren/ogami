@@ -50,6 +50,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T1 | `stepSummary` and the summary line plus "Needs a fix" badge in the step card header | delegated: slice runs under one writer (2+ non-trivial files) | [x] | |
 | T2 | Cards start collapsed (added steps open, problems open), list-level Expand all steps / Collapse all steps on a shared `ExpandRequest` | delegated: slice runs under one writer | [x] | |
 | T3 | Existing Vitest and e2e specs open the cards they edit; stories updated | delegated: slice runs under one writer | [x] | |
+| T4 | Review findings: e2e opens a card only while closed, `stepSummary` counts lists only, the test helper moves to `src/test/` | inline: mechanical, ~40 lines | [x] | |
 
 ## Applicable checks
 
@@ -62,6 +63,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-08: T1 done. RED: `stepSummary` tests failed on the missing module, header tests failed on the missing summary and badge; GREEN: `src/studio` Vitest 2007 passed. `hasGuideNotes` shares the module with `stepSummary`.
 - 2026-11-08: T2 done. RED: the 9 new open-state and Expand/Collapse tests failed before the change; GREEN: all 10 pass. Existing tests that edit mounted steps now fail until T3. `ExpandRequest` moved to `expandRequest.ts`; the list gives a card `startOpen` when its origin is null and `expand`.
 - 2026-11-08: T3 done. RED: the old tests failed on collapsed cards (about 30 in `src/studio`); GREEN: `src/studio` Vitest 2017 passed. Helper `openStepCards` (`steps/openCards.ts`, presses each closed card's disclosure) used by `renderOpen` in `StepListEditor.test.tsx`, the renders test and both page tests' `openEditor`. Stories: each play opens the cards first. e2e edited, not run: `studio-flow-editor.spec.ts`, `studio-shop-editor.spec.ts`.
+- 2026-11-08: T4 done. Finding 2's test was written before the guard and passed at once (an unreadable choice or check is already kept as a stored step); the guard keeps `stepSummary` safe if that changes. e2e uses `openStepCard` (`e2e/open-step-card.ts`), which presses the disclosure only while it reads closed; not run locally, CI runs it. `openStepCards` moved to `src/test/openStepCards.ts`.
 
 ## Reviews
 

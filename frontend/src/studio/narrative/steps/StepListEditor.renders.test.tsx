@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { useState } from 'react'
 
 import { stepPickers } from '../../fixtures'
-import { openStepCards } from './openCards'
+import { openStepCards } from '@/test/openStepCards'
 import { StepListEditor } from './StepListEditor'
 import { stepsToDrafts } from './stepDraft'
 

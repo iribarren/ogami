@@ -11,16 +11,14 @@ export function stepSummary(step: StepDraft): string {
   if (step.kind === 'stored') {
     return ''
   }
+  // Only lists are counted: a string's length is not a number of items.
+  const listed = (items: unknown) => (Array.isArray(items) ? items.length : 0)
   const items: [number, string, string][] = [
-    [step.effects.length, 'effect', 'effects'],
-    ['outcomes' in step ? step.outcomes.length : 0, 'outcome', 'outcomes'],
-    ['options' in step ? step.options.length : 0, 'option', 'options'],
-    [
-      'branches' in step && Array.isArray(step.branches) ? step.branches.length : 0,
-      'branch',
-      'branches',
-    ],
-    ['bands' in step ? step.bands.length : 0, 'band', 'bands'],
+    [listed(step.effects), 'effect', 'effects'],
+    [listed('outcomes' in step ? step.outcomes : null), 'outcome', 'outcomes'],
+    [listed('options' in step ? step.options : null), 'option', 'options'],
+    [listed('branches' in step ? step.branches : null), 'branch', 'branches'],
+    [listed('bands' in step ? step.bands : null), 'band', 'bands'],
   ]
   return [
     ...(step.next === '' ? [] : [`next: ${step.next}`]),

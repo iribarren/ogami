@@ -9,7 +9,7 @@ import { draft as gameSystem, narrativeFlows, validDraft } from '../../fixtures'
 import { narrativeKey } from '../useGameSystemNarrative'
 import { SelectionEditor } from './SelectionEditor'
 import { typeText } from '@/test/typeText'
-import { openStepCards } from '../steps/openCards'
+import { openStepCards } from '@/test/openStepCards'
 
 // The step cards' Requirement radios sit inside this page's form, where Radix measures them.
 vi.stubGlobal(

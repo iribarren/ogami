@@ -13,7 +13,7 @@ import {
   stepPickers,
   stepPickersEconomy,
 } from '../../fixtures'
-import { openStepCards } from './openCards'
+import { openStepCards } from '@/test/openStepCards'
 import { StepListEditor } from './StepListEditor'
 import { DISJOINT_DIFFICULTY, stepKinds, stepsToDrafts, stepsToItems } from './stepDraft'
 import type { StepContext } from './stepContext'

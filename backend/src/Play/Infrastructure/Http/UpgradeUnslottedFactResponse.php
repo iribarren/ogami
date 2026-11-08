@@ -16,7 +16,7 @@ final readonly class UpgradeUnslottedFactResponse
     private function __construct(
         #[OA\Property(format: 'uuid')]
         public string $id,
-        #[OA\Property(description: 'The key of the Fact slot that is gone.', example: 'prince')]
+        #[OA\Property(description: 'The key of the Fact slot that is gone or now holds another type.', example: 'prince')]
         public string $slotKey,
         #[OA\Property(description: 'The label the free fact keeps: its own, else the old slot\'s name.', example: 'The Prince')]
         public string $label,

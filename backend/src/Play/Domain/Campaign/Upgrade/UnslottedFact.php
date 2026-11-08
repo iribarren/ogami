@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Play\Domain\Campaign\Upgrade;
 
 /**
- * A slot fact whose slot the new release does not have: it goes on as a free fact with this label
- * and text (its links stay).
+ * A slot fact whose slot the new release does not have, or has with another type: it goes on as a
+ * free fact with this label and text (its links stay).
  */
 final readonly class UnslottedFact
 {

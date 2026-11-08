@@ -515,6 +515,86 @@ final class ReleaseUpgradePlanTest extends TestCase
         );
     }
 
+    #[Test]
+    public function aFactWhoseSlotChangesTypeBecomesAFreeFactLinkingItsSubject(): void
+    {
+        $pinned = UpgradeFixtures::release(1, factSlots: [new FactSlot('target', 'The Target', FactSlotType::Npc)]);
+        $campaign = UpgradeFixtures::campaign($pinned);
+        $campaign->fillFactSlot(FactId::fromString('fact-1'), 'target', FactFill::newNpc(NpcId::fromString('npc-1'), 'Mithras'), $pinned);
+        $target = UpgradeFixtures::release(2, factSlots: [new FactSlot('target', 'The Target', FactSlotType::Place)]);
+
+        $plan = $campaign->planReleaseUpgrade($pinned, $target);
+
+        self::assertSame(
+            [['fact-1', 'target', 'The Target', 'Mithras']],
+            array_map(static fn (\App\Play\Domain\Campaign\Upgrade\UnslottedFact $fact): array => [$fact->factId, $fact->slotKey, $fact->label, $fact->text], $plan->facts),
+        );
+
+        $campaign->upgradeRelease($pinned, $target, $plan->fingerprint(), new \DateTimeImmutable('2026-10-18T10:00:00+00:00'));
+
+        $freed = $campaign->facts($target)[0];
+        self::assertSame([null, 'Mithras', 'npc', 'npc-1'], [$freed->slot(), $freed->text(), $freed->links()[0]->kind->value, $freed->links()[0]->id]);
+    }
+
+    #[Test]
+    public function aTextSlotThatBecomesAnNpcSlotUnslotsItsTextFactKeepingTheText(): void
+    {
+        $pinned = UpgradeFixtures::release(1, factSlots: [new FactSlot('contact', 'Contact', FactSlotType::Text)]);
+        $campaign = UpgradeFixtures::campaign($pinned);
+        $campaign->fillFactSlot(FactId::fromString('fact-1'), 'contact', FactFill::text('A fence in the docks'), $pinned);
+        $target = UpgradeFixtures::release(2, factSlots: [new FactSlot('contact', 'Contact', FactSlotType::Npc)]);
+
+        $plan = $campaign->planReleaseUpgrade($pinned, $target);
+
+        self::assertSame([['fact-1', 'contact', 'A fence in the docks']], array_map(static fn (\App\Play\Domain\Campaign\Upgrade\UnslottedFact $fact): array => [$fact->factId, $fact->slotKey, $fact->text], $plan->facts));
+
+        $campaign->upgradeRelease($pinned, $target, $plan->fingerprint(), new \DateTimeImmutable('2026-10-18T10:00:00+00:00'));
+
+        $freed = $campaign->facts($target)[0];
+        self::assertSame([null, 'A fence in the docks', []], [$freed->slot(), $freed->text(), $freed->links()]);
+    }
+
+    #[Test]
+    public function aFactWhoseSlotKeepsItsKeyAndTypeStaysSlotted(): void
+    {
+        $slots = [
+            new FactSlot('prince', 'The Prince', FactSlotType::Npc),
+            new FactSlot('city', 'City', FactSlotType::Text),
+            new FactSlot('feud', 'Feud', FactSlotType::Thread),
+            new FactSlot('haven', 'Haven', FactSlotType::Place),
+        ];
+        $pinned = UpgradeFixtures::release(1, factSlots: $slots);
+        $campaign = UpgradeFixtures::campaign($pinned);
+        $campaign->fillFactSlot(FactId::fromString('fact-1'), 'prince', FactFill::newNpc(NpcId::fromString('npc-1'), 'Mithras'), $pinned);
+        $campaign->fillFactSlot(FactId::fromString('fact-2'), 'city', FactFill::text('Night City'), $pinned);
+        $campaign->fillFactSlot(FactId::fromString('fact-3'), 'feud', FactFill::newThread(ThreadId::fromString('thread-1'), 'The Ventrue feud'), $pinned);
+        $campaign->fillFactSlot(FactId::fromString('fact-4'), 'haven', FactFill::newPlace(PlaceId::fromString('place-1'), 'The crypt'), $pinned);
+        $target = UpgradeFixtures::release(2, factSlots: [new FactSlot('prince', 'Renamed', FactSlotType::Npc), ...\array_slice($slots, 1)]);
+
+        $plan = $campaign->planReleaseUpgrade($pinned, $target);
+        $campaign->upgradeRelease($pinned, $target, $plan->fingerprint(), new \DateTimeImmutable('2026-10-18T10:00:00+00:00'));
+
+        self::assertSame([[], ['prince', 'city', 'feud', 'haven']], [$plan->facts, array_map(static fn (\App\Play\Domain\Campaign\Facts\Fact $fact): ?string => $fact->slot(), $campaign->facts($target))]);
+    }
+
+    #[Test]
+    public function aSubjectFactWhoseSlotBecomesATextSlotBecomesAFreeFactNamingItsSubject(): void
+    {
+        $pinned = UpgradeFixtures::release(1, factSlots: [new FactSlot('prince', 'The Prince', FactSlotType::Npc)]);
+        $campaign = UpgradeFixtures::campaign($pinned);
+        $campaign->fillFactSlot(FactId::fromString('fact-1'), 'prince', FactFill::newNpc(NpcId::fromString('npc-1'), 'Mithras'), $pinned);
+        $target = UpgradeFixtures::release(2, factSlots: [new FactSlot('prince', 'The Prince', FactSlotType::Text)]);
+
+        $plan = $campaign->planReleaseUpgrade($pinned, $target);
+
+        self::assertSame([['fact-1', 'prince', 'Mithras']], array_map(static fn (\App\Play\Domain\Campaign\Upgrade\UnslottedFact $fact): array => [$fact->factId, $fact->slotKey, $fact->text], $plan->facts));
+
+        $campaign->upgradeRelease($pinned, $target, $plan->fingerprint(), new \DateTimeImmutable('2026-10-18T10:00:00+00:00'));
+
+        $freed = $campaign->facts($target)[0];
+        self::assertSame([null, 'Mithras', 'npc', 'npc-1'], [$freed->slot(), $freed->text(), $freed->links()[0]->kind->value, $freed->links()[0]->id]);
+    }
+
     /**
      * @return iterable<string, array{?string, list<string>, list<string>, ?string, bool}> the campaign's Flow, the target's Flows (a * marks the default), the Flow after, restarted
      */

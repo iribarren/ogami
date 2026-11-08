@@ -14,7 +14,10 @@
 name: ogami
 
 # What php and php-e2e share: the same image, dependencies and healthcheck.
+# One image tag for both, so php-e2e reuses the image `make build` builds for php
+# (and CI's cached build) instead of building a second copy.
 x-php: &php
+  image: ogami-php
   build:
     context: .
     dockerfile: docker/php/Dockerfile

@@ -327,6 +327,7 @@ function CampaignJournal({ campaign }: { campaign: Campaign }) {
           sceneTypes={campaign.sceneTypes}
           tags={campaign.tags}
           sheet={campaign.pinnedRelease.sheet}
+          trackers={campaign.trackers}
           npcs={campaign.npcs}
           characters={campaign.characters}
           oracleTables={campaign.oracleTables}

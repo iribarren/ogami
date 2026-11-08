@@ -122,6 +122,7 @@ function SceneSoFar({ campaign, sceneNumber }: { campaign: Campaign; sceneNumber
               entry={entry}
               tags={campaign.tags}
               sheet={campaign.pinnedRelease.sheet}
+              trackers={campaign.trackers}
               currencyUnit={campaign.pinnedRelease.currency?.unit ?? null}
             >
               <NoteAttachments

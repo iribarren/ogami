@@ -19,6 +19,19 @@ export function trackerValueText(tracker: Tracker) {
     : String(tracker.value)
 }
 
+/** The part of a Tracker that names its levels, which is all a journal line needs of it. */
+export type TrackerLevels = Pick<Tracker, 'key' | 'levels'>[]
+
+/**
+ * The label of the level a value falls in: the first whose `upTo` it does not pass, or the last
+ * one (the backend's `Tracker::levelAt`). Null when the Tracker is unknown or has no levels.
+ */
+export function levelLabelAt(trackers: TrackerLevels, key: string, value: number): string | null {
+  const levels = trackers.find((tracker) => tracker.key === key)?.levels ?? []
+  const level = levels.find(({ upTo }) => upTo === null || value <= upTo)
+  return level?.label ?? null
+}
+
 /** Trackers wider than this draw no pips: a pip per point would no longer read at a glance. */
 export const MAX_PIPS = 12
 

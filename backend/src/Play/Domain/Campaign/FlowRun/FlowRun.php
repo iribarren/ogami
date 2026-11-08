@@ -762,7 +762,7 @@ final class FlowRun
      */
     public function view(GameSystemSnapshot $release, Flow $flow, ?int $sessionNumber, array $trackerValues, array $factValues, array $pickedNames, \Closure $candidatesOf, \Closure $charactersOf, \Closure $sheetOf): FlowRunView
     {
-        $placeholders = new Placeholders($trackerValues, $this->answers, $factValues, picked: $pickedNames, dashEmptyPicked: true);
+        $placeholders = new Placeholders($trackerValues, $this->answers, $factValues, picked: $pickedNames, dashEmptyPicked: true, trackers: $release->trackers());
         if (FlowRunStatus::Completed === $this->status) {
             return new FlowRunView($this->status, false, null, null, null, false, 'Flow complete', false);
         }
@@ -1470,7 +1470,7 @@ final class FlowRun
      */
     private function renderedEffectText(string $text, int $max, ?string $answer, FlowRunContext $context): string
     {
-        $rendered = new Placeholders($context->trackerValues(), $this->answers, $context->factValues(), $answer, $context->pickedNames($this->picked))->render($text);
+        $rendered = new Placeholders($context->trackerValues(), $this->answers, $context->factValues(), $answer, $context->pickedNames($this->picked), trackers: $context->release->trackers())->render($text);
 
         return trim(mb_substr(trim($rendered), 0, $max));
     }

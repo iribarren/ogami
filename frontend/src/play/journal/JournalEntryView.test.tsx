@@ -1,5 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 
+import { edgeTracker, heatTracker } from '../campaigns/fixtures'
+
 import {
   burnableRollEntry,
   burnedEntry,
@@ -414,6 +416,30 @@ describe('JournalEntryView check entries', () => {
     ])
     expect(within(entry).getByRole('list')).toHaveClass('text-muted-foreground')
     expect(within(entry).getByRole('list')).not.toHaveClass('uppercase')
+  })
+
+  it('names the level of a Tracker value as the panel does, and only a number without levels', () => {
+    const entry = {
+      ...flowOutcomeEntry,
+      content: {
+        kind: 'flowOutcome' as const,
+        notes: [
+          { kind: 'tracker' as const, key: 'heat', name: 'Heat', from: 0, to: 3 },
+          { kind: 'tracker' as const, key: 'edge', name: 'Edge', from: 1, to: 2 },
+          { kind: 'tracker' as const, key: 'gone', name: 'Gone', from: 1, to: 2 },
+        ],
+      },
+    }
+    render(<JournalEntryView entry={entry} trackers={[heatTracker, edgeTracker]} />)
+
+    const lines = within(screen.getByRole('article', { name: 'Flow outcome' })).getAllByRole(
+      'listitem',
+    )
+    expect(lines.map((line) => line.textContent)).toEqual([
+      'Heat 0 Warm → 3 Hot',
+      'Edge 1 → 2',
+      'Gone 1 → 2',
+    ])
   })
 
   it('shows a penalty with its minus sign', () => {

@@ -159,6 +159,29 @@ final class StudioPublishedGameSystemReleasesTest extends TestCase
         self::assertEquals([new GameSystemSummary('free-journal', 'Free journal', 'A journal.', 1)], $summaries);
     }
 
+    #[Test]
+    public function aSummaryWithoutAReleaseViewIsListedWithoutFlowsOrCredits(): void
+    {
+        $queries = new readonly class implements QueryBus {
+            /**
+             * @template TResult
+             *
+             * @param Query<TResult> $query
+             *
+             * @return TResult
+             */
+            public function ask(Query $query): mixed
+            {
+                // @phpstan-ignore return.type
+                return [new PublishedGameSystemSummary('free-journal', 'free-journal', null, 2, new \DateTimeImmutable('2026-10-05T10:00:00+00:00'), null)];
+            }
+        };
+
+        $summaries = new StudioPublishedGameSystemReleases($queries, new GameSystemReleaseTranslator())->latest();
+
+        self::assertEquals([new GameSystemSummary('free-journal', 'free-journal', null, 2)], $summaries);
+    }
+
     private function release(string $id, string $fixture, string $key, int $version): GameSystemRelease
     {
         $content = ReleaseViews::fixtureContent($fixture);

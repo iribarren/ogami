@@ -7,6 +7,7 @@ namespace App\Studio\Application;
 use App\Shared\Application\Bus\QueryHandler;
 use App\Studio\Domain\Release\GameSystemRelease;
 use App\Studio\Domain\Release\GameSystemReleaseRepository;
+use App\Studio\Domain\Release\InvalidReleaseContent;
 
 final readonly class ListPublishedGameSystemsHandler implements QueryHandler
 {
@@ -29,7 +30,13 @@ final readonly class ListPublishedGameSystemsHandler implements QueryHandler
 
     private function summary(GameSystemRelease $release): PublishedGameSystemSummary
     {
-        $content = $release->content();
+        try {
+            $content = $release->content();
+        } catch (InvalidReleaseContent) {
+            // Studio validates before publishing, so this is a broken contract; one such release must not fail the whole list.
+            return new PublishedGameSystemSummary($release->gameSystemKey(), $release->gameSystemKey(), null, $release->version(), $release->publishedAt(), null);
+        }
+
         $gameSystem = $content->toArray()['gameSystem'] ?? null;
         $description = \is_array($gameSystem) && \is_string($gameSystem['description'] ?? null) ? $gameSystem['description'] : null;
 

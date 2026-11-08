@@ -62,6 +62,7 @@ final class ListPublishedGameSystemsHandlerTest extends TestCase
 
         $summaries = ($this->handler)(new ListPublishedGameSystems());
 
+        self::assertNotNull($summaries[0]->release);
         self::assertSame('r-1', $summaries[0]->release->releaseId);
         self::assertSame('ironsworn', $summaries[0]->release->gameSystemKey);
         self::assertSame(3, $summaries[0]->release->version);
@@ -100,6 +101,56 @@ final class ListPublishedGameSystemsHandlerTest extends TestCase
 
         // "alpha" and "Alpha" tie on the name, so the key decides.
         self::assertSame(['a-lower', 'a-upper', 'b-upper', 'c-lower'], $keys);
+    }
+
+    #[Test]
+    public function aReleaseWhoseContentFailsValidationIsListedByItsKeyWithoutAReleaseView(): void
+    {
+        $this->publish('r-1', 'ironsworn', 'Ironsworn', 1, '2026-10-04T10:00:00+00:00');
+        $this->releases->add($this->withStoredContent('r-2', 'broken', 4, '2026-10-06T10:00:00+00:00', [
+            'schemaVersion' => 1,
+            'gameSystem' => ['key' => 'broken', 'name' => 'Broken', 'description' => 'Unreadable.'],
+            'flow' => ['steps' => []],
+            'sheet' => [],
+            'checks' => [],
+        ]));
+
+        $summaries = ($this->handler)(new ListPublishedGameSystems());
+
+        self::assertSame(['broken', 'ironsworn'], array_map(static fn (PublishedGameSystemSummary $summary): string => $summary->gameSystemKey, $summaries));
+        self::assertSame('broken', $summaries[0]->name);
+        self::assertNull($summaries[0]->description);
+        self::assertSame(4, $summaries[0]->version);
+        self::assertEquals(new \DateTimeImmutable('2026-10-06T10:00:00+00:00'), $summaries[0]->publishedAt);
+        self::assertNull($summaries[0]->release);
+        self::assertNotNull($summaries[1]->release);
+    }
+
+    /**
+     * A release whose stored content no longer parses, which publish() itself refuses to create.
+     *
+     * @param array<string, mixed> $content
+     */
+    private function withStoredContent(string $id, string $key, int $version, string $publishedAt, array $content): GameSystemRelease
+    {
+        $reflection = new \ReflectionClass(GameSystemRelease::class);
+        $release = $reflection->newInstanceWithoutConstructor();
+        $stored = [
+            'id' => $id,
+            'gameSystemKey' => $key,
+            'version' => $version,
+            'schemaVersion' => 1,
+            'content' => $content,
+            'contentHash' => 'stale',
+            'publishedAt' => new \DateTimeImmutable($publishedAt),
+            'notes' => null,
+            'librarySources' => null,
+        ];
+        foreach ($stored as $property => $value) {
+            $reflection->getProperty($property)->setValue($release, $value);
+        }
+
+        return $release;
     }
 
     private function publish(string $id, string $key, string $name, int $version, string $publishedAt, ?string $description = null): void

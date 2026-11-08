@@ -311,66 +311,123 @@ describe('the checks tab', () => {
     )
   })
 
-  it('on a conflict shows the message, reloads the editor and the next save carries the new version', async () => {
-    let latest: unknown = checks
-    let attempts = 0
-    const sent: Record<string, unknown>[] = []
-    const { user } = await openChecks({
-      [`GET ${base}/checks`]: () => Response.json(latest),
-      [`PUT ${base}/checks/skill`]: async (request) => {
-        sent.push((await request.json()) as Record<string, unknown>)
-        attempts += 1
-        return attempts === 1
-          ? Response.json(changed, { status: 409 })
-          : Response.json({ ...(latest as typeof checks), version: 7 })
-      },
-    })
-
-    await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
-    const form = within(screen.getByRole('form', { name: 'Edit skill' }))
-    await user.clear(form.getByLabelText('Label'))
-    latest = {
+  describe('on a conflict while saving', () => {
+    const theirs = {
       ...checks,
       version: 6,
       checks: [{ ...checks.checks[0], label: 'Theirs' }, checks.checks[1]],
     }
-    await typeText(user, form.getByLabelText('Label'), 'Mine')
-    await user.click(form.getByRole('button', { name: 'Save check' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('was changed by another request')
-    await waitFor(() => {
+    /** Edits skill's label to "Mine" and saves it: the first save answers 409, the rest succeed. */
+    async function conflictOnSkill(handlers: Record<string, FakeHandler> = {}) {
+      const state = {
+        latest: checks as unknown,
+        down: false,
+        attempts: 0,
+        sent: [] as Record<string, unknown>[],
+      }
+      const opened = await openChecks({
+        [`GET ${base}/checks`]: () =>
+          state.down
+            ? Response.json({ error: 'Down.' }, { status: 500 })
+            : Response.json(state.latest),
+        [`PUT ${base}/checks/skill`]: async (request) => {
+          state.sent.push((await request.json()) as Record<string, unknown>)
+          state.attempts += 1
+          return state.attempts === 1
+            ? Response.json(changed, { status: 409 })
+            : Response.json({ ...(state.latest as typeof checks), version: 7 })
+        },
+        ...handlers,
+      })
+      await opened.user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+      const form = within(screen.getByRole('form', { name: 'Edit skill' }))
+      await replaceText(opened.user, form.getByLabelText('Label'), 'Mine')
+      state.latest = theirs
+      await opened.user.click(form.getByRole('button', { name: 'Save check' }))
+      return { ...opened, state, form }
+    }
+
+    it('keeps the draft and offers to reload, with no list notice', async () => {
+      const { form } = await conflictOnSkill()
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('was changed by another request')
       expect(
-        within(screen.getByRole('form', { name: 'Edit skill' })).getByLabelText('Label'),
-      ).toHaveValue('Theirs')
+        screen.getByText('Reloading replaces your unsaved edits with the latest stored check.'),
+      ).toBeVisible()
+      expect(form.getByRole('button', { name: 'Reload the latest version' })).toHaveAttribute(
+        'type',
+        'button',
+      )
+      expect(form.getByLabelText('Label')).toHaveValue('Mine')
+      expect(screen.queryByText(/The latest version was loaded/)).toBeNull()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Save check' }))
+    it('replaces the draft only on reload, and the next save carries the new version', async () => {
+      const { user, state } = await conflictOnSkill()
 
-    await waitFor(() => {
-      expect(sent).toHaveLength(2)
-    })
-    expect(sent.map((body) => body.expectedVersion)).toEqual([5, 6])
-    expect(sent[1]).toMatchObject({ check: { label: 'Theirs' } })
-    await waitFor(() => {
-      expect(screen.queryByText(/was changed by another request/)).toBeNull()
-    })
-  })
+      await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
 
-  it('closes the editor on a conflict when the check is gone', async () => {
-    let latest: unknown = checks
-    const { user } = await openChecks({
-      [`GET ${base}/checks`]: () => Response.json(latest),
-      [`PUT ${base}/checks/luck`]: json(changed, 409),
+      await waitFor(() => {
+        expect(
+          within(screen.getByRole('form', { name: 'Edit skill' })).getByLabelText('Label'),
+        ).toHaveValue('Theirs')
+      })
+      expect(screen.queryByText(/Reloading replaces/)).toBeNull()
+      await user.click(screen.getByRole('button', { name: 'Save check' }))
+
+      await waitFor(() => {
+        expect(state.sent).toHaveLength(2)
+      })
+      expect(state.sent.map((body) => body.expectedVersion)).toEqual([5, 6])
+      expect(state.sent[1]).toMatchObject({ check: { label: 'Theirs' } })
     })
 
-    await user.click(await screen.findByRole('button', { name: 'Edit luck' }))
-    latest = { ...checks, version: 6, checks: [checks.checks[0]] }
-    await user.click(screen.getByRole('button', { name: 'Save check' }))
+    it('keeps the draft and the old version when the reload fails', async () => {
+      const { user, state, form } = await conflictOnSkill()
+      await screen.findByRole('button', { name: 'Reload the latest version' })
+      state.down = true
 
-    await waitFor(() => {
-      expect(screen.queryByRole('form', { name: 'Edit luck' })).toBeNull()
+      await user.click(screen.getByRole('button', { name: 'Reload the latest version' }))
+
+      expect(
+        await screen.findByText("Couldn't reload the latest version. Try again."),
+      ).toBeVisible()
+      expect(form.getByLabelText('Label')).toHaveValue('Mine')
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+      await waitFor(() => {
+        expect(state.sent).toHaveLength(2)
+      })
+      expect(state.sent[1]).toMatchObject({ expectedVersion: 5, check: { label: 'Mine' } })
     })
-    expect(screen.getByRole('alert')).toHaveTextContent('was changed by another request')
+
+    it('keeps the draft with a note when the check is gone, and Duplicate saves it as a new check', async () => {
+      const { user, state, form } = await conflictOnSkill()
+      state.latest = { ...checks, version: 6, checks: [checks.checks[1]] }
+
+      await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+
+      expect(
+        await screen.findByText(
+          'The check skill no longer exists. Your changes are kept: Duplicate saves them as a new check.',
+        ),
+      ).toBeVisible()
+      expect(form.getByLabelText('Label')).toHaveValue('Mine')
+
+      await user.click(form.getByRole('button', { name: 'Duplicate' }))
+
+      const copy = within(await screen.findByRole('form', { name: 'New check' }))
+      expect(copy.getByLabelText('Label')).toHaveValue('Mine (copy)')
+    })
+
+    it('still reports the unsaved edits to the guard after the conflict', async () => {
+      const { user } = await conflictOnSkill()
+      await screen.findByRole('button', { name: 'Reload the latest version' })
+
+      await user.click(screen.getByRole('button', { name: 'New check' }))
+
+      expect(await screen.findByRole('dialog')).toBeVisible()
+    })
   })
 
   it('moves a check to its neighbour’s position', async () => {
@@ -397,6 +454,62 @@ describe('the checks tab', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('was changed by another request')
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Move up skill' })).toBeEnabled()
+    })
+  })
+
+  describe('on a conflict while moving with an open editor', () => {
+    const theirs = {
+      ...checks,
+      version: 6,
+      checks: [{ ...checks.checks[0], label: 'Theirs' }, checks.checks[1]],
+    }
+
+    async function moveWhileEditing(edit: boolean) {
+      let latest: unknown = checks
+      const sent: Record<string, unknown>[] = []
+      const opened = await openChecks({
+        [`GET ${base}/checks`]: () => Response.json(latest),
+        [`POST ${base}/checks/luck/move`]: () => {
+          latest = theirs
+          return Response.json(changed, { status: 409 })
+        },
+        [`PUT ${base}/checks/skill`]: async (request) => {
+          sent.push((await request.json()) as Record<string, unknown>)
+          return Response.json(changed, { status: 409 })
+        },
+      })
+      await opened.user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+      const form = within(screen.getByRole('form', { name: 'Edit skill' }))
+      if (edit) {
+        await replaceText(opened.user, form.getByLabelText('Label'), 'Mine')
+      }
+      await opened.user.click(screen.getByRole('button', { name: 'Move up luck' }))
+      expect(await screen.findByText(/The latest version was loaded\./)).toBeVisible()
+      return { ...opened, sent }
+    }
+
+    it('keeps an editor with unsaved edits on its draft and version', async () => {
+      const { user, sent } = await moveWhileEditing(true)
+
+      const form = within(screen.getByRole('form', { name: 'Edit skill' }))
+      expect(form.getByLabelText('Label')).toHaveValue('Mine')
+      await user.click(form.getByRole('button', { name: 'Save check' }))
+
+      await waitFor(() => {
+        expect(sent).toHaveLength(1)
+      })
+      expect(sent[0]).toMatchObject({ expectedVersion: 5, check: { label: 'Mine' } })
+      expect(await screen.findByRole('button', { name: 'Reload the latest version' })).toBeVisible()
+    })
+
+    it('reopens an editor with no unsaved edits on the fresh version', async () => {
+      await moveWhileEditing(false)
+
+      await waitFor(() => {
+        expect(
+          within(screen.getByRole('form', { name: 'Edit skill' })).getByLabelText('Label'),
+        ).toHaveValue('Theirs')
+      })
     })
   })
 

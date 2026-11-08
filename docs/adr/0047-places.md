@@ -16,7 +16,7 @@ The vision left one question open: "How are places modeled (a map, regions, site
 - **A Place never joins the Scene cast.** The cast lists NPCs; the Place created or picked becomes `{picked}` only.
 - **Transfer carries Places** with their ids, as Threads ([ADR 0046](0046-campaign-transfer.md)).
 - **The upgrade planner treats Place Tags like Thread Tags**: Tags the new release no longer defines are dropped and reported.
-- **Known gap.** A slot whose type changes but keeps its key is not detected by the upgrade planner. It is not fixed here.
+- **Known gap.** A slot whose type changes but keeps its key is not detected by the upgrade planner. It is not fixed here; tracked in [#380](https://github.com/iribarren/ogami/issues/380).
 - **Delivery.** Slice 1 is the Places list and its API; slice 2 the contract and flows; slice 3 the UI. Until slice 2 no release Tag applies to a Place, so a Place takes free Tags only.
 
 ## Consequences

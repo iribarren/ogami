@@ -5,6 +5,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
   type SubmitEvent,
@@ -146,9 +147,15 @@ function CheckList({
   const latest = useGameSystemChecks(gameSystemKey)
   const queryClient = useQueryClient()
   const [selected, setSelected] = useState<Selection>(null)
-  const [conflict, setConflict] = useState<{ message: string; loaded: boolean } | null>(null)
+  const [conflict, setConflict] = useState<{
+    message: string
+    loaded: boolean
+    unreadable: string | null
+  } | null>(null)
   // Whether the open editor holds edits that were not saved, as it reports it.
   const [editorUnsaved, setEditorUnsaved] = useState(false)
+  // The same, readable when a refetch resolves: the callback that started it saw an older render.
+  const unsavedNow = useRef(false)
   // What the person asked for while the editor held unsaved edits, waiting for their answer.
   const [pending, setPending] = useState<((fresh: GameSystemChecks) => void) | null>(null)
 
@@ -222,8 +229,13 @@ function CheckList({
    * reload.
    */
   function onMoveConflict(message: string) {
-    void reload(!editorUnsaved, true).then((result) => {
-      setConflict({ message, loaded: result !== 'failed' })
+    const key = selected?.original ?? ''
+    void reload(true).then((result) => {
+      setConflict({
+        message,
+        loaded: result !== 'failed',
+        unreadable: result === 'unreadable' ? key : null,
+      })
     })
   }
 
@@ -262,24 +274,28 @@ function CheckList({
   }
 
   /**
-   * Refetches the checks. With `reopen`, the editor starts again on them. A check that is gone
-   * closes the editor only when `closeIfGone` (the list reloading under an editor with no unsaved
-   * edits); the editor's own reload keeps it. When the check is gone or unreadable, or without
-   * `reopen`, the editor keeps its draft and version and the result says why, so it can tell the
-   * person: a draft and the version it read change together or not at all.
+   * Refetches the checks for the editor open now. `fromList` is the list reloading under it: the
+   * editor then starts again on the fresh checks only when it holds no unsaved edits (read when the
+   * refetch resolves, not when it started), and a check that is gone closes it. The editor's own
+   * reload keeps it either way. A refetch only touches the editor it started for: one opened
+   * meanwhile has its own check and edits. When the check is gone or unreadable, or the editor holds
+   * edits, it keeps its draft and version and the result says why, so it can tell the person: a
+   * draft and the version it read change together or not at all.
    */
-  async function reload(reopen: boolean, closeIfGone: boolean): Promise<CheckReload> {
+  async function reload(fromList: boolean): Promise<CheckReload> {
+    const started = selected
     const result = await latest.refetch()
     const fresh = result.data
     if (result.isError || fresh === undefined) {
       return 'failed'
     }
-    const original = selected?.original ?? null
+    const reopen = !fromList || !unsavedNow.current
+    const original = started?.original ?? null
     const stored = original === null ? undefined : fresh.checks.find((c) => c.key === original)
     if (original !== null && stored === undefined) {
-      if (reopen && closeIfGone) {
+      if (reopen && fromList) {
         // A check that is gone leaves nothing to edit.
-        setSelected(null)
+        setSelected((current) => (current?.opened === started?.opened ? null : current))
       }
       return 'gone'
     }
@@ -288,7 +304,9 @@ function CheckList({
     }
     if (reopen) {
       setSelected((current) =>
-        current === null ? null : { ...current, start: fresh, opened: current.opened + 1 },
+        current !== null && current.opened === started?.opened
+          ? { ...current, start: fresh, opened: current.opened + 1 }
+          : current,
       )
     }
     return 'loaded'
@@ -305,18 +323,28 @@ function CheckList({
         <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">
           <p>
             {conflict.message}{' '}
-            {conflict.loaded
-              ? 'The latest version was loaded.'
-              : "Couldn't load the latest version: what is shown may be out of date."}
+            {conflict.unreadable !== null
+              ? `The latest version was loaded, but the check ${conflict.unreadable} changed to a shape this editor cannot read: the editor keeps its draft and version, so a save still conflicts.`
+              : conflict.loaded
+                ? 'The latest version was loaded.'
+                : "Couldn't load the latest version: what is shown may be out of date."}
           </p>
           {!conflict.loaded && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
-                void reload(!editorUnsaved, true).then((result) => {
+                const key = selected?.original ?? ''
+                void reload(true).then((result) => {
                   if (result !== 'failed') {
-                    setConflict((current) => current && { ...current, loaded: true })
+                    setConflict(
+                      (current) =>
+                        current && {
+                          ...current,
+                          loaded: true,
+                          unreadable: result === 'unreadable' ? key : null,
+                        },
+                    )
                   }
                 })
               }}
@@ -417,8 +445,11 @@ function CheckList({
               onSaved={(saved, key) => {
                 adopt(selected.opened, saved, key)
               }}
-              onReload={() => reload(true, false)}
-              onUnsavedChange={setEditorUnsaved}
+              onReload={() => reload(false)}
+              onUnsavedChange={(unsaved) => {
+                unsavedNow.current = unsaved
+                setEditorUnsaved(unsaved)
+              }}
               onDuplicate={duplicateDraft}
               deleteAction={
                 selected.original !== null && (

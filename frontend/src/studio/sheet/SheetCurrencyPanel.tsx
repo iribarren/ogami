@@ -43,32 +43,31 @@ export const SheetCurrencyPanel = memo(function SheetCurrencyPanel({
   // a currency save conflict, so `readAt` follows the live version. Once the stored currency moves
   // away from `base` (a refetch after another request), an unsaved edit is kept with the version
   // it was made at: a save then conflicts, and only a reload replaces the edit with the new
-  // currency (the inputs, `base` and `readAt` change together or not at all).
+  // currency (the inputs, `base` and `readAt` change together or not at all). An edit that already
+  // equals the stored currency loses nothing: that is how a save's own answer is taken, whenever
+  // the cache gets it, so no callback of the save has to run for `base` and `readAt` to follow.
   const [base, setBase] = useState({ field: currency?.field ?? '', unit: currency?.unit ?? '' })
   const [readAt, setReadAt] = useState(sheet.version)
   const storedChanged =
     (currency?.field ?? '') !== base.field || (currency?.unit ?? '') !== base.unit
   const dirty = field !== base.field || unit.trim() !== base.unit
+  const matchesStored = field === (currency?.field ?? '') && unit.trim() === (currency?.unit ?? '')
   if (!storedChanged) {
     if (readAt !== sheet.version) {
       setReadAt(sheet.version)
     }
-  } else if (!dirty) {
-    // Nothing typed: the stored value is the newer truth.
+  } else if (!dirty || matchesStored) {
+    // Nothing typed, or typed the stored value itself: the stored value is the newer truth.
     setBase({ field: currency?.field ?? '', unit: currency?.unit ?? '' })
     setField(currency?.field ?? '')
     setUnit(currency?.unit ?? '')
     setReadAt(sheet.version)
     setProblem(null)
   }
-  // A save went through: the inputs stay as typed and now match what is stored.
-  function saved(answer: GameSystemSheet) {
-    setBase({ field: answer.currency?.field ?? '', unit: answer.currency?.unit ?? '' })
-    setReadAt(answer.version)
-  }
   // Replaces the inputs, `base` and `readAt` with a sheet just read, dropping any unsaved edit.
   function take(read: GameSystemSheet) {
-    saved(read)
+    setBase({ field: read.currency?.field ?? '', unit: read.currency?.unit ?? '' })
+    setReadAt(read.version)
     setField(read.currency?.field ?? '')
     setUnit(read.currency?.unit ?? '')
     setProblem(null)
@@ -105,10 +104,8 @@ export const SheetCurrencyPanel = memo(function SheetCurrencyPanel({
     setProblem(null)
     setSent(draft)
     remove.reset()
-    save.mutate(
-      { expectedVersion: readAt, field, unit: trimmed === '' ? null : trimmed },
-      { onSuccess: saved },
-    )
+    // No callback for the answer: the render-phase sync above takes it from the sheet.
+    save.mutate({ expectedVersion: readAt, field, unit: trimmed === '' ? null : trimmed })
   }
 
   return (

@@ -420,6 +420,24 @@ describe('the checks tab', () => {
       expect(copy.getByLabelText('Label')).toHaveValue('Mine (copy)')
     })
 
+    it('keeps the draft with a note when the check changed to a shape the editor cannot read', async () => {
+      const { user, state, form } = await conflictOnSkill()
+      state.latest = {
+        ...checks,
+        version: 6,
+        checks: [{ key: 'skill', label: 'Odd', dice: 6, bands: [] }, checks.checks[1]],
+      }
+
+      await user.click(await screen.findByRole('button', { name: 'Reload the latest version' }))
+
+      expect(
+        await screen.findByText(
+          'The check skill changed to a shape this editor cannot read. Your changes are kept; the next save still conflicts.',
+        ),
+      ).toBeVisible()
+      expect(form.getByLabelText('Label')).toHaveValue('Mine')
+    })
+
     it('still reports the unsaved edits to the guard after the conflict', async () => {
       const { user } = await conflictOnSkill()
       await screen.findByRole('button', { name: 'Reload the latest version' })
@@ -510,6 +528,87 @@ describe('the checks tab', () => {
           within(screen.getByRole('form', { name: 'Edit skill' })).getByLabelText('Label'),
         ).toHaveValue('Theirs')
       })
+    })
+
+    it('closes an editor with no unsaved edits when its check is gone', async () => {
+      let latest: unknown = checks
+      const { user } = await openChecks({
+        [`GET ${base}/checks`]: () => Response.json(latest),
+        [`POST ${base}/checks/luck/move`]: () => {
+          latest = { ...checks, version: 6, checks: [checks.checks[1]] }
+          return Response.json(changed, { status: 409 })
+        },
+      })
+      await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+      expect(screen.getByRole('form', { name: 'Edit skill' })).toBeVisible()
+
+      await user.click(screen.getByRole('button', { name: 'Move up luck' }))
+
+      await waitFor(() => {
+        expect(screen.queryByRole('form', { name: 'Edit skill' })).toBeNull()
+      })
+    })
+
+    it('says so, and keeps the editor, when its check changed to a shape it cannot read', async () => {
+      let latest: unknown = checks
+      const { user } = await openChecks({
+        [`GET ${base}/checks`]: () => Response.json(latest),
+        [`POST ${base}/checks/luck/move`]: () => {
+          latest = {
+            ...checks,
+            version: 6,
+            checks: [{ key: 'skill', label: 'Odd', dice: 6, bands: [] }, checks.checks[1]],
+          }
+          return Response.json(changed, { status: 409 })
+        },
+      })
+      await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+      const label = within(screen.getByRole('form', { name: 'Edit skill' })).getByLabelText('Label')
+      const before = (label as HTMLInputElement).value
+
+      await user.click(screen.getByRole('button', { name: 'Move up luck' }))
+
+      expect(await screen.findByText(/cannot read/)).toHaveTextContent(
+        'the check skill changed to a shape this editor cannot read',
+      )
+      expect(screen.queryByText(/The latest version was loaded\.$/)).toBeNull()
+      expect(
+        within(screen.getByRole('form', { name: 'Edit skill' })).getByLabelText('Label'),
+      ).toHaveValue(before)
+    })
+
+    it('leaves an editor opened during the refetch alone when the first check is gone', async () => {
+      let latest: unknown = checks
+      let gate: Promise<void> | null = null
+      const hold = { release: null as (() => void) | null }
+      const { user } = await openChecks({
+        [`GET ${base}/checks`]: async () => {
+          if (gate !== null) {
+            await gate
+          }
+          return Response.json(latest)
+        },
+        [`POST ${base}/checks/luck/move`]: () => {
+          latest = { ...checks, version: 6, checks: [checks.checks[1]] }
+          gate = new Promise<void>((resolve) => {
+            hold.release = resolve
+          })
+          return Response.json(changed, { status: 409 })
+        },
+      })
+      await user.click(await screen.findByRole('button', { name: 'Edit skill' }))
+      await user.click(screen.getByRole('button', { name: 'Move up luck' }))
+      // The refetch is held back: open another check meanwhile and edit it.
+      await user.click(await screen.findByRole('button', { name: 'Edit luck' }))
+      const form = within(screen.getByRole('form', { name: 'Edit luck' }))
+      await replaceText(user, form.getByLabelText('Label'), 'Mine')
+
+      hold.release?.()
+
+      expect(await screen.findByText(/The latest version was loaded\./)).toBeVisible()
+      expect(
+        within(screen.getByRole('form', { name: 'Edit luck' })).getByLabelText('Label'),
+      ).toHaveValue('Mine')
     })
   })
 

@@ -47,8 +47,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Task | Route | Done | Commit |
 |---|---|---|---|---|
-| T1 | `CheckEditor` keeps its draft on a 409 and reloads only on request; a move 409 keeps an editor with unsaved edits | delegated: slice runs under one writer (2+ non-trivial files) | [x] | |
-| T2 | `SheetCurrencyPanel` keeps `readAt` and `base`, keeps an unsaved edit when the stored currency changes, and replaces it only on reload | delegated: slice runs under one writer | [x] | |
+| T1 | `CheckEditor` keeps its draft on a 409 and reloads only on request; a move 409 keeps an editor with unsaved edits | delegated: slice runs under one writer (2+ non-trivial files) | [x] | `acef7011` |
+| T2 | `SheetCurrencyPanel` keeps `readAt` and `base`, keeps an unsaved edit when the stored currency changes, and replaces it only on reload | delegated: slice runs under one writer | [x] | `d574a0bb` |
+| T3 | Review findings: `reload` decides on the current selection, not a stale closure; a save's answer moves `base`/`readAt` before the cache render (no false "currency changed" note); tests for the `unreadable` result and a move 409 closing a clean editor on a gone check | delegated: review fixes in 2 files plus tests | [x] | |
 
 ## Applicable checks
 
@@ -60,12 +61,14 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-08: Explored `CheckList`/`CheckEditor`, `SheetCurrencyPanel`, `ReloadLatest` and the Scene Type model. One slice, delegated writer.
 - 2026-11-08: T1 done. RED: 6 new `ChecksTab.test.tsx` tests failed on the old code (immediate reload); GREEN: 121/121. The editor also notes an unreadable refetched check and keeps its draft.
 - 2026-11-08: T2 done. RED: 3 new `SheetCurrencyPanel.test.tsx` tests failed on the old code (no note, edit dropped); GREEN: `src/studio/sheet` 385/385. `ReloadLatest.onLoaded` now receives the refetched sheet.
+- 2026-11-08: T3 done. RED: 2 new `ChecksTab.test.tsx` tests (editor opened during the refetch closed; misleading list notice on `unreadable`) and 1 `SheetCurrencyPanel.test.tsx` test (edit equal to the stored currency still showed the note) failed on the old code; the gone-check close, the editor `unreadable` note and the post-save no-flash tests passed at once (coverage and regression guards). GREEN: `src/studio/sheet` + `ChecksTab.test.tsx` 512/512.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | Findings | PR |
 |---|---|---|---|---|
+| 1, T1–T2 | `review-71d961c61104b32a` | Approved and acknowledged | 2 warnings, 1 suggestion: `reload` read `selected` and `editorUnsaved` from a stale closure, so a check opened during the refetch could be closed; a successful currency save flashed the "stored currency changed" note until the mutate `onSuccess` ran (and kept it for good if that callback was skipped); no test for the `unreadable` result or a move 409 closing a clean editor on a gone check. All fixed in T3 | [#377](https://github.com/iribarren/ogami/pull/377) |
 
 ## Next step
 
-Review slice 1.
+Review T3, then close the feature.

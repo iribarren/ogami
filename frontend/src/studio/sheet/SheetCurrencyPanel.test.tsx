@@ -261,6 +261,19 @@ describe('when the stored currency changes while the panel is open', () => {
     expect(panel().getByRole('button', reload)).toBeVisible()
   })
 
+  it('adopts the stored currency without a note when the edit already equals it', async () => {
+    const { user, store } = await openEconomy()
+    await replaceText(user, panel().getByLabelText('Unit'), ' cr ')
+
+    store(theirs)
+
+    expect(await panel().findByText('Characters spend eddies in cr.')).toBeVisible()
+    expect(panel().queryByText(note)).not.toBeInTheDocument()
+    expect(panel().queryByRole('button', reload)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('link', { name: 'Overview' }))
+    expect(screen.queryByRole('dialog', { name: 'Leave without saving?' })).not.toBeInTheDocument()
+  })
+
   it('sends the old version on a save, and a reload replaces the edit and takes the new version', async () => {
     const sent: unknown[] = []
     let attempts = 0
@@ -338,6 +351,33 @@ describe('when the stored currency changes while the panel is open', () => {
     expect(await screen.findByText('Characters spend eddies in cr.')).toBeVisible()
     await user.click(screen.getByRole('link', { name: 'Overview' }))
     expect(screen.queryByRole('dialog', { name: 'Leave without saving?' })).not.toBeInTheDocument()
+  })
+
+  it('never says the stored currency changed after the person own save, and the next save sends its version', async () => {
+    const saved = { ...sheetWithEconomy, version: 14, currency: { field: 'eddies', unit: 'cr' } }
+    const { sent, handler } = recorder(Response.json(saved))
+    const { user } = await openEconomy({ [`PUT ${url}`]: handler })
+    // Every state the document passes through counts: the note may flash for one render only.
+    let flashed = false
+    const watch = new MutationObserver(() => {
+      flashed ||= document.body.textContent.includes('stored currency changed')
+    })
+    watch.observe(document.body, { childList: true, subtree: true, characterData: true })
+    await replaceText(user, panel().getByLabelText('Unit'), 'cr')
+
+    await user.click(panel().getByRole('button', { name: 'Save currency' }))
+
+    expect(await screen.findByText('Characters spend eddies in cr.')).toBeVisible()
+    watch.disconnect()
+    expect(flashed).toBe(false)
+    expect(panel().queryByRole('alert')).not.toBeInTheDocument()
+    expect(panel().queryByRole('button', reload)).not.toBeInTheDocument()
+    await replaceText(user, panel().getByLabelText('Unit'), 'cc')
+    await user.click(panel().getByRole('button', { name: 'Save currency' }))
+    await waitFor(() => {
+      expect(sent).toHaveLength(2)
+    })
+    expect(sent[1]).toMatchObject({ expectedVersion: 14, unit: 'cc' })
   })
 
   it('takes the answer of a removal as what the inputs started from', async () => {

@@ -48,7 +48,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | ID | Task | Route | Done | Commit |
 |---|---|---|---|---|
 | T1 | `CheckEditor` keeps its draft on a 409 and reloads only on request; a move 409 keeps an editor with unsaved edits | delegated: slice runs under one writer (2+ non-trivial files) | [x] | |
-| T2 | `SheetCurrencyPanel` keeps `readAt` and `base`, keeps an unsaved edit when the stored currency changes, and replaces it only on reload | delegated: slice runs under one writer | [ ] | |
+| T2 | `SheetCurrencyPanel` keeps `readAt` and `base`, keeps an unsaved edit when the stored currency changes, and replaces it only on reload | delegated: slice runs under one writer | [x] | |
 
 ## Applicable checks
 
@@ -59,6 +59,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 - 2026-11-08: Explored `CheckList`/`CheckEditor`, `SheetCurrencyPanel`, `ReloadLatest` and the Scene Type model. One slice, delegated writer.
 - 2026-11-08: T1 done. RED: 6 new `ChecksTab.test.tsx` tests failed on the old code (immediate reload); GREEN: 121/121. The editor also notes an unreadable refetched check and keeps its draft.
+- 2026-11-08: T2 done. RED: 3 new `SheetCurrencyPanel.test.tsx` tests failed on the old code (no note, edit dropped); GREEN: `src/studio/sheet` 385/385. `ReloadLatest.onLoaded` now receives the refetched sheet.
 
 ## Reviews
 
@@ -67,4 +68,4 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 ## Next step
 
-T1 and T2 under one writer.
+Review slice 1.

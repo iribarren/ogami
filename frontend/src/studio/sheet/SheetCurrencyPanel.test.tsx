@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { chooseOption, listOptions } from '@/test/chooseOption'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
-import { typeText } from '@/test/typeText'
+import { replaceText, typeText } from '@/test/typeText'
 
 import { draft, sheet, sheetWithEconomy, validDraft } from '../fixtures'
 import { sheetKey } from './useGameSystemSheet'
@@ -199,6 +199,159 @@ describe('a sheet with a currency', () => {
     await waitFor(() => {
       expect(panel().getByLabelText('Unit')).toHaveValue('cr')
     })
+  })
+})
+
+describe('when the stored currency changes while the panel is open', () => {
+  const note =
+    'The stored currency changed since you started editing. Reloading replaces your edit with it.'
+  const theirs = { ...sheetWithEconomy, version: 14, currency: { field: 'eddies', unit: 'cr' } }
+
+  /** Opens the sheet with a currency; `stored` is what the sheet endpoint answers from now on. */
+  async function openEconomy(handlers: Record<string, FakeHandler> = {}) {
+    const state = { stored: sheetWithEconomy as unknown, down: false }
+    const user = userEvent.setup()
+    const { queryClient } = renderAppAt('/studio/game-systems/my-draft', {
+      'GET /api/auth/me': signedInAs('GAME_MANAGER'),
+      'GET /api/studio/game-systems': json([]),
+      [`GET ${base}`]: json(draft),
+      [`GET ${base}/validation`]: json(validDraft),
+      [`GET ${base}/sheet`]: () =>
+        state.down
+          ? Response.json({ error: 'Down.' }, { status: 500 })
+          : Response.json(state.stored),
+      ...handlers,
+    })
+    await user.click(await screen.findByRole('link', { name: 'Sheet' }))
+    await screen.findByLabelText('Unit')
+    /** Another request changed the stored sheet, and this page learns of it. */
+    const store = (next: unknown) => {
+      state.stored = next
+      act(() => {
+        queryClient.setQueryData(sheetKey('my-draft'), next)
+      })
+    }
+    return { user, store, state }
+  }
+
+  it('follows it when nothing was edited, and the next save carries its version', async () => {
+    const { sent, handler } = recorder(Response.json({ ...theirs, version: 15 }))
+    const { user, store } = await openEconomy({ [`PUT ${url}`]: handler })
+
+    store(theirs)
+
+    await waitFor(() => {
+      expect(panel().getByLabelText('Unit')).toHaveValue('cr')
+    })
+    expect(panel().queryByText(note)).not.toBeInTheDocument()
+    await user.click(panel().getByRole('button', { name: 'Save currency' }))
+    await waitFor(() => {
+      expect(sent).toEqual([{ expectedVersion: 14, field: 'eddies', unit: 'cr' }])
+    })
+  })
+
+  it('keeps an unsaved edit, says so and offers the reload', async () => {
+    const { user, store } = await openEconomy()
+    await typeText(user, panel().getByLabelText('Unit'), 'x')
+
+    store(theirs)
+
+    expect(await panel().findByText(note)).toBeVisible()
+    expect(panel().getByLabelText('Unit')).toHaveValue('ebx')
+    expect(panel().getByRole('button', reload)).toBeVisible()
+  })
+
+  it('sends the old version on a save, and a reload replaces the edit and takes the new version', async () => {
+    const sent: unknown[] = []
+    let attempts = 0
+    const { user, store } = await openEconomy({
+      [`PUT ${url}`]: async (request) => {
+        sent.push(await request.json())
+        attempts += 1
+        return attempts === 1
+          ? Response.json(
+              { error: 'Another request saved the draft.', code: 'modified_concurrently' },
+              { status: 409 },
+            )
+          : Response.json({ ...theirs, version: 15 })
+      },
+    })
+    await typeText(user, panel().getByLabelText('Unit'), 'x')
+    store(theirs)
+    await panel().findByText(note)
+
+    await user.click(panel().getByRole('button', { name: 'Save currency' }))
+
+    expect(await panel().findByText('Another request saved the draft.')).toBeVisible()
+    expect(sent[0]).toEqual({ expectedVersion: 13, field: 'eddies', unit: 'ebx' })
+    expect(panel().getByLabelText('Unit')).toHaveValue('ebx')
+
+    await user.click(panel().getByRole('button', reload))
+
+    await waitFor(() => {
+      expect(panel().getByLabelText('Unit')).toHaveValue('cr')
+    })
+    expect(panel().queryByText(note)).not.toBeInTheDocument()
+    await user.click(panel().getByRole('button', { name: 'Save currency' }))
+    await waitFor(() => {
+      expect(sent).toHaveLength(2)
+    })
+    expect(sent[1]).toEqual({ expectedVersion: 14, field: 'eddies', unit: 'cr' })
+  })
+
+  it('keeps the edit when the reload fails', async () => {
+    const { user, store, state } = await openEconomy()
+    await typeText(user, panel().getByLabelText('Unit'), 'x')
+    store(theirs)
+    await panel().findByText(note)
+
+    state.down = true
+    await user.click(panel().getByRole('button', reload))
+
+    expect(await screen.findByText(/Couldn't reload the latest version/)).toBeVisible()
+    expect(panel().getByLabelText('Unit')).toHaveValue('ebx')
+    expect(panel().getByText(note)).toBeVisible()
+  })
+
+  it('lets a save send the new version when only the sheet version moved', async () => {
+    const { sent, handler } = recorder(Response.json({ ...sheetWithEconomy, version: 21 }))
+    const { user, store } = await openEconomy({ [`PUT ${url}`]: handler })
+    await typeText(user, panel().getByLabelText('Unit'), 'x')
+
+    store({ ...sheetWithEconomy, version: 20 })
+    await user.click(panel().getByRole('button', { name: 'Save currency' }))
+
+    await waitFor(() => {
+      expect(sent).toEqual([{ expectedVersion: 20, field: 'eddies', unit: 'ebx' }])
+    })
+    expect(panel().queryByText(note)).not.toBeInTheDocument()
+  })
+
+  it('takes the answer of a save as what the inputs started from', async () => {
+    const saved = { ...sheetWithEconomy, version: 14, currency: { field: 'eddies', unit: 'cr' } }
+    const { handler } = recorder(Response.json(saved))
+    const { user } = await openEconomy({ [`PUT ${url}`]: handler })
+    await replaceText(user, panel().getByLabelText('Unit'), 'cr')
+
+    await user.click(panel().getByRole('button', { name: 'Save currency' }))
+
+    expect(await screen.findByText('Characters spend eddies in cr.')).toBeVisible()
+    await user.click(screen.getByRole('link', { name: 'Overview' }))
+    expect(screen.queryByRole('dialog', { name: 'Leave without saving?' })).not.toBeInTheDocument()
+  })
+
+  it('takes the answer of a removal as what the inputs started from', async () => {
+    const { handler } = recorder(
+      Response.json({ ...sheetWithEconomy, version: 14, currency: null }),
+    )
+    const { user } = await openEconomy({ [`DELETE ${url}`]: handler })
+
+    await user.click(panel().getByRole('button', { name: 'Remove currency' }))
+
+    expect(await screen.findByText(/Characters have no money/)).toBeVisible()
+    expect(panel().getByLabelText('Unit')).toHaveValue('')
+    await user.click(screen.getByRole('link', { name: 'Overview' }))
+    expect(screen.queryByRole('dialog', { name: 'Leave without saving?' })).not.toBeInTheDocument()
   })
 })
 

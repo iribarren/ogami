@@ -121,13 +121,16 @@ export function SheetLayoutPanel({
   )
 }
 
-/** Refetches the sheet; calls `onLoaded` once it is the latest. A failed reload says so. */
+/**
+ * Refetches the sheet; calls `onLoaded` with it once it is the latest. A failed reload, or one
+ * that returns no sheet, says so and calls nothing.
+ */
 export function ReloadLatest({
   gameSystemKey,
   onLoaded,
 }: {
   gameSystemKey: string
-  onLoaded: () => void
+  onLoaded: (sheet: GameSystemSheet) => void
 }) {
   const latest = useGameSystemSheet(gameSystemKey)
   const [failed, setFailed] = useState(false)
@@ -145,9 +148,9 @@ export function ReloadLatest({
         size="sm"
         onClick={() => {
           void latest.refetch().then((result) => {
-            setFailed(result.isError)
-            if (!result.isError) {
-              onLoaded()
+            setFailed(result.isError || result.data === undefined)
+            if (!result.isError && result.data !== undefined) {
+              onLoaded(result.data)
             }
           })
         }}

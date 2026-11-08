@@ -8,7 +8,8 @@ import type { Campaign } from '../campaigns/useCampaigns'
 /**
  * The control of a choice option or prompt that changes a Character's sheet: the player names
  * the Character from the campaign. The step is answered with the id; the campaign without a
- * Character has nobody to name, so it says so.
+ * Character has nobody to name, so it says so, and one with a single Character has nothing to
+ * choose: the caller answers with it (`effectiveCharacterId`) and the control is not shown.
  */
 export function SheetCharacterSelect({
   campaign,
@@ -29,6 +30,10 @@ export function SheetCharacterSelect({
     )
   }
 
+  if (campaign.characters.length === 1) {
+    return null
+  }
+
   return (
     <div className="space-y-1">
       <Label htmlFor={id}>Character</Label>
@@ -39,7 +44,7 @@ export function SheetCharacterSelect({
           onChange(event.target.value)
         }}
       >
-        {campaign.characters.length > 1 && <option value="">Choose a Character</option>}
+        <option value="">Choose a Character</option>
         {campaign.characters.map(({ id: characterId, name }) => (
           <option key={characterId} value={characterId}>
             {name}

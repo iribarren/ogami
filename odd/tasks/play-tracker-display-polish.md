@@ -53,7 +53,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T2 | `ListPanel` badges count open items only | delegated: slice runs under one writer | [x] | |
 | T3 | Cancelled action die struck through in the journal and the sandbox | delegated: slice runs under one writer | [x] | |
 | T4 | A choice's skip option is not offered beside Skip | delegated: slice runs under one writer | [x] | |
-| T5 | No Character select with one Character | | [ ] | |
+| T5 | No Character select with one Character | delegated: slice runs under one writer | [x] | |
 | T6 | Sandbox burn offer names the challenge dice it beats | | [ ] | |
 
 ## Applicable checks
@@ -69,6 +69,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-08: T2 done. RED: the badge test failed on the old code, GREEN after.
 - 2026-11-08: T3 done. RED: the journal and sandbox tests failed on the old code, GREEN after.
 - 2026-11-08: T4 done. RED: the new `FlowStepResponseTest` case failed on the old code, GREEN after; two Integration expectations updated (skip option no longer listed). No Behat or e2e picked the skip option.
+- 2026-11-08: T5 done. RED: three `SheetEffectStep` tests failed on the old select, GREEN after; the answers still send the only Character's id.
 
 ## Reviews
 

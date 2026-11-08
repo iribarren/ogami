@@ -23,8 +23,10 @@ export function trackerValueText(tracker: Tracker) {
 export type TrackerLevels = Pick<Tracker, 'key' | 'levels'>[]
 
 /**
- * The label of the level a value falls in: the first whose `upTo` it does not pass, or the last
- * one (the backend's `Tracker::levelAt`). Null when the Tracker is unknown or has no levels.
+ * The label of the level a value falls in: the first whose `upTo` it does not pass (or that has
+ * none), as the backend's `Tracker::levelAt` finds it. Null when the Tracker is unknown, has no
+ * levels, or the value is past every bounded level and none is unbounded; there is no fallback to
+ * the last level, so the placeholder and the journal fall back to the bare number alike.
  */
 export function levelLabelAt(trackers: TrackerLevels, key: string, value: number): string | null {
   const levels = trackers.find((tracker) => tracker.key === key)?.levels ?? []

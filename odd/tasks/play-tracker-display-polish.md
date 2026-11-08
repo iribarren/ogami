@@ -28,7 +28,7 @@ Roadmap backlog B19. Fix six small display issues in Play and the Studio check s
 | 1 presets | Ironsworn's "Pick a slot with rank 0, which holds no vow" becomes "Pick a Free slot, which holds no vow"; `(rank {tracker:vow-N-rank}, …)` stays and reads `rank Dangerous`. West Marches' "The threat is {tracker:threat}." reads `Tough` and stays. `make presets` after editing | Parent |
 | 2 | Every `ListPanel` badge counts open items only (Threads, Places, NPCs) | Parent |
 | 3 | A cancelled action die's expression is shown struck through (`<del>`) beside the existing "counts 0" note, in the journal (so the dialog too) and in the sandbox | Parent |
-| 4 | `FlowStepResponse` leaves out the option whose key equals the step's `skip`; the Skip button stays and the journal still records that option. Hiding Skip instead would need `skip` in the API | Parent |
+| 4 | `FlowStepResponse` leaves out the option whose key equals the step's `skip`, unless that option changes a sheet (it stays listed so the player can pick it with a Character); the Skip button stays and the journal still records that option. Hiding Skip instead would need `skip` in the API | Parent |
 | 5 | `SheetCharacterSelect` renders nothing with one Character; the submit still sends its id | Parent |
 | 6 | The sandbox's burn offer adds Play's sentence ("It would beat N of M challenge dice, against K with the roll") using the sandbox's own `diceBeatenBy`, exported. No Studio import from `play/` | Parent |
 
@@ -55,6 +55,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T4 | A choice's skip option is not offered beside Skip | delegated: slice runs under one writer | [x] | |
 | T5 | No Character select with one Character | delegated: slice runs under one writer | [x] | |
 | T6 | Sandbox burn offer names the challenge dice it beats | delegated: slice runs under one writer | [x] | |
+| T7 | Review findings: level fallback parity, sheet-changing skip option kept, Effect text label test | delegated: follows the slice's writer | [x] | |
 
 ## Applicable checks
 
@@ -71,6 +72,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - 2026-11-08: T4 done. RED: the new `FlowStepResponseTest` case failed on the old code, GREEN after; two Integration expectations updated (skip option no longer listed). No Behat or e2e picked the skip option.
 - 2026-11-08: T5 done. RED: three `SheetEffectStep` tests failed on the old select, GREEN after; the answers still send the only Character's id.
 - 2026-11-08: T6 done. RED: the burn-offer sandbox test failed on the old code, GREEN after; `diceBeatenBy` is exported and unit-tested (written with the code, no separate RED).
+- 2026-11-08: T7 done. Finding 1: `Tracker::levelAt` returns null past the last bounded level (the placeholder then prints the number), so `levelLabelAt` already matched it; the comment wrongly claimed a last-level fallback and is fixed, and `levelLabelAt.test.ts` pins the behaviour (no separate RED). Finding 2: RED, the new `FlowStepResponseTest` case failed with the skip option dropped, GREEN after. Finding 3: proof test in `FlowRunControlFlowTest`, passed at once (no separate RED).
 
 ## Reviews
 

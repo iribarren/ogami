@@ -119,7 +119,7 @@ final readonly class FlowStepResponse
             $step instanceof TableStep => self::of($view, table: $view->table ?? $step->table),
             $step instanceof RollStep => self::of($view, dice: $step->dice),
             $step instanceof CheckStep => self::of($view, check: $step->singleCheck(), checks: $step->isSet() ? $step->checks : []),
-            $step instanceof ChoiceStep => self::of($view, options: array_map(FlowStepOptionResponse::of(...), array_values(array_filter($step->options, static fn (ChoiceOption $option): bool => $option->key !== $step->skip)))),
+            $step instanceof ChoiceStep => self::of($view, options: array_map(FlowStepOptionResponse::of(...), array_values(array_filter($step->options, static fn (ChoiceOption $option): bool => $option->key !== $step->skip || $option->changesSheet())))),
             $step instanceof ShopStep => self::of($view, shop: $view->shop instanceof ShopView ? FlowShopStepResponse::fromView($view->shop) : throw new \LogicException(\sprintf('Shop step "%s" has no shop view.', $step->key))),
             $step instanceof PickStep => self::of($view, pick: $view->pick instanceof PickView ? FlowPickStepResponse::fromView($view->pick) : throw new \LogicException(\sprintf('Pick step "%s" has no pick view.', $step->key))),
             $step instanceof ConditionStep => throw new \LogicException(\sprintf('Condition step "%s" never waits: it cannot be the current step.', $step->key)),

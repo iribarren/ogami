@@ -10,6 +10,8 @@ use App\Play\Domain\GameSystem\Flow\ChoiceOption;
 use App\Play\Domain\GameSystem\Flow\ChoiceStep;
 use App\Play\Domain\GameSystem\Flow\ConditionStep;
 use App\Play\Domain\GameSystem\Flow\Outcome;
+use App\Play\Domain\GameSystem\Flow\SheetEffect;
+use App\Play\Domain\GameSystem\Flow\SheetOperation;
 use App\Play\Infrastructure\Http\FlowStepResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -56,5 +58,18 @@ final class FlowStepResponseTest extends TestCase
         $response = FlowStepResponse::fromView(new FlowStepView(StepKind::Choice, $step, $step->title, $step->prompt, $step->tip));
 
         self::assertSame($offered, array_map(static fn (\App\Play\Infrastructure\Http\FlowStepOptionResponse $option): string => $option->key, $response->options));
+    }
+
+    #[Test]
+    public function aChoiceStillOffersASkipOptionThatChangesASheet(): void
+    {
+        $step = new ChoiceStep('pick', 'Which?', null, null, false, null, [], [
+            new ChoiceOption('a', 'A', new Outcome()),
+            new ChoiceOption('none', 'None', new Outcome(effects: [new SheetEffect('xp', SheetOperation::Add, 1)])),
+        ], 'none');
+
+        $response = FlowStepResponse::fromView(new FlowStepView(StepKind::Choice, $step, $step->title, $step->prompt, $step->tip));
+
+        self::assertSame([['a', false], ['none', true]], array_map(static fn (\App\Play\Infrastructure\Http\FlowStepOptionResponse $option): array => [$option->key, $option->changesSheet], $response->options));
     }
 }

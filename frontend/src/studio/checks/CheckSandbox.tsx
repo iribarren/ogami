@@ -15,6 +15,7 @@ import { useRollHistory } from '../oracles/useRollHistory'
 import type { BandDraft, DifficultyDraft, PoolDraft } from './checkDraft'
 import {
   burnScoreOf,
+  diceBeatenBy,
   canBurnTestRoll,
   resolveSandbox,
   type Bound,
@@ -521,6 +522,12 @@ function RollResult({
           <span className="text-muted-foreground">
             The score becomes {burnScoreOf(challenge.momentum ?? 0, challenge.scoreMax)}, from{' '}
             {challenge.score}.
+          </span>
+          <span className="text-muted-foreground">
+            It would beat{' '}
+            {diceBeatenBy(challenge.dice, burnScoreOf(challenge.momentum ?? 0, challenge.scoreMax))}{' '}
+            of {challenge.dice.length} challenge dice, against{' '}
+            {diceBeatenBy(challenge.dice, challenge.score)} with the roll.
           </span>
         </div>
       )}

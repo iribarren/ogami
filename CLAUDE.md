@@ -47,7 +47,7 @@ backend/                     Symfony app (PHP 8.5, Symfony 8.1)
 frontend/                    Vite + React + TypeScript SPA
   src/routes/                TanStack Router file routes (thin; generate routeTree.gen.ts)
   src/app/                   router, query client, app shell, landing page
-  src/{play,studio,admin}/   product areas
+  src/{play,studio,admin,manual}/   product areas
   src/shared/                ui/ (shadcn), api/ (generated client), lib/, health/
   e2e/                       Playwright tests
 docker/                      container config (php: FrankenPHP + Caddy, node)

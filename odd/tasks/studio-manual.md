@@ -130,7 +130,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T3 | "New table" in the step editor's table pickers (prompt inspiration, `table` step): creates a named table without leaving the step. Find out whether item rules need a first entry, and seed one if so | delegated: slice runs under one writer | [x] | `a7699c5e`, `63d78359` |
 | T4 | ADR for the manual; roadmap line; glossary: a `pick` step also picks Places and Characters, as the contract says | delegated: slice runs under one writer | [x] | `9ed3a24f` |
 | T15 | Slice 1 review findings: New table in Library packs, unsaved step edits on the link to the new table, dialog dismissal while a create is pending | delegated: slice runs under one writer | [x] | |
-| T5 | In-app Manual route, Markdown rendering, edition blocks, links from Studio; front matter as the first content | delegated | [ ] | |
+| T5 | In-app Manual route, Markdown rendering, edition blocks, links from Studio; front matter as the first content | delegated: slice runs under one writer | [x] | |
 | T6 | Cairn GameSystem preset and The Long Carry flow, with credits | delegated | [ ] | |
 | T7 | 24XX GameSystem preset and Cold Berth flow, with credits and the help rule change | delegated | [ ] | |
 | T8 | Part I, chapters 1–4 with examples | delegated | [ ] | |
@@ -160,7 +160,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - T3 done: "New table" opens a dialog with the Oracles tab's `CreateForm`; draft version is draft-wide, so the create sends the editor's `readAt` and the editor adopts the answer; a 409 sets the editor's conflict state. Item rules need no extra first entry beyond the seed `newTable` gives. RED observed (7 failing), then GREEN.
 - T4 done: ADR 0050, roadmap B26, glossary Pick step row.
 - T15 done: a pack reaches both editors (`SectionRail.tsx` lists Scene Types for packs; the Scene Type route takes any key), so both editors now offer "New table" only when `useStudioGameSystem` says `game-system` (RED: pack test failed). The unsaved-step link was already blocked by `UnsavedChangesGuard` (new editor tests passed at once, no fix). `NewTableButton` ignores dismissal while a create is pending (RED: 3 tests failed), so a failure stays visible.
+- T5 done: `/manual` and `/manual/$chapter` (public, `beforeLoad` not-found), `splitEditionBlocks`, `react-markdown` + `remark-gfm` without raw HTML, four front matter pages, Manual links in the main nav, Studio home and GameSystem header. Splitter tests were written with the splitter, so no separate RED; the AppShell Manual test is the only one that failed first.
+- Slice 2 size: about 1,828 changed lines, 868 of them `pnpm-lock.yaml`. Kept as one slice by the user's decision, dependency in its own commit.
 
 ## Next step
 
-Slice 2: T15, then T5.
+Review slice 2, push and open its PR.

@@ -198,6 +198,17 @@ e2e-reset: e2e-up ## Drop the e2e database and seed it again from scratch (the d
 e2e: frontend-install e2e-seed ## Seed the e2e database, then run the Playwright tests against php-e2e (ARGS="--grep smoke")
 	$(DOCKER_COMPOSE) run --rm $(TTY) playwright node_modules/.bin/playwright test $(ARGS)
 
+##@ Database
+
+# Restore a pg_dump -Fc file. DB= restores into another database (default: the dev one); FORCE=1 skips the prompt.
+FILE ?=
+DB ?=
+FORCE ?=
+
+.PHONY: db-restore
+db-restore: ## Replace the dev database with a pg_dump -Fc file (FILE=path, DB=other, FORCE=1 skips the prompt)
+	@FILE="$(FILE)" DB="$(DB)" FORCE="$(FORCE)" DOCKER_COMPOSE="$(DOCKER_COMPOSE)" ./scripts/db-restore.sh
+
 ##@ API contract (ADR 0005)
 
 API_DIR := frontend/src/shared/api
@@ -237,5 +248,6 @@ verify: ## Run only the checks the changed files need (BASE=main, DRY_RUN=1 to p
 
 # Table-driven tests for the scope rules of `make verify`.
 .PHONY: verify-test
-verify-test: ## Test the scope rules of make verify (scripts/verify-changed.test.sh)
+verify-test: ## Test the scope rules of make verify and make db-restore (scripts/*.test.sh)
 	@./scripts/verify-changed.test.sh
+	@./scripts/db-restore.test.sh

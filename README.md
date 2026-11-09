@@ -38,6 +38,7 @@ Open http://localhost:8080: the SPA, with the API under `/api` on the same origi
 ```bash
 make qa test e2e     # static checks, unit/integration/Behat/Vitest, Playwright
 make e2e-reset       # drop and re-seed the e2e database (ogami_e2e)
+make db-restore FILE=path/to.dump  # replace the dev database with a pg_dump -Fc file (asks to confirm)
 make verify          # only the checks the changed files need (CI runs everything)
 ```
 

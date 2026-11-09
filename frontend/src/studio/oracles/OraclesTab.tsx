@@ -494,8 +494,11 @@ function CreateLikelihoodDialog({
   )
 }
 
-/** Key and name, the errors of a create and its conflict button, around the kind's own fields. */
-function CreateForm({
+/**
+ * Key and name, the errors of a create and its conflict button, around the kind's own fields.
+ * Without `onReload` a conflict has no button here: the caller shows its own way out.
+ */
+export function CreateForm({
   label,
   submit,
   create,
@@ -511,9 +514,9 @@ function CreateForm({
 }: {
   label: string
   submit: string
-  create: Write<never>
-  reload: ReloadState
-  onReload: () => void
+  create: Pick<Write<never>, 'error' | 'isPending'>
+  reload?: ReloadState
+  onReload?: () => void
   oracleKey: string
   name: string
   onKey: (key: string) => void
@@ -527,6 +530,8 @@ function CreateForm({
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
+    // A form in a dialog still bubbles through React to a form around the dialog's opener.
+    event.stopPropagation()
     onSubmit()
   }
 
@@ -567,7 +572,7 @@ function CreateForm({
           Couldn&apos;t reload the latest version. Try again.
         </p>
       )}
-      {create.error instanceof StudioError && create.error.status === 409 ? (
+      {create.error instanceof StudioError && create.error.status === 409 && onReload ? (
         <Button type="button" disabled={reload === 'pending'} onClick={onReload}>
           Reload the latest version
         </Button>

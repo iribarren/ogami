@@ -2391,3 +2391,51 @@ describe('Expand all steps and Collapse all steps', () => {
     expect([1, 2, 3].map(isOpen)).toEqual([false, false, true])
   })
 })
+
+describe('New table in the table pickers', () => {
+  const prompt = (inspiration: string[]) => ({
+    key: 'ask',
+    kind: 'prompt',
+    title: 'Ask',
+    inspiration,
+  })
+  const table = { key: 'roll-it', kind: 'table', title: 'Roll it', table: 'places' }
+  const withTables = { ...stepPickers, newTable: { gameSystemKey: 'my-draft', create: vi.fn() } }
+
+  function show(stored: unknown[], context: StepContext) {
+    render(<Harness stored={stored} context={context} />)
+    openStepCards()
+  }
+
+  it('is offered for a prompt step and a table step when the context can create tables', () => {
+    show([prompt([]), table], withTables)
+
+    expect(screen.getAllByRole('button', { name: 'New table' })).toHaveLength(2)
+  })
+
+  it('is not offered without the capability', () => {
+    show([prompt([]), table], stepPickers)
+
+    expect(screen.queryByRole('button', { name: 'New table' })).not.toBeInTheDocument()
+  })
+
+  it('is not offered on the other step kinds', () => {
+    show([{ key: 'ask', kind: 'oracle', title: 'Ask', oracle: 'fate' }], withTables)
+
+    expect(screen.queryByRole('button', { name: 'New table' })).not.toBeInTheDocument()
+  })
+
+  it('is disabled with its reason once five inspiration tables are selected', () => {
+    show([prompt(['a', 'b', 'c', 'd', 'e'])], withTables)
+
+    const button = screen.getByRole('button', { name: 'New table' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAccessibleDescription('A prompt offers at most 5 inspiration tables.')
+  })
+
+  it('stays available with four inspiration tables selected', () => {
+    show([prompt(['a', 'b', 'c', 'd'])], withTables)
+
+    expect(screen.getByRole('button', { name: 'New table' })).toBeEnabled()
+  })
+})

@@ -120,6 +120,8 @@ export const MAX_CHECKS = 10
 export const MAX_PICK_COUNT = 10
 export const MIN_OPTIONS = 2
 export const MAX_OPTIONS = 10
+/** The most inspiration tables a prompt step offers (the release contract: 1–5). */
+export const MAX_INSPIRATION = 5
 
 interface StepBase {
   key: string

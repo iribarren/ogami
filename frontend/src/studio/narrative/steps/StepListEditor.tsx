@@ -23,9 +23,11 @@ import { ShopFields } from './ShopFields'
 import { StepKindMenuItems } from './StepKindMenuItems'
 import { EffectsEditor, SETUP_NO_SHEET } from './EffectsEditor'
 import { Area, CheckList } from './fields'
+import { NewTableButton } from './NewTableButton'
 import type { StepContext } from './stepContext'
 import { StepKindTile } from './stepKindTile'
 import {
+  MAX_INSPIRATION,
   bandForms,
   checkDifficulty,
   countTargets,
@@ -227,6 +229,19 @@ function StepFields({
               onChange({ ...step, inspiration })
             }}
           />
+          {context.newTable && (
+            <NewTableButton
+              capability={context.newTable}
+              disabledReason={
+                step.inspiration.length >= MAX_INSPIRATION
+                  ? `A prompt offers at most ${String(MAX_INSPIRATION)} inspiration tables.`
+                  : undefined
+              }
+              onCreated={(key) => {
+                onChange({ ...step, inspiration: [...step.inspiration, key] })
+              }}
+            />
+          )}
         </div>
       )}
       {step.kind === 'roll' && (

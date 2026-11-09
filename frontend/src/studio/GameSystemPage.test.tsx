@@ -157,13 +157,13 @@ describe('the section rail', () => {
     const rail = await screen.findByRole('navigation', { name: 'GameSystem page' })
     expect(linkNames(within(rail).getByRole('group', { name: 'Author' }))).toEqual([
       'Overview',
-      'Oracles2',
-      'Trackers & tags1',
-      'Scene Types',
       'Flows0',
+      'Scene Types',
+      'Trackers & tags1',
+      'Oracles2',
       'Sheet',
-      'Gear',
       'Checks3',
+      'Gear',
       'Library',
     ])
     expect(linkNames(within(rail).getByRole('group', { name: 'Ship' }))).toEqual([
@@ -229,9 +229,9 @@ describe('the section rail', () => {
     const rail = await screen.findByRole('navigation', { name: 'GameSystem page' })
     expect(linkNames(rail)).toEqual([
       'Overview',
-      'Oracles2',
-      'Trackers & tags1',
       'Scene Types',
+      'Trackers & tags1',
+      'Oracles2',
       'Validation',
     ])
   })

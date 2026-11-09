@@ -6,6 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/ui
 import { TextField } from '../TextField'
 import { moveItem } from './draftParts'
 import { PickField } from './fields'
+import { NewTableButton } from './NewTableButton'
 import { SETUP_NO_SHEET } from './EffectsEditor'
 import { OutcomeEditor, RowControls } from './OutcomeEditor'
 import type { StepContext } from './stepContext'
@@ -156,6 +157,14 @@ export function TableFields({ step, ...p }: KindProps & { step: Of<'table'> }) {
           p.onChange({ ...step, table })
         }}
       />
+      {p.context.newTable && (
+        <NewTableButton
+          capability={p.context.newTable}
+          onCreated={(table) => {
+            p.onChange({ ...step, table })
+          }}
+        />
+      )}
       <fieldset className="space-y-3">
         <legend className="text-sm font-medium">Table by Scene Type</legend>
         {rows === null ? (

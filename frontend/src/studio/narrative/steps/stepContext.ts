@@ -1,8 +1,19 @@
+import type { SaveTable } from '../../oracles/tableDraft'
 import type { StoredCheck } from '../../checks/checkDraft'
 import type { GameSystemChecks } from '../../checks/useGameSystemChecks'
 import type { GameSystemSheet } from '../../sheet/useGameSystemSheet'
 import type { GameSystemNarrative } from '../useGameSystemNarrative'
 import type { CheckSpecial } from './stepDraft'
+
+/** Creating an oracle table from a step, for the editor of a GameSystem draft. */
+export interface NewTableCapability {
+  gameSystemKey: string
+  /**
+   * Appends the table at the version the editor was read at and adopts the version it answers
+   * with. It rejects with the API's refusal; the editor's draft is never touched.
+   */
+  create: (table: SaveTable) => Promise<void>
+}
 
 /** What the step and effect forms pick from: the draft's own tables, likelihood oracles, checks, trackers, tags, Scene Types, fact slots and sheet fields. */
 export interface StepContext {
@@ -35,6 +46,8 @@ export interface StepContext {
    * whether the sheet declares a currency. Absent until the sheet loads, so nothing is flagged.
    */
   economy?: { gear: { key: string; name: string; category: string | null }[]; currency: boolean }
+  /** Absent in library packs and wherever the version is not the editor's: no "New table" then. */
+  newTable?: NewTableCapability
 }
 
 /**

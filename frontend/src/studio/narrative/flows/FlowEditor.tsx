@@ -13,6 +13,7 @@ import { moveItem } from '../steps/draftParts'
 import { useGameSystemChecks } from '../../checks/useGameSystemChecks'
 import { useGameSystemSheet } from '../../sheet/useGameSystemSheet'
 import { stepContext } from '../steps/stepContext'
+import { useNewTable } from '../steps/useNewTable'
 import {
   useGameSystemNarrative,
   useSaveNarrativeItem,
@@ -99,9 +100,15 @@ export function FlowEditor({
   const checks = useGameSystemChecks(gameSystemKey)
   // The sheet gives a shop step its gear catalog and tells it whether a currency exists.
   const sheet = useGameSystemSheet(gameSystemKey)
+  // A table created from a step moves the draft-wide version: the next save must send it.
+  const newTable = useNewTable(gameSystemKey, readAt, setReadAt, (message) => {
+    setAnswer((now) => ({ ...now, page: message, conflict: true }))
+  })
   const context = useMemo(
-    () => stepContext(narrative, checks.data, sheet.data),
-    [narrative, checks.data, sheet.data],
+    () => ({ ...stepContext(narrative, checks.data, sheet.data), newTable }),
+    // `newTable` changes with the version read; the step cards only need the rest.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [narrative, checks.data, sheet.data, readAt],
   )
   const node = resolveNode(draft, selected)
   const path = nodePath(node)

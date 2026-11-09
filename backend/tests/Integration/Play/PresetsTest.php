@@ -98,6 +98,20 @@ final class PresetsTest extends KernelTestCase
     }
 
     #[Test]
+    public function hardCountryPublishesOnceWithItsRoadDeckAndGear(): void
+    {
+        $this->assertPublishesOnce('hard-country');
+
+        $snapshot = $this->snapshot('hard-country');
+        self::assertSame(['Hard Country', 1, 'parchment', 'the-long-carry'], [$snapshot->name(), $snapshot->releaseVersion(), $snapshot->theme(), $snapshot->defaultFlow()?->key]);
+        self::assertSame(['winter', 'burden'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
+        self::assertSame(['back', 'feet', 'head'], array_map(static fn (\App\Play\Domain\GameSystem\Check\Check $check): string => $check->key, $snapshot->checks()));
+        self::assertCount(13, $snapshot->gear());
+        // Weight is copies in the road deck: 3 + 2 + 3 + 2 + 3.
+        $this->assertWeightedTableResolves($snapshot, 'road-deck', 13, 'Camp: a place to stop', 'Omen: the road says something about the saint');
+    }
+
+    #[Test]
     public function mythicStylePublishesOnceAndResolvesItsOracles(): void
     {
         $this->assertPublishesOnce('mythic-style');

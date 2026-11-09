@@ -72,6 +72,16 @@ describe('the GameSystem page', () => {
     expect(screen.queryByText(/library change/)).not.toBeInTheDocument()
   })
 
+  it('links to the Manual from the header', async () => {
+    renderDraft()
+
+    await screen.findByRole('heading', { level: 1, name: 'My draft' })
+    expect(within(screen.getByRole('main')).getByRole('link', { name: 'Manual' })).toHaveAttribute(
+      'href',
+      '/manual',
+    )
+  })
+
   it('shows a not-found state for an unknown or foreign key', async () => {
     renderPage('nobody', {
       'GET /api/studio/game-systems/nobody': json({ error: 'No such GameSystem.' }, 404),

@@ -6,6 +6,7 @@ import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
 import { draft, narrativeFlows, oracles } from '../../fixtures'
+import { packSystem } from '../../library/fixtures'
 
 // The step cards' Requirement radios sit inside this page's form, where Radix measures them.
 vi.stubGlobal(
@@ -77,6 +78,13 @@ describe('New table from a flow step', () => {
     })
     expect(saved[0]?.expectedVersion).toBe(6)
     expect(saved[0]?.item.phases[0]?.worldTurn).toMatchObject([{ kind: 'table', table: 'omens' }])
+  })
+
+  it("is not offered in a Library pack, which keeps today's pickers", async () => {
+    await openTableStep({ [`GET ${base}`]: json({ ...packSystem, key: 'my-draft' }) })
+    await screen.findByText(/Fantasy basics/)
+
+    expect(screen.queryAllByRole('button', { name: 'New table' })).toHaveLength(0)
   })
 
   it('on a conflict keeps the step and shows the editor reload', async () => {

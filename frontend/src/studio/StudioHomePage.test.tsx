@@ -43,6 +43,18 @@ describe('the Studio home page', () => {
     expect(within(list()).getByText('3')).toHaveClass('count-pill')
   })
 
+  it('links to the Manual', async () => {
+    renderAppAt('/studio', {
+      'GET /api/auth/me': gameManager,
+      'GET /api/studio/game-systems': json([]),
+      'GET /api/studio/library/packs': json([]),
+    })
+
+    await screen.findByRole('heading', { level: 1, name: 'Studio' })
+    const header = screen.getByRole('main')
+    expect(within(header).getByRole('link', { name: 'Manual' })).toHaveAttribute('href', '/manual')
+  })
+
   it('warns of the library changes of a draft and says nothing at 0', async () => {
     renderAppAt('/studio', {
       'GET /api/auth/me': gameManager,

@@ -65,6 +65,10 @@ export function NewTableButton({
       <Dialog
         open={open}
         onOpenChange={(next) => {
+          // Escape or a click outside while the create is in flight would hide its failure.
+          if (!next && pending) {
+            return
+          }
           setOpen(next)
           setError(null)
         }}

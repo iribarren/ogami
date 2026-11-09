@@ -17,6 +17,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PlayRouteImport } from './routes/play'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as StudioRouteImport } from './routes/studio'
+import { Route as ManualIndexRouteImport } from './routes/manual.index'
+import { Route as ManualChapterRouteImport } from './routes/manual.$chapter'
 import { Route as PlayIndexRouteImport } from './routes/play.index'
 import { Route as StudioIndexRouteImport } from './routes/studio.index'
 import { Route as PlayCampaignsCampaignIdRouteImport } from './routes/play.campaigns.$campaignId'
@@ -65,6 +67,16 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const StudioRoute = StudioRouteImport.update({
   id: '/studio',
   path: '/studio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManualIndexRoute = ManualIndexRouteImport.update({
+  id: '/manual/',
+  path: '/manual/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManualChapterRoute = ManualChapterRouteImport.update({
+  id: '/manual/$chapter',
+  path: '/manual/$chapter',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlayIndexRoute = PlayIndexRouteImport.update({
@@ -126,6 +138,8 @@ export interface FileRoutesByFullPath {
   '/play': typeof PlayRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/studio': typeof StudioRouteWithChildren
+  '/manual/$chapter': typeof ManualChapterRoute
+  '/manual/': typeof ManualIndexRoute
   '/play/': typeof PlayIndexRoute
   '/studio/': typeof StudioIndexRoute
   '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
@@ -143,6 +157,8 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/manual/$chapter': typeof ManualChapterRoute
+  '/manual': typeof ManualIndexRoute
   '/play': typeof PlayIndexRoute
   '/studio': typeof StudioIndexRoute
   '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
@@ -163,6 +179,8 @@ export interface FileRoutesById {
   '/play': typeof PlayRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/studio': typeof StudioRouteWithChildren
+  '/manual/$chapter': typeof ManualChapterRoute
+  '/manual/': typeof ManualIndexRoute
   '/play/': typeof PlayIndexRoute
   '/studio/': typeof StudioIndexRoute
   '/play/campaigns/$campaignId': typeof PlayCampaignsCampaignIdRoute
@@ -184,6 +202,8 @@ export interface FileRouteTypes {
     | '/play'
     | '/reset-password'
     | '/studio'
+    | '/manual/$chapter'
+    | '/manual/'
     | '/play/'
     | '/studio/'
     | '/play/campaigns/$campaignId'
@@ -201,6 +221,8 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/reset-password'
+    | '/manual/$chapter'
+    | '/manual'
     | '/play'
     | '/studio'
     | '/play/campaigns/$campaignId'
@@ -220,6 +242,8 @@ export interface FileRouteTypes {
     | '/play'
     | '/reset-password'
     | '/studio'
+    | '/manual/$chapter'
+    | '/manual/'
     | '/play/'
     | '/studio/'
     | '/play/campaigns/$campaignId'
@@ -240,6 +264,8 @@ export interface RootRouteChildren {
   PlayRoute: typeof PlayRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   StudioRoute: typeof StudioRouteWithChildren
+  ManualChapterRoute: typeof ManualChapterRoute
+  ManualIndexRoute: typeof ManualIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -298,6 +324,20 @@ declare module '@tanstack/react-router' {
       path: '/studio'
       fullPath: '/studio'
       preLoaderRoute: typeof StudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manual/': {
+      id: '/manual/'
+      path: '/manual'
+      fullPath: '/manual/'
+      preLoaderRoute: typeof ManualIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manual/$chapter': {
+      id: '/manual/$chapter'
+      path: '/manual/$chapter'
+      fullPath: '/manual/$chapter'
+      preLoaderRoute: typeof ManualChapterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/play/': {
@@ -413,6 +453,8 @@ const rootRouteChildren: RootRouteChildren = {
   PlayRoute: PlayRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   StudioRoute: StudioRouteWithChildren,
+  ManualChapterRoute: ManualChapterRoute,
+  ManualIndexRoute: ManualIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

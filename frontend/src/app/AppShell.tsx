@@ -50,6 +50,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {label}
               </Link>
             ))}
+            <Link
+              to="/manual"
+              className={linkClassName}
+              activeProps={{ className: 'font-medium text-foreground' }}
+            >
+              Manual
+            </Link>
             {!isPending && !currentUser && (
               <Link to="/login" className={`${linkClassName} ml-auto`}>
                 Sign in

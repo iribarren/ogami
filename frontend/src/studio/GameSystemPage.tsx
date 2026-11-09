@@ -195,6 +195,12 @@ function GameSystemView({
         </div>
         {/* The notice sits beside Publish, so showing it moves nothing below the header. */}
         <div className="flex items-center gap-3">
+          <Link
+            to="/manual"
+            className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          >
+            Manual
+          </Link>
           {notice?.tab === tab && (
             <p role="status" className="flex items-center gap-1.5 text-sm">
               <Check aria-hidden="true" className="size-4 text-success" />

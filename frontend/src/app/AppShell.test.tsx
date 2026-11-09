@@ -22,6 +22,16 @@ describe('AppShell', () => {
     expect(within(nav).queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument()
   })
 
+  it('links the manual for everyone, with Sign in still last', async () => {
+    renderAppAt('/')
+
+    const nav = await screen.findByRole('navigation', { name: 'Main' })
+    await within(nav).findByRole('link', { name: 'Sign in' })
+    const links = within(nav).getAllByRole('link')
+    expect(links.map((link) => link.textContent)).toEqual(['Manual', 'Sign in'])
+    expect(links[0]).toHaveAttribute('href', '/manual')
+  })
+
   it('links every area the signed-in user holds a role for', async () => {
     renderAppAt('/', { 'GET /api/auth/me': signedInAs('SOLO_PLAYER', 'GAME_MANAGER', 'OWNER') })
 

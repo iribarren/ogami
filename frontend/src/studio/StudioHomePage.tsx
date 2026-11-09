@@ -19,7 +19,15 @@ export function StudioHomePage() {
           <h1 className="font-heading text-page-title">Studio</h1>
           <p className="text-muted-foreground">Author GameSystems and publish them to Play.</p>
         </div>
-        <NewGameSystemDialog />
+        <div className="flex items-center gap-4">
+          <Link
+            to="/manual"
+            className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          >
+            Manual
+          </Link>
+          <NewGameSystemDialog />
+        </div>
       </header>
       <section aria-labelledby="my-game-systems" className="space-y-3">
         <div className="flex items-center gap-2">

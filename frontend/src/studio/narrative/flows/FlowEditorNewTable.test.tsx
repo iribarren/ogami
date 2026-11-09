@@ -5,7 +5,7 @@ import { openStepCards } from '@/test/openStepCards'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { narrativeFlows, oracles } from '../../fixtures'
+import { draft, narrativeFlows, oracles } from '../../fixtures'
 
 // The step cards' Requirement radios sit inside this page's form, where Radix measures them.
 vi.stubGlobal(
@@ -29,8 +29,9 @@ function json(body: unknown, status = 200): FakeHandler {
 /** Opens the flow `heist` on the World turn hook of its first phase, with a `table` step added. */
 async function openTableStep(handlers: Record<string, FakeHandler>) {
   const user = userEvent.setup()
-  renderAppAt('/studio/game-systems/my-draft/flows/heist', {
+  const { router } = renderAppAt('/studio/game-systems/my-draft/flows/heist', {
     'GET /api/auth/me': signedInAs('GAME_MANAGER'),
+    [`GET ${base}`]: json(draft),
     [`GET ${base}/narrative`]: json(narrativeFlows),
     ...handlers,
   })
@@ -45,7 +46,7 @@ async function openTableStep(handlers: Record<string, FakeHandler>) {
   await user.click(within(form).getByRole('button', { name: 'Add step' }))
   await user.click(await screen.findByRole('menuitem', { name: 'table' }))
   openStepCards()
-  return { user, form: within(form) }
+  return { user, router, form: within(form) }
 }
 
 describe('New table from a flow step', () => {
@@ -94,5 +95,21 @@ describe('New table from a flow step', () => {
       screen.getByRole('button', { name: 'Reload the latest version', hidden: true }),
     ).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Step 1', hidden: true })).toBeInTheDocument()
+  })
+
+  it('blocks the link to the new table behind the unsaved-changes dialog while the step is dirty', async () => {
+    const { user, router, form } = await openTableStep({
+      [`POST ${base}/oracle-tables`]: json({ ...oracles, version: 6 }),
+    })
+
+    await user.click(form.getByRole('button', { name: 'New table' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText('Key'), 'omens')
+    await user.type(within(dialog).getByLabelText('Name'), 'Omens')
+    await user.click(within(dialog).getByRole('button', { name: 'Create table' }))
+    await user.click(await screen.findByRole('link', { name: /Omens/ }))
+
+    expect(await screen.findByText('Leave without saving?')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/flows/heist')
   })
 })

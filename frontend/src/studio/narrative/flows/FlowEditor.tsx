@@ -7,7 +7,7 @@ import { Button } from '@/shared/ui/button'
 import { IconTile } from '@/shared/ui/icon-tile'
 import { SaveState, type SaveStateValue } from '@/shared/ui/save-state'
 
-import { StudioError } from '../../useGameSystems'
+import { StudioError, useStudioGameSystem } from '../../useGameSystems'
 import { UnsavedChangesGuard } from '../../UnsavedChangesGuard'
 import { moveItem } from '../steps/draftParts'
 import { useGameSystemChecks } from '../../checks/useGameSystemChecks'
@@ -104,11 +104,16 @@ export function FlowEditor({
   const newTable = useNewTable(gameSystemKey, readAt, setReadAt, (message) => {
     setAnswer((now) => ({ ...now, page: message, conflict: true }))
   })
+  // A Library pack keeps today's pickers (ADR 0050): no "New table" until the kind is known.
+  const offersNewTable = useStudioGameSystem(gameSystemKey).data?.kind === 'game-system'
   const context = useMemo(
-    () => ({ ...stepContext(narrative, checks.data, sheet.data), newTable }),
+    () => ({
+      ...stepContext(narrative, checks.data, sheet.data),
+      ...(offersNewTable ? { newTable } : {}),
+    }),
     // `newTable` changes with the version read; the step cards only need the rest.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [narrative, checks.data, sheet.data, readAt],
+    [narrative, checks.data, sheet.data, readAt, offersNewTable],
   )
   const node = resolveNode(draft, selected)
   const path = nodePath(node)

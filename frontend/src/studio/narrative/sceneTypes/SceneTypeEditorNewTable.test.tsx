@@ -5,7 +5,8 @@ import { openStepCards } from '@/test/openStepCards'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { narrativeScenes, oracles } from '../../fixtures'
+import { draft, narrativeScenes, oracles } from '../../fixtures'
+import { packSystem } from '../../library/fixtures'
 
 // The step cards' Requirement radios sit inside this page's form, where Radix measures them.
 vi.stubGlobal(
@@ -28,15 +29,22 @@ function json(body: unknown, status = 200): FakeHandler {
   return () => Response.json(body, { status })
 }
 
-async function openEditor(handlers: Record<string, FakeHandler> = {}) {
+async function openEditor(handlers: Record<string, FakeHandler> = {}, offered = true) {
   const user = userEvent.setup()
   const rendered = renderAppAt('/studio/game-systems/my-draft/scene-types/ambush', {
     'GET /api/auth/me': signedInAs('GAME_MANAGER'),
+    [`GET ${base}`]: json(draft),
     [`GET ${base}/narrative`]: json(narrativeScenes),
     ...handlers,
   })
   await screen.findByRole('form', { name: 'Scene Type' })
   openStepCards()
+  if (offered) {
+    // The button waits for the GameSystem to say it is not a Library pack.
+    await within(screen.getByRole('region', { name: 'Setup' })).findByRole('button', {
+      name: 'New table',
+    })
+  }
   return { user, ...rendered }
 }
 
@@ -66,6 +74,25 @@ describe('New table from a step', () => {
     await openEditor()
 
     expect(newTableButton()).toBeEnabled()
+  })
+
+  it("is not offered in a Library pack, which keeps today's pickers", async () => {
+    await openEditor({ [`GET ${base}`]: json({ ...packSystem, key: 'my-draft' }) }, false)
+    await screen.findByText(/Fantasy basics/)
+
+    expect(screen.queryAllByRole('button', { name: 'New table' })).toHaveLength(0)
+  })
+
+  it('blocks the link to the new table behind the unsaved-changes dialog while the step is dirty', async () => {
+    const { user, router } = await openEditor({ [create]: json({ ...oracles, version: 6 }) })
+    await user.clear(screen.getByLabelText('Name'))
+    await user.type(screen.getByLabelText('Name'), 'Mine')
+    await createTable(user, 'omens', 'Omens')
+
+    await user.click(await screen.findByRole('link', { name: /Omens/ }))
+
+    expect(await screen.findByText('Leave without saving?')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/scene-types/ambush')
   })
 
   it('creates a weighted table at the editor version, selects it and links to it', async () => {

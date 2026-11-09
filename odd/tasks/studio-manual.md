@@ -133,7 +133,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T5 | In-app Manual route, Markdown rendering, edition blocks, links from Studio; front matter as the first content | delegated: slice runs under one writer | [x] | `30c52278`, `ef0533be`, `2e1f831a` |
 | T16 | Slice 2 review findings: `Markdown.tsx` element overrides, `editionBlocks.ts` fence detection, the four missing tests | delegated: slice runs under one writer | [x] | |
 | T17 | Replace Cairn and 24XX with Hard Country and Dogwatch in the front matter, credits, ADR 0050 and roadmap | delegated: slice runs under one writer | [x] | |
-| T6 | Hard Country GameSystem preset and The Long Carry flow, with credits | delegated: slice runs under one writer | [ ] | |
+| T6 | Hard Country GameSystem preset and The Long Carry flow, with credits | delegated: slice runs under one writer | [x] | |
 | T7 | Dogwatch GameSystem preset and Cold Berth flow, with credits | delegated | [ ] | |
 | T8 | Part I, chapters 1–4 with examples | delegated | [ ] | |
 | T9 | Part I, chapters 5–8 with examples | delegated | [ ] | |
@@ -167,6 +167,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - Slice 2 size: about 1,828 changed lines, 868 of them `pnpm-lock.yaml`. Kept as one slice by the user's decision, dependency in its own commit.
 - T16 done: `Markdown.tsx` overrides drop `node` and merge `className`; `editionBlocks.ts` follows CommonMark fences and throws on an unclosed one. RED: 5 new tests failed on the old code (fence rules, unclosed fence, merged class); the Library pack, pager, Manual link and raw-HTML-text tests passed at once, as they cover behaviour that already worked.
 - T17 done: front matter, credits, ADR 0050 (dated amendment) and roadmap B26 now name Hard Country and Dogwatch; Cairn and 24XX remain only as design influences. Docs only, so structural readback plus the content tests.
+- T6 done: `hard-country.json` (key `hard-country`) with The Long Carry; `make presets` published it (v1, then v2 after wording changes). The Road uses `oracle` selection on a weighted `road-deck` table (weight is copies), and the finale comes late through two Winter-driven closing steps: a condition (nothing below Winter 6, a d6 from 6 to 9, certain at 10) that ends the phase, so the gate is not a card in the deck. The engine cannot pin the check a table entry calls for: the risen ford (Road Risks) forces a Ford scene and adds 1 to Winter, and the Ford scene lets the player pick Back or Feet, with the table text asking for Back. Wind is a track with max 8 set to d6+2 by the bearer step. `HardCountryPresetFlowTest` (29 tests) plays the flow; it was written with the preset, so its first failures were test mistakes, not preset ones (no separate RED).
 
 ## Next step
 

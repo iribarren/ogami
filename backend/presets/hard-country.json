@@ -1,0 +1,366 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {
+    "key": "hard-country",
+    "name": "Hard Country",
+    "description": "A rules-light fantasy game about hard travel, where a body gives out before a story does. Three traits, a d20 check, breath that wears away before wounds do, and a load of eight slots. Original content written for the Ogami manual.",
+    "credits": {
+      "notice": "Hard Country is an original game written for the Ogami manual, with its flow The Long Carry. It is released under the Creative Commons Attribution-ShareAlike 4.0 International license.",
+      "license": "CC BY-SA 4.0",
+      "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+    }
+  },
+  "theme": "parchment",
+  "oracles": {
+    "tables": [
+      {
+        "key": "road-deck",
+        "name": "The road deck",
+        "entries": [
+          {"text": "Camp: a place to stop", "weight": 3, "sceneType": "camp"},
+          {"text": "Ford: water in the way", "weight": 2, "sceneType": "ford"},
+          {"text": "Stranger: someone on the road", "weight": 3, "sceneType": "stranger"},
+          {"text": "Ruin: what the road left behind", "weight": 2, "sceneType": "ruin"},
+          {"text": "Omen: the road says something about the saint", "weight": 3, "sceneType": "omen"}
+        ]
+      },
+      {
+        "key": "road-risks",
+        "name": "Road Risks",
+        "entries": [
+          {"key": "quiet", "text": "A quiet road. Nothing happens that you can name.", "weight": 3},
+          {"key": "ford-risen", "text": "The ford has risen. The water is up and the crossing cannot wait: it calls for a Back check. Winter closes by one more.", "effects": [{"kind": "nextScene", "sceneType": "ford"}, {"kind": "tracker", "tracker": "winter", "op": "add", "value": 1}]},
+          {"key": "hard-frost", "text": "A hard frost in the night. Everything you own is stiff by morning.", "effects": [{"kind": "tracker", "tracker": "winter", "op": "add", "value": 1}]},
+          {"key": "bad-foot", "text": "A bearer's foot goes bad, and the others have to take the weight.", "effects": [{"kind": "tracker", "tracker": "burden", "op": "add", "value": 1}]},
+          {"key": "pilgrim", "text": "A traveller falls into step beside you and starts to talk.", "effects": [{"kind": "nextScene", "sceneType": "stranger"}]},
+          {"key": "smoke", "text": "Smoke stands on the ridge where no one should be living.", "effects": [{"kind": "nextScene", "sceneType": "ruin"}]},
+          {"key": "wolves", "text": "Something follows at the edge of sight and keeps its distance. It is waiting for something.", "effects": [{"kind": "nextScene", "sceneType": "omen"}]}
+        ]
+      },
+      {
+        "key": "strangers",
+        "name": "Strangers",
+        "entries": [
+          {"text": "A woman driving three goats to a market that burned"},
+          {"text": "A boy with a bell and no one to ring it for"},
+          {"text": "A tinker who will not look at the litter"},
+          {"text": "Two soldiers who walked away from their lord"},
+          {"text": "A shepherd who says he saw you in a dream"},
+          {"text": "A widow carrying her husband's boots"},
+          {"text": "A priest of a smaller saint"},
+          {"text": "A man selling water at a price"}
+        ]
+      },
+      {
+        "key": "omens",
+        "name": "Omens",
+        "entries": [
+          {"text": "Crows settle on the litter and do not fly when you move"},
+          {"text": "Candles that burn sideways though there is no wind"},
+          {"text": "Rain that falls only on the road behind you"},
+          {"text": "A child who greets the saint by name"},
+          {"text": "A smell of roses where the ground is bare"},
+          {"text": "Dogs that will not cross the shadow of the litter"},
+          {"text": "A bell tolling, though no tower stands for miles"},
+          {"text": "The body is warm in the morning"}
+        ]
+      },
+      {
+        "key": "ruins",
+        "name": "Ruins",
+        "entries": [
+          {"text": "A chapel with its door torn off and its altar scrubbed clean"},
+          {"text": "A farm with the table laid for twelve"},
+          {"text": "A watchtower with a rope hanging from the top"},
+          {"text": "A mill whose wheel still turns"},
+          {"text": "A graveyard with one new grave, still open"},
+          {"text": "A bridge that ends in the middle of the river"}
+        ]
+      }
+    ],
+    "likelihood": [
+      {
+        "key": "yes-no",
+        "name": "Yes/no question",
+        "sides": 100,
+        "levels": [
+          {"key": "very-unlikely", "label": "Very unlikely", "target": 10},
+          {"key": "unlikely", "label": "Unlikely", "target": 30},
+          {"key": "even", "label": "Even odds", "target": 50},
+          {"key": "likely", "label": "Likely", "target": 70},
+          {"key": "very-likely", "label": "Very likely", "target": 90}
+        ],
+        "exceptionalPercent": 10
+      }
+    ]
+  },
+  "trackers": [
+    {"key": "winter", "name": "Winter", "hint": "How near the first snow is. Each World turn adds one; at 10 the road is closed.", "kind": "clock", "segments": 10},
+    {"key": "burden", "name": "Burden", "hint": "What you took on along the way: favours owed, things taken, things said aloud.", "kind": "counter", "min": 0, "max": 6, "initial": 0, "levels": [{"upTo": 0, "label": "Light"}, {"upTo": 2, "label": "Heavy"}, {"upTo": 4, "label": "Crushing"}, {"label": "Breaking"}]}
+  ],
+  "factSlots": [
+    {"key": "saint", "label": "The saint", "type": "text", "hint": "Whose body you carry"},
+    {"key": "sin", "label": "The Sin", "type": "text", "hint": "What the saint did, as you now believe it. Each Omen can change it."},
+    {"key": "vow", "label": "The vow", "type": "text", "hint": "What you promised, and to whom"}
+  ],
+  "tags": [],
+  "sceneTypes": [
+    {
+      "key": "bearers",
+      "name": "The bearers",
+      "purpose": "Make the people who will carry the saint.",
+      "tips": "Make two or three bearers. Each one is three traits, some Wind and a pack, and each is someone the saint mattered to, or someone who owed them.",
+      "oracles": [],
+      "setup": [
+        {"key": "who", "kind": "prompt", "title": "Who are you to the saint, and to each other?", "prompt": "Think of a relation in two words: debtor, nephew, jailer. Think of a grudge between two of you.", "mandatory": true}
+      ],
+      "play": [
+        {"key": "bearer-1", "kind": "character", "title": "Who is the first bearer?", "prompt": "Give them a name and a calling. Roll their traits.", "mandatory": true, "tip": "Roll your traits and pick a calling. Wind starts at d6+2.", "effects": [{"kind": "sheet", "field": "wind", "op": "set", "value": {"dice": "1d6+2"}}]},
+        {"key": "outfit-1", "kind": "shop", "title": "What does bearer 1 take on the road?", "tip": "Eight slots of Load. Leave it empty to move on.", "offer": {"categories": ["Kit", "Arms"]}, "sellRate": 50},
+        {"key": "bearer-2", "kind": "character", "title": "Who is the second bearer?", "prompt": "Give them a name and a calling. Roll their traits.", "mandatory": false, "tip": "Roll your traits and pick a calling. Wind starts at d6+2.", "effects": [{"kind": "sheet", "field": "wind", "op": "set", "value": {"dice": "1d6+2"}}]},
+        {"key": "outfit-2", "kind": "shop", "title": "What does bearer 2 take on the road?", "tip": "Eight slots of Load. Leave it empty to move on.", "offer": {"categories": ["Kit", "Arms"]}, "sellRate": 50},
+        {"key": "bearer-3", "kind": "character", "title": "Who is the third bearer?", "prompt": "A third is optional. A fourth is too many to feed.", "mandatory": false, "tip": "Roll your traits and pick a calling. Wind starts at d6+2.", "effects": [{"kind": "sheet", "field": "wind", "op": "set", "value": {"dice": "1d6+2"}}]},
+        {"key": "outfit-3", "kind": "shop", "title": "What does bearer 3 take on the road?", "tip": "Eight slots of Load. Leave it empty to move on.", "offer": {"categories": ["Kit", "Arms"]}, "sellRate": 50}
+      ],
+      "closing": []
+    },
+    {
+      "key": "saint",
+      "name": "The saint",
+      "purpose": "Say whose body you carry and where it is going.",
+      "tips": "You do not decide what the saint did. You decide who they were to the people who loved them.",
+      "oracles": [],
+      "setup": [
+        {"key": "whose", "kind": "prompt", "title": "Whose body do you carry?", "prompt": "Name them, and say what the people along the road say of them.", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "saint"}]}
+      ],
+      "play": [
+        {"key": "shrine", "kind": "prompt", "title": "Where does the shrine stand, and who waits there?", "prompt": "A place and a keeper. Winter comes down on it first.", "mandatory": true, "effects": [{"kind": "createPlace", "name": "{answer}"}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "vow",
+      "name": "The vow",
+      "purpose": "Say what you promised and what you will pay if you break it.",
+      "tips": "The vow is the reason you cannot put the litter down. Make it hard to break and hard to keep.",
+      "oracles": [],
+      "setup": [
+        {"key": "promise", "kind": "prompt", "title": "What did you promise, and to whom?", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "vow"}]}
+      ],
+      "play": [
+        {"key": "cost", "kind": "prompt", "title": "What will it cost you if the saint does not arrive?", "prompt": "Name a person, a place or a name that is lost."}
+      ],
+      "closing": []
+    },
+    {
+      "key": "camp",
+      "name": "Camp",
+      "purpose": "Stop, rest and say what cannot be said while walking.",
+      "tips": "Camp is the only place Wind comes back. Spend the night on people, not on scenery: who sleeps, who watches, who talks.",
+      "oracles": ["yes-no"],
+      "setup": [
+        {"key": "where", "kind": "prompt", "title": "Where do you make camp, and what is the weather doing?", "prompt": "One place and one sky. Keep it short."}
+      ],
+      "play": [
+        {"key": "rest", "kind": "prompt", "title": "Who rests, and what keeps the others awake?", "prompt": "The bearer who rests recovers d6+2 Wind, up to 8. Wounds do not heal in camp.", "tip": "Pick the bearer when you answer.", "effects": [{"kind": "sheet", "field": "wind", "op": "add", "value": {"dice": "1d6+2"}}]},
+        {"key": "fire", "kind": "prompt", "title": "What is said by the fire that was not said on the road?", "prompt": "Ask the Yes/no question if you do not know how someone takes it."}
+      ],
+      "closing": [
+        {"key": "last", "kind": "prompt", "title": "Who is last to sleep, and what are they looking at?"}
+      ]
+    },
+    {
+      "key": "ford",
+      "name": "Ford",
+      "purpose": "Cross water, and learn what the crossing costs.",
+      "tips": "Pick the check by how you cross: Back to wade with the load, Feet to find the shallows. A risen ford is a Back check. Failing costs time and breath.",
+      "oracles": ["yes-no"],
+      "setup": [
+        {"key": "water", "kind": "prompt", "title": "What does the water look like, and who has crossed it before you?"}
+      ],
+      "play": [
+        {"key": "cross", "kind": "check", "title": "Who carries the litter across, and how?", "tip": "Back to wade with the load, Feet to find the way. Roll a d20 at or under the trait.", "checks": ["back", "feet"], "outcomes": [{"band": "failure", "effects": [{"kind": "tracker", "tracker": "winter", "op": "add", "value": 1}, {"kind": "sheet", "field": "wind", "op": "add", "value": {"dice": "-1d6"}}]}, {"band": "badly", "effects": [{"kind": "tracker", "tracker": "burden", "op": "add", "value": 1}, {"kind": "sheet", "field": "wounds", "op": "add", "value": 1}]}]}
+      ],
+      "closing": [
+        {"key": "bank", "kind": "prompt", "title": "What is left on the far bank, and who looks back at it?"}
+      ]
+    },
+    {
+      "key": "stranger",
+      "name": "Stranger",
+      "purpose": "Meet someone who wants something from the road, or from you.",
+      "tips": "Decide what they want before you decide what they are like. Strangers are not enemies; they are weight.",
+      "oracles": ["yes-no", "strangers"],
+      "setup": [
+        {"key": "who", "kind": "prompt", "title": "Who is on the road ahead?", "prompt": "A name or a trade is enough: the ferryman's widow, the man with the goats.", "mandatory": true, "effects": [{"kind": "createNpc", "name": "{answer}"}]}
+      ],
+      "play": [
+        {"key": "ask", "kind": "prompt", "title": "What do they ask of you, and what do they offer?"},
+        {"key": "answer", "kind": "choice", "title": "How do you answer them?", "tip": "Giving more than you can spare makes the load heavier.", "options": [{"key": "give", "label": "Give what they ask", "effects": [{"kind": "tracker", "tracker": "burden", "op": "add", "value": 1}]}, {"key": "trade", "label": "Trade fairly"}, {"key": "refuse", "label": "Refuse and walk on"}], "skip": "refuse"}
+      ],
+      "closing": [
+        {"key": "after", "kind": "prompt", "title": "What do you say about them after they are gone?"}
+      ]
+    },
+    {
+      "key": "ruin",
+      "name": "Ruin",
+      "purpose": "Find what earlier travellers left, and decide whether to take it.",
+      "tips": "A ruin is a place that ended. Decide how it ended before you decide what is left in it.",
+      "oracles": ["yes-no", "ruins"],
+      "setup": [
+        {"key": "place", "kind": "prompt", "title": "What was this place, and what ended it?", "mandatory": true}
+      ],
+      "play": [
+        {"key": "search", "kind": "prompt", "title": "What do you find, and what tells you it was left in a hurry?"},
+        {"key": "take", "kind": "choice", "title": "What do you take from the ruin?", "tip": "What you take, you carry.", "options": [{"key": "useful", "label": "Something useful", "effects": [{"kind": "tracker", "tracker": "burden", "op": "add", "value": 1}, {"kind": "sheet", "field": "pennies", "op": "add", "value": {"dice": "2d6"}}]}, {"key": "keepsake", "label": "A keepsake of the dead", "effects": [{"kind": "tracker", "tracker": "burden", "op": "add", "value": 2}]}, {"key": "nothing", "label": "Nothing: leave it as it lies"}], "skip": "nothing"}
+      ],
+      "closing": [
+        {"key": "leave", "kind": "prompt", "title": "What do you leave behind on purpose?"}
+      ]
+    },
+    {
+      "key": "omen",
+      "name": "Omen",
+      "purpose": "Let the road say something about the saint, and decide what it means.",
+      "tips": "An omen does not explain. It makes you look again at the Sin you wrote last time, and write it again.",
+      "oracles": ["yes-no", "omens"],
+      "setup": [
+        {"key": "sign", "kind": "prompt", "title": "What do you see, hear or dream on the road?", "prompt": "Write what you see, not what you will do about it.", "mandatory": true}
+      ],
+      "play": [
+        {"key": "belief", "kind": "prompt", "title": "What do you now believe the saint did?", "prompt": "The Sin as you hold it so far: {fact:sin}. If that is blank, this is the first hint. Does this omen confirm it, twist it or overturn it? Write the Sin as you hold it now.", "tip": "The last Sin you write is the Truth.", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "sin"}]}
+      ],
+      "closing": [
+        {"key": "aloud", "kind": "choice", "title": "Does anyone say it aloud?", "tip": "Saying it makes it heavier.", "options": [{"key": "yes", "label": "Yes", "effects": [{"kind": "tracker", "tracker": "burden", "op": "add", "value": 1}]}, {"key": "no", "label": "No"}], "skip": "no"}
+      ]
+    },
+    {
+      "key": "shrine-gate",
+      "name": "The Shrine Gate",
+      "purpose": "Arrive, and be asked what you carried.",
+      "tips": "Do not resolve everything at the gate. Let the keeper ask and let the bearers answer, and let the answer cost something.",
+      "oracles": [],
+      "setup": [
+        {"key": "gate", "kind": "prompt", "title": "What stands at the gate, and who comes out to meet you?", "mandatory": true}
+      ],
+      "play": [
+        {"key": "asked", "kind": "prompt", "title": "What do you tell the keeper?", "prompt": "The keeper asks who the saint was, what they did and why you carried them. You hold that the saint was {fact:saint}, that the Sin was {fact:sin}, and that your vow was {fact:vow}.", "mandatory": true},
+        {"key": "nerve", "kind": "check", "title": "Can you say it and hold their gaze?", "tip": "Head: roll a d20 at or under it.", "check": "head", "outcomes": [{"band": "failure", "effects": [{"kind": "tracker", "tracker": "burden", "op": "add", "value": 1}]}, {"band": "badly", "effects": [{"kind": "tracker", "tracker": "burden", "op": "add", "value": 2}]}]}
+      ],
+      "closing": [
+        {"key": "through", "kind": "prompt", "title": "Who goes through the gate, and who stays outside?"}
+      ]
+    },
+    {
+      "key": "epilogue",
+      "name": "Epilogue",
+      "purpose": "Read what the road made of you.",
+      "tips": "The ending is chosen by Winter and Burden, not by you. Your part is the aftermath: what each bearer does next.",
+      "oracles": [],
+      "setup": [],
+      "play": [
+        {"key": "winter-late", "kind": "condition", "title": "Did you beat the deep snow?", "tracker": "winter", "bands": [{"upTo": 7, "label": "In time", "next": "burden-early"}, {"label": "Late", "next": "burden-late"}]},
+        {"key": "burden-early", "kind": "condition", "title": "Did you arrive light?", "tracker": "burden", "bands": [{"upTo": 2, "label": "Light", "next": "ending-time"}, {"label": "Heavy", "next": "ending-price"}]},
+        {"key": "burden-late", "kind": "condition", "title": "Did you arrive light?", "tracker": "burden", "bands": [{"upTo": 2, "label": "Light", "next": "ending-price"}, {"label": "Heavy", "next": "ending-lost"}]},
+        {"key": "ending-time", "kind": "prompt", "title": "Laid down in time", "prompt": "The saint is received while the far hills are still green and your hands are lighter than they were. What do the bearers do now that the carry is over? Who is left at the shrine, and who walks home?", "mandatory": true, "next": "end"},
+        {"key": "ending-price", "kind": "prompt", "title": "Laid down at a price", "prompt": "The saint is received, but you came late or you came heavy. What does the shrine ask in exchange? Which bearer pays it, and do they know yet?", "mandatory": true, "next": "end"},
+        {"key": "ending-lost", "kind": "prompt", "title": "The carry is not finished", "prompt": "You are late and you are heavy. The gate is shut against the snow, or opens onto something you did not carry the saint for. What do you do with the body, and with the Sin, if you ever wrote one ({fact:sin})? Who is left outside?", "mandatory": true, "next": "end"}
+      ],
+      "closing": []
+    }
+  ],
+  "flows": [
+    {
+      "key": "the-long-carry",
+      "name": "The Long Carry",
+      "description": "Will you get the saint to the shrine before first snow, and what will it cost? A solo story of three or four sessions.",
+      "introduction": "You play a small party of bearers carrying a saint's body across hard country to a shrine, before the first snow closes the passes. You are the whole table: you describe, you roll, you decide.\n\nSession Zero makes the bearers, names the saint and the shrine, and says the vow that sent you. Then the Road repeats. Each round you draw a scene from the road deck (a Camp, a Ford, a Stranger, a Ruin or an Omen), play it, and let the world turn: Winter creeps one step closer, and the road may turn on you. When the gate comes into sight, the Shrine Gate is the arrival and the Epilogue reads what the road made of you.\n\nTwo numbers keep score. Winter is a clock: the nearer it is to full, the closer the first snow. Burden counts what you took on along the way: favours owed, things taken, things said aloud. Together they choose the ending.\n\nA bearer is three numbers. Back carries, fights and endures. Feet moves, dodges and sneaks. Head notices, reasons and holds its nerve. A check is one d20: at or under the trait is a success, a 1 is clean, over the trait fails and a 20 goes badly. Harm wears down Wind first. With no Wind left, each harm is a Wound, and three Wounds put a bearer down. Only a rest in Camp brings Wind back. You carry eight slots of Load and count your money in pennies.\n\nNobody tells you what the saint did. The Omens ask what you now believe, and the last Sin you write is the Truth. Write toward it, and let it change.",
+      "default": true,
+      "defaultView": "focus",
+      "oracles": ["yes-no", "road-risks", "strangers", "omens", "ruins"],
+      "trackers": ["winter", "burden"],
+      "phases": [
+        {
+          "key": "session-zero",
+          "name": "Session Zero",
+          "mode": "once",
+          "description": "Make the bearers, name the saint and the shrine, and say the vow. It is done when you have played all three scenes.",
+          "selection": {"rule": "sequence", "sceneTypes": ["bearers", "saint", "vow"]}
+        },
+        {
+          "key": "the-road",
+          "name": "The Road",
+          "mode": "loop",
+          "description": "Draw a scene from the road deck, play it and let the world turn. It ends when the gate comes into sight: from Winter 6 each scene may bring it, and a full Winter brings it for certain.",
+          "selection": {"rule": "oracle", "table": "road-deck"},
+          "sceneClosing": [
+            {"key": "winter-near", "kind": "condition", "title": "How near is the first snow?", "tip": "From Winter 6 the gate may come into sight. At 10 it comes for certain.", "tracker": "winter", "bands": [{"upTo": 5, "label": "Far", "next": "end"}, {"upTo": 9, "label": "Near"}, {"label": "First snow", "effects": [{"kind": "endPhase"}], "next": "end"}]},
+            {"key": "gate-in-sight", "kind": "roll", "title": "Does the gate come into sight?", "tip": "Roll 1d6. On a 5 or 6 the road ends and the shrine is before you.", "dice": "1d6", "mandatory": true, "bands": [{"upTo": 4, "label": "Not yet"}, {"label": "The gate comes into sight", "effects": [{"kind": "endPhase"}]}]}
+          ],
+          "worldTurn": [
+            {"key": "shorter-days", "kind": "prompt", "title": "The days shorten", "prompt": "Winter closes by one. What is different about the light today?", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "winter", "op": "add", "value": 1}]},
+            {"key": "road-risk", "kind": "table", "title": "What does the road do?", "tip": "Roll the Road Risks table. Most results are quiet.", "table": "road-risks", "mandatory": true}
+          ]
+        },
+        {
+          "key": "shrine-gate",
+          "name": "The Shrine Gate",
+          "mode": "once",
+          "description": "Arrive and be asked what you carried. It is done when you have played the scene.",
+          "selection": {"rule": "sequence", "sceneTypes": ["shrine-gate"]}
+        },
+        {
+          "key": "epilogue",
+          "name": "Epilogue",
+          "mode": "once",
+          "description": "Read what the road made of you. It is done when you have written the ending.",
+          "selection": {"rule": "sequence", "sceneTypes": ["epilogue"]}
+        }
+      ]
+    }
+  ],
+  "sheet": {
+    "columns": 1,
+    "groups": [
+      {"name": "Bearer"},
+      {"name": "Traits", "columns": 3},
+      {"name": "Body", "columns": 2},
+      {"name": "Pack", "columns": 2}
+    ],
+    "fields": [
+      {"key": "calling", "label": "Calling", "hint": "What you did before the carry: a ferryman, a nun, a deserter.", "group": "Bearer", "type": "text", "maxLength": 80},
+      {"key": "back", "label": "Back", "hint": "Carry, fight, endure. Rolled with 2d6+3.", "group": "Traits", "type": "number", "min": 2, "max": 18, "default": 8, "roll": {"dice": "2d6+3"}},
+      {"key": "feet", "label": "Feet", "hint": "Move, dodge, sneak. Rolled with 2d6+3.", "group": "Traits", "type": "number", "min": 2, "max": 18, "default": 8, "roll": {"dice": "2d6+3"}},
+      {"key": "head", "label": "Head", "hint": "Notice, reason, hold your nerve. Rolled with 2d6+3.", "group": "Traits", "type": "number", "min": 2, "max": 18, "default": 8, "roll": {"dice": "2d6+3"}},
+      {"key": "wind", "label": "Wind", "hint": "Breath and nerve. Harm takes it first. It starts at d6+2 and a rest in Camp restores d6+2, up to 8.", "group": "Body", "type": "track", "max": 8},
+      {"key": "wounds", "label": "Wounds", "hint": "Harm that finds you with no Wind left. At 3 you are down.", "group": "Body", "type": "number", "min": 0, "max": 3, "default": 0},
+      {"key": "pennies", "label": "Pennies", "hint": "What you carry to spend. Rolled with 2d6*10.", "group": "Pack", "type": "number", "min": 0, "max": 100000, "default": 60, "roll": {"dice": "2d6*10"}},
+      {"key": "load", "label": "Load", "hint": "Eight slots. A heavy item takes two.", "group": "Pack", "type": "inventory", "capacity": 8}
+    ],
+    "currency": {
+      "field": "pennies",
+      "unit": "pennies"
+    }
+  },
+  "checks": [
+    {"key": "back", "label": "Back check", "hint": "Carry, fight or endure. Roll a d20: at or under Back succeeds, a 1 is clean, a 20 goes badly.", "dice": "1d20", "bands": [{"key": "clean", "label": "Clean success", "upTo": 1}, {"key": "success", "label": "Success", "upTo": {"formula": "{back}"}}, {"key": "failure", "label": "Failure", "upTo": 19}, {"key": "badly", "label": "Goes badly"}]},
+    {"key": "feet", "label": "Feet check", "hint": "Move, dodge or sneak. Roll a d20: at or under Feet succeeds, a 1 is clean, a 20 goes badly.", "dice": "1d20", "bands": [{"key": "clean", "label": "Clean success", "upTo": 1}, {"key": "success", "label": "Success", "upTo": {"formula": "{feet}"}}, {"key": "failure", "label": "Failure", "upTo": 19}, {"key": "badly", "label": "Goes badly"}]},
+    {"key": "head", "label": "Head check", "hint": "Notice, reason or hold your nerve. Roll a d20: at or under Head succeeds, a 1 is clean, a 20 goes badly.", "dice": "1d20", "bands": [{"key": "clean", "label": "Clean success", "upTo": 1}, {"key": "success", "label": "Success", "upTo": {"formula": "{head}"}}, {"key": "failure", "label": "Failure", "upTo": 19}, {"key": "badly", "label": "Goes badly"}]}
+  ],
+  "gear": [
+    {"key": "rope", "name": "Rope", "cost": 8, "category": "Kit", "description": "Fifty feet of hemp, to lash a load or pass a line across water."},
+    {"key": "lantern", "name": "Lantern", "cost": 12, "category": "Kit", "description": "Horn panes and a wick. Light for a night, if you have oil."},
+    {"key": "oil", "name": "Lamp oil", "cost": 2, "slots": 0, "category": "Kit", "description": "A flask that feeds the lantern for a night."},
+    {"key": "staff", "name": "Staff", "cost": 3, "category": "Kit", "description": "Ash, shoulder high. Tests the ground and steadies a bearer on a ford."},
+    {"key": "blanket", "name": "Blanket", "cost": 6, "category": "Kit", "description": "Wool, oiled against the rain."},
+    {"key": "bandages", "name": "Bandages", "cost": 4, "category": "Kit", "description": "Linen and honey. Closes a cut; it does not mend a Wound."},
+    {"key": "waterskin", "name": "Waterskin", "cost": 3, "category": "Kit", "description": "Goat hide, a day's water."},
+    {"key": "rations", "name": "Trail rations", "cost": 2, "category": "Kit", "description": "Salt pork and hard bread for a few days."},
+    {"key": "poles", "name": "Carrying poles", "cost": 10, "slots": 2, "category": "Kit", "description": "Two ash poles and straps, to bear a litter between you."},
+    {"key": "knife", "name": "Knife", "cost": 5, "category": "Arms", "description": "A working blade, for rope, bread and worse."},
+    {"key": "club", "name": "Club", "cost": 2, "category": "Arms", "description": "Blackthorn, weighted at the end."},
+    {"key": "sling", "name": "Sling", "cost": 4, "category": "Arms", "description": "A strap and a pouch of river stones."},
+    {"key": "pole-axe", "name": "Pole axe", "cost": 20, "slots": 2, "category": "Arms", "description": "A long axe with a hook behind the blade. It takes two hands and two slots."}
+  ]
+}

@@ -51,7 +51,7 @@ frontend/                    Vite + React + TypeScript SPA
   src/shared/                ui/ (shadcn), api/ (generated client), lib/, health/
   e2e/                       Playwright tests
 docker/                      container config (php: FrankenPHP + Caddy, node)
-scripts/                     host scripts behind make targets (`verify-changed.sh`)
+scripts/                     host scripts behind make targets (`verify-changed.sh`, `db-restore.sh`)
 compose.yaml                 full dev environment (+ compose.override.yaml locally)
 Makefile                     every command, see below
 .github/workflows/ci.yml     CI: the same make targets
@@ -96,6 +96,7 @@ Everything runs in Docker through `make` (it exports your UID/GID; a bare `docke
 | E2E | `make e2e` | Seeds the separate `ogami_e2e` database (the dev DB is untouched), then runs the Playwright tests in the `playwright` container against the `php-e2e` service |
 | E2E | `make e2e-seed`, `make e2e-reset` | Migrate, publish presets and create the e2e users in `ogami_e2e` / drop that database and seed it again |
 | Presets | `make presets` | Publish the GameSystem presets in `backend/presets/` as releases (skips unchanged ones). Run it after editing a preset file: if Studio owns the key on your database, it refuses a file that differs from Studio's latest release, and CI cannot see this ([ADR 0036](docs/adr/0036-export-releases-as-preset-files.md)) |
+| Database | `make db-restore FILE=…` | Replace the dev database with a `pg_dump -Fc` file (checks its `.sha256`, restores into a temp database first, then swaps and migrates). Destroys the current dev data: asks you to type the database name; `DB=other` targets another database, `FORCE=1` skips the prompt |
 | API contract | `make api` | After changing an endpoint: export the OpenAPI spec and regenerate `frontend/src/shared/api/schema.d.ts`; commit both |
 | Frontend builds | `make frontend-build`, `make storybook`, `make storybook-build` | Production SPA build; Storybook dev server / static build |
 

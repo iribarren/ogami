@@ -28,7 +28,7 @@ export function splitEditionBlocks(source: string): Segment[] {
     lines = []
   }
 
-  for (const [index, line] of source.split('\n').entries()) {
+  for (const [index, line] of source.split(/\r?\n/).entries()) {
     const at = index + 1
     // CommonMark: up to three spaces of indent, then three or more backticks or tildes. A backtick
     // fence's info string cannot hold a backtick (so "``` a ```" is inline code, not a fence), and

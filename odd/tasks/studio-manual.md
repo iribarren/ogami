@@ -1,7 +1,7 @@
 # Feature: studio-manual
 
 - **Locator:** `odd/tasks/studio-manual.md` · Engram topic `odd/studio-manual/tasks`
-- **Issue:** [#387](https://github.com/iribarren/ogami/issues/387) · **Branch:** `feat/studio-manual-4-dogwatch` · **Status:** in progress (slice 4)
+- **Issue:** [#387](https://github.com/iribarren/ogami/issues/387) · **Branch:** `docs/studio-manual-5-flow-design` · **Status:** in progress (slice 5)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Origin:** brainstorm of 2026-11-09, to share the public alpha (`1.0.0-alpha`) with friends
@@ -25,6 +25,8 @@ Friends joining the alpha have no guide to Studio. The value of Studio is the fl
 | Hard Country rules | Three traits named for what a bearer uses: Back (carry, fight, endure), Feet (move, dodge, sneak), Head (notice, reason, hold your nerve), each 2d6+3. A check is d20 at or under the trait: a 1 is clean, a 20 goes badly. Wind (d6+2) absorbs harm; with no Wind left, harm is a Wound, and three Wounds put you down. Load is eight slots. Currency is pennies | Parent |
 | Dogwatch rules | Four Stations: Helm (move, pilot, get there), Hands (fix, force, build), Eyes (notice, read, search), Voice (persuade, lie, calm). A crew card assigns d10, d8, d6 and d4 across them. A check rolls that die against a Difficulty the player sets (2–8, default 3): a 1 goes wrong, under the Difficulty falls short, at or over it succeeds. Help rolls the die twice and keeps the highest (`2d8kh1`, because keep-highest works only within one dice term). Nerve (track, max 6) takes harm first; with none left harm is an Injury, and three put you down | Parent |
 | Dogwatch checks | Dice notation cannot read the sheet, so each die size is its own Check. A `check` step offers the set of eight: d4, d6, d8 and d10, plain and helped. They share band keys, as a Check set requires | Parent |
+| Missing crew | No effect closes an NPC, and a pick cannot exclude one by state. The `gone` step tells the player to close the crew member in the NPC list; a closed NPC is never picked, so nobody is taken twice and the `none` branch ends the turn. No engine change | Parent |
+| Confront cost | The tip is reworded to match the bands: only a confrontation that goes badly costs Nerve. The bands stay as built | Parent |
 | NarrativeFlows | The Long Carry (Hard Country), Cold Berth (Dogwatch). Stories are flows inside the systems | User |
 | Truths | Teach sealed, emergent and fixed truths | User |
 | License | Whole manual and both presets CC BY-SA 4.0. Kept from the first plan, though no share-alike source forces it any more | User, kept by Parent |
@@ -114,7 +116,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 2 | `feat/studio-manual-2-reader` | `feat(frontend): studio-manual 2/11 in-app manual reader` | T5 | ~1,000 |
 | 3 | `feat/studio-manual-3-hard-country` | `feat(presets): studio-manual 3/11 Hard Country and The Long Carry` | T16, T17, T6 | ~1,600 |
 | 4 | `feat/studio-manual-4-dogwatch` | `feat(presets): studio-manual 4/11 Dogwatch and Cold Berth` | T18, T7 | ~1,300 |
-| 5 | `docs/studio-manual-5-flow-design` | `docs(manual): studio-manual 5/11 promise to steps` | T8 | ~1,300 |
+| 5 | `docs/studio-manual-5-flow-design` | `docs(manual): studio-manual 5/11 promise to steps` | T19, T8 | ~1,400 |
 | 6 | `docs/studio-manual-6-flow-running` | `docs(manual): studio-manual 6/11 selection to rituals` | T9 | ~1,300 |
 | 7 | `docs/studio-manual-7-flow-sharing` | `docs(manual): studio-manual 7/11 truths to sharing` | T10 | ~1,100 |
 | 8 | `feat/studio-manual-8-print` | `feat(manual): studio-manual 8/11 Paper edition and cards` | T11 | ~1,400 |
@@ -135,8 +137,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T16 | Slice 2 review findings: `Markdown.tsx` element overrides, `editionBlocks.ts` fence detection, the four missing tests | delegated: slice runs under one writer | [x] | `f164a51d` |
 | T17 | Replace Cairn and 24XX with Hard Country and Dogwatch in the front matter, credits, ADR 0050 and roadmap | delegated: slice runs under one writer | [x] | `5493e5a8` |
 | T6 | Hard Country GameSystem preset and The Long Carry flow, with credits | delegated: slice runs under one writer | [x] | `507c5194` |
-| T18 | Slice 3 review findings: CRLF in `editionBlocks.ts` fence detection, Ford bands against the harm rule, four flow test gaps | delegated: slice runs under one writer | [x] | |
-| T7 | Dogwatch GameSystem preset and Cold Berth flow, with credits | delegated: slice runs under one writer | [x] | |
+| T18 | Slice 3 review findings: CRLF in `editionBlocks.ts` fence detection, Ford bands against the harm rule, four flow test gaps | delegated: slice runs under one writer | [x] | `cd1538e1` |
+| T7 | Dogwatch GameSystem preset and Cold Berth flow, with credits | delegated: slice runs under one writer | [x] | `193ca200` |
+| T19 | Slice 4 review findings: Confront tip against its bands, Hide Nerve gain and Nerve floor tests, mandatory picks, a crew member taken twice | delegated: slice runs under one writer | [x] | |
 | T8 | Part I, chapters 1–4 with examples | delegated | [ ] | |
 | T9 | Part I, chapters 5–8 with examples | delegated | [ ] | |
 | T10 | Part I, chapters 9–11 with examples | delegated | [ ] | |
@@ -157,6 +160,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 1 | `review-5fe06daa59406812` | `bf6ddf93`, `a7699c5e`, `9ed3a24f`, `63d78359` | Approved | [#388](https://github.com/iribarren/ogami/pull/388), merged | Three, fixed in slice 2 (T15): New table may appear in a Library pack's Scene Type editor; the link to the new table may lose unsaved step edits; the dialog can be dismissed while a create is pending |
 | 2 | `review-0bc46f3f61d7ce00` | `8224f080`, `30c52278`, `ef0533be` approved; `2e1f831a` (e2e expectation) review skipped by the user | Approved | [#389](https://github.com/iribarren/ogami/pull/389), merged | Three, fixed in slice 3 (T16): `Markdown.tsx` overrides spread `node` onto the DOM and let Markdown's `className` replace the app's classes; `editionBlocks.ts` fence detection is looser than CommonMark, so a false or unclosed fence can hide later markers; missing tests for the `FlowEditor` Library pack negative, the last-page pager, the Studio Manual links and raw HTML as visible text |
 | 3 | `review-b82baad154574b9d` | `f164a51d`, `5493e5a8`, `507c5194` | Approved | [#390](https://github.com/iribarren/ogami/pull/390), merged | Three, fixed in slice 4 (T18): `editionBlocks.ts:36` fence regex fails on CRLF lines; `hard-country.json:182` Ford bands disagree with the harm rule (Wind first, then Wounds); flow test gaps (a second Omen replaces the Sin, Winter edges 5/6/9, the far case leaves no pending gate step, the Camp rest cap) |
+| 4 | `review-a353d854eee7de83` | `cd1538e1`, `193ca200` | Approved | [#391](https://github.com/iribarren/ogami/pull/391), merged | Five, fixed in slice 5 (T19): `dogwatch.json:241` Confront tip promises a Nerve cost its `done` band does not take; `:267` Hide `done` Nerve gain unproved, as the tests start at full Nerve; `:249` Nerve floor unproved (harm at Nerve 0, a 2-point loss at Nerve 1); `:348` the `missing` pick and the four job-opening picks are not mandatory and their skip path is untested; `:349` a crew NPC can go missing twice and the `none` branch needs manual closing. Open product note: Treason's "falsified cryo log" names a suspect through a Thread, as no effect tags an NPC |
 
 ## Progress
 
@@ -173,7 +177,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - T6 done: `hard-country.json` (key `hard-country`) with The Long Carry; `make presets` published it (v1, then v2 after wording changes). The Road uses `oracle` selection on a weighted `road-deck` table (weight is copies), and the finale comes late through two Winter-driven closing steps: a condition (nothing below Winter 6, a d6 from 6 to 9, certain at 10) that ends the phase, so the gate is not a card in the deck. The engine cannot pin the check a table entry calls for: the risen ford (Road Risks) forces a Ford scene and adds 1 to Winter, and the Ford scene lets the player pick Back or Feet, with the table text asking for Back. Wind is a track with max 8 set to d6+2 by the bearer step. `HardCountryPresetFlowTest` (29 tests) plays the flow; it was written with the preset, so its first failures were test mistakes, not preset ones (no separate RED).
 - T18 done: `editionBlocks.ts` splits on `/\r?\n/` (RED: the CRLF test failed first). The engine cannot branch a flow on a sheet field (`condition` reads only Trackers and item counts), so the Ford `badly` band now takes d6 Wind like a failure and keeps its Burden, and the step tip says a bearer with no Wind left marks a Wound; no other Hard Country step harms a bearer. Four flow tests added (second Omen, Winter edges 5/6/9, no pending gate step when far, rest cap at 8); they passed at once, as they cover behaviour that already worked.
 - T7 done: `dogwatch.json` (key `dogwatch`, flow `cold-berth`) published as v1 by `make presets`, no warnings. Stations are `select` fields over d4–d10, eight checks share the bands `wrong`/`short`/`done`, and every `check` step offers all eight. The engine cannot branch on a sheet field, so each harm effect takes Nerve and the step tip says a crew member with no Nerve left marks an Injury. The Ship loop ends on Threat: 4 or less ends the closing, 5 to 7 rolls a d6 (5 or 6 ends the phase), 8 ends it for certain. The three Truths are `table` steps with `fillFact` at the Reveal; Session Zero only sets down hunches. Crew and compartments are NPCs (tag `crew`) and Places (tag `compartment`) made in Session Zero; the World turn picks a random crew NPC and opens a Thread, and each job opens by picking a Place, with a prompt that names a new one when none is left. A pick with no candidates is completed with an empty list. `DogwatchPresetFlowTest` (51 tests) was written with the preset, so its first failures were test mistakes, not preset ones (no separate RED).
+- T19 done: Confront tip now says only a confrontation that goes badly costs Nerve (bands unchanged). The `missing` pick and the four job-opening `where` picks are `mandatory`; the `gone` step has a tip to close the crew member in the NPC list. RED: the five mandatory-pick tests failed on the old preset. The Hide `done` Nerve gain from Nerve 3, the Nerve floor (harm at 0, 2-point loss at 1 and at 0: Nerve stops at 0, the Injury is marked by hand) and the repeat World turn (a closed crew member is not offered, an empty pick ends the turn) passed at once, as they cover behaviour that already worked. `make presets` published Dogwatch v2 with no warnings of its own.
 
 ## Next step
 
-Build slice 4 (T18, T7) on `feat/studio-manual-4-dogwatch`, review it, push and open its PR.
+Build slice 5 (T19, T8) on `docs/studio-manual-5-flow-design`, review it, push and open its PR.

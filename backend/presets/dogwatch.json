@@ -204,7 +204,7 @@
       "tips": "Open by picking a compartment. Read the room before you read the people in it. A Clue is a piece of the answer, not the answer.",
       "oracles": ["yes-no", "treason"],
       "setup": [
-        {"key": "where", "kind": "pick", "title": "Which compartment do you go to?", "tip": "The ship offers the compartments you named. If none is left, name one.", "of": "place", "tags": ["compartment"], "mode": "choose", "branches": {"found": {"next": "here"}, "none": {"next": "improvise"}}},
+        {"key": "where", "kind": "pick", "title": "Which compartment do you go to?", "tip": "The ship offers the compartments you named. If none is left, name one.", "of": "place", "tags": ["compartment"], "mode": "choose", "mandatory": true, "branches": {"found": {"next": "here"}, "none": {"next": "improvise"}}},
         {"key": "here", "kind": "prompt", "title": "What is out of place in {picked}?", "next": "end"},
         {"key": "improvise", "kind": "prompt", "title": "Which compartment do you go to?", "prompt": "Name it. It will be on the ship from now on.", "effects": [{"kind": "createPlace", "name": "{answer}", "tags": ["compartment"]}]}
       ],
@@ -223,7 +223,7 @@
       "tips": "Open by picking a compartment. A repair buys time: it lowers Threat. A failed one costs breath. Harm takes Nerve first; with no Nerve left, mark an Injury.",
       "oracles": ["yes-no"],
       "setup": [
-        {"key": "where", "kind": "pick", "title": "Which compartment needs you?", "tip": "The ship offers the compartments you named. If none is left, name one.", "of": "place", "tags": ["compartment"], "mode": "choose", "branches": {"found": {"next": "here"}, "none": {"next": "improvise"}}},
+        {"key": "where", "kind": "pick", "title": "Which compartment needs you?", "tip": "The ship offers the compartments you named. If none is left, name one.", "of": "place", "tags": ["compartment"], "mode": "choose", "mandatory": true, "branches": {"found": {"next": "here"}, "none": {"next": "improvise"}}},
         {"key": "here", "kind": "prompt", "title": "What has failed in {picked}?", "next": "end"},
         {"key": "improvise", "kind": "prompt", "title": "Which compartment needs you?", "prompt": "Name it. It will be on the ship from now on.", "effects": [{"kind": "createPlace", "name": "{answer}", "tags": ["compartment"]}]}
       ],
@@ -238,10 +238,10 @@
       "key": "confront",
       "name": "Confront",
       "purpose": "Stand in front of the thing or person you have been avoiding.",
-      "tips": "Open by picking a compartment. Decide what they want before you decide what they are like. A confrontation always costs Nerve, even when you win it.",
+      "tips": "Open by picking a compartment. Decide what they want before you decide what they are like. A confrontation that goes badly costs Nerve; one you win does not.",
       "oracles": ["yes-no"],
       "setup": [
-        {"key": "where", "kind": "pick", "title": "Where does it happen?", "tip": "The ship offers the compartments you named. If none is left, name one.", "of": "place", "tags": ["compartment"], "mode": "choose", "branches": {"found": {"next": "here"}, "none": {"next": "improvise"}}},
+        {"key": "where", "kind": "pick", "title": "Where does it happen?", "tip": "The ship offers the compartments you named. If none is left, name one.", "of": "place", "tags": ["compartment"], "mode": "choose", "mandatory": true, "branches": {"found": {"next": "here"}, "none": {"next": "improvise"}}},
         {"key": "here", "kind": "prompt", "title": "Who or what waits in {picked}?", "next": "end"},
         {"key": "improvise", "kind": "prompt", "title": "Where does it happen?", "prompt": "Name the compartment. It will be on the ship from now on.", "effects": [{"kind": "createPlace", "name": "{answer}", "tags": ["compartment"]}]}
       ],
@@ -259,7 +259,7 @@
       "tips": "Open by picking a compartment. Hiding is not safe, only quiet. A good hide gives back a breath of Nerve.",
       "oracles": ["yes-no"],
       "setup": [
-        {"key": "where", "kind": "pick", "title": "Where do you go to ground?", "tip": "The ship offers the compartments you named. If none is left, name one.", "of": "place", "tags": ["compartment"], "mode": "choose", "branches": {"found": {"next": "here"}, "none": {"next": "improvise"}}},
+        {"key": "where", "kind": "pick", "title": "Where do you go to ground?", "tip": "The ship offers the compartments you named. If none is left, name one.", "of": "place", "tags": ["compartment"], "mode": "choose", "mandatory": true, "branches": {"found": {"next": "here"}, "none": {"next": "improvise"}}},
         {"key": "here", "kind": "prompt", "title": "What makes {picked} a place to hide?", "next": "end"},
         {"key": "improvise", "kind": "prompt", "title": "Where do you go to ground?", "prompt": "Name the compartment. It will be on the ship from now on.", "effects": [{"kind": "createPlace", "name": "{answer}", "tags": ["compartment"]}]}
       ],
@@ -345,8 +345,8 @@
           "worldTurn": [
             {"key": "watch", "kind": "prompt", "title": "The watch turns", "prompt": "Threat climbs by one. What has changed on the ship?", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}]},
             {"key": "trouble", "kind": "table", "title": "What does the ship do?", "tip": "Roll Ship trouble. Most results are quiet.", "table": "ship-trouble", "mandatory": true},
-            {"key": "missing", "kind": "pick", "title": "Who goes missing?", "tip": "The ship picks a crew member from the manifest. If no one is left, nothing is taken.", "of": "npc", "tags": ["crew"], "mode": "random", "branches": {"found": {"next": "gone"}, "none": {"next": "end"}}},
-            {"key": "gone", "kind": "prompt", "title": "{picked} is not where they were", "prompt": "Where were they last seen, and what was left behind?", "next": "end", "effects": [{"kind": "createThread", "name": "Where is {picked}?"}]}
+            {"key": "missing", "kind": "pick", "title": "Who goes missing?", "tip": "The ship picks a crew member from the manifest. If no one is left, nothing is taken.", "of": "npc", "tags": ["crew"], "mode": "random", "mandatory": true, "branches": {"found": {"next": "gone"}, "none": {"next": "end"}}},
+            {"key": "gone", "kind": "prompt", "title": "{picked} is not where they were", "tip": "Close {picked} in the NPC list now, so the ship cannot take them again.", "prompt": "Where were they last seen, and what was left behind?", "next": "end", "effects": [{"kind": "createThread", "name": "Where is {picked}?"}]}
           ]
         },
         {

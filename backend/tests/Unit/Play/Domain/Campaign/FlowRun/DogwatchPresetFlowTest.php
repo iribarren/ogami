@@ -9,7 +9,9 @@ use App\Play\Domain\Campaign\Characters\CharacterId;
 use App\Play\Domain\Campaign\Characters\SheetValues;
 use App\Play\Domain\Campaign\FlowRun\FlowRun;
 use App\Play\Domain\Campaign\FlowRun\PickedItem;
+use App\Play\Domain\Campaign\FlowRun\StepCannotBeSkipped;
 use App\Play\Domain\Campaign\FlowRun\StepResult;
+use App\Play\Domain\Campaign\Lists\NpcId;
 use App\Play\Domain\GameSystem\Check\Check;
 use App\Play\Domain\GameSystem\Check\CheckBand;
 use App\Play\Domain\GameSystem\Flow\ItemKind;
@@ -236,6 +238,122 @@ final class DogwatchPresetFlowTest extends FlowRunTestCase
         $campaign->completeFlowStep('here', self::prompt('Behind the lockers'), $this->release, self::at());
         $campaign->completeFlowStep('quiet', $this->performed('done'), $this->release, self::at());
         self::assertSame(6, $this->nerve($campaign, 'ada'), 'Nerve was full: a good hide cannot raise it past 6.');
+    }
+
+    #[Test]
+    public function aHideThatIsDoneGivesBackOneNerveBelowTheMaximum(): void
+    {
+        $campaign = $this->wakeDone();
+        $this->setNerve($campaign, 'ada', 3);
+        $campaign->pickSceneType('hide', $this->release, self::at());
+        $campaign->completeFlowStep('where', StepResult::pick(ItemKind::Place, [$this->compartment($campaign)]), $this->release, self::at());
+        $campaign->completeFlowStep('here', self::prompt('Behind the lockers'), $this->release, self::at());
+        $campaign->completeFlowStep('quiet', $this->performed('done'), $this->release, self::at());
+
+        self::assertSame(4, $this->nerve($campaign, 'ada'));
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string, int, int}> the job, its check step, the band, the Nerve before and after
+     */
+    public static function harmBelowTheFloor(): iterable
+    {
+        yield 'harm at Nerve 0 leaves it at 0' => ['confront', 'face', 'short', 0, 0];
+        yield 'a 2-point loss at Nerve 0 leaves it at 0' => ['confront', 'face', 'wrong', 0, 0];
+        yield 'a 2-point loss at Nerve 1 stops at 0' => ['confront', 'face', 'wrong', 1, 0];
+        yield 'a 1-point loss at Nerve 1 reaches 0' => ['repair', 'fix', 'wrong', 1, 0];
+    }
+
+    #[Test]
+    #[DataProvider('harmBelowTheFloor')]
+    public function nerveNeverGoesBelowZero(string $job, string $step, string $band, int $before, int $after): void
+    {
+        $campaign = $this->wakeDone();
+        $this->setNerve($campaign, 'ada', $before);
+        $campaign->pickSceneType($job, $this->release, self::at());
+        $campaign->completeFlowStep('where', StepResult::pick(ItemKind::Place, [$this->compartment($campaign)]), $this->release, self::at());
+        $campaign->completeFlowStep('here', self::prompt('A scorch mark'), $this->release, self::at());
+        $campaign->completeFlowStep($step, $this->performed($band), $this->release, self::at());
+
+        self::assertSame($after, $this->nerve($campaign, 'ada'), 'The player marks the Injury by hand: no effect changes the Injuries.');
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function jobKeys(): iterable
+    {
+        yield 'Investigate' => ['investigate'];
+        yield 'Repair' => ['repair'];
+        yield 'Confront' => ['confront'];
+        yield 'Hide' => ['hide'];
+    }
+
+    #[Test]
+    #[DataProvider('jobKeys')]
+    public function everyJobMustPickItsCompartmentButAnEmptyPickStillCompletes(string $job): void
+    {
+        $campaign = $this->wakeDone();
+        $campaign->pickSceneType($job, $this->release, self::at());
+
+        try {
+            $campaign->skipFlowStep('where', $this->release, self::at());
+            self::fail('The compartment pick can be skipped.');
+        } catch (StepCannotBeSkipped) {
+            self::assertSame('where', self::flowRunOf($campaign)->stepKey());
+        }
+
+        foreach ($campaign->places() as $place) {
+            $campaign->closePlace($place->id());
+        }
+
+        $campaign->completeFlowStep('where', StepResult::pick(ItemKind::Place, []), $this->release, self::at());
+        self::assertSame('improvise', self::flowRunOf($campaign)->stepKey());
+    }
+
+    #[Test]
+    public function theMissingPickCannotBeSkipped(): void
+    {
+        $campaign = $this->afterScene();
+        $campaign->completeFlowStep('watch', self::prompt('The light goes amber'), $this->release, self::at());
+        $campaign->completeFlowStep('trouble', StepResult::table($this->release->resolveOracleTable('ship-trouble', new ScriptedRandomNumberGenerator(1))), $this->release, self::at());
+
+        $this->expectException(StepCannotBeSkipped::class);
+        $campaign->skipFlowStep('missing', $this->release, self::at());
+    }
+
+    #[Test]
+    public function aClosedCrewMemberIsNeverTakenAgainAndWithNoCrewLeftTheTurnEnds(): void
+    {
+        $campaign = $this->afterScene();
+        $crew = array_map(static fn (\App\Play\Domain\Campaign\Lists\Npc $npc): string => $npc->name(), $campaign->npcs());
+        $taken = [];
+        foreach ($crew as $turn => $_) {
+            if ($turn > 0) {
+                $this->playInvestigateScene($campaign);
+            }
+
+            $campaign->completeFlowStep('watch', self::prompt('The light goes amber'), $this->release, self::at());
+            $campaign->completeFlowStep('trouble', StepResult::table($this->release->resolveOracleTable('ship-trouble', new ScriptedRandomNumberGenerator(1))), $this->release, self::at());
+
+            $candidates = $campaign->pickCandidates(ItemKind::Npc, ['crew'])->items;
+            self::assertCount(\count($crew) - $turn, $candidates, 'A closed crew member is not offered.');
+            self::assertSame([], array_intersect($taken, array_map(static fn (\App\Play\Domain\Campaign\FlowRun\PickCandidate $item): string => $item->name, $candidates)));
+            $campaign->completeFlowStep('missing', StepResult::pick(ItemKind::Npc, [new PickedItem($candidates[0]->id, $candidates[0]->name)]), $this->release, self::at());
+            $campaign->completeFlowStep('gone', self::prompt('Last seen at the hatch'), $this->release, self::at());
+            $campaign->closeNpc(NpcId::fromString($candidates[0]->id));
+            $taken[] = $candidates[0]->name;
+        }
+
+        $this->playInvestigateScene($campaign);
+        $campaign->completeFlowStep('watch', self::prompt('The light goes amber'), $this->release, self::at());
+        $campaign->completeFlowStep('trouble', StepResult::table($this->release->resolveOracleTable('ship-trouble', new ScriptedRandomNumberGenerator(1))), $this->release, self::at());
+
+        self::assertSame([], $campaign->pickCandidates(ItemKind::Npc, ['crew'])->items);
+        $threads = \count($campaign->threads());
+        $campaign->completeFlowStep('missing', StepResult::pick(ItemKind::Npc, []), $this->release, self::at());
+        self::assertNotSame('gone', self::flowRunOf($campaign)->stepKey());
+        self::assertCount($threads, $campaign->threads());
     }
 
     #[Test]
@@ -531,6 +649,11 @@ final class DogwatchPresetFlowTest extends FlowRunTestCase
     private function tracker(Campaign $campaign, string $key): int
     {
         return $campaign->trackerValue($this->release->tracker($key) ?? self::fail('No tracker.'));
+    }
+
+    private function setNerve(Campaign $campaign, string $id, int $current): void
+    {
+        $campaign->changeCharacterValue(CharacterId::fromString($id), 'nerve', ['current' => $current, 'max' => 6]);
     }
 
     private function setTracker(Campaign $campaign, string $key, int $value): void

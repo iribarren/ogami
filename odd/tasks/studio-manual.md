@@ -1,7 +1,7 @@
 # Feature: studio-manual
 
 - **Locator:** `odd/tasks/studio-manual.md` · Engram topic `odd/studio-manual/tasks`
-- **Issue:** pending · **Branch:** `feat/studio-manual-1-authoring-order` · **Status:** planned
+- **Issue:** [#387](https://github.com/iribarren/ogami/issues/387) · **Branch:** `feat/studio-manual-1-authoring-order` · **Status:** in progress (slice 1)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Origin:** brainstorm of 2026-11-09, to share the public alpha (`1.0.0-alpha`) with friends
@@ -30,6 +30,9 @@ Friends joining the alpha have no guide to Studio. The value of Studio is the fl
 | Examples | Each chapter adds to both flows, with short played excerpts showing an oracle table roll driving the story | User |
 | Presets | Cairn and 24XX ship as GameSystem presets, built alongside the manual, each with its flow | User |
 | Create from a step | "New table" in the step editor's table pickers | User |
+| New table scope | Prompt inspiration and `table` steps, in the Scene Type and Flow editors of a GameSystem draft. Library packs, `oracle` steps, Scene Type shortcuts and `check` steps keep today's behaviour | Parent |
+| New table draft | A weighted table with the seed entry `newTable` already gives (contract: 1–1000 entries), Key and Name fields as in the Oracles tab, selected in the step once created, with a link to fill it in | Parent |
+| New table and the open editor | Sent with the editor's `readAt`, so the editor's unsaved step survives and it adopts the returned version. A 409 keeps the draft and shows the usual reload path | Parent |
 | 24XX help rule | Help means rolling the skill die twice and keeping the highest (`2d8kh1`), because keep-highest works only within one dice term. Noted in the credits as a change. 5 sizes × alone/helped = 10 checks, the check set cap | Parent |
 | Sealed Truths in Ogami | The glossary and contract have no hidden Fact. On paper the Truth is sealed; in Ogami it is rolled at Reveal | Parent |
 | Terms | The paper edition uses the glossary terms, so a reader moves between editions without translation | Parent |
@@ -118,8 +121,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 | ID | Task | Route | Done | Commit |
 |---|---|---|---|---|
-| T1 | This feature doc and slice plan | inline: one file, already understood | [x] | this commit |
-| T2 | Reorder the Studio rail to the top-down order | delegated: slice runs under one writer | [ ] | |
+| T1 | This feature doc and slice plan | inline: one file, already understood | [x] | `119b293e` |
+| T2 | Reorder the Studio rail to the top-down order | delegated: slice runs under one writer | [x] | |
 | T3 | "New table" in the step editor's table pickers (prompt inspiration, `table` step): creates a named table without leaving the step. Find out whether item rules need a first entry, and seed one if so | delegated: slice runs under one writer | [ ] | |
 | T4 | ADR for the manual; roadmap line; glossary: a `pick` step also picks Places and Characters, as the contract says | delegated: slice runs under one writer | [ ] | |
 | T5 | In-app Manual route, Markdown rendering, edition blocks, links from Studio; front matter as the first content | delegated | [ ] | |
@@ -140,8 +143,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 
 ## Progress
 
-Planned on 2026-11-09. No slice started.
+- Planned on 2026-11-09.
+- Slice 1 started on 2026-11-09.
+- T2 done: rail reordered; the order test in `GameSystemPage.test.tsx` updated (RED observed with the old rail).
 
 ## Next step
 
-Create the GitHub issue, then start slice 1 in a new session with the `ogami-slice` skill.
+Finish slice 1, then review, push and open its PR.

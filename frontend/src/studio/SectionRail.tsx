@@ -33,12 +33,13 @@ interface Section {
 
 const author: Section[] = [
   { tab: 'overview', label: 'Overview', icon: <BookOpen />, pack: true },
+  { tab: 'flows', label: 'Flows', icon: <Route />, pack: false, counts: ['flows'] },
   {
-    tab: 'oracles',
-    label: 'Oracles',
-    icon: <Eye />,
+    tab: 'sceneTypes',
+    label: 'Scene Types',
+    icon: <Clapperboard />,
     pack: true,
-    counts: ['oracleTables', 'likelihoodOracles'],
+    counts: ['sceneTypes'],
   },
   {
     tab: 'narrative',
@@ -48,15 +49,13 @@ const author: Section[] = [
     counts: ['trackers', 'tags', 'factSlots'],
   },
   {
-    tab: 'sceneTypes',
-    label: 'Scene Types',
-    icon: <Clapperboard />,
+    tab: 'oracles',
+    label: 'Oracles',
+    icon: <Eye />,
     pack: true,
-    counts: ['sceneTypes'],
+    counts: ['oracleTables', 'likelihoodOracles'],
   },
-  { tab: 'flows', label: 'Flows', icon: <Route />, pack: false, counts: ['flows'] },
   { tab: 'sheet', label: 'Sheet', icon: <UserRound />, pack: false, counts: ['sheetFields'] },
-  { tab: 'gear', label: 'Gear', icon: <Backpack />, pack: false },
   {
     tab: 'checks',
     label: 'Checks',
@@ -64,6 +63,7 @@ const author: Section[] = [
     pack: false,
     counts: ['checks'],
   },
+  { tab: 'gear', label: 'Gear', icon: <Backpack />, pack: false },
   { tab: 'library', label: 'Library', icon: <Library />, pack: false },
 ]
 

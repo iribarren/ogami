@@ -42,4 +42,13 @@ describe('the manual content', () => {
 
     expect(inOgami.length).toBeGreaterThan(0)
   })
+
+  it.each(
+    chapters.filter((chapter) => chapter.part.startsWith('Part I,')).map((chapter) => chapter.slug),
+  )('gives %s an On paper section and one In Ogami block', (slug) => {
+    const segments = splitEditionBlocks(sources[slug] ?? '')
+
+    expect(segments.filter((segment) => segment.edition === 'in-ogami')).toHaveLength(1)
+    expect(sources[slug]).toMatch(/^## On paper$/m)
+  })
 })

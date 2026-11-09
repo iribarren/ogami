@@ -9,6 +9,8 @@ export interface Chapter {
   editions: Editions
 }
 
+const PART_I = 'Part I, The Narrative Flow'
+
 /** The manual in reading order. Each entry has a Markdown file in `content/`. */
 export const chapters: readonly Chapter[] = [
   { slug: 'how-to-use', title: 'How to use this book', part: 'Front matter', editions: 'both' },
@@ -20,6 +22,10 @@ export const chapters: readonly Chapter[] = [
     part: 'Front matter',
     editions: 'both',
   },
+  { slug: 'the-promise', title: 'The Promise', part: PART_I, editions: 'both' },
+  { slug: 'the-arc', title: 'The Arc', part: PART_I, editions: 'both' },
+  { slug: 'scene-types', title: 'Scene Types', part: PART_I, editions: 'both' },
+  { slug: 'steps', title: 'Steps', part: PART_I, editions: 'both' },
 ]
 
 export function findChapter(slug: string): Chapter | undefined {

@@ -179,7 +179,7 @@
         {"key": "water", "kind": "prompt", "title": "What does the water look like, and who has crossed it before you?"}
       ],
       "play": [
-        {"key": "cross", "kind": "check", "title": "Who carries the litter across, and how?", "tip": "Back to wade with the load, Feet to find the way. Roll a d20 at or under the trait.", "checks": ["back", "feet"], "outcomes": [{"band": "failure", "effects": [{"kind": "tracker", "tracker": "winter", "op": "add", "value": 1}, {"kind": "sheet", "field": "wind", "op": "add", "value": {"dice": "-1d6"}}]}, {"band": "badly", "effects": [{"kind": "tracker", "tracker": "burden", "op": "add", "value": 1}, {"kind": "sheet", "field": "wounds", "op": "add", "value": 1}]}]}
+        {"key": "cross", "kind": "check", "title": "Who carries the litter across, and how?", "tip": "Back to wade with the load, Feet to find the way. Roll a d20 at or under the trait. Harm takes Wind first: if the bearer has no Wind left, mark a Wound instead.", "checks": ["back", "feet"], "outcomes": [{"band": "failure", "effects": [{"kind": "tracker", "tracker": "winter", "op": "add", "value": 1}, {"kind": "sheet", "field": "wind", "op": "add", "value": {"dice": "-1d6"}}]}, {"band": "badly", "effects": [{"kind": "tracker", "tracker": "burden", "op": "add", "value": 1}, {"kind": "sheet", "field": "wind", "op": "add", "value": {"dice": "-1d6"}}]}]}
       ],
       "closing": [
         {"key": "bank", "kind": "prompt", "title": "What is left on the far bank, and who looks back at it?"}

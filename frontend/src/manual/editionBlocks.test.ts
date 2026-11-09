@@ -33,6 +33,17 @@ describe('splitEditionBlocks', () => {
     expect(segments[0]?.text).toContain(':::in-ogami')
   })
 
+  it('ignores markers inside a fence in a CRLF source', () => {
+    const source =
+      'Example:\r\n\r\n```\r\n:::in-ogami\r\n:::\r\n```\r\n\r\n:::in-ogami\r\nHere.\r\n:::\r\n'
+
+    const segments = splitEditionBlocks(source)
+
+    expect(segments.map((segment) => segment.edition)).toEqual(['common', 'in-ogami'])
+    expect(segments[0]?.text).toContain(':::in-ogami')
+    expect(segments[1]?.text).toBe('Here.')
+  })
+
   it('keeps a fence open until a closing fence at least as long', () => {
     const source = '````\n```\n:::\n````\n'
 

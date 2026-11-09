@@ -132,13 +132,26 @@ final class HardCountryPresetFlowTest extends FlowRunTestCase
     }
 
     #[Test]
-    public function aFailedCrossingCostsWindAndWinterAndAFumbledOneAWoundAndBurden(): void
+    public function aRestInCampNeverRaisesWindPastEight(): void
+    {
+        $campaign = $this->sessionZeroDone();
+        $this->setWind($campaign, 'ada', 7);
+        $campaign->pickSceneTypeByOracle($this->dealt(1), $this->release, self::at());
+
+        $campaign->skipFlowStep('where', $this->release, self::at());
+        $campaign->completeFlowStep('rest', StepResult::prompt('Ada sleeps', 'ada'), $this->release, self::at(), new ScriptedRandomNumberGenerator(6));
+
+        self::assertSame(8, $this->wind($campaign, 'ada'), 'Wind 7 and a d6 of 6 plus 2 would be 15: the track holds at 8.');
+    }
+
+    #[Test]
+    public function aFailedCrossingCostsWindAndWinterAndAFumbledOneWindAndBurden(): void
     {
         $failed = $this->crossing(12, 3);
         self::assertSame([5, 1, 0, 0], [$this->wind($failed, 'ada'), $this->tracker($failed, 'winter'), $this->tracker($failed, 'burden'), $this->wounds($failed)], 'Failure takes a d6 of Wind and a step of Winter.');
 
         $badly = $this->crossing(20, 3);
-        self::assertSame([0, 1, 1], [$this->tracker($badly, 'winter'), $this->tracker($badly, 'burden'), $this->wounds($badly)], 'Going badly adds a Wound and a Burden, and no Winter or Wind.');
+        self::assertSame([5, 0, 1, 0], [$this->wind($badly, 'ada'), $this->tracker($badly, 'winter'), $this->tracker($badly, 'burden'), $this->wounds($badly)], 'Going badly takes a d6 of Wind and adds a Burden, and no Wound while Wind lasts.');
 
         $clean = $this->crossing(1, 3);
         self::assertSame([8, 0, 0, 0], [$this->wind($clean, 'ada'), $this->tracker($clean, 'winter'), $this->tracker($clean, 'burden'), $this->wounds($clean)]);
@@ -174,6 +187,11 @@ final class HardCountryPresetFlowTest extends FlowRunTestCase
     public static function theGateComesLate(): iterable
     {
         yield 'far from Winter 6 the road goes on and nothing is rolled' => [3, null, 1];
+        yield 'Winter 5 is still far and nothing is rolled' => [5, null, 1];
+        yield 'Winter 6 is near and the gate stays out of sight on a 4' => [6, 4, 1];
+        yield 'Winter 6 is near and the gate comes into sight on a 5' => [6, 5, 2];
+        yield 'Winter 9 is still near and the gate stays out of sight on a 4' => [9, 4, 1];
+        yield 'Winter 9 is still near and the gate comes into sight on a 6' => [9, 6, 2];
         yield 'near Winter the gate stays out of sight on a 4' => [7, 4, 1];
         yield 'near Winter the gate comes into sight on a 5' => [7, 5, 2];
         yield 'a full Winter brings the gate without a roll' => [10, null, 2];
@@ -194,6 +212,19 @@ final class HardCountryPresetFlowTest extends FlowRunTestCase
         }
 
         self::assertSame($phase, self::flowRunOf($campaign)->phaseIndex());
+    }
+
+    #[Test]
+    public function farFromTheGateTheRoadLeavesNoPendingGateStep(): void
+    {
+        $campaign = $this->sessionZeroDone();
+        $this->setTracker($campaign, 'winter', 5);
+        $campaign->pickSceneTypeByOracle($this->dealt(1), $this->release, self::at());
+        $this->endScene($campaign, ['where', 'rest', 'fire']);
+        $campaign->skipFlowStep('last', $this->release, self::at());
+
+        self::assertNotSame('gate-in-sight', self::flowRunOf($campaign)->stepKey());
+        self::assertSame('shorter-days', self::flowRunOf($campaign)->stepKey(), 'The world turn comes next, with no roll for the gate.');
     }
 
     /**
@@ -233,6 +264,25 @@ final class HardCountryPresetFlowTest extends FlowRunTestCase
         $this->endScene($campaign);
         $campaign->completeFlowStep('aloud', StepResult::choice('yes'), $this->release, self::at());
         self::assertSame(1, $this->tracker($campaign, 'burden'), 'Saying it aloud makes the load heavier.');
+    }
+
+    #[Test]
+    public function aSecondOmenReplacesTheSin(): void
+    {
+        $campaign = $this->sessionZeroDone();
+        $campaign->pickSceneTypeByOracle($this->dealt(13), $this->release, self::at());
+        $campaign->completeFlowStep('sign', self::prompt('Crows on the litter'), $this->release, self::at());
+        $campaign->completeFlowStep('belief', self::prompt('She stole the shrine bell'), $this->release, self::at());
+        $this->endScene($campaign);
+        $campaign->skipFlowStep('aloud', $this->release, self::at());
+        $campaign->completeFlowStep('shorter-days', self::prompt('Thin and white'), $this->release, self::at());
+        $campaign->completeFlowStep('road-risk', $this->rolled('road-risks', 2), $this->release, self::at());
+
+        $campaign->pickSceneTypeByOracle($this->dealt(13), $this->release, self::at());
+        $campaign->completeFlowStep('sign', self::prompt('Rain behind us'), $this->release, self::at());
+        $campaign->completeFlowStep('belief', self::prompt('She was framed for the theft'), $this->release, self::at());
+
+        self::assertSame('She was framed for the theft', $campaign->factValues($this->release)['sin'], 'The last Sin written is the Truth.');
     }
 
     /**

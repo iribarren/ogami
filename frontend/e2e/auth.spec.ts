@@ -27,10 +27,10 @@ test.describe('signed in as a solo player', () => {
     await signIn(page, player, '/play')
   })
 
-  test('the navigation offers only Play', async ({ page }) => {
+  test('the navigation offers Play and the Manual only', async ({ page }) => {
     const nav = page.getByRole('navigation', { name: 'Main' })
 
-    await expect(nav.getByRole('link')).toHaveText(['Play'])
+    await expect(nav.getByRole('link')).toHaveText(['Play', 'Manual'])
     await expect(page.getByText(player)).toBeVisible()
   })
 

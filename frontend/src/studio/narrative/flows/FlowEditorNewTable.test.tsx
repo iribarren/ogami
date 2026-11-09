@@ -36,7 +36,12 @@ async function openTableStep(handlers: Record<string, FakeHandler>) {
   })
   const form = await screen.findByRole('form', { name: 'Flow' })
   const outline = within(screen.getByRole('navigation', { name: 'Flow outline' }))
-  await user.click(outline.getAllByRole('button', { name: 'World turn (0 steps)' })[0]!)
+  // Every phase has a World turn hook of its own: take the first phase's.
+  const [worldTurn] = outline.getAllByRole('button', { name: 'World turn (0 steps)' })
+  if (!worldTurn) {
+    throw new Error('No World turn hook.')
+  }
+  await user.click(worldTurn)
   await user.click(within(form).getByRole('button', { name: 'Add step' }))
   await user.click(await screen.findByRole('menuitem', { name: 'table' }))
   openStepCards()

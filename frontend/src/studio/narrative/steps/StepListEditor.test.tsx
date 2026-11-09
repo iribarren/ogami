@@ -2430,9 +2430,7 @@ describe('New table in the table pickers', () => {
 
     const button = screen.getByRole('button', { name: 'New table' })
     expect(button).toBeDisabled()
-    expect(button).toHaveAccessibleDescription(
-      'A prompt offers at most 5 inspiration tables.',
-    )
+    expect(button).toHaveAccessibleDescription('A prompt offers at most 5 inspiration tables.')
   })
 
   it('stays available with four inspiration tables selected', () => {

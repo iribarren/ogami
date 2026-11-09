@@ -123,7 +123,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 |---|---|---|---|---|
 | T1 | This feature doc and slice plan | inline: one file, already understood | [x] | `119b293e` |
 | T2 | Reorder the Studio rail to the top-down order | delegated: slice runs under one writer | [x] | |
-| T3 | "New table" in the step editor's table pickers (prompt inspiration, `table` step): creates a named table without leaving the step. Find out whether item rules need a first entry, and seed one if so | delegated: slice runs under one writer | [ ] | |
+| T3 | "New table" in the step editor's table pickers (prompt inspiration, `table` step): creates a named table without leaving the step. Find out whether item rules need a first entry, and seed one if so | delegated: slice runs under one writer | [x] | |
 | T4 | ADR for the manual; roadmap line; glossary: a `pick` step also picks Places and Characters, as the contract says | delegated: slice runs under one writer | [ ] | |
 | T5 | In-app Manual route, Markdown rendering, edition blocks, links from Studio; front matter as the first content | delegated | [ ] | |
 | T6 | Cairn GameSystem preset and The Long Carry flow, with credits | delegated | [ ] | |
@@ -146,6 +146,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - Planned on 2026-11-09.
 - Slice 1 started on 2026-11-09.
 - T2 done: rail reordered; the order test in `GameSystemPage.test.tsx` updated (RED observed with the old rail).
+- T3 done: "New table" opens a dialog with the Oracles tab's `CreateForm`; draft version is draft-wide, so the create sends the editor's `readAt` and the editor adopts the answer; a 409 sets the editor's conflict state. Item rules need no extra first entry beyond the seed `newTable` gives. RED observed (7 failing), then GREEN.
 
 ## Next step
 

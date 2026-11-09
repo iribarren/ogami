@@ -33,6 +33,8 @@ describe('Markdown', () => {
 
     expect(document.querySelector('script')).toBeNull()
     expect(document.querySelector('img')).toBeNull()
+    expect(screen.getByText(/<script>window\.hacked = true<\/script>/)).toBeVisible()
+    expect(screen.getByText(/<img src=x onerror="alert\(1\)">/)).toBeVisible()
   })
 
   it('does not render a javascript: link as a link', async () => {
@@ -40,6 +42,14 @@ describe('Markdown', () => {
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(screen.getByText(/click/)).toBeInTheDocument()
+  })
+
+  it('keeps the app classes next to the language class of a code block', async () => {
+    await show('```ts\nconst a = 1\n```')
+
+    const code = document.querySelector('code')
+    expect(code).toHaveClass('language-ts', 'font-mono')
+    expect(code).not.toHaveAttribute('node')
   })
 
   it('wraps a table so it scrolls on a narrow screen', async () => {

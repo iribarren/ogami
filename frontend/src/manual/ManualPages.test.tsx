@@ -48,6 +48,16 @@ describe('the manual reader', () => {
     expect(within(first).getByText(/Next/)).toBeInTheDocument()
   })
 
+  it('has no next link on the last page, only a previous one', async () => {
+    const last = chapters[chapters.length - 1]
+    const before = chapters[chapters.length - 2]
+    renderAppAt(`/manual/${last?.slug ?? ''}`)
+
+    const pager = await screen.findByRole('navigation', { name: 'Chapter navigation' })
+    expect(within(pager).queryByText(/Next/)).not.toBeInTheDocument()
+    expect(within(pager).getByRole('link', { name: new RegExp(before?.title ?? '') })).toBeVisible()
+  })
+
   it('goes to the not-found page for an unknown chapter', async () => {
     renderAppAt('/manual/no-such-chapter')
 

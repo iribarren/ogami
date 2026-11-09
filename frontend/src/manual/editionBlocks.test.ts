@@ -62,4 +62,28 @@ describe('splitEditionBlocks', () => {
   it('throws on a block still open inside an unclosed fence', () => {
     expect(() => splitEditionBlocks(':::in-ogami\n```\ncode\n:::\n')).toThrow(/never closed/i)
   })
+
+  it('does not take a four-space indented line for a fence', () => {
+    expect(() => splitEditionBlocks(':::in-ogami\n    ```\ntext\n:::\n')).not.toThrow()
+  })
+
+  it('does not take backticks around an info string for a fence', () => {
+    const source = ':::in-ogami\n``` a ```\nText.\n:::\n'
+
+    expect(splitEditionBlocks(source)).toEqual([{ edition: 'in-ogami', text: '``` a ```\nText.' }])
+  })
+
+  it('does not close a fence with a line that has an info string', () => {
+    expect(() => splitEditionBlocks('```\ncode\n```js\n:::\n')).toThrow(/never closed/i)
+  })
+
+  it('does not close a fence with a shorter run or the other character', () => {
+    expect(() => splitEditionBlocks('````\n```\n~~~~\n:::\n')).toThrow(/never closed/i)
+  })
+
+  it('throws on an unclosed fence instead of hiding the markers after it', () => {
+    expect(() => splitEditionBlocks('Text\n```\n:::in-ogami\nMore.\n')).toThrow(
+      /line 2.*fence.*never closed/i,
+    )
+  })
 })

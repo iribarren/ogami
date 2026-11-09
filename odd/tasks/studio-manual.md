@@ -132,7 +132,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T15 | Slice 1 review findings: New table in Library packs, unsaved step edits on the link to the new table, dialog dismissal while a create is pending | delegated: slice runs under one writer | [x] | `8224f080` |
 | T5 | In-app Manual route, Markdown rendering, edition blocks, links from Studio; front matter as the first content | delegated: slice runs under one writer | [x] | `30c52278`, `ef0533be`, `2e1f831a` |
 | T16 | Slice 2 review findings: `Markdown.tsx` element overrides, `editionBlocks.ts` fence detection, the four missing tests | delegated: slice runs under one writer | [x] | |
-| T17 | Replace Cairn and 24XX with Hard Country and Dogwatch in the front matter, credits, ADR 0050 and roadmap | delegated: slice runs under one writer | [ ] | |
+| T17 | Replace Cairn and 24XX with Hard Country and Dogwatch in the front matter, credits, ADR 0050 and roadmap | delegated: slice runs under one writer | [x] | |
 | T6 | Hard Country GameSystem preset and The Long Carry flow, with credits | delegated: slice runs under one writer | [ ] | |
 | T7 | Dogwatch GameSystem preset and Cold Berth flow, with credits | delegated | [ ] | |
 | T8 | Part I, chapters 1–4 with examples | delegated | [ ] | |
@@ -166,6 +166,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - T5 done: `/manual` and `/manual/$chapter` (public, `beforeLoad` not-found), `splitEditionBlocks`, `react-markdown` + `remark-gfm` without raw HTML, four front matter pages, Manual links in the main nav, Studio home and GameSystem header. Splitter tests were written with the splitter, so no separate RED; the AppShell Manual test is the only one that failed first.
 - Slice 2 size: about 1,828 changed lines, 868 of them `pnpm-lock.yaml`. Kept as one slice by the user's decision, dependency in its own commit.
 - T16 done: `Markdown.tsx` overrides drop `node` and merge `className`; `editionBlocks.ts` follows CommonMark fences and throws on an unclosed one. RED: 5 new tests failed on the old code (fence rules, unclosed fence, merged class); the Library pack, pager, Manual link and raw-HTML-text tests passed at once, as they cover behaviour that already worked.
+- T17 done: front matter, credits, ADR 0050 (dated amendment) and roadmap B26 now name Hard Country and Dogwatch; Cairn and 24XX remain only as design influences. Docs only, so structural readback plus the content tests.
 
 ## Next step
 

@@ -2,11 +2,11 @@
 
 The book is built around two games and one flow for each. A **GameSystem** holds a game's rules: its dice, its checks, its character sheet. A **NarrativeFlow** is one story inside that GameSystem. One system can hold many flows; here each has one.
 
-## The Long Carry, on Cairn
+## The Long Carry, on Hard Country
 
 _Will you get the saint to the shrine before first snow, and what will it cost?_
 
-Cairn is a rules-light fantasy game. Its characters are fragile, its fights are dangerous, and its rules fit on a few pages. The Long Carry runs for three to four sessions.
+Hard Country is a rules-light fantasy game about hard travel, where a body gives out before a story does. A character has three traits, Back, Feet and Head, and a pool of Wind that harm wears down first. The Long Carry runs for three to four sessions.
 
 You play a small group of bearers carrying a saint's body across hard country.
 
@@ -17,11 +17,11 @@ You play a small group of bearers carrying a saint's body across hard country.
 
 The Truth of the story, what the saint's sin was, is emergent. You write it as the omens pile up.
 
-## Cold Berth, on 24XX
+## Cold Berth, on Dogwatch
 
 _What is aboard, who let it on, and why were we woken?_
 
-24XX is a minimal science-fiction game. A character is a few numbers, and a check is a single die. Cold Berth runs for two to three sessions.
+Dogwatch is a minimal science-fiction game. A character is a few numbers, and a check is a single die. Cold Berth runs for two to three sessions.
 
 You play crew members woken early from cold sleep on a ship that should be empty.
 

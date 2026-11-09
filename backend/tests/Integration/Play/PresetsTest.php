@@ -112,6 +112,26 @@ final class PresetsTest extends KernelTestCase
     }
 
     #[Test]
+    public function dogwatchPublishesOnceWithItsStationChecksTruthTablesAndGear(): void
+    {
+        $this->assertPublishesOnce('dogwatch');
+
+        $snapshot = $this->snapshot('dogwatch');
+        self::assertSame(['Dogwatch', 1, 'starship', 'cold-berth'], [$snapshot->name(), $snapshot->releaseVersion(), $snapshot->theme(), $snapshot->defaultFlow()?->key]);
+        $credits = $snapshot->credits();
+        self::assertSame(['CC BY-SA 4.0', 'https://creativecommons.org/licenses/by-sa/4.0/'], [$credits?->license, $credits?->url]);
+        self::assertSame(['threat', 'clues'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
+        self::assertSame(['aboard', 'who', 'why'], array_map(static fn (\App\Play\Domain\GameSystem\FactSlot $slot): string => $slot->key, $snapshot->factSlots()));
+        self::assertSame(['session-zero', 'wake', 'the-ship', 'reveal', 'epilogue'], array_map(static fn (\App\Play\Domain\GameSystem\Flow\Phase $phase): string => $phase->key, $snapshot->defaultFlow()->phases ?? []));
+        // Eight Checks share the same bands, so a check step can offer the whole set (dice notation cannot read the sheet).
+        self::assertSame(['d4', 'd4-help', 'd6', 'd6-help', 'd8', 'd8-help', 'd10', 'd10-help'], array_map(static fn (\App\Play\Domain\GameSystem\Check\Check $check): string => $check->key, $snapshot->checks()));
+        self::assertCount(11, $snapshot->gear());
+        foreach (['treason' => 8, 'ship-trouble' => 9, 'truth-aboard' => 8, 'truth-who' => 8, 'truth-why' => 8] as $table => $entries) {
+            $this->assertWeightedTableResolves($snapshot, $table, $entries, $snapshot->resolveOracleTable($table, new ScriptedRandomNumberGenerator(1))->steps()[0]->text(), $snapshot->resolveOracleTable($table, new ScriptedRandomNumberGenerator($entries))->steps()[0]->text());
+        }
+    }
+
+    #[Test]
     public function mythicStylePublishesOnceAndResolvesItsOracles(): void
     {
         $this->assertPublishesOnce('mythic-style');

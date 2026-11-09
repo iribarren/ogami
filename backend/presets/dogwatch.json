@@ -1,0 +1,416 @@
+{
+  "schemaVersion": 2,
+  "gameSystem": {
+    "key": "dogwatch",
+    "name": "Dogwatch",
+    "description": "A rules-light science fiction game about a small crew woken on a ship that should be asleep. Four Stations, one die each, a Difficulty you set, and nerve that wears away before the body does. Original content written for the Ogami manual.",
+    "credits": {
+      "notice": "Dogwatch is an original game written for the Ogami manual, with its flow Cold Berth. It is released under the Creative Commons Attribution-ShareAlike 4.0 International license.",
+      "license": "CC BY-SA 4.0",
+      "url": "https://creativecommons.org/licenses/by-sa/4.0/"
+    }
+  },
+  "theme": "starship",
+  "oracles": {
+    "tables": [
+      {
+        "key": "treason",
+        "name": "Treason",
+        "entries": [
+          {"text": "A falsified cryo log: a sleeper's wake time was edited, and the edit carries a crew key. Name the suspect.", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}, {"kind": "createThread", "name": "Who falsified the cryo log?"}]},
+          {"text": "A door that was opened from the inside while the ship was in suspension. Who holds that key?", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]},
+          {"text": "Two accounts of the same night, and they cannot both be true.", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]},
+          {"text": "A message sent from the ship before you woke, and a name you know on it.", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}, {"kind": "createThread", "name": "Who sent the message?"}]},
+          {"text": "Nothing. The one you suspect is only afraid."},
+          {"text": "A tool put back in the wrong place by someone careful."},
+          {"text": "A confession nobody asked for, and a door that locks behind it.", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}]},
+          {"text": "Someone is watching you read.", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}]}
+        ]
+      },
+      {
+        "key": "ship-trouble",
+        "name": "Ship trouble",
+        "entries": [
+          {"key": "quiet", "text": "A quiet hour. The ship ticks and settles.", "weight": 3},
+          {"key": "hatch", "text": "A hatch seals itself behind you. You are cut off from where you came from.", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}]},
+          {"key": "air", "text": "The air tastes of metal. The scrubbers are struggling.", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}]},
+          {"key": "failing", "text": "Something you were relying on fails.", "effects": [{"kind": "nextScene", "sceneType": "repair"}]},
+          {"key": "noise", "text": "A sound in the walls that stops when you listen.", "effects": [{"kind": "nextScene", "sceneType": "hide"}]},
+          {"key": "voice", "text": "A crew voice calls from a room that is locked from the outside.", "effects": [{"kind": "nextScene", "sceneType": "investigate"}]},
+          {"key": "face", "text": "Someone is standing where nobody was a moment ago.", "effects": [{"kind": "nextScene", "sceneType": "confront"}]}
+        ]
+      },
+      {
+        "key": "truth-aboard",
+        "name": "What is aboard",
+        "entries": [
+          {"text": "A second crew, asleep in a hold the manifest never listed"},
+          {"text": "Seed stock for a settlement nobody voted for"},
+          {"text": "The ship's old captain, kept running in a failing memory core"},
+          {"text": "A slow fault in the drive, hidden behind a clean report"},
+          {"text": "A weapon test the owners left running"},
+          {"text": "A passenger who is not the person the manifest says"},
+          {"text": "A mould that eats insulation and is quietly eating the hull"},
+          {"text": "The ship's own last voyage, replaying in its logs as if it were now"}
+        ]
+      },
+      {
+        "key": "truth-who",
+        "name": "Who let it on",
+        "entries": [
+          {"text": "The captain, who believed it was a rescue"},
+          {"text": "A crew member who owed the shipper a debt"},
+          {"text": "Nobody. The ship took it on at a dock, alone"},
+          {"text": "Two of you, separately, for opposite reasons"},
+          {"text": "The company's inspector, still asleep among you"},
+          {"text": "A crew member who has since forgotten doing it"},
+          {"text": "The one who died on the last leg, and signed for it first"},
+          {"text": "The ship's owners, by a clause in your contract"}
+        ]
+      },
+      {
+        "key": "truth-why",
+        "name": "Why we were woken",
+        "entries": [
+          {"text": "The cryo power is failing, and someone had to choose who to wake"},
+          {"text": "The navigator died in their sleep and nobody can steer"},
+          {"text": "A distress call came back from our own home"},
+          {"text": "An audit: someone must sign for what is aboard"},
+          {"text": "A debt fell due and only the crew can pay it"},
+          {"text": "The ship weighs more than when it left"},
+          {"text": "The hull needs hands, and there were no others"},
+          {"text": "The wake order was a mistake, and no one has told the ship"}
+        ]
+      }
+    ],
+    "likelihood": [
+      {
+        "key": "yes-no",
+        "name": "Yes/no question",
+        "sides": 100,
+        "levels": [
+          {"key": "very-unlikely", "label": "Very unlikely", "target": 10},
+          {"key": "unlikely", "label": "Unlikely", "target": 30},
+          {"key": "even", "label": "Even odds", "target": 50},
+          {"key": "likely", "label": "Likely", "target": 70},
+          {"key": "very-likely", "label": "Very likely", "target": 90}
+        ],
+        "exceptionalPercent": 10
+      }
+    ]
+  },
+  "trackers": [
+    {"key": "threat", "name": "Threat", "hint": "How close the ship is to showing what it is. Each World turn adds one; at 8 the Reveal comes.", "kind": "clock", "segments": 8},
+    {"key": "clues", "name": "Clues", "hint": "What you have pieced together. Clues decide who gets out.", "kind": "counter", "min": 0, "max": 8, "initial": 0, "levels": [{"upTo": 0, "label": "Blind"}, {"upTo": 2, "label": "Hints"}, {"upTo": 5, "label": "A shape"}, {"label": "The whole picture"}]}
+  ],
+  "factSlots": [
+    {"key": "aboard", "label": "What is aboard", "type": "text", "hint": "The first Truth. Rolled at the Reveal."},
+    {"key": "who", "label": "Who let it on", "type": "text", "hint": "The second Truth. Rolled at the Reveal."},
+    {"key": "why", "label": "Why we were woken", "type": "text", "hint": "The third Truth. Rolled at the Reveal."}
+  ],
+  "tags": [
+    {"key": "crew", "label": "Crew", "hint": "Someone on the manifest", "appliesTo": ["npc"]},
+    {"key": "compartment", "label": "Compartment", "hint": "A space aboard the ship", "appliesTo": ["place"]}
+  ],
+  "sceneTypes": [
+    {
+      "key": "crew",
+      "name": "The crew",
+      "purpose": "Make the people who were woken.",
+      "tips": "Make two or three crew. Each is four dice across the Stations: one d10, one d8, one d6 and one d4, each used once. Put the best die where the person is best.",
+      "oracles": [],
+      "setup": [
+        {"key": "who", "kind": "prompt", "title": "Who are you to each other?", "prompt": "Two words for a relation: shift partners, old rivals. Add one thing you have never said.", "mandatory": true}
+      ],
+      "play": [
+        {"key": "crew-1", "kind": "character", "title": "Who is the first crew member?", "prompt": "Give them a name and a role.", "mandatory": true, "tip": "Give each Station a die: d10, d8, d6 and d4, once each. Nerve starts full. (This sheet rolls nothing, so a card is simply filled in.)"},
+        {"key": "outfit-1", "kind": "shop", "title": "What does crew member 1 carry?", "tip": "Six slots of kit. Leave it empty to move on.", "offer": {"categories": ["Tools", "Supplies"]}, "sellRate": 50},
+        {"key": "crew-2", "kind": "character", "title": "Who is the second crew member?", "prompt": "Give them a name and a role.", "mandatory": false, "tip": "Give each Station a die: d10, d8, d6 and d4, once each."},
+        {"key": "outfit-2", "kind": "shop", "title": "What does crew member 2 carry?", "tip": "Six slots of kit. Leave it empty to move on.", "offer": {"categories": ["Tools", "Supplies"]}, "sellRate": 50},
+        {"key": "crew-3", "kind": "character", "title": "Who is the third crew member?", "prompt": "A third is optional. Every extra card is one more voice to lose.", "mandatory": false, "tip": "Give each Station a die: d10, d8, d6 and d4, once each."},
+        {"key": "outfit-3", "kind": "shop", "title": "What does crew member 3 carry?", "tip": "Six slots of kit. Leave it empty to move on.", "offer": {"categories": ["Tools", "Supplies"]}, "sellRate": 50}
+      ],
+      "closing": []
+    },
+    {
+      "key": "ship",
+      "name": "The ship",
+      "purpose": "Say what the ship is, who else is on it, and where you can go.",
+      "tips": "Each compartment you name is a place you can visit in the Ship phase. The people you name are who the ship can take.",
+      "oracles": [],
+      "setup": [
+        {"key": "kind", "kind": "prompt", "title": "What sort of ship is this, and how long has it been asleep?", "prompt": "One sentence for the ship, one for its age.", "mandatory": true}
+      ],
+      "play": [
+        {"key": "wake", "kind": "prompt", "title": "What compartment do you wake in?", "prompt": "Name it, and say what the light is doing.", "mandatory": true, "effects": [{"kind": "createPlace", "name": "{answer}", "tags": ["compartment"]}]},
+        {"key": "engine", "kind": "prompt", "title": "Where does the ship keep its power, air or heat?", "mandatory": true, "effects": [{"kind": "createPlace", "name": "{answer}", "tags": ["compartment"]}]},
+        {"key": "hold", "kind": "prompt", "title": "Where is the cargo held?", "mandatory": true, "effects": [{"kind": "createPlace", "name": "{answer}", "tags": ["compartment"]}]},
+        {"key": "sealed", "kind": "prompt", "title": "Which compartment is sealed, and who sealed it?", "mandatory": false, "effects": [{"kind": "createPlace", "name": "{answer}", "tags": ["compartment"]}]},
+        {"key": "manifest-1", "kind": "prompt", "title": "Who else is on the manifest, asleep or awake?", "prompt": "A name and a role.", "mandatory": true, "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew"]}]},
+        {"key": "manifest-2", "kind": "prompt", "title": "Who else?", "mandatory": true, "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew"]}]},
+        {"key": "manifest-3", "kind": "prompt", "title": "And one more, if the ship is large enough to lose them?", "mandatory": false, "effects": [{"kind": "createNpc", "name": "{answer}", "tags": ["crew"]}]}
+      ],
+      "closing": []
+    },
+    {
+      "key": "truths",
+      "name": "The Truths",
+      "purpose": "Set down what you fear, before the ship answers.",
+      "tips": "Three questions have an answer you do not know yet: what is aboard, who let it on, and why you were woken. On paper you seal the answers now, from the tables or by choice. In Ogami the tables roll at the Reveal, so here you only write your hunch.",
+      "oracles": [],
+      "setup": [],
+      "play": [
+        {"key": "aboard", "kind": "prompt", "title": "What do you fear is aboard?", "prompt": "A hunch, in a sentence. It need not be right."},
+        {"key": "who", "kind": "prompt", "title": "Who do you think let it on?"},
+        {"key": "why", "kind": "prompt", "title": "Why do you think you were woken?"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "empty-berth",
+      "name": "The empty berth",
+      "purpose": "Wake, and find that someone is gone.",
+      "tips": "Do not explain the missing person. Describe what they left, and let the player ask.",
+      "oracles": ["yes-no"],
+      "setup": [
+        {"key": "berth", "kind": "prompt", "title": "Whose berth is open, and how did they leave it?", "prompt": "A name, or the shape of a person who is not there.", "mandatory": true, "effects": [{"kind": "createThread", "name": "Where is {answer}?"}]}
+      ],
+      "play": [
+        {"key": "left", "kind": "prompt", "title": "What did they leave in the berth?", "prompt": "One object. It was not left by accident."}
+      ],
+      "closing": [
+        {"key": "first", "kind": "prompt", "title": "What is the first thing you do?"}
+      ]
+    },
+    {
+      "key": "custodian",
+      "name": "The custodian",
+      "purpose": "Ask the ship why you were woken, and be refused.",
+      "tips": "The custodian is not lying. It follows a rule. Decide whose rule it is and why it was written before you decide what it hides.",
+      "oracles": ["yes-no"],
+      "setup": [
+        {"key": "ask", "kind": "prompt", "title": "What do you ask the custodian, and how does it answer?", "mandatory": true}
+      ],
+      "play": [
+        {"key": "rule", "kind": "prompt", "title": "What rule does it quote to refuse you, and who wrote it?"},
+        {"key": "push", "kind": "choice", "title": "Do you push it?", "tip": "Pushing a rule that was written to be pushed makes the ship take notice.", "options": [{"key": "push", "label": "Push it", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}]}, {"key": "accept", "label": "Accept the refusal"}], "skip": "accept"}
+      ],
+      "closing": []
+    },
+    {
+      "key": "investigate",
+      "name": "Investigate",
+      "purpose": "Look closely at one part of the ship, and learn what is wrong with it.",
+      "tips": "Open by picking a compartment. Read the room before you read the people in it. A Clue is a piece of the answer, not the answer.",
+      "oracles": ["yes-no", "treason"],
+      "setup": [
+        {"key": "where", "kind": "pick", "title": "Which compartment do you go to?", "tip": "The ship offers the compartments you named. If none is left, name one.", "of": "place", "tags": ["compartment"], "mode": "choose", "branches": {"found": {"next": "here"}, "none": {"next": "improvise"}}},
+        {"key": "here", "kind": "prompt", "title": "What is out of place in {picked}?", "next": "end"},
+        {"key": "improvise", "kind": "prompt", "title": "Which compartment do you go to?", "prompt": "Name it. It will be on the ship from now on.", "effects": [{"kind": "createPlace", "name": "{answer}", "tags": ["compartment"]}]}
+      ],
+      "play": [
+        {"key": "look", "kind": "check", "title": "How do you look, and what are you looking for?", "tip": "Pick the die on your Station: Eyes to notice and search, Hands to take something apart. If someone helps, pick the helped version of the same die. Set the Difficulty by how hidden it is.", "checks": ["d4", "d6", "d8", "d10", "d4-help", "d6-help", "d8-help", "d10-help"], "outcomes": [{"band": "done", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "short", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}]}, {"band": "wrong", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}, {"kind": "sheet", "field": "nerve", "op": "subtract", "value": 1}]}]},
+        {"key": "doubt", "kind": "table", "title": "Is someone lying to you?", "tip": "Optional. Roll Treason when a person is part of the scene. Harm takes Nerve first: a crew member with no Nerve left marks an Injury instead.", "table": "treason"}
+      ],
+      "closing": [
+        {"key": "after", "kind": "prompt", "title": "What do you take away from the room, and what do you leave in it?"}
+      ]
+    },
+    {
+      "key": "repair",
+      "name": "Repair",
+      "purpose": "Fix something that must work, and pay for what it takes.",
+      "tips": "Open by picking a compartment. A repair buys time: it lowers Threat. A failed one costs breath. Harm takes Nerve first; with no Nerve left, mark an Injury.",
+      "oracles": ["yes-no"],
+      "setup": [
+        {"key": "where", "kind": "pick", "title": "Which compartment needs you?", "tip": "The ship offers the compartments you named. If none is left, name one.", "of": "place", "tags": ["compartment"], "mode": "choose", "branches": {"found": {"next": "here"}, "none": {"next": "improvise"}}},
+        {"key": "here", "kind": "prompt", "title": "What has failed in {picked}?", "next": "end"},
+        {"key": "improvise", "kind": "prompt", "title": "Which compartment needs you?", "prompt": "Name it. It will be on the ship from now on.", "effects": [{"kind": "createPlace", "name": "{answer}", "tags": ["compartment"]}]}
+      ],
+      "play": [
+        {"key": "fix", "kind": "check", "title": "How do you fix it?", "tip": "Pick the die on your Station: Hands to fix and force, Helm to reach it. If someone helps, pick the helped version of the same die. A bearer with no Nerve left marks an Injury instead of losing Nerve.", "checks": ["d4", "d6", "d8", "d10", "d4-help", "d6-help", "d8-help", "d10-help"], "outcomes": [{"band": "done", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": -1}]}, {"band": "wrong", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}, {"kind": "sheet", "field": "nerve", "op": "subtract", "value": 1}]}]}
+      ],
+      "closing": [
+        {"key": "after", "kind": "prompt", "title": "How long will the repair hold, and who knows it?"}
+      ]
+    },
+    {
+      "key": "confront",
+      "name": "Confront",
+      "purpose": "Stand in front of the thing or person you have been avoiding.",
+      "tips": "Open by picking a compartment. Decide what they want before you decide what they are like. A confrontation always costs Nerve, even when you win it.",
+      "oracles": ["yes-no"],
+      "setup": [
+        {"key": "where", "kind": "pick", "title": "Where does it happen?", "tip": "The ship offers the compartments you named. If none is left, name one.", "of": "place", "tags": ["compartment"], "mode": "choose", "branches": {"found": {"next": "here"}, "none": {"next": "improvise"}}},
+        {"key": "here", "kind": "prompt", "title": "Who or what waits in {picked}?", "next": "end"},
+        {"key": "improvise", "kind": "prompt", "title": "Where does it happen?", "prompt": "Name the compartment. It will be on the ship from now on.", "effects": [{"kind": "createPlace", "name": "{answer}", "tags": ["compartment"]}]}
+      ],
+      "play": [
+        {"key": "face", "kind": "check", "title": "How do you face them?", "tip": "Pick the die on your Station: Voice to persuade, lie or calm, Hands to force. If someone helps, pick the helped version of the same die. Harm takes Nerve first; with no Nerve left, mark an Injury.", "checks": ["d4", "d6", "d8", "d10", "d4-help", "d6-help", "d8-help", "d10-help"], "outcomes": [{"band": "done", "effects": [{"kind": "tracker", "tracker": "clues", "op": "add", "value": 1}]}, {"band": "short", "effects": [{"kind": "sheet", "field": "nerve", "op": "subtract", "value": 1}]}, {"band": "wrong", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}, {"kind": "sheet", "field": "nerve", "op": "subtract", "value": 2}]}]}
+      ],
+      "closing": [
+        {"key": "after", "kind": "prompt", "title": "What did they say that you cannot unhear?"}
+      ]
+    },
+    {
+      "key": "hide",
+      "name": "Hide",
+      "purpose": "Get out of sight and wait for it to pass.",
+      "tips": "Open by picking a compartment. Hiding is not safe, only quiet. A good hide gives back a breath of Nerve.",
+      "oracles": ["yes-no"],
+      "setup": [
+        {"key": "where", "kind": "pick", "title": "Where do you go to ground?", "tip": "The ship offers the compartments you named. If none is left, name one.", "of": "place", "tags": ["compartment"], "mode": "choose", "branches": {"found": {"next": "here"}, "none": {"next": "improvise"}}},
+        {"key": "here", "kind": "prompt", "title": "What makes {picked} a place to hide?", "next": "end"},
+        {"key": "improvise", "kind": "prompt", "title": "Where do you go to ground?", "prompt": "Name the compartment. It will be on the ship from now on.", "effects": [{"kind": "createPlace", "name": "{answer}", "tags": ["compartment"]}]}
+      ],
+      "play": [
+        {"key": "quiet", "kind": "check", "title": "How quietly do you wait?", "tip": "Pick the die on your Station: Helm to slip away, Voice to keep someone calm, Eyes to watch. If someone helps, pick the helped version of the same die. Harm takes Nerve first; with no Nerve left, mark an Injury.", "checks": ["d4", "d6", "d8", "d10", "d4-help", "d6-help", "d8-help", "d10-help"], "outcomes": [{"band": "done", "effects": [{"kind": "sheet", "field": "nerve", "op": "add", "value": 1}]}, {"band": "short", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}]}, {"band": "wrong", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}, {"kind": "sheet", "field": "nerve", "op": "subtract", "value": 1}]}]}
+      ],
+      "closing": [
+        {"key": "after", "kind": "prompt", "title": "What do you hear while you wait?"}
+      ]
+    },
+    {
+      "key": "reveal",
+      "name": "The Reveal",
+      "purpose": "Open the three Truths, and see how near you were.",
+      "tips": "On paper you open the three sealed Truths here. In Ogami each is rolled from its table now. Do not smooth the result into what you hoped; make the answers fit, and then play toward the hardest one.",
+      "oracles": [],
+      "setup": [],
+      "play": [
+        {"key": "aboard-roll", "kind": "table", "title": "What is aboard?", "tip": "Roll the table. The result is written into the Truth.", "table": "truth-aboard", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "aboard"}]},
+        {"key": "who-roll", "kind": "table", "title": "Who let it on?", "table": "truth-who", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "who"}]},
+        {"key": "why-roll", "kind": "table", "title": "Why were you woken?", "table": "truth-why", "mandatory": true, "effects": [{"kind": "fillFact", "slot": "why"}]},
+        {"key": "read", "kind": "prompt", "title": "How do these three fit together?", "prompt": "What is aboard: {fact:aboard}. Who let it on: {fact:who}. Why you were woken: {fact:why}. Compare them to your hunches in Session Zero. Write the one story that makes all three true.", "mandatory": true},
+        {"key": "hold", "kind": "check", "title": "Can you stand in front of it?", "tip": "Pick the die on your Station: Voice to speak, Helm to move, Eyes to watch. If someone helps, pick the helped version of the same die. Harm takes Nerve first; with no Nerve left, mark an Injury.", "checks": ["d4", "d6", "d8", "d10", "d4-help", "d6-help", "d8-help", "d10-help"], "outcomes": [{"band": "short", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}]}, {"band": "wrong", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}, {"kind": "sheet", "field": "nerve", "op": "subtract", "value": 2}]}]}
+      ],
+      "closing": [
+        {"key": "choose", "kind": "prompt", "title": "What do you decide to do?"}
+      ]
+    },
+    {
+      "key": "epilogue",
+      "name": "Epilogue",
+      "purpose": "Read who gets out.",
+      "tips": "The ending is chosen by Threat and Clues, not by you. Your part is the aftermath: who is still aboard, and what they tell the next ship.",
+      "oracles": [],
+      "setup": [],
+      "play": [
+        {"key": "threat-end", "kind": "condition", "title": "How hot did the ship run?", "tracker": "threat", "bands": [{"upTo": 5, "label": "Contained", "next": "clues-calm"}, {"label": "Boiling over", "next": "clues-hot"}]},
+        {"key": "clues-calm", "kind": "condition", "title": "Did you understand it?", "tracker": "clues", "bands": [{"upTo": 2, "label": "Little", "next": "ending-scraped"}, {"label": "Plenty", "next": "ending-clear"}]},
+        {"key": "clues-hot", "kind": "condition", "title": "Did you understand it?", "tracker": "clues", "bands": [{"upTo": 2, "label": "Little", "next": "ending-lost"}, {"label": "Plenty", "next": "ending-price"}]},
+        {"key": "ending-clear", "kind": "prompt", "title": "Everyone out, and knowing", "prompt": "The ship let you go, and you know what it was ({fact:aboard}). Who is on the shuttle? What do you tell the next crew that wakes?", "mandatory": true, "next": "end"},
+        {"key": "ending-scraped", "kind": "prompt", "title": "Out, and none the wiser", "prompt": "You got away with the ship quiet and your questions unanswered. Who still wonders? What would make you go back?", "mandatory": true, "next": "end"},
+        {"key": "ending-price", "kind": "prompt", "title": "Out, but not all of you", "prompt": "You know the Truths, and it cost you. Who stayed aboard, and who chose it? What do you carry out in their place?", "mandatory": true, "next": "end"},
+        {"key": "ending-lost", "kind": "prompt", "title": "The ship keeps you", "prompt": "It ran hot and you never understood it. The airlock cycles, or it does not. Who is the last to see the cold berth?", "mandatory": true, "next": "end"}
+      ],
+      "closing": []
+    }
+  ],
+  "flows": [
+    {
+      "key": "cold-berth",
+      "name": "Cold Berth",
+      "description": "What is aboard, who let it on, and why were we woken? A solo story of two or three sessions.",
+      "introduction": "You play a small crew woken from suspension on a ship that should still be asleep. You are the whole table: you describe, you roll, you decide.\n\nSession Zero makes the crew, names the compartments of the ship and the others on the manifest, and sets down your hunches. Then the Wake: an empty berth and a custodian that will not answer. Then the Ship repeats. Each round you pick one job (Investigate, Repair, Confront or Hide), choose a compartment, play it, and let the world turn: Threat climbs by one, the ship makes trouble and someone goes missing. When Threat is high enough, the Reveal comes, and the Epilogue reads who gets out.\n\nTwo numbers keep score. Threat is a clock: the nearer it is to full, the nearer the ship is to showing what it is. Clues count what you have pieced together. Together they choose the ending.\n\nA crew member has four Stations: Helm moves and pilots, Hands fixes and forces, Eyes notices and searches, Voice persuades, lies and calms. Each Station has one die, d10, d8, d6 or d4, each used once. A check rolls the die of the Station you use against a Difficulty you set from 2 to 8, with 3 as the default. A 1 goes wrong, a roll under the Difficulty falls short, and a roll at or over it is done. If someone helps, roll the die twice and keep the highest. Harm takes Nerve first. With no Nerve left, each harm is an Injury, and three Injuries put a crew member down. You carry six slots of kit and count your money in chits.\n\nThe three Truths are what is aboard, who let it on, and why you were woken. On paper you seal them in Session Zero and open them at the Reveal. In Ogami a Fact is never hidden from the person who plays, so the three Truths are rolled at the Reveal from the oracle tables, and your hunches are the only thing you set down early. Either way, write toward the answer you cannot see yet, and let it change.",
+      "default": true,
+      "defaultView": "focus",
+      "oracles": ["yes-no", "treason", "ship-trouble", "truth-aboard", "truth-who", "truth-why"],
+      "trackers": ["threat", "clues"],
+      "phases": [
+        {
+          "key": "session-zero",
+          "name": "Session Zero",
+          "mode": "once",
+          "description": "Make the crew, name the ship and set down your hunches. It is done when you have played all three scenes.",
+          "selection": {"rule": "sequence", "sceneTypes": ["crew", "ship", "truths"]}
+        },
+        {
+          "key": "wake",
+          "name": "Wake",
+          "mode": "once",
+          "description": "Wake to an empty berth and a custodian that will not answer. It is done when you have played both scenes.",
+          "selection": {"rule": "sequence", "sceneTypes": ["empty-berth", "custodian"]}
+        },
+        {
+          "key": "the-ship",
+          "name": "The Ship",
+          "mode": "loop",
+          "description": "Pick a job, choose a compartment, play it and let the world turn. It ends when the Reveal comes: from Threat 5 each scene may bring it, and a full Threat brings it for certain.",
+          "selection": {"rule": "player", "sceneTypes": ["investigate", "repair", "confront", "hide"]},
+          "sceneClosing": [
+            {"key": "threat-near", "kind": "condition", "title": "How near is the Reveal?", "tip": "From Threat 5 the Reveal may come. At 8 it comes for certain.", "tracker": "threat", "bands": [{"upTo": 4, "label": "Quiet", "next": "end"}, {"upTo": 7, "label": "Rising"}, {"label": "Full", "effects": [{"kind": "endPhase"}], "next": "end"}]},
+            {"key": "lights-on", "kind": "roll", "title": "Does the Reveal come?", "tip": "Roll 1d6. On a 5 or 6 the ship shows what it is.", "dice": "1d6", "mandatory": true, "bands": [{"upTo": 4, "label": "Not yet"}, {"label": "The Reveal", "effects": [{"kind": "endPhase"}]}]}
+          ],
+          "worldTurn": [
+            {"key": "watch", "kind": "prompt", "title": "The watch turns", "prompt": "Threat climbs by one. What has changed on the ship?", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}]},
+            {"key": "trouble", "kind": "table", "title": "What does the ship do?", "tip": "Roll Ship trouble. Most results are quiet.", "table": "ship-trouble", "mandatory": true},
+            {"key": "missing", "kind": "pick", "title": "Who goes missing?", "tip": "The ship picks a crew member from the manifest. If no one is left, nothing is taken.", "of": "npc", "tags": ["crew"], "mode": "random", "branches": {"found": {"next": "gone"}, "none": {"next": "end"}}},
+            {"key": "gone", "kind": "prompt", "title": "{picked} is not where they were", "prompt": "Where were they last seen, and what was left behind?", "next": "end", "effects": [{"kind": "createThread", "name": "Where is {picked}?"}]}
+          ]
+        },
+        {
+          "key": "reveal",
+          "name": "Reveal",
+          "mode": "once",
+          "description": "Open the three Truths. It is done when you have played the scene.",
+          "selection": {"rule": "sequence", "sceneTypes": ["reveal"]}
+        },
+        {
+          "key": "epilogue",
+          "name": "Epilogue",
+          "mode": "once",
+          "description": "Read who gets out. It is done when you have written the ending.",
+          "selection": {"rule": "sequence", "sceneTypes": ["epilogue"]}
+        }
+      ]
+    }
+  ],
+  "sheet": {
+    "columns": 1,
+    "groups": [
+      {"name": "Crew"},
+      {"name": "Stations", "columns": 4},
+      {"name": "Body", "columns": 2},
+      {"name": "Kit", "columns": 2}
+    ],
+    "fields": [
+      {"key": "role", "label": "Name and role", "hint": "Who you are aboard: a hauler, an engineer, a medic.", "group": "Crew", "type": "text", "maxLength": 80},
+      {"key": "helm", "label": "Helm", "hint": "Move, pilot, get there.", "group": "Stations", "type": "select", "options": [{"key": "d4", "label": "d4"}, {"key": "d6", "label": "d6"}, {"key": "d8", "label": "d8"}, {"key": "d10", "label": "d10"}], "default": "d6"},
+      {"key": "hands", "label": "Hands", "hint": "Fix, force, build.", "group": "Stations", "type": "select", "options": [{"key": "d4", "label": "d4"}, {"key": "d6", "label": "d6"}, {"key": "d8", "label": "d8"}, {"key": "d10", "label": "d10"}], "default": "d6"},
+      {"key": "eyes", "label": "Eyes", "hint": "Notice, read, search.", "group": "Stations", "type": "select", "options": [{"key": "d4", "label": "d4"}, {"key": "d6", "label": "d6"}, {"key": "d8", "label": "d8"}, {"key": "d10", "label": "d10"}], "default": "d6"},
+      {"key": "voice", "label": "Voice", "hint": "Persuade, lie, calm.", "group": "Stations", "type": "select", "options": [{"key": "d4", "label": "d4"}, {"key": "d6", "label": "d6"}, {"key": "d8", "label": "d8"}, {"key": "d10", "label": "d10"}], "default": "d6"},
+      {"key": "nerve", "label": "Nerve", "hint": "Calm under strain. Harm takes it first. A crew member with no Nerve left marks an Injury instead.", "group": "Body", "type": "track", "max": 6},
+      {"key": "injuries", "label": "Injuries", "hint": "Harm that finds you with no Nerve left. At 3 you are down.", "group": "Body", "type": "number", "min": 0, "max": 3, "default": 0},
+      {"key": "chits", "label": "Chits", "hint": "What you carry to spend aboard.", "group": "Kit", "type": "number", "min": 0, "max": 100000, "default": 20},
+      {"key": "kit", "label": "Kit", "hint": "Six slots. A bulky item takes two.", "group": "Kit", "type": "inventory", "capacity": 6}
+    ],
+    "currency": {
+      "field": "chits",
+      "unit": "chits"
+    }
+  },
+  "checks": [
+    {"key": "d4", "label": "d4", "hint": "Roll one d4. A 1 goes wrong, under the Difficulty falls short, at or over it is done.", "dice": "1d4", "difficulty": {"label": "Difficulty", "default": 3, "min": 2, "max": 8}, "bands": [{"key": "wrong", "label": "Goes wrong", "upTo": 1}, {"key": "short", "label": "Falls short", "upTo": {"formula": "{check:difficulty}-1"}}, {"key": "done", "label": "Done"}]},
+    {"key": "d4-help", "label": "d4, helped", "hint": "Roll two d4 and keep the highest. A 1 goes wrong, under the Difficulty falls short, at or over it is done.", "dice": "2d4kh1", "difficulty": {"label": "Difficulty", "default": 3, "min": 2, "max": 8}, "bands": [{"key": "wrong", "label": "Goes wrong", "upTo": 1}, {"key": "short", "label": "Falls short", "upTo": {"formula": "{check:difficulty}-1"}}, {"key": "done", "label": "Done"}]},
+    {"key": "d6", "label": "d6", "hint": "Roll one d6. A 1 goes wrong, under the Difficulty falls short, at or over it is done.", "dice": "1d6", "difficulty": {"label": "Difficulty", "default": 3, "min": 2, "max": 8}, "bands": [{"key": "wrong", "label": "Goes wrong", "upTo": 1}, {"key": "short", "label": "Falls short", "upTo": {"formula": "{check:difficulty}-1"}}, {"key": "done", "label": "Done"}]},
+    {"key": "d6-help", "label": "d6, helped", "hint": "Roll two d6 and keep the highest. A 1 goes wrong, under the Difficulty falls short, at or over it is done.", "dice": "2d6kh1", "difficulty": {"label": "Difficulty", "default": 3, "min": 2, "max": 8}, "bands": [{"key": "wrong", "label": "Goes wrong", "upTo": 1}, {"key": "short", "label": "Falls short", "upTo": {"formula": "{check:difficulty}-1"}}, {"key": "done", "label": "Done"}]},
+    {"key": "d8", "label": "d8", "hint": "Roll one d8. A 1 goes wrong, under the Difficulty falls short, at or over it is done.", "dice": "1d8", "difficulty": {"label": "Difficulty", "default": 3, "min": 2, "max": 8}, "bands": [{"key": "wrong", "label": "Goes wrong", "upTo": 1}, {"key": "short", "label": "Falls short", "upTo": {"formula": "{check:difficulty}-1"}}, {"key": "done", "label": "Done"}]},
+    {"key": "d8-help", "label": "d8, helped", "hint": "Roll two d8 and keep the highest. A 1 goes wrong, under the Difficulty falls short, at or over it is done.", "dice": "2d8kh1", "difficulty": {"label": "Difficulty", "default": 3, "min": 2, "max": 8}, "bands": [{"key": "wrong", "label": "Goes wrong", "upTo": 1}, {"key": "short", "label": "Falls short", "upTo": {"formula": "{check:difficulty}-1"}}, {"key": "done", "label": "Done"}]},
+    {"key": "d10", "label": "d10", "hint": "Roll one d10. A 1 goes wrong, under the Difficulty falls short, at or over it is done.", "dice": "1d10", "difficulty": {"label": "Difficulty", "default": 3, "min": 2, "max": 8}, "bands": [{"key": "wrong", "label": "Goes wrong", "upTo": 1}, {"key": "short", "label": "Falls short", "upTo": {"formula": "{check:difficulty}-1"}}, {"key": "done", "label": "Done"}]},
+    {"key": "d10-help", "label": "d10, helped", "hint": "Roll two d10 and keep the highest. A 1 goes wrong, under the Difficulty falls short, at or over it is done.", "dice": "2d10kh1", "difficulty": {"label": "Difficulty", "default": 3, "min": 2, "max": 8}, "bands": [{"key": "wrong", "label": "Goes wrong", "upTo": 1}, {"key": "short", "label": "Falls short", "upTo": {"formula": "{check:difficulty}-1"}}, {"key": "done", "label": "Done"}]}
+  ],
+  "gear": [
+    {"key": "multitool", "name": "Multitool", "cost": 6, "category": "Tools", "description": "Drivers, a cutter and a probe in one grip."},
+    {"key": "torch", "name": "Cutting torch", "cost": 14, "slots": 2, "category": "Tools", "description": "Opens a stuck panel. Loud, hot and bright."},
+    {"key": "patch-kit", "name": "Patch kit", "cost": 5, "category": "Tools", "description": "Foil, sealant and a roll of tape for a small leak."},
+    {"key": "pry-bar", "name": "Pry bar", "cost": 4, "category": "Tools", "description": "Steel, a forearm long."},
+    {"key": "handlight", "name": "Handlight", "cost": 3, "category": "Tools", "description": "A beam you can aim, and a battery for a shift."},
+    {"key": "tether", "name": "Tether", "cost": 4, "category": "Tools", "description": "Twenty metres of line with a clip at each end."},
+    {"key": "scanner", "name": "Scanner", "cost": 18, "category": "Tools", "description": "Reads heat and air through a thin wall."},
+    {"key": "air-canister", "name": "Air canister", "cost": 8, "category": "Supplies", "description": "Breathable air for an hour."},
+    {"key": "ration-bars", "name": "Ration bars", "cost": 2, "slots": 0, "category": "Supplies", "description": "Dense and sweet. A day's food."},
+    {"key": "med-patch", "name": "Med patch", "cost": 6, "category": "Supplies", "description": "Eases pain and steadies a shaking hand. It does not mend an Injury."},
+    {"key": "flare", "name": "Flare", "cost": 3, "category": "Supplies", "description": "Burns red for a few minutes. Anyone can see it."}
+  ]
+}

@@ -154,7 +154,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T21 | Slice 8 review findings: paper check outcomes against preset bands, epilogue and second-tracker card tests, deck entries with effects, mirrored back order, effect rendering branches, the flows lookup | delegated: slice runs under one writer | [x] | `9d0f4d14` |
 | T12 | Part II | delegated: slice runs under one writer | [x] | `536d14f5` |
 | T22 | Slice 9 review findings: the op guard in `outcomeToken` before its dice branch, the no-paper-wording and invalid-dice test cases | delegated: slice runs under one writer | [x] | |
-| T13 | Part III | delegated: slice runs under one writer | [ ] | |
+| T13 | Part III | delegated: slice runs under one writer | [x] | |
 | T14 | Part IV, appendices, final PDFs | delegated | [ ] | |
 
 ## Applicable checks
@@ -202,6 +202,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - T21 done: `buildFlowCards` now checks the wording of every paper `check` step against the bands of the preset (each band present with the same tracker and sheet effects, no band the check lacks), read from the raw file because `preset.ts` is outside the writer's surface; no drift found in either flow. `deckCards` throws on a deck entry with effects; the flows lookup uses `Object.hasOwn`. RED: 12 tests failed (deck effects, check outcomes, `constructor`, `__proto__`, `toString`). The epilogue cut points, effect rendering table and mirrored back order tests passed at once, as they cover behaviour that already worked.
 - T12 done: `likelihood-oracles`, `oracle-tables`, `inspiration-and-random-events`, `trackers-and-clocks`, `cards-and-dice`, `journaling-and-lists` under `Part II, Solo Toolbox`. The paper likelihood oracle is a d6 against five named odds, with a "but" on the two faces beside the line. The manifest entries came after the files, so RED was observed by moving the files away (13 content tests failed), then GREEN: 192 manual tests pass. Neither preset uses nested tables, ranged tables, inspiration tables, a chaos factor or a random event table; the In Ogami blocks say so. The Paper edition is 64 pages, the card sheets 12 and 11.
 - T22 done: `outcomeToken` checks the op before the dice branch, so a dice value with `set` or any op but add/subtract throws. RED: the `set` and `multiply` dice tests failed on the old code; the `nextScene` and invalid-dice tests passed at once, as they cover branches that already threw. The shipped presets still build.
+- T13 done: `rules-and-story`, `sheets-and-groups`, `derived-values-and-formulas`, `checks-and-outcome-bands`, `gear-and-currency`, `licensing-and-credits` under `Part III, Authoring a GameSystem`, all `full`. RED: the Part III manifest test and the Paper-edition Full-chapter test failed before the entries (2 failed); the pages were written after, then 210 manual tests passed. The common-text app-wording rule now applies to `both` pages only. Neither preset has a derived value, a Check modifier, a second flow, a shop step or an Inventory category filter, and the chapters say so; derived-value examples are written for the chapter. Studio has no "Inspired by" field, which the licensing page says.
 
 ## Next step
 

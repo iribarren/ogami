@@ -23,7 +23,8 @@ describe('the manual content', () => {
     },
   )
 
-  it.each(chapters.map((chapter) => chapter.slug))(
+  // Part III is about Studio, so the whole page is the Full edition and may name the app.
+  it.each(chapters.filter((chapter) => chapter.editions === 'both').map((chapter) => chapter.slug))(
     'keeps the app out of the common text of %s',
     (slug) => {
       const common = splitEditionBlocks(sources[slug] ?? '')
@@ -64,4 +65,33 @@ describe('the manual content', () => {
     expect(segments.filter((segment) => segment.edition === 'in-ogami')).toHaveLength(1)
     expect(sources[slug]).toMatch(/^## On paper$/m)
   })
+
+  it('lists the six pages of Part III, all Full only, after Part II', () => {
+    const partIII = chapters.filter(
+      (chapter) => chapter.part === 'Part III, Authoring a GameSystem',
+    )
+
+    expect(partIII.map((chapter) => chapter.slug)).toEqual([
+      'rules-and-story',
+      'sheets-and-groups',
+      'derived-values-and-formulas',
+      'checks-and-outcome-bands',
+      'gear-and-currency',
+      'licensing-and-credits',
+    ])
+    expect(partIII.every((chapter) => chapter.editions === 'full')).toBe(true)
+    expect(chapters.findIndex((chapter) => chapter.slug === partIII[0]?.slug)).toBeGreaterThan(
+      chapters.findLastIndex((chapter) => /^Part (I|II),/.test(chapter.part)),
+    )
+  })
+
+  it.each(chapters.filter((chapter) => chapter.editions === 'full').map((chapter) => chapter.slug))(
+    'writes %s as a Full page with no In Ogami block to hide',
+    (slug) => {
+      const segments = splitEditionBlocks(sources[slug] ?? '')
+
+      expect(segments.some((segment) => segment.edition === 'in-ogami')).toBe(false)
+      expect(sources[slug]).not.toMatch(/^## On paper$/m)
+    },
+  )
 })

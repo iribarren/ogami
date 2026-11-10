@@ -15,6 +15,18 @@ describe('the Paper edition', () => {
     )
   })
 
+  it('leaves every Full chapter of the manual out of the Paper edition', () => {
+    const book = paperBook()
+    const slugs = book.parts.flatMap((part) => part.chapters.map((chapter) => chapter.slug))
+    const full = chapters.filter((chapter) => chapter.editions === 'full')
+
+    expect(full.length).toBeGreaterThan(0)
+    for (const chapter of full) {
+      expect(slugs).not.toContain(chapter.slug)
+    }
+    expect(book.parts.map((part) => part.name).join('\n')).not.toMatch(/Part III/)
+  })
+
   it('leaves out Full chapters and In Ogami blocks', () => {
     const list: Chapter[] = [
       { slug: 'a', title: 'A', part: 'One', editions: 'both' },

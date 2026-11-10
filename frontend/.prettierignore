@@ -2,6 +2,8 @@
 pnpm-lock.yaml
 src/routeTree.gen.ts
 dist
+dist-print
+dist-manual
 storybook-static
 playwright-report
 test-results

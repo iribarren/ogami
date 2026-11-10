@@ -1,0 +1,183 @@
+/* The print entry only: black on white, for Chromium's PDF. The app's styles are not loaded. */
+@import '@fontsource/eb-garamond/latin-400.css';
+@import '@fontsource/eb-garamond/latin-400-italic.css';
+@import '@fontsource/eb-garamond/latin-600.css';
+@import '@fontsource/eb-garamond/latin-700.css';
+
+/* The book has margins of its own; card sheets fill the page. */
+@page {
+  size: A4;
+  margin: 0;
+}
+
+@page paper {
+  margin: 22mm 20mm 24mm;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: #fff;
+  color: #000;
+  font-family: 'EB Garamond', Georgia, serif;
+}
+
+[role='alert'] {
+  margin: 2rem;
+  padding: 1rem;
+  border: 2px solid #b00020;
+  color: #b00020;
+  font: 1rem/1.4 monospace;
+}
+
+/* The Paper edition ---------------------------------------------------------------------- */
+
+.paper {
+  page: paper;
+  font-size: 11.5pt;
+  line-height: 1.5;
+  hyphens: auto;
+}
+
+.paper-title {
+  display: flex;
+  min-height: 240mm;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.paper-title h1 {
+  margin: 0;
+  font-size: 40pt;
+  line-height: 1.1;
+}
+
+.paper-title p {
+  margin: 1rem 0 0;
+  font-size: 16pt;
+  font-style: italic;
+}
+
+.paper-part {
+  display: flex;
+  min-height: 240mm;
+  align-items: center;
+  justify-content: center;
+  break-before: page;
+}
+
+.paper-part h2 {
+  font-size: 30pt;
+}
+
+.paper-page {
+  break-before: page;
+}
+
+.paper-contents,
+.paper h3 {
+  margin-top: 1.2em;
+}
+
+.paper h1,
+.paper h2,
+.paper h3,
+.paper h4 {
+  margin-bottom: 0.4em;
+  font-weight: 700;
+  line-height: 1.2;
+  break-after: avoid;
+}
+
+.paper h1 {
+  margin-top: 0;
+  font-size: 24pt;
+}
+
+.paper h2 {
+  margin-top: 1.4em;
+  font-size: 16pt;
+}
+
+.paper h3 {
+  font-size: 13pt;
+}
+
+.paper p,
+.paper ul,
+.paper ol,
+.paper blockquote,
+.paper table,
+.paper pre {
+  margin: 0 0 0.7em;
+}
+
+.paper ol.plain {
+  padding-left: 0;
+  list-style: none;
+}
+
+.paper p {
+  orphans: 3;
+  widows: 3;
+}
+
+.paper ul,
+.paper ol {
+  padding-left: 1.5em;
+}
+
+.paper li,
+.paper blockquote,
+.paper tr,
+.paper pre {
+  break-inside: avoid;
+}
+
+.paper blockquote {
+  padding-left: 1em;
+  border-left: 2pt solid #555;
+  font-style: italic;
+}
+
+.paper a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.paper code,
+.paper pre {
+  font-family: ui-monospace, 'DejaVu Sans Mono', monospace;
+  font-size: 9.5pt;
+}
+
+.paper pre {
+  padding: 0.5em 0.8em;
+  border: 0.5pt solid #777;
+  white-space: pre-wrap;
+}
+
+.paper table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5pt;
+}
+
+.paper th,
+.paper td {
+  padding: 0.25em 0.5em;
+  border: 0.5pt solid #555;
+  text-align: left;
+}
+
+.paper hr {
+  border: 0;
+  border-top: 0.5pt solid #555;
+}

@@ -35,6 +35,19 @@ describe('the manual content', () => {
     },
   )
 
+  it.each(chapters.filter((chapter) => chapter.editions === 'both').map((chapter) => chapter.slug))(
+    'has no internal link in the common text of %s',
+    (slug) => {
+      // The Paper edition renders this text without a router, which an internal link needs.
+      const common = splitEditionBlocks(sources[slug] ?? '')
+        .filter((segment) => segment.edition === 'common')
+        .map((segment) => segment.text)
+        .join('\n')
+
+      expect(common).not.toContain('](/')
+    },
+  )
+
   it('says in the first page where the Studio links are', () => {
     const inOgami = splitEditionBlocks(sources['how-to-use'] ?? '').filter(
       (segment) => segment.edition === 'in-ogami',

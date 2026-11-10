@@ -53,7 +53,7 @@ A second test line, from Cold Berth. I roll Treason with a suspect in mind.
 
 Give the flow to someone else, and then say nothing.
 
-1. **Hand over the whole set.** The cards, the rules card and the endings card, the credits and the license. A flow someone cannot reproduce is a flow that stops at you.
+1. **Hand over the whole set.** The cards, the rules card (the endings are on it), the credits and the license. A flow someone cannot reproduce is a flow that stops at you.
 2. **Tell them the promise.** One line, the premise. Do not explain the rules; the cards do that.
 3. **Watch the first scene.** Do not help. Every question they ask is a card that is missing something.
 4. **Ask three things afterwards.** Where did you stop? What did you skip? What do you remember?

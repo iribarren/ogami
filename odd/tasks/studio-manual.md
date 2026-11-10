@@ -152,7 +152,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T11 | Paper edition build without "In Ogami" blocks, PDF pipeline | delegated: multi-file tooling under one writer | [x] | `25cfb0aa` |
 | T20 | Card sheets for both flows; make `cards-and-print.md` agree with the closing check | delegated: built under the slice 7 writer; carried over and finished inline (held commit plus three one-line edits) | [x] | `9e4132cc` |
 | T21 | Slice 8 review findings: paper check outcomes against preset bands, epilogue and second-tracker card tests, deck entries with effects, mirrored back order, effect rendering branches, the flows lookup | delegated: slice runs under one writer | [x] | |
-| T12 | Part II | delegated: slice runs under one writer | [ ] | |
+| T12 | Part II | delegated: slice runs under one writer | [x] | |
 | T13 | Part III | delegated | [ ] | |
 | T14 | Part IV, appendices, final PDFs | delegated | [ ] | |
 
@@ -198,6 +198,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - Slice 7 split in two when the card sheets came to about 1,660 lines on their own, which would have taken one slice to about 2,250. The cards are built and held on the local branch `wip/studio-manual-8-cards` (`4a6dc2a5`). The plan is now 11 slices.
 - T20 done: Scene Type, table and compartment cards, a rules sheet and a tables sheet per flow, built from the presets and the per-flow paper files; a step with no wording fails the build. Whether the tests failed first was not recorded when the cards were built, so no RED is claimed. `cards-and-print.md` now ends the Road on the Shrine Gate card or the closing check on Winter, whichever comes first. `make verify` passed all six steps; `make manual-pdf` passed (Paper edition 45 pages, The Long Carry cards 12, Cold Berth cards 11).
 - T21 done: `buildFlowCards` now checks the wording of every paper `check` step against the bands of the preset (each band present with the same tracker and sheet effects, no band the check lacks), read from the raw file because `preset.ts` is outside the writer's surface; no drift found in either flow. `deckCards` throws on a deck entry with effects; the flows lookup uses `Object.hasOwn`. RED: 12 tests failed (deck effects, check outcomes, `constructor`, `__proto__`, `toString`). The epilogue cut points, effect rendering table and mirrored back order tests passed at once, as they cover behaviour that already worked.
+- T12 done: `likelihood-oracles`, `oracle-tables`, `inspiration-and-random-events`, `trackers-and-clocks`, `cards-and-dice`, `journaling-and-lists` under `Part II, Solo Toolbox`. The paper likelihood oracle is a d6 against five named odds, with a "but" on the two faces beside the line. The manifest entries came after the files, so RED was observed by moving the files away (13 content tests failed), then GREEN: 192 manual tests pass. Neither preset uses nested tables, ranged tables, inspiration tables, a chaos factor or a random event table; the In Ogami blocks say so. The Paper edition is 64 pages, the card sheets 12 and 11.
 
 ## Next step
 

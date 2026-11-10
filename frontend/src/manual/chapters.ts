@@ -10,6 +10,7 @@ export interface Chapter {
 }
 
 const PART_I = 'Part I, The Narrative Flow'
+const PART_II = 'Part II, Solo Toolbox'
 
 /** The manual in reading order. Each entry has a Markdown file in `content/`. */
 export const chapters: readonly Chapter[] = [
@@ -38,6 +39,22 @@ export const chapters: readonly Chapter[] = [
   { slug: 'truths-and-endings', title: 'Truths and Endings', part: PART_I, editions: 'both' },
   { slug: 'cards-and-print', title: 'Cards and Print', part: PART_I, editions: 'both' },
   { slug: 'playtest-and-share', title: 'Playtest and Share', part: PART_I, editions: 'both' },
+  { slug: 'likelihood-oracles', title: 'Likelihood Oracles', part: PART_II, editions: 'both' },
+  { slug: 'oracle-tables', title: 'Oracle Tables', part: PART_II, editions: 'both' },
+  {
+    slug: 'inspiration-and-random-events',
+    title: 'Inspiration and Random Events',
+    part: PART_II,
+    editions: 'both',
+  },
+  {
+    slug: 'trackers-and-clocks',
+    title: 'Trackers and Clocks at the Table',
+    part: PART_II,
+    editions: 'both',
+  },
+  { slug: 'cards-and-dice', title: 'Cards and Dice as Oracles', part: PART_II, editions: 'both' },
+  { slug: 'journaling-and-lists', title: 'Journaling and Lists', part: PART_II, editions: 'both' },
 ]
 
 export function findChapter(slug: string): Chapter | undefined {

@@ -320,6 +320,31 @@ describe('the outcomes of a check step', () => {
     expect(() => buildFlowCards(sheet.raw, sheet.flow)).toThrow(/outcomes\[0\]/)
   })
 
+  it('throws on an effect kind it has no paper wording for', () => {
+    const { raw, flow } = withCheck(
+      [{ band: 'done', effects: [{ kind: 'nextScene', sceneType: 'scene' }] }],
+      'Done: go on.',
+    )
+
+    expect(() => buildFlowCards(raw, flow)).toThrow(/"nextScene" effect.*no paper wording/)
+  })
+
+  it('throws on dice it cannot word, naming the dice', () => {
+    const bad = { ...windDice, value: { dice: '2d6kh1' } }
+    const { raw, flow } = withCheck([{ band: 'done', effects: [bad] }], 'Done: lose d6 Wind.')
+
+    expect(() => buildFlowCards(raw, flow)).toThrow(/"2d6kh1" have no paper wording/)
+  })
+
+  it.each(['set', 'multiply'])('throws on a dice value with the %s op', (op) => {
+    const { raw, flow } = withCheck(
+      [{ band: 'done', effects: [{ ...windDice, op }] }],
+      'Done: regain d6 Wind.',
+    )
+
+    expect(() => buildFlowCards(raw, flow)).toThrow(new RegExp(`a ${op} effect on "wind"`))
+  })
+
   it('throws when a real outcome changes and the paper wording does not follow', () => {
     const raw = preset('hard-country') as {
       sceneTypes: {

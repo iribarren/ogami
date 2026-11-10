@@ -196,12 +196,12 @@ function outcomeToken(preset: Preset, effect: OutcomeEffect, where: string): str
     return `${tracker.name} ${effect.value < 0 ? '-' : '+'}${String(Math.abs(effect.value))}`
   }
   const field = capitalised(effect.field)
+  if (effect.op !== 'add' && effect.op !== 'subtract') {
+    throw new Error(`${where}: a ${effect.op} effect on "${effect.field}" has no paper wording.`)
+  }
   if (typeof effect.value === 'string') {
     const { gain, text } = diceText(effect.value, where)
     return `${gain === (effect.op === 'add') ? 'regain' : 'lose'} ${text} ${field}`
-  }
-  if (effect.op !== 'add' && effect.op !== 'subtract') {
-    throw new Error(`${where}: a ${effect.op} effect on "${effect.field}" has no paper wording.`)
   }
   const gain = (effect.op === 'add') === effect.value >= 0
   return `${gain ? 'regain' : 'lose'} ${String(Math.abs(effect.value))} ${field}`

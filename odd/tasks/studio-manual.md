@@ -1,7 +1,7 @@
 # Feature: studio-manual
 
 - **Locator:** `odd/tasks/studio-manual.md` · Engram topic `odd/studio-manual/tasks`
-- **Issue:** [#387](https://github.com/iribarren/ogami/issues/387) · **Branch:** `docs/studio-manual-10-gamesystem` · **Status:** in progress (slice 10)
+- **Issue:** [#387](https://github.com/iribarren/ogami/issues/387) · **Branch:** `docs/studio-manual-11-reference` · **Status:** in progress (slice 11)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Origin:** brainstorm of 2026-11-09, to share the public alpha (`1.0.0-alpha`) with friends
@@ -52,6 +52,8 @@ Friends joining the alpha have no guide to Studio. The value of Studio is the fl
 | Rolling a table on paper | Each table is printed with the smallest standard die that covers its total and a "roll again above N" line where the total is not a die: Road Risks and Ship trouble total 9, so a d10 | Parent |
 | The Long Carry's end on paper | The Road ends when the Shrine Gate card turns up or when the closing check ends it, whichever comes first, because *The Arc* and the rules sheet use the check and *Cards and Print* uses the card | Parent |
 | Book title | Working title *The Narrative Flow: Designing and Playing Solo Games*, one constant, open to change before the alpha | Parent |
+| PDF publication | The Paper edition and both card sheets are attached to a `manual-1.0` GitHub Release on the public repo and linked from the Full edition only, as Paper never names the app. A manual change needs a new upload | User, 2026-11-10 |
+| Appendices | Eight pages: each flow complete, each rules sheet, blank templates, glossary and credits with "Inspired by" are in both editions; the paper-to-Ogami map is Full only. The printed cards stay in their own PDFs | Parent |
 
 ## Manual structure
 
@@ -128,7 +130,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 8 | `feat/studio-manual-8-cards` | `feat(manual): studio-manual 8/11 card sheets` | T20 | ~1,700 |
 | 9 | `docs/studio-manual-9-toolbox` | `docs(manual): studio-manual 9/11 solo toolbox` | T21, T12 | ~1,000 |
 | 10 | `docs/studio-manual-10-gamesystem` | `docs(manual): studio-manual 10/11 authoring a GameSystem` | T22, T13 | ~1,000 |
-| 11 | `docs/studio-manual-11-reference` | `docs(manual): studio-manual 11/11 Studio reference and appendices` | T14 | ~1,400 |
+| 11 | `docs/studio-manual-11-reference` | `docs(manual): studio-manual 11/11 Studio reference and appendices` | T14, T23 | ~1,400 |
 
 ## Tasks
 
@@ -153,9 +155,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T20 | Card sheets for both flows; make `cards-and-print.md` agree with the closing check | delegated: built under the slice 7 writer; carried over and finished inline (held commit plus three one-line edits) | [x] | `9e4132cc` |
 | T21 | Slice 8 review findings: paper check outcomes against preset bands, epilogue and second-tracker card tests, deck entries with effects, mirrored back order, effect rendering branches, the flows lookup | delegated: slice runs under one writer | [x] | `9d0f4d14` |
 | T12 | Part II | delegated: slice runs under one writer | [x] | `536d14f5` |
-| T22 | Slice 9 review findings: the op guard in `outcomeToken` before its dice branch, the no-paper-wording and invalid-dice test cases | delegated: slice runs under one writer | [x] | |
-| T13 | Part III | delegated: slice runs under one writer | [x] | |
-| T14 | Part IV, appendices, final PDFs | delegated | [ ] | |
+| T22 | Slice 9 review findings: the op guard in `outcomeToken` before its dice branch, the no-paper-wording and invalid-dice test cases | delegated: slice runs under one writer | [x] | `543cd1f3` |
+| T13 | Part III | delegated: slice runs under one writer | [x] | `98984c8c` |
+| T14 | Part IV, Studio Reference | delegated: slice runs under one writer | [x] | |
+| T23 | Appendices, links to the PDFs from the Full edition, final PDF build | delegated: slice runs under one writer | [ ] | |
 
 ## Applicable checks
 
@@ -175,6 +178,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 7 | none | `25cfb0aa` | Review skipped by the user | [#394](https://github.com/iribarren/ogami/pull/394), merged | None |
 | 8 | `review-d8b49d46d454fabc` | `9e4132cc` | Approved | [#395](https://github.com/iribarren/ogami/pull/395), merged | Six, fixed in slice 9 (T21): `cold-berth.paper.ts:31` paper check outcomes can drift from the preset bands; `flowCards.test.ts:262` does not assert all three epilogue conditions or that second-tracker cuts agree; `flowCards.ts:155` `deckCards` accepts a deck entry with effects; `CardSheets.tsx:99` has no render test for the mirrored back order with a partly filled last sheet; `flowCards.ts:178` effect rendering has no table-driven tests for its wording and throw branches; `PrintApp.tsx:35` the flows lookup should use `Object.hasOwn` or a `Map` |
 | 9 | `review-5a120224dce3a320` | `9d0f4d14`, `536d14f5` | Approved | [#396](https://github.com/iribarren/ogami/pull/396), merged | Two, fixed in slice 10 (T22): `flowCards.ts:199` the dice branch of `outcomeToken` returns before the op guard, so a sheet effect with a dice value and an unsupported op such as `set` is worded as lose or regain and passes the drift check; `flowCards.test.ts:315` the "cannot word" case throws from the op validation, not the no-paper-wording branch, and `diceText`'s invalid-dice throw is unexercised |
+| 10 | none | `543cd1f3`, `98984c8c` | Review skipped by the user | [#397](https://github.com/iribarren/ogami/pull/397), merged | None. Part III's Studio claims were checked against the source only, not in the app |
 
 ## Progress
 
@@ -203,7 +207,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - T12 done: `likelihood-oracles`, `oracle-tables`, `inspiration-and-random-events`, `trackers-and-clocks`, `cards-and-dice`, `journaling-and-lists` under `Part II, Solo Toolbox`. The paper likelihood oracle is a d6 against five named odds, with a "but" on the two faces beside the line. The manifest entries came after the files, so RED was observed by moving the files away (13 content tests failed), then GREEN: 192 manual tests pass. Neither preset uses nested tables, ranged tables, inspiration tables, a chaos factor or a random event table; the In Ogami blocks say so. The Paper edition is 64 pages, the card sheets 12 and 11.
 - T22 done: `outcomeToken` checks the op before the dice branch, so a dice value with `set` or any op but add/subtract throws. RED: the `set` and `multiply` dice tests failed on the old code; the `nextScene` and invalid-dice tests passed at once, as they cover branches that already threw. The shipped presets still build.
 - T13 done: `rules-and-story`, `sheets-and-groups`, `derived-values-and-formulas`, `checks-and-outcome-bands`, `gear-and-currency`, `licensing-and-credits` under `Part III, Authoring a GameSystem`, all `full`. RED: the Part III manifest test and the Paper-edition Full-chapter test failed before the entries (2 failed); the pages were written after, then 210 manual tests passed. The common-text app-wording rule now applies to `both` pages only. Neither preset has a derived value, a Check modifier, a second flow, a shop step or an Inventory category filter, and the chapters say so; derived-value examples are written for the chapter. Studio has no "Inspired by" field, which the licensing page says.
+- T14 done: `studio-tour`, `library-packs`, `validation`, `releases-restore-themes`, `publishing-and-campaigns` under `Part IV, Studio Reference`, all `full`, each claim checked in the Studio source, the release contract or an ADR (not in the app). RED: the Part IV manifest test failed with no entries; GREEN after the pages and entries.
 
 ## Next step
 
-Slice 10: the slice 9 findings (T22) and Part III, Authoring a GameSystem (T13); then review, push and open its PR. Slice 11 after it merges: Part IV, appendices and final PDFs (T14).
+Slice 11, the last: Part IV (T14), then the appendices, the PDF links and the final PDF build (T23); then review, push and open its PR, and publish the PDFs on the `manual-1.0` release.

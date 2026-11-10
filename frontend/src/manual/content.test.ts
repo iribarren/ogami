@@ -85,6 +85,22 @@ describe('the manual content', () => {
     )
   })
 
+  it('lists the five pages of Part IV, all Full only, after Part III', () => {
+    const partIV = chapters.filter((chapter) => chapter.part === 'Part IV, Studio Reference')
+
+    expect(partIV.map((chapter) => chapter.slug)).toEqual([
+      'studio-tour',
+      'library-packs',
+      'validation',
+      'releases-restore-themes',
+      'publishing-and-campaigns',
+    ])
+    expect(partIV.every((chapter) => chapter.editions === 'full')).toBe(true)
+    expect(chapters.findIndex((chapter) => chapter.slug === partIV[0]?.slug)).toBeGreaterThan(
+      chapters.findLastIndex((chapter) => chapter.part === 'Part III, Authoring a GameSystem'),
+    )
+  })
+
   it.each(chapters.filter((chapter) => chapter.editions === 'full').map((chapter) => chapter.slug))(
     'writes %s as a Full page with no In Ogami block to hide',
     (slug) => {

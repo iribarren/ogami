@@ -98,6 +98,7 @@ Everything runs in Docker through `make` (it exports your UID/GID; a bare `docke
 | Presets | `make presets` | Publish the GameSystem presets in `backend/presets/` as releases (skips unchanged ones). Run it after editing a preset file: if Studio owns the key on your database, it refuses a file that differs from Studio's latest release, and CI cannot see this ([ADR 0036](docs/adr/0036-export-releases-as-preset-files.md)) |
 | Database | `make db-restore FILE=…` | Replace the dev database with a `pg_dump -Fc` file (checks its `.sha256`, restores into a temp database first, then swaps and migrates). Destroys the current dev data: asks you to type the database name; `DB=other` targets another database, `FORCE=1` skips the prompt |
 | API contract | `make api` | After changing an endpoint: export the OpenAPI spec and regenerate `frontend/src/shared/api/schema.d.ts`; commit both |
+| Manual PDFs | `make manual-pdf` | Builds the print entry (`frontend/print.html`) and prints the Paper edition with Chromium into the gitignored `frontend/dist-manual/` |
 | Frontend builds | `make frontend-build`, `make storybook`, `make storybook-build` | Production SPA build; Storybook dev server / static build |
 
 | URL | What |

@@ -100,6 +100,9 @@ services:
       - ./frontend:/app
       # The formula conformance file, which Vitest reads as ../backend/contracts/... from /app.
       - ./backend/contracts:/backend/contracts:ro
+      # The GameSystem presets, which the card sheets of the Paper edition are built from
+      # (frontend/src/manual/print/, read as ../backend/presets/... from /app).
+      - ./backend/presets:/backend/presets:ro
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:5173/').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
       interval: 10s

@@ -162,6 +162,12 @@ frontend-test-related: frontend-install ## Run only the Vitest tests that import
 frontend-build: frontend-install ## Build the SPA for production into frontend/dist
 	$(NODE_EXEC) pnpm build
 
+.PHONY: manual-pdf
+manual-pdf: frontend-install ## Build the Paper edition into frontend/dist-manual/ (PDF, via Chromium)
+	$(DOCKER_COMPOSE) up --detach --wait node
+	$(NODE_EXEC) node_modules/.bin/vite build --config vite.print.config.ts
+	$(DOCKER_COMPOSE) run --rm --no-deps $(TTY) playwright node_modules/.bin/playwright test -c playwright.print.config.ts
+
 .PHONY: storybook
 storybook: frontend-install ## Run Storybook at http://localhost:6006 (Ctrl+C to stop)
 	$(NODE_EXEC) pnpm storybook

@@ -10,6 +10,8 @@ import tseslint from 'typescript-eslint'
 export default defineConfig(
   globalIgnores([
     'dist',
+    'dist-print',
+    'dist-manual',
     'storybook-static',
     'playwright-report',
     'test-results',

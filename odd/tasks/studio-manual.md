@@ -1,7 +1,7 @@
 # Feature: studio-manual
 
 - **Locator:** `odd/tasks/studio-manual.md` · Engram topic `odd/studio-manual/tasks`
-- **Issue:** [#387](https://github.com/iribarren/ogami/issues/387) · **Branch:** `docs/studio-manual-6-flow-chapters` · **Status:** in progress (slice 6)
+- **Issue:** [#387](https://github.com/iribarren/ogami/issues/387) · **Branch:** `feat/studio-manual-7-print` · **Status:** in progress (slice 7)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Origin:** brainstorm of 2026-11-09, to share the public alpha (`1.0.0-alpha`) with friends
@@ -46,6 +46,12 @@ Friends joining the alpha have no guide to Studio. The value of Studio is the fl
 | Edition blocks | `:::in-ogami` and `:::` on their own lines, split from the source before Markdown rendering, so no directive parser is needed. An unclosed or nested block is an error, caught by a test over all content | Parent |
 | Markdown rendering | `react-markdown` with `remark-gfm`, no raw HTML. Elements map to the app's tokens; no typography plugin | Parent |
 | Manual access | Public `/manual` route with no role guard, a Manual link in the main nav for everyone, and links from Studio. The app shows the Full edition only | Parent |
+| PDF pipeline | A separate Vite entry (`frontend/print.html`, `vite.print.config.ts`), not reachable from the SPA, built in the `node` service. A Playwright spec under its own config prints it with Chromium in the existing `playwright` image. No new dependency. `make manual-pdf` writes to the gitignored `frontend/dist-manual/`; which PDFs are published and where is decided in T14 | Parent |
+| Card source | Names, purposes, tips and the text of `prompt`, `choice`, `table` and `pick` steps come from the preset files, so cards cannot drift from the flows. A per-flow paper file gives the wording for steps a table cannot run from their text (`character`, `shop`, `check`, `condition`) and for anything that differs on paper. A step with no wording, or wording for a step that no longer exists, fails the build | Parent |
+| Card formats | A4 sheets. Scene Type cards A6, four to a sheet, printed double-sided with mirrored backs. Table and compartment cards 63×88 mm, nine to a sheet. One rules sheet and one tables sheet per flow | Parent |
+| Rolling a table on paper | Each table is printed with the smallest standard die that covers its total and a "roll again above N" line where the total is not a die: Road Risks and Ship trouble total 9, so a d10 | Parent |
+| The Long Carry's end on paper | The Road ends when the Shrine Gate card turns up or when the closing check ends it, whichever comes first, because *The Arc* and the rules sheet use the check and *Cards and Print* uses the card | Parent |
+| Book title | Working title *The Narrative Flow: Designing and Playing Solo Games*, one constant, open to change before the alpha | Parent |
 
 ## Manual structure
 
@@ -118,10 +124,11 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 4 | `feat/studio-manual-4-dogwatch` | `feat(presets): studio-manual 4/11 Dogwatch and Cold Berth` | T18, T7 | ~1,300 |
 | 5 | `docs/studio-manual-5-flow-design` | `docs(manual): studio-manual 5/11 promise to steps` | T19, T8 | ~1,400 (660 built) |
 | 6 | `docs/studio-manual-6-flow-chapters` | `docs(manual): studio-manual 6/10 selection to sharing` | T9, T10 | ~1,000 |
-| 7 | `feat/studio-manual-7-print` | `feat(manual): studio-manual 7/10 Paper edition and cards` | T11 | ~1,400 |
-| 8 | `docs/studio-manual-8-toolbox` | `docs(manual): studio-manual 8/10 solo toolbox` | T12 | ~1,000 |
-| 9 | `docs/studio-manual-9-gamesystem` | `docs(manual): studio-manual 9/10 authoring a GameSystem` | T13 | ~1,000 |
-| 10 | `docs/studio-manual-10-reference` | `docs(manual): studio-manual 10/10 Studio reference and appendices` | T14 | ~1,400 |
+| 7 | `feat/studio-manual-7-print` | `feat(manual): studio-manual 7/11 Paper edition` | T11 | ~600 |
+| 8 | `feat/studio-manual-8-cards` | `feat(manual): studio-manual 8/11 card sheets` | T20 | ~1,700 |
+| 9 | `docs/studio-manual-9-toolbox` | `docs(manual): studio-manual 9/11 solo toolbox` | T12 | ~1,000 |
+| 10 | `docs/studio-manual-10-gamesystem` | `docs(manual): studio-manual 10/11 authoring a GameSystem` | T13 | ~1,000 |
+| 11 | `docs/studio-manual-11-reference` | `docs(manual): studio-manual 11/11 Studio reference and appendices` | T14 | ~1,400 |
 
 ## Tasks
 
@@ -140,9 +147,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T7 | Dogwatch GameSystem preset and Cold Berth flow, with credits | delegated: slice runs under one writer | [x] | `193ca200` |
 | T19 | Slice 4 review findings: Confront tip against its bands, Hide Nerve gain and Nerve floor tests, mandatory picks, a crew member taken twice | delegated: slice runs under one writer | [x] | `60272763` |
 | T8 | Part I, chapters 1–4 with examples | delegated | [x] | `b5cc5a16` |
-| T9 | Part I, chapters 5–8 with examples | delegated: slice runs under one writer | [x] | |
-| T10 | Part I, chapters 9–11 with examples | delegated: slice runs under one writer | [x] | |
-| T11 | Paper edition build without "In Ogami" blocks, PDF pipeline, card sheets for both flows | delegated | [ ] | |
+| T9 | Part I, chapters 5–8 with examples | delegated: slice runs under one writer | [x] | `c3364477` |
+| T10 | Part I, chapters 9–11 with examples | delegated: slice runs under one writer | [x] | `3902844a` |
+| T11 | Paper edition build without "In Ogami" blocks, PDF pipeline | delegated: multi-file tooling under one writer | [x] | |
+| T20 | Card sheets for both flows; make `cards-and-print.md` agree with the closing check | delegated: multi-file tooling under one writer | [ ] | |
 | T12 | Part II | delegated | [ ] | |
 | T13 | Part III | delegated | [ ] | |
 | T14 | Part IV, appendices, final PDFs | delegated | [ ] | |
@@ -161,6 +169,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 3 | `review-b82baad154574b9d` | `f164a51d`, `5493e5a8`, `507c5194` | Approved | [#390](https://github.com/iribarren/ogami/pull/390), merged | Three, fixed in slice 4 (T18): `editionBlocks.ts:36` fence regex fails on CRLF lines; `hard-country.json:182` Ford bands disagree with the harm rule (Wind first, then Wounds); flow test gaps (a second Omen replaces the Sin, Winter edges 5/6/9, the far case leaves no pending gate step, the Camp rest cap) |
 | 4 | `review-a353d854eee7de83` | `cd1538e1`, `193ca200` | Approved | [#391](https://github.com/iribarren/ogami/pull/391), merged | Five, fixed in slice 5 (T19): `dogwatch.json:241` Confront tip promises a Nerve cost its `done` band does not take; `:267` Hide `done` Nerve gain unproved, as the tests start at full Nerve; `:249` Nerve floor unproved (harm at Nerve 0, a 2-point loss at Nerve 1); `:348` the `missing` pick and the four job-opening picks are not mandatory and their skip path is untested; `:349` a crew NPC can go missing twice and the `none` branch needs manual closing. Open product note: Treason's "falsified cryo log" names a suspect through a Thread, as no effect tags an NPC |
 | 5 | none | `60272763`, `b5cc5a16` | Review skipped by the user | [#392](https://github.com/iribarren/ogami/pull/392), merged | None. Chrome pass confirmed the Flow, Scene Type and step editor labels; phase panel fields, effect and band controls and the step kind menu were checked against the frontend source only |
+| 6 | none | `c3364477`, `3902844a` | Review skipped by the user | [#393](https://github.com/iribarren/ogami/pull/393), merged | None |
 
 ## Progress
 
@@ -182,7 +191,9 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - Slices 6 and 7 of the old plan merged into slice 6 (T9, T10), as prose runs about half its forecast (slice 5: 660 lines against ~1,400). The plan is now 10 slices.
 - T9 done: `choosing-the-next-scene`, `memory`, `pressure`, `session-rituals`. RED: 10 content tests failed with the manifest entries and no files; GREEN: 62 pass. Neither preset has a session or phase hook, so the Session Rituals examples are written for the chapter and say so.
 - T10 done: `truths-and-endings`, `cards-and-print`, `playtest-and-share`. The manifest entries were added after the files, so no separate RED; 71 content tests pass. The Truth is rolled at the Reveal in Ogami (no hidden Fact) and the Shrine Gate is not a card there; both are said in the In Ogami blocks. Cold Berth has four endings, not three.
+- T11 done: `print.html` and `vite.print.config.ts` build `dist-print/`; `print/manual-pdf.spec.ts` (own config, not run by `make e2e`) serves the build through `page.route` on `http://print.local`, prints with Chromium and writes `dist-manual/`. No new dependency. `paperEdition` was written with its tests, so no separate RED; the spec and CSS have no unit RED. The spec asserts no app wording in the Paper edition and an error page for an unknown `doc`.
+- Slice 7 split in two when the card sheets came to about 1,660 lines on their own, which would have taken one slice to about 2,250. The cards are built and held on the local branch `wip/studio-manual-8-cards` (`4a6dc2a5`). The plan is now 11 slices.
 
 ## Next step
 
-Build slice 6 (T9, T10) on `docs/studio-manual-6-flow-chapters`, review it, push and open its PR.
+Slice 7: review, push and open its PR. Slice 8 after it merges: branch `feat/studio-manual-8-cards` from `main`, bring in `wip/studio-manual-8-cards` (`4a6dc2a5`), reword `cards-and-print.md` to match the closing check decision, tick T20, then review and PR. The card sheets also add `cards-*` to `make manual-pdf` and its `CLAUDE.md` and Makefile descriptions.

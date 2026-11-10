@@ -158,7 +158,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T22 | Slice 9 review findings: the op guard in `outcomeToken` before its dice branch, the no-paper-wording and invalid-dice test cases | delegated: slice runs under one writer | [x] | `543cd1f3` |
 | T13 | Part III | delegated: slice runs under one writer | [x] | `98984c8c` |
 | T14 | Part IV, Studio Reference | delegated: slice runs under one writer | [x] | |
-| T23 | Appendices, links to the PDFs from the Full edition, final PDF build | delegated: slice runs under one writer | [ ] | |
+| T23 | Appendices, links to the PDFs from the Full edition, final PDF build | delegated: slice runs under one writer | [x] | |
 
 ## Applicable checks
 
@@ -208,6 +208,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - T22 done: `outcomeToken` checks the op before the dice branch, so a dice value with `set` or any op but add/subtract throws. RED: the `set` and `multiply` dice tests failed on the old code; the `nextScene` and invalid-dice tests passed at once, as they cover branches that already threw. The shipped presets still build.
 - T13 done: `rules-and-story`, `sheets-and-groups`, `derived-values-and-formulas`, `checks-and-outcome-bands`, `gear-and-currency`, `licensing-and-credits` under `Part III, Authoring a GameSystem`, all `full`. RED: the Part III manifest test and the Paper-edition Full-chapter test failed before the entries (2 failed); the pages were written after, then 210 manual tests passed. The common-text app-wording rule now applies to `both` pages only. Neither preset has a derived value, a Check modifier, a second flow, a shop step or an Inventory category filter, and the chapters say so; derived-value examples are written for the chapter. Studio has no "Inspired by" field, which the licensing page says.
 - T14 done: `studio-tour`, `library-packs`, `validation`, `releases-restore-themes`, `publishing-and-campaigns` under `Part IV, Studio Reference`, all `full`, each claim checked in the Studio source, the release contract or an ADR (not in the app). RED: the Part IV manifest test failed with no entries; GREEN after the pages and entries.
+- T23 done: `Appendices` part with eight pages (`flow-the-long-carry`, `flow-cold-berth`, `rules-hard-country`, `rules-dogwatch`, `blank-templates`, `glossary`, `paper-to-ogami`, `credits-and-inspirations`), the three PDF links in `how-to-use` and the card sheet links in the flow pages, all inside In Ogami blocks, and an ADR 0050 amendment. RED: the Appendices manifest, Paper edition and manifest-file tests failed without the manifest entries; the PDF link tests passed at once, as `how-to-use` was edited first. The flow pages are read from the presets. `make manual-pdf` passed: Paper edition 80 pages (was 64), The Long Carry cards 12, Cold Berth cards 11.
 
 ## Next step
 

@@ -33,3 +33,7 @@ While writing the first chapters, two Studio rough edges showed up. The rail lis
 ## Amendment, 2026-11-09
 
 The first plan adapted Cairn and 24XX. The games are now two original GameSystems, Hard Country and Dogwatch, written for this book, so the manual adapts no third-party rules text. Cairn by Yochai Gal and 24XX by Jason Tocci are credited as design influences only. CC BY-SA 4.0 is kept by choice, though no share-alike source requires it any more.
+
+## Amendment, 2026-11-10
+
+The three PDFs (the Paper edition and the card sheets of both flows) are published as assets of a `manual-1.0` GitHub Release and are linked from the Full edition only, inside "In Ogami" blocks, so the Paper edition names no URL. The appendices are in both editions, except the paper-to-app map, which is Full only.

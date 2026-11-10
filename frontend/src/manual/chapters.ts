@@ -12,6 +12,8 @@ export interface Chapter {
 const PART_I = 'Part I, The Narrative Flow'
 const PART_II = 'Part II, Solo Toolbox'
 const PART_III = 'Part III, Authoring a GameSystem'
+const PART_IV = 'Part IV, Studio Reference'
+const APPENDICES = 'Appendices'
 
 /** The manual in reading order. Each entry has a Markdown file in `content/`. */
 export const chapters: readonly Chapter[] = [
@@ -76,6 +78,39 @@ export const chapters: readonly Chapter[] = [
     title: 'Licensing and Credits',
     part: PART_III,
     editions: 'full',
+  },
+  { slug: 'studio-tour', title: 'A Tour of Studio', part: PART_IV, editions: 'full' },
+  { slug: 'library-packs', title: 'Library Packs', part: PART_IV, editions: 'full' },
+  { slug: 'validation', title: 'Validation', part: PART_IV, editions: 'full' },
+  {
+    slug: 'releases-restore-themes',
+    title: 'Releases, Restore and Themes',
+    part: PART_IV,
+    editions: 'full',
+  },
+  {
+    slug: 'publishing-and-campaigns',
+    title: 'What Publishing Does to Running Campaigns',
+    part: PART_IV,
+    editions: 'full',
+  },
+  {
+    slug: 'flow-the-long-carry',
+    title: 'The Long Carry, Complete',
+    part: APPENDICES,
+    editions: 'both',
+  },
+  { slug: 'flow-cold-berth', title: 'Cold Berth, Complete', part: APPENDICES, editions: 'both' },
+  { slug: 'rules-hard-country', title: 'Hard Country Rules', part: APPENDICES, editions: 'both' },
+  { slug: 'rules-dogwatch', title: 'Dogwatch Rules', part: APPENDICES, editions: 'both' },
+  { slug: 'blank-templates', title: 'Blank Templates', part: APPENDICES, editions: 'both' },
+  { slug: 'glossary', title: 'Glossary', part: APPENDICES, editions: 'both' },
+  { slug: 'paper-to-ogami', title: 'From Paper to Ogami', part: APPENDICES, editions: 'full' },
+  {
+    slug: 'credits-and-inspirations',
+    title: 'Credits and Inspirations',
+    part: APPENDICES,
+    editions: 'both',
   },
 ]
 

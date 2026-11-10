@@ -6,13 +6,20 @@ This book teaches you to design a **NarrativeFlow**: the guided procedure that r
 
 The book comes in two editions, written from the same pages.
 
-- **Paper** is for the table. It uses a pencil, a notebook and a deck of cards, and nothing else.
-- **Full** is the Paper edition plus extra boxes and the chapters on authoring a GameSystem.
+- **Paper** is for the table. It uses a pencil, a notebook and a deck of cards, and nothing else. It ends with appendices: both flows in full, one rules sheet for each game, blank templates, a glossary and the credits. The card sheets for the two flows are printed separately.
+- **Full** is the Paper edition plus extra boxes, the chapters on authoring a GameSystem, a reference for the authoring tool, and a map from the paper tools to the screen.
 
 The method is the same in both. Terms keep one meaning: a **GameSystem** holds the rules, and a **NarrativeFlow** is one story played inside it.
 
 :::in-ogami
 You are reading the Full edition inside Ogami. The "In Ogami" boxes show how the same step is done in the app. Studio, where GameSystems and flows are authored, links to this manual from its home page and from the header of every GameSystem. The Manual link in the main bar is there for everyone, signed in or not.
+
+The three PDFs are published on a GitHub Release. Print them, or keep them beside the screen.
+
+- [The Paper edition](https://github.com/iribarren/ogami/releases/download/manual-1.0/manual-paper.pdf)
+- [The Long Carry cards](https://github.com/iribarren/ogami/releases/download/manual-1.0/cards-the-long-carry.pdf)
+- [Cold Berth cards](https://github.com/iribarren/ogami/releases/download/manual-1.0/cards-cold-berth.pdf)
+
 :::
 
 ## The top-down order

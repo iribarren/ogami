@@ -27,6 +27,17 @@ describe('the Paper edition', () => {
     expect(book.parts.map((part) => part.name).join('\n')).not.toMatch(/Part III/)
   })
 
+  it('prints the Appendices that belong to both editions and no Full-only page', () => {
+    const book = paperBook()
+    const slugs = book.parts.flatMap((part) => part.chapters.map((chapter) => chapter.slug))
+
+    expect(book.parts.map((part) => part.name)).toContain('Appendices')
+    expect(slugs).toContain('flow-the-long-carry')
+    expect(slugs).toContain('glossary')
+    expect(slugs).not.toContain('paper-to-ogami')
+    expect(book.parts.map((part) => part.name).join('\n')).not.toMatch(/Part IV/)
+  })
+
   it('leaves out Full chapters and In Ogami blocks', () => {
     const list: Chapter[] = [
       { slug: 'a', title: 'A', part: 'One', editions: 'both' },

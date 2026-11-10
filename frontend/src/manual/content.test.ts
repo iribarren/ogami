@@ -85,6 +85,76 @@ describe('the manual content', () => {
     )
   })
 
+  it('lists the five pages of Part IV, all Full only, after Part III', () => {
+    const partIV = chapters.filter((chapter) => chapter.part === 'Part IV, Studio Reference')
+
+    expect(partIV.map((chapter) => chapter.slug)).toEqual([
+      'studio-tour',
+      'library-packs',
+      'validation',
+      'releases-restore-themes',
+      'publishing-and-campaigns',
+    ])
+    expect(partIV.every((chapter) => chapter.editions === 'full')).toBe(true)
+    expect(chapters.findIndex((chapter) => chapter.slug === partIV[0]?.slug)).toBeGreaterThan(
+      chapters.findLastIndex((chapter) => chapter.part === 'Part III, Authoring a GameSystem'),
+    )
+  })
+
+  it('lists the eight Appendices after Part IV, with their editions', () => {
+    const appendices = chapters.filter((chapter) => chapter.part === 'Appendices')
+
+    expect(appendices.map((chapter) => [chapter.slug, chapter.editions])).toEqual([
+      ['flow-the-long-carry', 'both'],
+      ['flow-cold-berth', 'both'],
+      ['rules-hard-country', 'both'],
+      ['rules-dogwatch', 'both'],
+      ['blank-templates', 'both'],
+      ['glossary', 'both'],
+      ['paper-to-ogami', 'full'],
+      ['credits-and-inspirations', 'both'],
+    ])
+    expect(chapters.findIndex((chapter) => chapter.slug === appendices[0]?.slug)).toBeGreaterThan(
+      chapters.findLastIndex((chapter) => chapter.part === 'Part IV, Studio Reference'),
+    )
+  })
+
+  describe('the PDFs', () => {
+    const release = 'https://github.com/iribarren/ogami/releases/download/manual-1.0'
+    const pdfs = {
+      paper: `${release}/manual-paper.pdf`,
+      theLongCarry: `${release}/cards-the-long-carry.pdf`,
+      coldBerth: `${release}/cards-cold-berth.pdf`,
+    }
+    const textOf = (slug: string, edition: 'common' | 'in-ogami') =>
+      splitEditionBlocks(sources[slug] ?? '')
+        .filter((segment) => segment.edition === edition)
+        .map((segment) => segment.text)
+        .join('\n')
+
+    it('links all three in the Full edition of how-to-use', () => {
+      const inOgami = textOf('how-to-use', 'in-ogami')
+
+      for (const url of Object.values(pdfs)) {
+        expect(inOgami).toContain(url)
+      }
+    })
+
+    it.each([
+      ['flow-the-long-carry', pdfs.theLongCarry],
+      ['flow-cold-berth', pdfs.coldBerth],
+    ])('links the card sheet of %s in its In Ogami block only', (slug, url) => {
+      expect(textOf(slug, 'in-ogami')).toContain(url)
+      expect(textOf(slug, 'common')).not.toContain(url)
+    })
+
+    it.each(
+      chapters.filter((chapter) => chapter.editions === 'both').map((chapter) => chapter.slug),
+    )('keeps every PDF link out of the common text of %s', (slug) => {
+      expect(textOf(slug, 'common')).not.toContain('releases/download')
+    })
+  })
+
   it.each(chapters.filter((chapter) => chapter.editions === 'full').map((chapter) => chapter.slug))(
     'writes %s as a Full page with no In Ogami block to hide',
     (slug) => {

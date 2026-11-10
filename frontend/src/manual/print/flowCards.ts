@@ -70,11 +70,200 @@ function guard(text: string, where: string): string {
 const sentence = (title: string) => (/[.?!:]$/.test(title) ? title : `${title}.`)
 const words = (...parts: (string | undefined)[]) => parts.filter((part) => part).join(' ')
 
+/** What a band of a check does: a Tracker change, or a sheet field gained or lost. */
+type OutcomeEffect =
+  | { kind: 'tracker'; tracker: string; op: string; value: number }
+  | { kind: 'sheet'; field: string; op: string; value: number | string }
+
+type Outcomes = { band: string; effects: OutcomeEffect[] }[]
+
+type Rec = Record<string, unknown>
+
+function asRec(value: unknown, at: string): Rec {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`Preset ${at}: expected an object.`)
+  }
+  return value as Rec
+}
+
+function asList(value: unknown, at: string): unknown[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`Preset ${at}: expected a list.`)
+  }
+  return value as unknown[]
+}
+
+function asStr(value: unknown, at: string): string {
+  if (typeof value !== 'string' || value === '') {
+    throw new Error(`Preset ${at}: expected a non-empty string.`)
+  }
+  return value
+}
+
+function asNum(value: unknown, at: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`Preset ${at}: expected a number.`)
+  }
+  return value
+}
+
+function readOutcomeEffect(raw: unknown, at: string): OutcomeEffect {
+  const o = asRec(raw, at)
+  const kind = asStr(o.kind, `${at}.kind`)
+  if (kind === 'tracker') {
+    return {
+      kind,
+      tracker: asStr(o.tracker, `${at}.tracker`),
+      op: asStr(o.op, `${at}.op`),
+      value: asNum(o.value, `${at}.value`),
+    }
+  }
+  if (kind === 'sheet') {
+    const dice = typeof o.value === 'object' && o.value !== null
+    return {
+      kind,
+      field: asStr(o.field, `${at}.field`),
+      op: asStr(o.op, `${at}.op`),
+      value: dice
+        ? asStr(asRec(o.value, `${at}.value`).dice, `${at}.value.dice`)
+        : asNum(o.value, `${at}.value`),
+    }
+  }
+  throw new Error(`Preset ${at}: a "${kind}" effect in a check outcome has no paper wording.`)
+}
+
+/** The bands of every `check` step of the preset file, by `'sceneTypeKey.stepKey'`. */
+function readOutcomes(raw: unknown): Map<string, Outcomes> {
+  const found = new Map<string, Outcomes>()
+  asList(asRec(raw, 'file').sceneTypes, 'file.sceneTypes').forEach((rawType, t) => {
+    const type = asRec(rawType, `file.sceneTypes[${String(t)}]`)
+    for (const section of ['setup', 'play', 'closing']) {
+      asList(type[section], `file.sceneTypes[${String(t)}].${section}`).forEach((rawStep, s) => {
+        const at = `file.sceneTypes[${String(t)}].${section}[${String(s)}]`
+        const step = asRec(rawStep, at)
+        if (step.kind !== 'check') {
+          return
+        }
+        found.set(
+          `${asStr(type.key, at)}.${asStr(step.key, at)}`,
+          asList(step.outcomes ?? [], `${at}.outcomes`).map((rawOutcome, o) => {
+            const here = `${at}.outcomes[${String(o)}]`
+            const outcome = asRec(rawOutcome, here)
+            return {
+              band: asStr(outcome.band, `${here}.band`),
+              effects: asList(outcome.effects, `${here}.effects`).map((effect, e) =>
+                readOutcomeEffect(effect, `${here}.effects[${String(e)}]`),
+              ),
+            }
+          }),
+        )
+      })
+    }
+  })
+  return found
+}
+
+/** How a card names each band of a check; the wording of a check step must give each of its bands. */
+const BAND_LABELS = new Map([
+  ['failure', 'Failing:'],
+  ['badly', 'Going badly'],
+  ['done', 'Done:'],
+  ['short', 'Short:'],
+  ['wrong', 'Wrong:'],
+])
+
+const capitalised = (word: string) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`
+
+/** "-1d6" is "d6" and "+2d4" is "2d4": the dice a card names, without the sign or a lone 1. */
+function diceText(dice: string, where: string): { gain: boolean; text: string } {
+  const match = /^([+-]?)(\d*)d(\d+)$/.exec(dice)
+  if (match === null) {
+    throw new Error(`${where}: the dice "${dice}" have no paper wording.`)
+  }
+  const count = match[2] === '1' || match[2] === '' ? '' : (match[2] ?? '')
+  return { gain: match[1] !== '-', text: `${count}d${match[3] ?? ''}` }
+}
+
+/** The effect of a band as the tokens a card writes: "Winter +1", "lose d6 Wind", "regain 1 Nerve". */
+function outcomeToken(preset: Preset, effect: OutcomeEffect, where: string): string {
+  if (effect.kind === 'tracker') {
+    const tracker = preset.trackers.find((candidate) => candidate.key === effect.tracker)
+    if (tracker === undefined || effect.op !== 'add') {
+      throw new Error(
+        `${where}: a ${effect.op} effect on "${effect.tracker}" has no paper wording.`,
+      )
+    }
+    return `${tracker.name} ${effect.value < 0 ? '-' : '+'}${String(Math.abs(effect.value))}`
+  }
+  const field = capitalised(effect.field)
+  if (typeof effect.value === 'string') {
+    const { gain, text } = diceText(effect.value, where)
+    return `${gain === (effect.op === 'add') ? 'regain' : 'lose'} ${text} ${field}`
+  }
+  if (effect.op !== 'add' && effect.op !== 'subtract') {
+    throw new Error(`${where}: a ${effect.op} effect on "${effect.field}" has no paper wording.`)
+  }
+  const gain = (effect.op === 'add') === effect.value >= 0
+  return `${gain ? 'regain' : 'lose'} ${String(Math.abs(effect.value))} ${field}`
+}
+
+/** The tokens a stretch of paper wording gives, in the form `outcomeToken` writes them. */
+function wordedTokens(text: string): string[] {
+  const tracker = [...text.matchAll(/\b([A-Z][a-z]+) ([+-]\d+)\b/g)].map(
+    (m) => `${m[1] ?? ''} ${m[2] ?? ''}`,
+  )
+  const sheet = [...text.matchAll(/\b(lose|regain) (d\d+|\d+d\d+|\d+) ([A-Z][a-z]+)/g)].map(
+    (m) => `${m[1] ?? ''} ${m[2] ?? ''} ${m[3] ?? ''}`,
+  )
+  return [...tracker, ...sheet].sort()
+}
+
+/**
+ * The paper wording of a check must give every band of the step with the effects the preset
+ * gives it, and no band the step does not have: a band that changes fails the build.
+ */
+function checkOutcomes(preset: Preset, outcomes: Outcomes, wording: string, where: string) {
+  const marks = [...BAND_LABELS]
+    .map(([band, label]) => ({ band, at: wording.indexOf(label) }))
+    .filter((mark) => mark.at >= 0)
+    .sort((a, b) => a.at - b.at)
+  for (const outcome of outcomes) {
+    if (!BAND_LABELS.has(outcome.band)) {
+      throw new Error(`${where}: the band "${outcome.band}" has no label on paper.`)
+    }
+    if (!marks.some((mark) => mark.band === outcome.band)) {
+      throw new Error(`${where}: the paper wording does not give the "${outcome.band}" outcome.`)
+    }
+  }
+  marks.forEach((mark, index) => {
+    const outcome = outcomes.find((candidate) => candidate.band === mark.band)
+    if (outcome === undefined) {
+      throw new Error(`${where}: the paper wording gives "${mark.band}", which the check lacks.`)
+    }
+    const given = wordedTokens(wording.slice(mark.at, marks[index + 1]?.at))
+    const expected = outcome.effects.map((effect) => outcomeToken(preset, effect, where)).sort()
+    if (given.join('|') !== expected.join('|')) {
+      throw new Error(
+        `${where}: "${mark.band}" is "${given.join(', ')}" on paper but "${expected.join(', ')}" in the preset.`,
+      )
+    }
+  })
+}
+
 /** The line a step puts on a card: its paper wording, or its own text; `null` for no line. */
-function stepLine(sceneType: PresetSceneType, step: PresetStep, paper: PaperFlow): string | null {
+function stepLine(
+  preset: Preset,
+  outcomes: Map<string, Outcomes>,
+  sceneType: PresetSceneType,
+  step: PresetStep,
+  paper: PaperFlow,
+): string | null {
   const id = `${sceneType.key}.${step.key}`
   if (Object.hasOwn(paper.steps, id)) {
     const wording = paper.steps[id] ?? null
+    if (wording !== null && step.kind === 'check') {
+      checkOutcomes(preset, outcomes.get(id) ?? [], wording, id)
+    }
     return wording === null ? null : guard(wording, id)
   }
   switch (step.kind) {
@@ -90,7 +279,12 @@ function stepLine(sceneType: PresetSceneType, step: PresetStep, paper: PaperFlow
   }
 }
 
-function sceneCard(sceneType: PresetSceneType, paper: PaperFlow): SceneCard {
+function sceneCard(
+  preset: Preset,
+  outcomes: Map<string, Outcomes>,
+  sceneType: PresetSceneType,
+  paper: PaperFlow,
+): SceneCard {
   const sections = [
     ['Setup', sceneType.setup],
     ['Play', sceneType.play],
@@ -103,7 +297,7 @@ function sceneCard(sceneType: PresetSceneType, paper: PaperFlow): SceneCard {
     back: sections
       .map(([heading, steps]) => ({
         heading,
-        lines: steps.flatMap((step) => stepLine(sceneType, step, paper) ?? []),
+        lines: steps.flatMap((step) => stepLine(preset, outcomes, sceneType, step, paper) ?? []),
       }))
       .filter((section) => section.lines.length > 0),
   }
@@ -152,6 +346,13 @@ function deckCards(preset: Preset, paper: PaperFlow): { cards: DeckCard[]; back:
     throw new Error(`The deck table "${deck.table}" is not a table of the preset.`)
   }
   tableRanges(table.entries.map((entry) => entry.weight ?? 1))
+  for (const entry of table.entries) {
+    if (entry.effects.length > 0) {
+      throw new Error(
+        `The deck table "${table.key}" has an entry with effects, which a card cannot print: "${entry.text}".`,
+      )
+    }
+  }
   const cards = table.entries.flatMap((entry) =>
     Array.from({ length: entry.weight ?? 1 }, (): DeckCard => ({
       kind: 'entry',
@@ -281,9 +482,10 @@ export function buildFlowCards(raw: unknown, paper: PaperFlow): FlowCards {
     throw new Error(`The preset has no flow "${paper.flow}".`)
   }
   checkPaperEntries(preset, paper)
+  const outcomes = readOutcomes(raw)
   const deck = deckCards(preset, paper)
   return {
-    sceneCards: preset.sceneTypes.map((sceneType) => sceneCard(sceneType, paper)),
+    sceneCards: preset.sceneTypes.map((sceneType) => sceneCard(preset, outcomes, sceneType, paper)),
     deck: deck.cards,
     deckBack: deck.back,
     rulesSheet: rulesSheet(preset, flow, paper),

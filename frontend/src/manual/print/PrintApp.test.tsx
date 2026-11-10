@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { PrintApp } from './PrintApp'
 
 describe('PrintApp', () => {
-  it.each([null, '', 'nope'])(
+  it.each([null, '', 'nope', 'constructor', '__proto__', 'toString'])(
     'shows an error for the unknown document %j, never an empty page',
     (doc) => {
       render(<PrintApp doc={doc} />)

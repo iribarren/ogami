@@ -141,7 +141,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T19 | Slice 4 review findings: Confront tip against its bands, Hide Nerve gain and Nerve floor tests, mandatory picks, a crew member taken twice | delegated: slice runs under one writer | [x] | `60272763` |
 | T8 | Part I, chapters 1–4 with examples | delegated | [x] | `b5cc5a16` |
 | T9 | Part I, chapters 5–8 with examples | delegated: slice runs under one writer | [x] | |
-| T10 | Part I, chapters 9–11 with examples | delegated: slice runs under one writer | [ ] | |
+| T10 | Part I, chapters 9–11 with examples | delegated: slice runs under one writer | [x] | |
 | T11 | Paper edition build without "In Ogami" blocks, PDF pipeline, card sheets for both flows | delegated | [ ] | |
 | T12 | Part II | delegated | [ ] | |
 | T13 | Part III | delegated | [ ] | |
@@ -181,6 +181,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - T8 done: `the-promise`, `the-arc`, `scene-types` and `steps` in `frontend/src/manual/content/`, listed under `Part I, The Narrative Flow` in `chapters.ts`. Each has the concept, an `## On paper` section, one `:::in-ogami` block and examples from both flows, with played excerpts driven by Road Risks (the risen ford, in Scene Types), Ship trouble (chapters 1 to 3), Strangers and Treason (the falsified cryo log, in Steps). `content.test.ts` now checks that each Part I page has an On paper section and exactly one In Ogami block. Documentation, so structural checks only (content tests, a grep for the app outside the blocks); every In Ogami claim is listed in the writer's report for the parent to try in the app.
 - Slices 6 and 7 of the old plan merged into slice 6 (T9, T10), as prose runs about half its forecast (slice 5: 660 lines against ~1,400). The plan is now 10 slices.
 - T9 done: `choosing-the-next-scene`, `memory`, `pressure`, `session-rituals`. RED: 10 content tests failed with the manifest entries and no files; GREEN: 62 pass. Neither preset has a session or phase hook, so the Session Rituals examples are written for the chapter and say so.
+- T10 done: `truths-and-endings`, `cards-and-print`, `playtest-and-share`. The manifest entries were added after the files, so no separate RED; 71 content tests pass. The Truth is rolled at the Reveal in Ogami (no hidden Fact) and the Shrine Gate is not a card there; both are said in the In Ogami blocks. Cold Berth has four endings, not three.
 
 ## Next step
 

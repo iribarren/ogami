@@ -35,6 +35,9 @@ export const chapters: readonly Chapter[] = [
   { slug: 'memory', title: 'Memory', part: PART_I, editions: 'both' },
   { slug: 'pressure', title: 'Pressure', part: PART_I, editions: 'both' },
   { slug: 'session-rituals', title: 'Session Rituals', part: PART_I, editions: 'both' },
+  { slug: 'truths-and-endings', title: 'Truths and Endings', part: PART_I, editions: 'both' },
+  { slug: 'cards-and-print', title: 'Cards and Print', part: PART_I, editions: 'both' },
+  { slug: 'playtest-and-share', title: 'Playtest and Share', part: PART_I, editions: 'both' },
 ]
 
 export function findChapter(slug: string): Chapter | undefined {

@@ -1,7 +1,7 @@
 # Feature: studio-manual
 
 - **Locator:** `odd/tasks/studio-manual.md` · Engram topic `odd/studio-manual/tasks`
-- **Issue:** [#387](https://github.com/iribarren/ogami/issues/387) · **Branch:** `docs/studio-manual-9-toolbox` · **Status:** in progress (slice 9)
+- **Issue:** [#387](https://github.com/iribarren/ogami/issues/387) · **Branch:** `docs/studio-manual-10-gamesystem` · **Status:** in progress (slice 10)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Origin:** brainstorm of 2026-11-09, to share the public alpha (`1.0.0-alpha`) with friends
@@ -127,7 +127,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 7 | `feat/studio-manual-7-print` | `feat(manual): studio-manual 7/11 Paper edition` | T11 | ~600 |
 | 8 | `feat/studio-manual-8-cards` | `feat(manual): studio-manual 8/11 card sheets` | T20 | ~1,700 |
 | 9 | `docs/studio-manual-9-toolbox` | `docs(manual): studio-manual 9/11 solo toolbox` | T21, T12 | ~1,000 |
-| 10 | `docs/studio-manual-10-gamesystem` | `docs(manual): studio-manual 10/11 authoring a GameSystem` | T13 | ~1,000 |
+| 10 | `docs/studio-manual-10-gamesystem` | `docs(manual): studio-manual 10/11 authoring a GameSystem` | T22, T13 | ~1,000 |
 | 11 | `docs/studio-manual-11-reference` | `docs(manual): studio-manual 11/11 Studio reference and appendices` | T14 | ~1,400 |
 
 ## Tasks
@@ -151,9 +151,10 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T10 | Part I, chapters 9–11 with examples | delegated: slice runs under one writer | [x] | `3902844a` |
 | T11 | Paper edition build without "In Ogami" blocks, PDF pipeline | delegated: multi-file tooling under one writer | [x] | `25cfb0aa` |
 | T20 | Card sheets for both flows; make `cards-and-print.md` agree with the closing check | delegated: built under the slice 7 writer; carried over and finished inline (held commit plus three one-line edits) | [x] | `9e4132cc` |
-| T21 | Slice 8 review findings: paper check outcomes against preset bands, epilogue and second-tracker card tests, deck entries with effects, mirrored back order, effect rendering branches, the flows lookup | delegated: slice runs under one writer | [x] | |
-| T12 | Part II | delegated: slice runs under one writer | [x] | |
-| T13 | Part III | delegated | [ ] | |
+| T21 | Slice 8 review findings: paper check outcomes against preset bands, epilogue and second-tracker card tests, deck entries with effects, mirrored back order, effect rendering branches, the flows lookup | delegated: slice runs under one writer | [x] | `9d0f4d14` |
+| T12 | Part II | delegated: slice runs under one writer | [x] | `536d14f5` |
+| T22 | Slice 9 review findings: the op guard in `outcomeToken` before its dice branch, the no-paper-wording and invalid-dice test cases | delegated: slice runs under one writer | [x] | |
+| T13 | Part III | delegated: slice runs under one writer | [ ] | |
 | T14 | Part IV, appendices, final PDFs | delegated | [ ] | |
 
 ## Applicable checks
@@ -173,6 +174,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 6 | none | `c3364477`, `3902844a` | Review skipped by the user | [#393](https://github.com/iribarren/ogami/pull/393), merged | None |
 | 7 | none | `25cfb0aa` | Review skipped by the user | [#394](https://github.com/iribarren/ogami/pull/394), merged | None |
 | 8 | `review-d8b49d46d454fabc` | `9e4132cc` | Approved | [#395](https://github.com/iribarren/ogami/pull/395), merged | Six, fixed in slice 9 (T21): `cold-berth.paper.ts:31` paper check outcomes can drift from the preset bands; `flowCards.test.ts:262` does not assert all three epilogue conditions or that second-tracker cuts agree; `flowCards.ts:155` `deckCards` accepts a deck entry with effects; `CardSheets.tsx:99` has no render test for the mirrored back order with a partly filled last sheet; `flowCards.ts:178` effect rendering has no table-driven tests for its wording and throw branches; `PrintApp.tsx:35` the flows lookup should use `Object.hasOwn` or a `Map` |
+| 9 | `review-5a120224dce3a320` | `9d0f4d14`, `536d14f5` | Approved | [#396](https://github.com/iribarren/ogami/pull/396), merged | Two, fixed in slice 10 (T22): `flowCards.ts:199` the dice branch of `outcomeToken` returns before the op guard, so a sheet effect with a dice value and an unsupported op such as `set` is worded as lose or regain and passes the drift check; `flowCards.test.ts:315` the "cannot word" case throws from the op validation, not the no-paper-wording branch, and `diceText`'s invalid-dice throw is unexercised |
 
 ## Progress
 
@@ -199,7 +201,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - T20 done: Scene Type, table and compartment cards, a rules sheet and a tables sheet per flow, built from the presets and the per-flow paper files; a step with no wording fails the build. Whether the tests failed first was not recorded when the cards were built, so no RED is claimed. `cards-and-print.md` now ends the Road on the Shrine Gate card or the closing check on Winter, whichever comes first. `make verify` passed all six steps; `make manual-pdf` passed (Paper edition 45 pages, The Long Carry cards 12, Cold Berth cards 11).
 - T21 done: `buildFlowCards` now checks the wording of every paper `check` step against the bands of the preset (each band present with the same tracker and sheet effects, no band the check lacks), read from the raw file because `preset.ts` is outside the writer's surface; no drift found in either flow. `deckCards` throws on a deck entry with effects; the flows lookup uses `Object.hasOwn`. RED: 12 tests failed (deck effects, check outcomes, `constructor`, `__proto__`, `toString`). The epilogue cut points, effect rendering table and mirrored back order tests passed at once, as they cover behaviour that already worked.
 - T12 done: `likelihood-oracles`, `oracle-tables`, `inspiration-and-random-events`, `trackers-and-clocks`, `cards-and-dice`, `journaling-and-lists` under `Part II, Solo Toolbox`. The paper likelihood oracle is a d6 against five named odds, with a "but" on the two faces beside the line. The manifest entries came after the files, so RED was observed by moving the files away (13 content tests failed), then GREEN: 192 manual tests pass. Neither preset uses nested tables, ranged tables, inspiration tables, a chaos factor or a random event table; the In Ogami blocks say so. The Paper edition is 64 pages, the card sheets 12 and 11.
+- T22 done: `outcomeToken` checks the op before the dice branch, so a dice value with `set` or any op but add/subtract throws. RED: the `set` and `multiply` dice tests failed on the old code; the `nextScene` and invalid-dice tests passed at once, as they cover branches that already threw. The shipped presets still build.
 
 ## Next step
 
-Slice 9: the slice 8 findings (T21) and Part II, Solo Toolbox (T12); then review, push and open its PR. Slice 10 after it merges: Part III (T13).
+Slice 10: the slice 9 findings (T22) and Part III, Authoring a GameSystem (T13); then review, push and open its PR. Slice 11 after it merges: Part IV, appendices and final PDFs (T14).

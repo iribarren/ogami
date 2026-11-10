@@ -44,7 +44,7 @@ Count the cards and place the finale to match the length you want. A deck of fif
 
 ## On paper
 
-The Long Carry's deck is the road deck: thirteen copies of five cards, with the Shrine Gate card shuffled into the bottom of the pile. Discard as you play. The road ends when the gate turns up, and Winter is kept as the pressure.
+The Long Carry's deck is the road deck: thirteen copies of five cards, with the Shrine Gate card shuffled into the bottom of the pile. Discard as you play. The road ends when the gate turns up or when the closing check on Winter ends it, whichever comes first.
 
 Cold Berth needs no deck for its finale. The Reveal comes from Threat, a clock you can see, so a Ship round never needs to hide an ending in a pile. Its cards are the four job cards, face up, and a card for each compartment you named in Session Zero.
 

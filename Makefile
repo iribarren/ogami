@@ -163,7 +163,7 @@ frontend-build: frontend-install ## Build the SPA for production into frontend/d
 	$(NODE_EXEC) pnpm build
 
 .PHONY: manual-pdf
-manual-pdf: frontend-install ## Build the Paper edition into frontend/dist-manual/ (PDF, via Chromium)
+manual-pdf: frontend-install ## Build the Paper edition and the card sheets into frontend/dist-manual/ (PDF, via Chromium)
 	$(DOCKER_COMPOSE) up --detach --wait node
 	$(NODE_EXEC) node_modules/.bin/vite build --config vite.print.config.ts
 	$(DOCKER_COMPOSE) run --rm --no-deps $(TTY) playwright node_modules/.bin/playwright test -c playwright.print.config.ts

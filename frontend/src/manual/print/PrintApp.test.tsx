@@ -20,4 +20,14 @@ describe('PrintApp', () => {
     expect(document.title).toBe('The Narrative Flow: Designing and Playing Solo Games')
     expect(container.textContent).not.toMatch(/\b(Ogami|Studio)\b/)
   })
+
+  it.each([
+    ['cards-the-long-carry', 'The Shrine Gate, front'],
+    ['cards-cold-berth', 'The Reveal, front'],
+  ])('renders the card sheets of %s', (doc, card) => {
+    const { container } = render(<PrintApp doc={doc} />)
+
+    expect(document.body.dataset.print).toBe('ready')
+    expect(container.querySelector(`[data-card="${card}"]`)).not.toBeNull()
+  })
 })

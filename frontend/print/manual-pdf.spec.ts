@@ -47,6 +47,17 @@ async function open(page: Page, doc: string) {
   await page.evaluate(() => document.fonts.ready)
 }
 
+/** No card or sheet may hold more than its box shows: names every one that does. */
+async function overflowing(page: Page): Promise<string[]> {
+  return page.$$eval('[data-card]', (cards) =>
+    cards
+      .filter(
+        (card) => card.scrollHeight > card.clientHeight || card.scrollWidth > card.clientWidth,
+      )
+      .map((card) => card.getAttribute('data-card') ?? 'unnamed'),
+  )
+}
+
 async function printPdf(page: Page, file: string, extra: Parameters<Page['pdf']>[0] = {}) {
   mkdirSync(OUT, { recursive: true })
   await page.pdf({
@@ -74,6 +85,15 @@ test('prints the Paper edition', async ({ page }) => {
       '<div style="width:100%;font-size:9px;text-align:center;font-family:serif"><span class="pageNumber"></span></div>',
   })
 })
+
+for (const doc of ['cards-the-long-carry', 'cards-cold-berth']) {
+  test(`prints the card sheets: ${doc}`, async ({ page }) => {
+    await open(page, doc)
+    await expectNoApp(page)
+    expect(await overflowing(page)).toEqual([])
+    await printPdf(page, `${doc}.pdf`)
+  })
+}
 
 test('an unknown document shows an error and never prints', async ({ page }) => {
   await serveBuild(page)

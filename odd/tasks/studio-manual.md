@@ -1,7 +1,7 @@
 # Feature: studio-manual
 
 - **Locator:** `odd/tasks/studio-manual.md` · Engram topic `odd/studio-manual/tasks`
-- **Issue:** [#387](https://github.com/iribarren/ogami/issues/387) · **Branch:** `feat/studio-manual-7-print` · **Status:** in progress (slice 7)
+- **Issue:** [#387](https://github.com/iribarren/ogami/issues/387) · **Branch:** `feat/studio-manual-8-cards` · **Status:** in progress (slice 8)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Origin:** brainstorm of 2026-11-09, to share the public alpha (`1.0.0-alpha`) with friends
@@ -149,8 +149,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T8 | Part I, chapters 1–4 with examples | delegated | [x] | `b5cc5a16` |
 | T9 | Part I, chapters 5–8 with examples | delegated: slice runs under one writer | [x] | `c3364477` |
 | T10 | Part I, chapters 9–11 with examples | delegated: slice runs under one writer | [x] | `3902844a` |
-| T11 | Paper edition build without "In Ogami" blocks, PDF pipeline | delegated: multi-file tooling under one writer | [x] | |
-| T20 | Card sheets for both flows; make `cards-and-print.md` agree with the closing check | delegated: multi-file tooling under one writer | [ ] | |
+| T11 | Paper edition build without "In Ogami" blocks, PDF pipeline | delegated: multi-file tooling under one writer | [x] | `25cfb0aa` |
+| T20 | Card sheets for both flows; make `cards-and-print.md` agree with the closing check | delegated: built under the slice 7 writer; carried over and finished inline (held commit plus three one-line edits) | [x] | |
 | T12 | Part II | delegated | [ ] | |
 | T13 | Part III | delegated | [ ] | |
 | T14 | Part IV, appendices, final PDFs | delegated | [ ] | |
@@ -170,6 +170,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 4 | `review-a353d854eee7de83` | `cd1538e1`, `193ca200` | Approved | [#391](https://github.com/iribarren/ogami/pull/391), merged | Five, fixed in slice 5 (T19): `dogwatch.json:241` Confront tip promises a Nerve cost its `done` band does not take; `:267` Hide `done` Nerve gain unproved, as the tests start at full Nerve; `:249` Nerve floor unproved (harm at Nerve 0, a 2-point loss at Nerve 1); `:348` the `missing` pick and the four job-opening picks are not mandatory and their skip path is untested; `:349` a crew NPC can go missing twice and the `none` branch needs manual closing. Open product note: Treason's "falsified cryo log" names a suspect through a Thread, as no effect tags an NPC |
 | 5 | none | `60272763`, `b5cc5a16` | Review skipped by the user | [#392](https://github.com/iribarren/ogami/pull/392), merged | None. Chrome pass confirmed the Flow, Scene Type and step editor labels; phase panel fields, effect and band controls and the step kind menu were checked against the frontend source only |
 | 6 | none | `c3364477`, `3902844a` | Review skipped by the user | [#393](https://github.com/iribarren/ogami/pull/393), merged | None |
+| 7 | none | `25cfb0aa` | Review skipped by the user | [#394](https://github.com/iribarren/ogami/pull/394), merged | None |
 
 ## Progress
 
@@ -193,7 +194,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - T10 done: `truths-and-endings`, `cards-and-print`, `playtest-and-share`. The manifest entries were added after the files, so no separate RED; 71 content tests pass. The Truth is rolled at the Reveal in Ogami (no hidden Fact) and the Shrine Gate is not a card there; both are said in the In Ogami blocks. Cold Berth has four endings, not three.
 - T11 done: `print.html` and `vite.print.config.ts` build `dist-print/`; `print/manual-pdf.spec.ts` (own config, not run by `make e2e`) serves the build through `page.route` on `http://print.local`, prints with Chromium and writes `dist-manual/`. No new dependency. `paperEdition` was written with its tests, so no separate RED; the spec and CSS have no unit RED. The spec asserts no app wording in the Paper edition and an error page for an unknown `doc`.
 - Slice 7 split in two when the card sheets came to about 1,660 lines on their own, which would have taken one slice to about 2,250. The cards are built and held on the local branch `wip/studio-manual-8-cards` (`4a6dc2a5`). The plan is now 11 slices.
+- T20 done: Scene Type, table and compartment cards, a rules sheet and a tables sheet per flow, built from the presets and the per-flow paper files; a step with no wording fails the build. Whether the tests failed first was not recorded when the cards were built, so no RED is claimed. `cards-and-print.md` now ends the Road on the Shrine Gate card or the closing check on Winter, whichever comes first. `make verify` passed all six steps; `make manual-pdf` passed (Paper edition 45 pages, The Long Carry cards 12, Cold Berth cards 11).
 
 ## Next step
 
-Slice 7: review, push and open its PR. Slice 8 after it merges: branch `feat/studio-manual-8-cards` from `main`, bring in `wip/studio-manual-8-cards` (`4a6dc2a5`), reword `cards-and-print.md` to match the closing check decision, tick T20, then review and PR. The card sheets also add `cards-*` to `make manual-pdf` and its `CLAUDE.md` and Makefile descriptions.
+Slice 8: review, push and open its PR. Slice 9 after it merges: Part II, Solo Toolbox (T12). Delete the local branch `wip/studio-manual-8-cards` once slice 8 is on `main`.

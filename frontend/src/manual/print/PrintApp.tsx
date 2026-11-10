@@ -1,14 +1,48 @@
 import { type ReactNode, useEffect } from 'react'
 
+import { CardSheets } from './CardSheets'
+import { buildFlowCards } from './flowCards'
+import { coldBerthPaper } from './cold-berth.paper'
 import { PaperBook } from './PaperBook'
 import { BOOK_TITLE, paperBook } from './paperEdition'
+import type { PaperFlow } from './paperFlow'
+import { theLongCarryPaper } from './the-long-carry.paper'
 
-/** The document `?doc=` names. An unknown name throws. */
+// The same preset files PHP publishes (backend/presets/), so a card cannot drift from its flow.
+// The node container mounts them, see compose.yaml.
+const presets = import.meta.glob<unknown>(
+  '../../../../backend/presets/{hard-country,dogwatch}.json',
+  {
+    eager: true,
+    import: 'default',
+  },
+)
+
+const flows: Record<string, { file: string; paper: PaperFlow; title: string }> = {
+  'cards-the-long-carry': {
+    file: 'hard-country',
+    paper: theLongCarryPaper,
+    title: 'The Long Carry',
+  },
+  'cards-cold-berth': { file: 'dogwatch', paper: coldBerthPaper, title: 'Cold Berth' },
+}
+
+/** The document `?doc=` names. An unknown name, or a flow that has drifted from its preset, throws. */
 function documentFor(doc: string | null): { title: string; content: ReactNode } {
   if (doc === 'paper') {
     return { title: BOOK_TITLE, content: <PaperBook book={paperBook()} /> }
   }
-  throw new Error(`Unknown document "${doc ?? ''}". Use paper.`)
+  const flow = doc === null ? undefined : flows[doc]
+  if (flow === undefined) {
+    throw new Error(
+      `Unknown document "${doc ?? ''}". Use paper, ${Object.keys(flows).join(' or ')}.`,
+    )
+  }
+  const raw = presets[`../../../../backend/presets/${flow.file}.json`]
+  return {
+    title: `${flow.title}: card sheets`,
+    content: <CardSheets cards={buildFlowCards(raw, flow.paper)} />,
+  }
 }
 
 /**

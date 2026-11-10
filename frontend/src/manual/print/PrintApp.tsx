@@ -32,7 +32,7 @@ function documentFor(doc: string | null): { title: string; content: ReactNode } 
   if (doc === 'paper') {
     return { title: BOOK_TITLE, content: <PaperBook book={paperBook()} /> }
   }
-  const flow = doc === null ? undefined : flows[doc]
+  const flow = doc !== null && Object.hasOwn(flows, doc) ? flows[doc] : undefined
   if (flow === undefined) {
     throw new Error(
       `Unknown document "${doc ?? ''}". Use paper, ${Object.keys(flows).join(' or ')}.`,

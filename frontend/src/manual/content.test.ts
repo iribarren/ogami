@@ -57,7 +57,7 @@ describe('the manual content', () => {
   })
 
   it.each(
-    chapters.filter((chapter) => chapter.part.startsWith('Part I,')).map((chapter) => chapter.slug),
+    chapters.filter((chapter) => /^Part (I|II),/.test(chapter.part)).map((chapter) => chapter.slug),
   )('gives %s an On paper section and one In Ogami block', (slug) => {
     const segments = splitEditionBlocks(sources[slug] ?? '')
 

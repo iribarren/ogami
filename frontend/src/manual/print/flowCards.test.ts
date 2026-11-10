@@ -70,6 +70,23 @@ const paper = (extra: Partial<PaperFlow> = {}): PaperFlow => ({
   ...extra,
 })
 
+/** `mini` with the given effects on the first entry of the Luck table. */
+function withEffects(effects: object[]) {
+  const raw = mini()
+  Object.assign(raw.oracles.tables[1]?.entries[0] ?? {}, { effects })
+  return raw
+}
+
+/** `mini` with a check step whose bands are given, and the paper wording for it. */
+function withCheck(outcomes: object[], wording: string) {
+  const raw = mini([step('roll', 'check', { checks: ['d20'], outcomes })])
+  return { raw, flow: paper({ steps: { 'scene.roll': wording } }) }
+}
+
+const doomUp = { kind: 'tracker', tracker: 'doom', op: 'add', value: 1 }
+const nerveDown = { kind: 'sheet', field: 'nerve', op: 'subtract', value: 2 }
+const windDice = { kind: 'sheet', field: 'wind', op: 'add', value: { dice: '-1d6' } }
+
 describe('buildFlowCards', () => {
   it('writes a card line from the title and prompt of a step, and its options', () => {
     const cards = buildFlowCards(
@@ -225,6 +242,104 @@ describe('buildFlowCards', () => {
   })
 })
 
+describe('the effects printed beside a table row', () => {
+  it.each([
+    [{ kind: 'tracker', tracker: 'doom', op: 'add', value: 2 }, 'Doom +2'],
+    [{ kind: 'tracker', tracker: 'doom', op: 'add', value: -3 }, 'Doom -3'],
+    [{ kind: 'nextScene', sceneType: 'scene' }, 'Next scene: Scene'],
+    [{ kind: 'createThread', name: 'Find the lamp' }, 'Start a Thread: Find the lamp'],
+  ])('writes %j as "%s"', (effect, wording) => {
+    const { tables } = buildFlowCards(withEffects([effect]), paper())
+
+    expect(tables[0]?.rows[0]?.effects).toEqual([wording])
+  })
+
+  it.each([
+    ['a tracker effect that is not an add', { ...doomUp, op: 'set' }, /set effect on "doom"/],
+    ['a tracker the preset does not have', { ...doomUp, tracker: 'gone' }, /"gone"/],
+    ['a next scene the preset does not have', { kind: 'nextScene', sceneType: 'gone' }, /"gone"/],
+    ['an effect kind with no paper wording', { kind: 'sheet', field: 'x' }, /sheet effect/],
+  ])('throws on %s, naming the table', (_name, effect, message) => {
+    expect(() => buildFlowCards(withEffects([effect]), paper())).toThrow(message)
+    expect(() => buildFlowCards(withEffects([effect]), paper())).toThrow(/luck/)
+  })
+})
+
+describe('the deck table', () => {
+  it('throws on a deck entry that has effects, which a card cannot print', () => {
+    const raw = mini()
+    Object.assign(raw.oracles.tables[0]?.entries[0] ?? {}, { effects: [doomUp] })
+
+    expect(() => buildFlowCards(raw, paper())).toThrow(/deck.*effect/i)
+  })
+})
+
+describe('the outcomes of a check step', () => {
+  const bands = [
+    { band: 'done', effects: [doomUp] },
+    { band: 'wrong', effects: [doomUp, nerveDown] },
+  ]
+  const good = 'Roll. Done: Doom +1. Wrong: Doom +1 and lose 2 Nerve.'
+
+  it('accepts wording that gives every band with its effects', () => {
+    const { raw, flow } = withCheck(bands, good)
+
+    expect(buildFlowCards(raw, flow).sceneCards[0]?.back[0]?.lines).toEqual([good])
+  })
+
+  it('writes dice effects and gains as the wording does', () => {
+    const { raw, flow } = withCheck(
+      [{ band: 'done', effects: [windDice, { ...nerveDown, op: 'add', value: 1 }] }],
+      'Roll. Done: lose d6 Wind and regain 1 Nerve.',
+    )
+
+    expect(buildFlowCards(raw, flow).sceneCards).toHaveLength(1)
+  })
+
+  it.each([
+    ['a tracker amount that differs', 'Roll. Done: Doom +2. Wrong: Doom +1 and lose 2 Nerve.'],
+    ['a harm amount that differs', 'Roll. Done: Doom +1. Wrong: Doom +1 and lose 1 Nerve.'],
+    [
+      'an effect the bands do not have',
+      'Roll. Done: Doom +1. Wrong: Doom +1, lose 2 Nerve and Doom -1.',
+    ],
+    ['an effect the bands have and the wording drops', 'Roll. Done: Doom +1. Wrong: lose 2 Nerve.'],
+    ['a band the wording leaves out', 'Roll. Done: Doom +1.'],
+    ['a band the check does not have', `${good} Short: Doom +1.`],
+  ])('throws on wording with %s, naming the step', (_name, wording) => {
+    const { raw, flow } = withCheck(bands, wording)
+
+    expect(() => buildFlowCards(raw, flow)).toThrow(/scene\.roll/)
+  })
+
+  it('throws on a band it has no label for and on an effect it cannot word', () => {
+    const odd = withCheck([{ band: 'odd', effects: [] }], 'Roll.')
+    const sheet = withCheck([{ band: 'done', effects: [{ kind: 'sheet', field: 'x' }] }], 'Done: x')
+
+    expect(() => buildFlowCards(odd.raw, odd.flow)).toThrow(/odd/)
+    expect(() => buildFlowCards(sheet.raw, sheet.flow)).toThrow(/outcomes\[0\]/)
+  })
+
+  it('throws when a real outcome changes and the paper wording does not follow', () => {
+    const raw = preset('hard-country') as {
+      sceneTypes: {
+        key: string
+        play: { key: string; outcomes?: { effects: { value: number }[] }[] }[]
+      }[]
+    }
+    const nerve = raw.sceneTypes
+      .find((st) => st.key === 'shrine-gate')
+      ?.play.find((s) => s.key === 'nerve')
+    const effect = nerve?.outcomes?.[0]?.effects[0]
+    expect(effect).toBeDefined()
+    if (effect !== undefined) {
+      effect.value = 3
+    }
+
+    expect(() => buildFlowCards(raw, theLongCarryPaper)).toThrow(/shrine-gate\.nerve/)
+  })
+})
+
 interface Raw {
   flows: { phases: { sceneClosing?: { bands: { upTo?: number }[] }[] }[] }[]
   sceneTypes: { key: string; play: { kind: string; bands?: { upTo?: number }[] }[] }[]
@@ -260,13 +375,17 @@ describe.each<[string, PaperFlow, string, number, [string, string]]>([
   })
 
   it('writes the cut points of the endings with the numbers of the preset', () => {
-    const conditions = raw.sceneTypes
-      .find((st) => st.key === 'epilogue')
-      ?.play.filter((step) => step.kind === 'condition')
-    const [first, second] = [0, 1].map((at) => conditions?.[at]?.bands?.[0]?.upTo ?? -1)
+    const conditions =
+      raw.sceneTypes
+        .find((st) => st.key === 'epilogue')
+        ?.play.filter((step) => step.kind === 'condition') ?? []
+    const [first, early, late] = [0, 1, 2].map((at) => conditions[at]?.bands?.[0]?.upTo ?? -1)
 
+    expect(conditions).toHaveLength(3)
     expect(sheet).toContain(`${clock} ${String(first)} or less`)
-    expect(sheet).toContain(`${counter} ${String(second)} or less`)
+    expect(sheet).toContain(`${counter} ${String(early)} or less`)
+    // One cut for the second Tracker, whichever branch the first one sent you down.
+    expect(late).toBe(early)
   })
 })
 

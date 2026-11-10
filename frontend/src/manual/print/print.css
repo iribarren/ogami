@@ -4,7 +4,7 @@
 @import '@fontsource/eb-garamond/latin-600.css';
 @import '@fontsource/eb-garamond/latin-700.css';
 
-/* The book has margins of its own; card sheets fill the page. */
+/* Sheets of cards fill the page; the book and the tables sheet have margins of their own. */
 @page {
   size: A4;
   margin: 0;
@@ -12,6 +12,10 @@
 
 @page paper {
   margin: 22mm 20mm 24mm;
+}
+
+@page tables {
+  margin: 14mm;
 }
 
 *,
@@ -180,4 +184,205 @@ body {
 .paper hr {
   border: 0;
   border-top: 0.5pt solid #555;
+}
+
+/* Card sheets ---------------------------------------------------------------------------- */
+
+.sheet {
+  display: grid;
+  overflow: hidden;
+  break-after: page;
+  page-break-after: always;
+}
+
+/* A6, four to a sheet: 105 x 148 mm. */
+.sheet.a6 {
+  width: 210mm;
+  height: 296mm;
+  grid-template-columns: repeat(2, 105mm);
+  grid-template-rows: repeat(2, 148mm);
+}
+
+/* 63 x 88 mm, nine to a sheet, centred. */
+.sheet.small {
+  width: 210mm;
+  height: 296mm;
+  padding: 16mm 10.5mm;
+  grid-template-columns: repeat(3, 63mm);
+  grid-template-rows: repeat(3, 88mm);
+  justify-content: center;
+  align-content: center;
+}
+
+.card {
+  overflow: hidden;
+  border: 0.25mm dashed #777;
+  line-height: 1.25;
+}
+
+.card h2,
+.card h3,
+.card p,
+.card ul {
+  margin: 0;
+}
+
+.card.scene {
+  padding: 8mm;
+  font-size: 12pt;
+}
+
+.card.scene h2 {
+  margin-bottom: 4mm;
+  font-size: 24pt;
+  line-height: 1.05;
+}
+
+.card.scene .purpose {
+  margin-bottom: 4mm;
+  font-size: 13pt;
+  font-style: italic;
+}
+
+.card.scene.back {
+  padding: 6mm;
+  font-size: 10pt;
+  line-height: 1.2;
+}
+
+.card.back h3 {
+  margin: 2mm 0 1mm;
+  font-size: 10.5pt;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.card.back h3:first-child {
+  margin-top: 0;
+}
+
+.card.back ul {
+  padding-left: 3.5mm;
+}
+
+.card.back li {
+  margin-bottom: 1mm;
+}
+
+.card.deck {
+  display: flex;
+  flex-direction: column;
+  padding: 5mm;
+  font-size: 11pt;
+}
+
+.card.deck .entry {
+  flex: 1;
+  font-size: 15pt;
+  line-height: 1.2;
+}
+
+.card.deck .note {
+  margin-bottom: 2mm;
+  font-size: 9pt;
+  font-style: italic;
+}
+
+.card.deck .label {
+  font-size: 9pt;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.card.deck .line {
+  margin-top: 6mm;
+  padding-bottom: 5mm;
+  border-bottom: 0.25mm solid #000;
+  font-size: 9pt;
+}
+
+.card.deck.back {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.card.deck.back .label {
+  font-size: 14pt;
+}
+
+.sheet.rules {
+  display: block;
+  width: 210mm;
+  height: 296mm;
+  padding: 14mm 16mm;
+  font-size: 10.5pt;
+  line-height: 1.3;
+}
+
+.rules h2 {
+  margin: 0;
+  font-size: 22pt;
+}
+
+.rules .question {
+  margin: 1mm 0 3mm;
+  font-style: italic;
+}
+
+.rules h3 {
+  margin: 3mm 0 1mm;
+  font-size: 11pt;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rules p {
+  margin: 0 0 1mm;
+}
+
+.rules .credit {
+  margin-top: 4mm;
+  padding-top: 2mm;
+  border-top: 0.25mm solid #000;
+  font-size: 8.5pt;
+}
+
+.tables-sheet {
+  page: tables;
+  font-size: 10pt;
+  line-height: 1.3;
+}
+
+.tables-sheet h2 {
+  margin: 0 0 4mm;
+  font-size: 18pt;
+}
+
+.tables-sheet table {
+  width: 100%;
+  margin-bottom: 6mm;
+  border-collapse: collapse;
+  break-inside: avoid;
+}
+
+.tables-sheet caption {
+  padding-bottom: 1mm;
+  font-size: 12pt;
+  font-weight: 700;
+  text-align: left;
+}
+
+.tables-sheet th,
+.tables-sheet td {
+  padding: 0.8mm 2mm;
+  border: 0.25mm solid #555;
+  text-align: left;
+  vertical-align: top;
+}
+
+.tables-sheet th {
+  width: 14mm;
+  white-space: nowrap;
 }

@@ -1,7 +1,7 @@
 # Feature: studio-manual
 
 - **Locator:** `odd/tasks/studio-manual.md` · Engram topic `odd/studio-manual/tasks`
-- **Issue:** [#387](https://github.com/iribarren/ogami/issues/387) · **Branch:** `docs/studio-manual-11-reference` · **Status:** in progress (slice 11)
+- **Issue:** [#387](https://github.com/iribarren/ogami/issues/387) · **Branch:** `docs/studio-manual-11-reference` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Origin:** brainstorm of 2026-11-09, to share the public alpha (`1.0.0-alpha`) with friends
@@ -157,8 +157,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | T12 | Part II | delegated: slice runs under one writer | [x] | `536d14f5` |
 | T22 | Slice 9 review findings: the op guard in `outcomeToken` before its dice branch, the no-paper-wording and invalid-dice test cases | delegated: slice runs under one writer | [x] | `543cd1f3` |
 | T13 | Part III | delegated: slice runs under one writer | [x] | `98984c8c` |
-| T14 | Part IV, Studio Reference | delegated: slice runs under one writer | [x] | |
-| T23 | Appendices, links to the PDFs from the Full edition, final PDF build | delegated: slice runs under one writer | [x] | |
+| T14 | Part IV, Studio Reference | delegated: slice runs under one writer | [x] | `57306c82` |
+| T23 | Appendices, links to the PDFs from the Full edition, final PDF build | delegated: slice runs under one writer | [x] | `a969c0a7` |
 
 ## Applicable checks
 
@@ -179,6 +179,7 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 | 8 | `review-d8b49d46d454fabc` | `9e4132cc` | Approved | [#395](https://github.com/iribarren/ogami/pull/395), merged | Six, fixed in slice 9 (T21): `cold-berth.paper.ts:31` paper check outcomes can drift from the preset bands; `flowCards.test.ts:262` does not assert all three epilogue conditions or that second-tracker cuts agree; `flowCards.ts:155` `deckCards` accepts a deck entry with effects; `CardSheets.tsx:99` has no render test for the mirrored back order with a partly filled last sheet; `flowCards.ts:178` effect rendering has no table-driven tests for its wording and throw branches; `PrintApp.tsx:35` the flows lookup should use `Object.hasOwn` or a `Map` |
 | 9 | `review-5a120224dce3a320` | `9d0f4d14`, `536d14f5` | Approved | [#396](https://github.com/iribarren/ogami/pull/396), merged | Two, fixed in slice 10 (T22): `flowCards.ts:199` the dice branch of `outcomeToken` returns before the op guard, so a sheet effect with a dice value and an unsupported op such as `set` is worded as lose or regain and passes the drift check; `flowCards.test.ts:315` the "cannot word" case throws from the op validation, not the no-paper-wording branch, and `diceText`'s invalid-dice throw is unexercised |
 | 10 | none | `543cd1f3`, `98984c8c` | Review skipped by the user | [#397](https://github.com/iribarren/ogami/pull/397), merged | None. Part III's Studio claims were checked against the source only, not in the app |
+| 11 | none | `57306c82`, `a969c0a7` | Review skipped by the user | [#398](https://github.com/iribarren/ogami/pull/398) | None. Chrome pass confirmed the rendered Part IV page, the PDF links, and Studio home, header, rail and count pills. The Validation, Releases and Library screens and the pack rail were checked against the source only |
 
 ## Progress
 
@@ -209,7 +210,8 @@ Forecasts include tests, docs and generated files. Hard ceiling ~1,700 per slice
 - T13 done: `rules-and-story`, `sheets-and-groups`, `derived-values-and-formulas`, `checks-and-outcome-bands`, `gear-and-currency`, `licensing-and-credits` under `Part III, Authoring a GameSystem`, all `full`. RED: the Part III manifest test and the Paper-edition Full-chapter test failed before the entries (2 failed); the pages were written after, then 210 manual tests passed. The common-text app-wording rule now applies to `both` pages only. Neither preset has a derived value, a Check modifier, a second flow, a shop step or an Inventory category filter, and the chapters say so; derived-value examples are written for the chapter. Studio has no "Inspired by" field, which the licensing page says.
 - T14 done: `studio-tour`, `library-packs`, `validation`, `releases-restore-themes`, `publishing-and-campaigns` under `Part IV, Studio Reference`, all `full`, each claim checked in the Studio source, the release contract or an ADR (not in the app). RED: the Part IV manifest test failed with no entries; GREEN after the pages and entries.
 - T23 done: `Appendices` part with eight pages (`flow-the-long-carry`, `flow-cold-berth`, `rules-hard-country`, `rules-dogwatch`, `blank-templates`, `glossary`, `paper-to-ogami`, `credits-and-inspirations`), the three PDF links in `how-to-use` and the card sheet links in the flow pages, all inside In Ogami blocks, and an ADR 0050 amendment. RED: the Appendices manifest, Paper edition and manifest-file tests failed without the manifest entries; the PDF link tests passed at once, as `how-to-use` was edited first. The flow pages are read from the presets. `make manual-pdf` passed: Paper edition 80 pages (was 64), The Long Carry cards 12, Cold Berth cards 11.
+- Closed on 2026-11-10: PDFs published on the [`manual-1.0` release](https://github.com/iribarren/ogami/releases/tag/manual-1.0), built from `a969c0a7` (Paper edition 80 pages, card sheets 12 and 11). A manual change needs a new upload.
 
 ## Next step
 
-Slice 11, the last: Part IV (T14), then the appendices, the PDF links and the final PDF build (T23); then review, push and open its PR, and publish the PDFs on the `manual-1.0` release.
+None.

@@ -42,7 +42,7 @@ A run of short, independent claims, each true, with the reasoning between them l
 
 > **Before.** Tone shows in the weights. A table that is all trouble wears you down by the third roll. A table where most results are quiet makes the bad ones land.
 >
-> **After.** Tone lives in the weights of your tables more than in their words. If every result brings trouble, you learn to brace for it, and by the third roll trouble has stopped meaning anything. When most results are quiet, the bad ones break a pattern you had started to trust, which is why they land.
+> **After.** Tone lives in the weights of your tables more than in their words. If every result brings trouble, you learn to brace for it, and by the third roll trouble has stopped meaning anything. When the quiet result comes up more often than any other, the bad ones break a pattern you had started to trust, which is why they land.
 
 ### Missing connectives
 
@@ -114,7 +114,7 @@ The tells in the catalogue above apply to Spanish too. Spanish tolerates longer 
 
 This is the tone paragraph from the catalogue, written in Spanish from its meaning:
 
-> El tono de un flujo está más en el peso de sus tablas que en lo que dicen. Si cada resultado trae problemas, aprendes a esperarlos, y hacia la tercera tirada ya no significan nada. Cuando casi todos los resultados son tranquilos, los malos rompen una costumbre en la que habías empezado a confiar, y por eso pesan tanto. Dale a los resultados tranquilos la mayor parte de las opciones y deja que los pocos malos sostengan la escena.
+> El tono de un flujo está más en el peso de sus tablas que en lo que dicen. Si cada resultado trae problemas, aprendes a esperarlos, y hacia la tercera tirada ya no significan nada. Cuando el resultado tranquilo es el que más sale, los malos rompen una costumbre en la que habías empezado a confiar, y por eso pesan tanto. Dale al resultado tranquilo más opciones que a ningún otro y deja que los malos, que salen menos, sostengan la escena.
 
 ### Calques and other tells in Spanish
 
@@ -164,6 +164,10 @@ One English term has one Spanish term, and the writer never varies it. The rule 
 
 Terms of a particular game, such as a GameSystem's traits, Trackers and tables, are not in this table. They live in the game's voice pack, and a person chooses them there.
 
+Because a term in this table means one thing everywhere, some ordinary Spanish words are no longer free for ordinary use. *Juego* names the GameSystem, so a stretch of play is a *partida*. *Prueba* is a Check, so when the sense is "a test" we write *comprobar* or *la forma de comprobarlo*. *Casilla* belongs to the Fact slot, so the segments of a clock are *segmentos* and the boxes you draw for them on paper are *cuadros*. A reader who meets one of these words in its plain sense will look for the rule it names, which is why the plain sense has to go to another word.
+
+Preset text other than oracle entries, such as flow titles, phase and Scene Type names, flow descriptions and chapter titles, has no Spanish edition yet, and translating it in passing would fix a name that nobody has chosen. The default is to leave it as the pack has it, and when the pack has nothing, to record it there as a `gap` and flag it in the report. A calibration sample may fill such a gap provisionally when the Spanish sentence cannot be written without it, as long as the sample says so at the top.
+
 ## The game dial
 
 Each GameSystem chapter can carry some of its game's voice, and the dial says how much. The reason for a dial, rather than a single setting, is that the voice that makes a played example feel like the game would make a rules statement harder to read, so we want to raise it in some places and keep it out of others.
@@ -176,6 +180,8 @@ Each GameSystem chapter can carry some of its game's voice, and the dial says ho
 
 At every level, rules statements stay neutral. A rule says what to roll, what to mark and what happens next, and it says it in the house voice, so that a reader can find it, trust it and apply it in the middle of a scene. The game's voice may surround a rule but never rewords one. At dial 2 the narrator's passages are set apart from the rules as a blockquote, so the reader can always tell which text they have to obey and which they are only meant to hear.
 
+Played examples appear at dial 0 too, because the Studio manual shows a flow by playing a moment of it. There the example is set as a blockquote and keeps the player's own viewpoint, written in the first person as the notes they make in the notebook ("I decide it is Ansel… I write: …"), while the sentence that introduces it and the paragraph that comments on it are in the house voice and speak of "the player". The notes belong to the reader's own play rather than to the game's narrator, so they stay plain, but a rewrite keeps their viewpoint and their small details, since those are what make them read as play rather than as a description of play.
+
 Oracle table entries that already exist in a preset are quoted exactly as the preset has them, at any dial, because the reader will meet the same words when they roll the table. The dial only affects entries the writer invents for an example.
 
 The voice itself comes from a voice pack in [`docs/voices/`](../voices/README.md), one per GameSystem. A writer working at dial 1 or 2 uses the pack's lexicon and register, and never invents its own. When the Spanish lexicon has no term for something, the writer uses plain Spanish and flags the gap for a person to fill, because genre slang that sounds invented by a translator is worse than no slang at all.
@@ -183,6 +189,8 @@ The voice itself comes from a voice pack in [`docs/voices/`](../voices/README.md
 ## Facts, terms and fences
 
 Restyling a chapter never changes what it says. Every number, range, weight and rule in a rewrite matches the text it replaces and the preset it describes, which for the bundled games are the files in `backend/presets/`. If a writer finds that the old text and the preset disagree, they report the disagreement instead of resolving it, since only a person can say which one is wrong.
+
+Fidelity reaches further than the numbers. A restyle does not drop a sentence that carried a point, and it does not add one that makes a new claim or gives a new instruction, however helpful it seems, because the reader of a restyled chapter cannot tell which advice is new. It keeps the viewpoint of its examples, and it keeps the size of every quantity word, so that "the most common result" never turns into "most results". When a sentence goes because it repeats an argument the chapter has already made, the writer says so in the report.
 
 Glossary terms from [`docs/domain/glossary.md`](../domain/glossary.md) are written exactly as the glossary spells them, and in Spanish exactly as the terminology table gives them.
 

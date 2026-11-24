@@ -31,7 +31,7 @@ The studio-manual is clear, but it reads as machine-written. Its paragraphs are 
 
 ## Constraints
 
-- No product code changes. The English rewrite of The Promise replaces `frontend/src/manual/content/the-promise.md` and must keep its edition fences (`::: full` / `::: paper`), headings that tests or links rely on, and every factual claim about the flows.
+- No product code changes. The English rewrite of The Promise replaces `frontend/src/manual/content/the-promise.md` and must keep its `:::in-ogami` edition blocks (see `docs/style/manual-voice.md`), headings that tests or links rely on, and every factual claim about the flows.
 - Glossary terms from `docs/domain/glossary.md` stay exactly as written (`NarrativeFlow`, Tracker, Fact, oracle table…).
 - Voice packs evoke a genre; they never copy the text, names or invented slang of a specific existing game.
 
@@ -47,8 +47,8 @@ Forecasts include docs and generated files. Hard ceiling ~1,700 per slice.
 
 | ID | Task | Route | Status | Commit |
 |---|---|---|---|---|
-| T1 | Voice system: `docs/style/manual-voice.md` (style guide with the AI-tell list, before/after pairs, EN and ES rules, the dial), `docs/voices/README.md` (voice-pack format), `docs/voices/hard-country.md`, `.claude/agents/doc-writer.md`, `.claude/agents/doc-editor.md`, roadmap backlog line | Delegated (writer trigger: 5 non-trivial files) | done | |
-| T2 | Pilot: The Promise rewritten in English at dial 0 (in place), a Spanish version and one Long Carry played example at dial 2 in `docs/style/samples/`, drafted by a worker following `doc-writer.md` and reviewed by one following `doc-editor.md` | Delegated (writer trigger; the pilot exercises the agents) | todo | |
+| T1 | Voice system: `docs/style/manual-voice.md` (style guide with the AI-tell list, before/after pairs, EN and ES rules, the dial), `docs/voices/README.md` (voice-pack format), `docs/voices/hard-country.md`, `.claude/agents/doc-writer.md`, `.claude/agents/doc-editor.md`, roadmap backlog line | Delegated (writer trigger: 5 non-trivial files) | done | `c633db24` |
+| T2 | Pilot: The Promise rewritten in English at dial 0 (in place), a Spanish version and one Long Carry played example at dial 2 in `docs/style/samples/`, drafted by a worker following `doc-writer.md` and reviewed by one following `doc-editor.md` | Delegated (writer trigger; the pilot exercises the agents) | done | |
 
 ## Applicable checks
 
@@ -64,7 +64,8 @@ Forecasts include docs and generated files. Hard ceiling ~1,700 per slice.
 ## Progress
 
 - T1 done: style guide `docs/style/manual-voice.md` (house voice, 10 tells with before/after, EN and ES rules, ES terminology, dial, facts and `:::in-ogami` fences), voice-pack format and the draft Hard Country pack (all ES terms proposed, saint's gender and flow title open), `doc-writer` and `doc-editor` agents, roadmap B27; no runnable RED, structural readback and `make verify DRY_RUN=1`.
+- T2 done: The Promise rewritten in EN at dial 0 in place, the ES Promise and a Long Carry dial-2 sample (EN and ES) in `docs/style/samples/`, drafted with doc-writer and revised from one doc-editor review; the pilot's gaps closed in the guide (dial-0 played examples, fidelity beyond numbers, ES reserved-word collisions, preset text in ES, quiet-result drift in its samples), the pack README (provisional fill for forced grammar choices) and both agents (stack-down test command, editor read-only `Bash`, multi-file report, minor note defined). Provisional ES choices (*la santa*, *El largo acarreo*, the pack's proposed terms, *El arco*) await the user. Checks: `vitest run src/manual` 10 files, 277 passed; `make verify` plans nothing, because `scripts/verify-changed.sh` skips every `*.md`, manual chapters included.
 
 ## Next step
 
-T2: pilot chapter drafted with doc-writer and reviewed with doc-editor.
+User calibration of the pilot samples; then the slice review and PR.

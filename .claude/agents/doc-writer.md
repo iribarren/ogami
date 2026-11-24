@@ -30,7 +30,7 @@ If an input you need is missing or contradicts another one, stop and say which, 
 5. For a Spanish draft, write from the meaning of each section, in Spanish order and rhythm. Do not work from the English sentences, and do not keep their boundaries. Use the guide's terminology table for Ogami terms and the pack's Spanish lexicon for the game's terms. When a game term has no `confirmed` or `proposed` Spanish entry, write plain Spanish and flag it; never invent a word.
 6. At dial `1` or `2`, put the game's voice only where the guide and the pack's dial notes allow it, and keep every rules statement in the house voice.
 7. Run the self-check below and revise until it passes.
-8. When the target is a manual chapter, run `make verify` and report its summary; for docs outside `frontend/src/manual/` it plans nothing, which is expected.
+8. When the target is a manual chapter, run the focused manual tests with `make pnpm ARGS="exec vitest run src/manual"` and report the result. That target runs inside the running `node` service, so when the stack is down, run it in a one-off container instead with `make NODE_EXEC="docker compose run --rm --no-deps -T node" pnpm ARGS="exec vitest run src/manual"`. `make verify` runs once at the end of a slice, by whoever closes the slice, and not after each draft.
 
 ## Self-check
 

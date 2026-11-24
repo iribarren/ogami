@@ -1,0 +1,3 @@
+# Voice samples
+
+These files are calibration samples for the house voice described in [`manual-voice.md`](../manual-voice.md), and they are not manual content: the app never loads them, and nothing in them is a rule of any game. They exist so that a person can read the voice at work before a larger rewrite, in the places the manual itself cannot show yet, which today means a Spanish chapter (the manual has no Spanish edition) and a played example at dial 2. Each sample states its dial and its voice pack, and its facts match the presets in `backend/presets/`, so a sample that drifts from a preset is a bug to fix here rather than a reason to change the game.

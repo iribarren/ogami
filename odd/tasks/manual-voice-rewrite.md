@@ -21,6 +21,7 @@ The Promise was rewritten as the pilot and calibrated by the user, but the other
 | Language | English only. A Spanish edition of the app manual becomes a follow-up issue, because it needs the Dogwatch Spanish lexicon and the ES title of The Arc confirmed, and the app has no Spanish manual route | User, 2026-11-25 |
 | Dial | Style guide defaults: dial 0 for front matter, Parts I–IV, Blank Templates, Glossary, From Paper to Ogami and Credits and Inspirations; dial 1 for The Long Carry, Cold Berth, Hard Country Rules and Dogwatch Rules, with their voice packs. Rules statements stay neutral everywhere | User, 2026-11-25 |
 | Slicing | Five slices by part, each read by the user for calibration before the next | User, 2026-11-25 |
+| Old-text fixes, slice 1 | what-you-need: stop at a natural pause, not when a set time runs out ("clock" was ambiguous). the-two-games: **Epilogue**, the preset's phase name. how-to-use: Paper is played with pencil, paper, cards and dice only, the kit is in What you need. scene-types: two parts of text (purpose, tips) and three of play; Cold Berth jobs differ in what they do to Threat, Clues and the crew's Nerve (Clues is a counter, not a clock) | User, 2026-11-25 |
 | Per-task cycle | `doc-writer` drafts (no commit) → `doc-editor` reviews → `doc-writer` revises on a `revise` verdict → the parent runs the manual Vitest suite and commits | Parent |
 
 ## Constraints
@@ -46,8 +47,8 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Follow-up issue for a Spanish edition of the app manual, and its `docs/roadmap.md` backlog line | Inline | done | |
-| T2 | 1 | Front matter at dial 0: how-to-use, what-you-need, the-two-games, credits-and-license | Delegated (`doc-writer`, `doc-editor`) | todo | |
+| T1 | 1 | Follow-up issue for a Spanish edition of the app manual, and its `docs/roadmap.md` backlog line | Inline | done | `a343f47c` |
+| T2 | 1 | Front matter at dial 0: how-to-use, what-you-need, the-two-games, credits-and-license | Delegated (`doc-writer`, `doc-editor`) | done | |
 | T3 | 1 | The Arc and Scene Types at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
 | T4 | 1 | Steps and Choosing the Next Scene at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
 
@@ -66,6 +67,7 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 
 - Explored: 39 chapters, 2,960 source lines outside The Promise; dials, slicing and the Spanish edition decided with the user.
 - T1 done: issue [#404](https://github.com/iribarren/ogami/issues/404) `manual-spanish-edition` (`type:docs`, `follow-up`) and roadmap B30; B29 records the decisions. Check: structural readback.
+- T2 done: front matter rewritten at dial 0; doc-editor ship for how-to-use, the-two-games and credits-and-license, revise for what-you-need (connectives that claimed false causes), fixed with the user's three old-text decisions. "World turn" capitalized as the glossary spells it. Check: manual Vitest 10 files, 277 tests passed.
 
 ## Next step
 

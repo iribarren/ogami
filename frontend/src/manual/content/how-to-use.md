@@ -1,20 +1,17 @@
 # How to use this book
 
-This book teaches you to design a **NarrativeFlow**: the guided procedure that runs a solo game, from the first question to the last scene. It also gives you what you need to play solo with the dice and cards on your table. Two complete examples run through every chapter, one for each of two games.
+This book teaches you to design a **NarrativeFlow**, the guided procedure that runs a solo game from the first question to the last scene, and it gives you what you need to play solo with the dice and cards on your table. Two complete examples run through every chapter, one for each of two games.
 
 ## One book, two editions
 
-The book comes in two editions, written from the same pages.
+The book comes in two editions, and both are written from the same pages. The **Paper** edition is for the table, and you play it with pencil, paper, cards and dice only, with no screen. The next chapter, What you need, lists the exact kit. The Paper edition ends with appendices that hold both flows in full, one rules sheet for each game, blank templates, a glossary and the credits, and the card sheets for the two flows are printed separately. The **Full** edition adds extra boxes to the Paper edition, along with the chapters on authoring a GameSystem, a reference for the authoring tool and a map from the paper tools to the screen.
 
-- **Paper** is for the table. It uses a pencil, a notebook and a deck of cards, and nothing else. It ends with appendices: both flows in full, one rules sheet for each game, blank templates, a glossary and the credits. The card sheets for the two flows are printed separately.
-- **Full** is the Paper edition plus extra boxes, the chapters on authoring a GameSystem, a reference for the authoring tool, and a map from the paper tools to the screen.
-
-The method is the same in both. Terms keep one meaning: a **GameSystem** holds the rules, and a **NarrativeFlow** is one story played inside it.
+The method is the same in both editions. Terms keep one meaning wherever they appear. A **GameSystem**, for example, holds the rules, and a **NarrativeFlow** is one story played inside it.
 
 :::in-ogami
-You are reading the Full edition inside Ogami. The "In Ogami" boxes show how the same step is done in the app. Studio, where GameSystems and flows are authored, links to this manual from its home page and from the header of every GameSystem. The Manual link in the main bar is there for everyone, signed in or not.
+You are reading the Full edition inside Ogami, and its "In Ogami" boxes show how the same step is done in the app. Studio, where GameSystems and flows are authored, links to this manual from its home page and from the header of every GameSystem. The Manual link in the main bar is there for everyone, signed in or not.
 
-The three PDFs are published on a GitHub Release. Print them, or keep them beside the screen.
+The three PDFs are published on a GitHub Release, so you can print them or keep them beside the screen.
 
 - [The Paper edition](https://github.com/iribarren/ogami/releases/download/manual-1.0/manual-paper.pdf)
 - [The Long Carry cards](https://github.com/iribarren/ogami/releases/download/manual-1.0/cards-the-long-carry.pdf)
@@ -26,20 +23,16 @@ The three PDFs are published on a GitHub Release. Print them, or keep them besid
 
 The chapters go from the largest decision to the smallest.
 
-1. The promise: what the story is about, its tone and its length.
-2. The arc: the phases the story passes through.
-3. The scenes: the kinds of scene the story is made of.
-4. The steps: what happens inside a scene.
-5. Everything that connects them: choosing the next scene, memory, pressure, rituals and endings.
+1. The promise says what the story is about, how it should feel and how long it will last.
+2. The arc sets out the phases the story passes through.
+3. The scenes are the kinds of scene the story is made of.
+4. The steps are what happens inside a scene.
+5. Choosing the next scene, memory, pressure, rituals and endings are the pieces that connect the others.
 
-Design each level before the next. A flow built from the bottom up tends to be a pile of good scenes with no story. Built from the top, every step has a reason to exist.
+Design each level before the next, because a flow built from the bottom up tends to be a pile of good scenes with no story, whereas in a flow built from the top every step has a reason to exist.
 
 ## How each chapter works
 
-Each chapter has the same parts.
+Every chapter is made of the same parts. It explains the **concept** in a few paragraphs, says under **On paper** what you do with pencil, dice and cards, and gives **examples** from both flows, so that you can see one idea twice, in two different games.
 
-- The **concept**, in a few paragraphs.
-- **On paper**: what you do with pencil, dice and cards.
-- **Examples** from both flows, so you can see one idea twice, in two different games.
-
-Read a chapter, then add its piece to your own flow before you move on. Keep a notebook for the flow you are designing.
+Keep a notebook for the flow you are designing, and when you finish a chapter, add its piece to your own flow before you move on to the next.

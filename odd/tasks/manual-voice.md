@@ -1,7 +1,7 @@
 # Feature: manual-voice
 
 - **Locator:** `odd/tasks/manual-voice.md` · Engram topic `odd/manual-voice/tasks`
-- **Issue:** [#399](https://github.com/iribarren/ogami/issues/399) · **Branch:** `docs/manual-voice-1-pilot` · **Status:** in progress
+- **Issue:** [#399](https://github.com/iribarren/ogami/issues/399) · **Branch:** `docs/manual-voice-1-pilot` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Origin:** brainstorm of 2026-11-24, after the studio-manual PDF read as machine-written
@@ -49,11 +49,11 @@ Forecasts include docs and generated files. Hard ceiling ~1,700 per slice.
 | ID | Task | Route | Status | Commit |
 |---|---|---|---|---|
 | T1 | Voice system: `docs/style/manual-voice.md` (style guide with the AI-tell list, before/after pairs, EN and ES rules, the dial), `docs/voices/README.md` (voice-pack format), `docs/voices/hard-country.md`, `.claude/agents/doc-writer.md`, `.claude/agents/doc-editor.md`, roadmap backlog line | Delegated (writer trigger: 5 non-trivial files) | done | `c633db24` |
-| T2 | Pilot: The Promise rewritten in English at dial 0 (in place), a Spanish version and one Long Carry played example at dial 2 in `docs/style/samples/`, drafted by a worker following `doc-writer.md` and reviewed by one following `doc-editor.md` | Delegated (writer trigger; the pilot exercises the agents) | done | |
-| T3 | Calibration fixes from the user: clarity of idioms and of the overloaded word "promise" in The Promise (EN and ES); ES uses *el santo* and the title *La gran Carga* (Burden becomes *Carga*, Load another word); the guide gains rules for literal clarity, one meaning per word near a term, and titles translated by meaning; "Most results are quiet" fixed in both preset tips and `flow-the-long-carry.md` (quiet is 3 of 9, the most common single result) | Delegated (`doc-writer` agent, then `doc-editor`) | done | |
-| T4 | `scripts/verify-changed.sh` skips every `*.md`, so manual chapter edits never run the manual Vitest suites: run them for `frontend/src/**/*.md`, with a `make verify-test` case | Delegated (late finding of this slice) | done | |
-| T5 | Doc agents point at the guide's tell catalogue instead of copying it; Engram mirror is the parent's job | Delegated | done | |
-| T6 | Apply the doc-editor notes on T3: literal-reading fixes in EN and ES, *mesa* for the group, article for Tracker names, guide models and the title-pun exception, per-file verdicts for doc-editor | Delegated (doc-writer) | done | |
+| T2 | Pilot: The Promise rewritten in English at dial 0 (in place), a Spanish version and one Long Carry played example at dial 2 in `docs/style/samples/`, drafted by a worker following `doc-writer.md` and reviewed by one following `doc-editor.md` | Delegated (writer trigger; the pilot exercises the agents) | done | `498212d9` |
+| T3 | Calibration fixes from the user: clarity of idioms and of the overloaded word "promise" in The Promise (EN and ES); ES uses *el santo* and the title *La gran Carga* (Burden becomes *Carga*, Load another word); the guide gains rules for literal clarity, one meaning per word near a term, and titles translated by meaning; "Most results are quiet" fixed in both preset tips and `flow-the-long-carry.md` (quiet is 3 of 9, the most common single result) | Delegated (`doc-writer` agent, then `doc-editor`) | done | `ca0dda07` |
+| T4 | `scripts/verify-changed.sh` skips every `*.md`, so manual chapter edits never run the manual Vitest suites: run them for `frontend/src/**/*.md`, with a `make verify-test` case | Delegated (late finding of this slice) | done | `7d0762b6` |
+| T5 | Doc agents point at the guide's tell catalogue instead of copying it; Engram mirror is the parent's job | Delegated | done | `1c41f848` |
+| T6 | Apply the doc-editor notes on T3: literal-reading fixes in EN and ES, *mesa* for the group, article for Tracker names, guide models and the title-pun exception, per-file verdicts for doc-editor | Delegated (doc-writer) | done | `efaa2eca` |
 
 ## Applicable checks
 
@@ -65,6 +65,7 @@ Forecasts include docs and generated files. Hard ceiling ~1,700 per slice.
 
 | Slice | Lineage | Commits | Outcome | PR | Findings |
 |---|---|---|---|---|---|
+| 1 | none | `c633db24`, `498212d9`, `ca0dda07`, `7d0762b6`, `1c41f848`, `efaa2eca` | Review skipped by the user (high risk on the 8-line script change; prose reviewed twice by doc-editor) | [#400](https://github.com/iribarren/ogami/pull/400) | None from a native review. Open decisions (Spanish lexicon to confirm, a Dogwatch voice pack, where the Tracker article rule lives, rewriting the rest of the manual) are in follow-up [#401](https://github.com/iribarren/ogami/issues/401) |
 
 ## Progress
 
@@ -74,7 +75,8 @@ Forecasts include docs and generated files. Hard ceiling ~1,700 per slice.
 - T4 done: `verify-changed.sh` now plans `make frontend-test-related FILES="src/manual/pages.ts"` for `frontend/src/manual/content/*.md` (chapters load through a glob in `pages.ts`, so `related` on the .md finds nothing), with two `make verify-test` cases (RED: both failed before the change, 21 passed after); other Markdown stays skipped.
 - T5 done: `doc-writer` and `doc-editor` point at the guide's tell catalogue section instead of listing tells, and `doc-writer` notes that the Engram mirror is the parent's job.
 - T6 done: the doc-editor notes on `ca0dda07` applied. The Promise EN and ES lose the readings that failed taken literally (the promise as a piece, "another way", the repeated table entry); ES uses *mesa* for the people playing (*grupo* stays the Party), names its referents and drops the two senses of *peso*; Tracker names take the article in ES prose, recorded in the Hard Country pack and applied in both samples; the guide's catalogue models match the chapter, and a title pun is an exception to one meaning per word that stops at the title; `doc-editor` gives one verdict per file and may query fact sources read-only.
+- Closed: PR [#400](https://github.com/iribarren/ogami/pull/400); native review skipped by the user; follow-ups in [#401](https://github.com/iribarren/ogami/issues/401).
 
 ## Next step
 
-Slice review, then PR.
+None. Follow-ups are in [#401](https://github.com/iribarren/ogami/issues/401).

@@ -220,7 +220,7 @@
       "key": "repair",
       "name": "Repair",
       "purpose": "Fix something that must work, and pay for what it takes.",
-      "tips": "Open by picking a compartment. A repair buys time: it lowers Threat. A failed one costs breath. Harm takes Nerve first; with no Nerve left, mark an Injury.",
+      "tips": "Open by picking a compartment. A repair buys time: it lowers Threat. A failed one costs Nerve. Harm takes Nerve first; with no Nerve left, mark an Injury.",
       "oracles": ["yes-no"],
       "setup": [
         {"key": "where", "kind": "pick", "title": "Which compartment needs you?", "tip": "The ship offers the compartments you named. If none is left, name one.", "of": "place", "tags": ["compartment"], "mode": "choose", "mandatory": true, "branches": {"found": {"next": "here"}, "none": {"next": "improvise"}}},
@@ -228,7 +228,7 @@
         {"key": "improvise", "kind": "prompt", "title": "Which compartment needs you?", "prompt": "Name it. It will be on the ship from now on.", "effects": [{"kind": "createPlace", "name": "{answer}", "tags": ["compartment"]}]}
       ],
       "play": [
-        {"key": "fix", "kind": "check", "title": "How do you fix it?", "tip": "Pick the die on your Station: Hands to fix and force, Helm to reach it. If someone helps, pick the helped version of the same die. A bearer with no Nerve left marks an Injury instead of losing Nerve.", "checks": ["d4", "d6", "d8", "d10", "d4-help", "d6-help", "d8-help", "d10-help"], "outcomes": [{"band": "done", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": -1}]}, {"band": "wrong", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}, {"kind": "sheet", "field": "nerve", "op": "subtract", "value": 1}]}]}
+        {"key": "fix", "kind": "check", "title": "How do you fix it?", "tip": "Pick the die on your Station: Hands to fix and force, Helm to reach it. If someone helps, pick the helped version of the same die. A crew member with no Nerve left marks an Injury instead of losing Nerve.", "checks": ["d4", "d6", "d8", "d10", "d4-help", "d6-help", "d8-help", "d10-help"], "outcomes": [{"band": "done", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": -1}]}, {"band": "wrong", "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}, {"kind": "sheet", "field": "nerve", "op": "subtract", "value": 1}]}]}
       ],
       "closing": [
         {"key": "after", "kind": "prompt", "title": "How long will the repair hold, and who knows it?"}

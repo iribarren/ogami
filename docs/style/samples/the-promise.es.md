@@ -1,13 +1,10 @@
 <!--
-Calibration sample: The Promise, Studio manual, Spain Spanish, dial 0. Game terms come from the draft voice pack docs/voices/hard-country.md.
-
-Confirmed by the user: «el santo», «La gran Carga» for The Long Carry, and «Carga» for the Burden Tracker.
+Calibration sample: The Promise, Studio manual, Spain Spanish, dial 0. Game terms come from the confirmed voice pack docs/voices/hard-country.md.
 
 Provisional, awaiting confirmation by a person:
-- The pack's proposed terms used here: acarreo, Invierno, Peligros del camino, porteador, Pecado, voto, vado.
 - «El arco» for the chapter title The Arc, which has no Spanish title yet.
 
-Cold Berth and its game, Dogwatch, have no voice pack, so the flow keeps its English title and its terms (Amenaza, Pistas, Problemas de a bordo, Revelación, Esconderse, Bodega Fría) are plain Spanish, flagged as gaps.
+Cold Berth keeps its English title here. Its terms (Amenaza, Pistas, Problemas de a bordo, Revelación, Esconderse, Bodega Fría) predate the draft voice pack docs/voices/dogwatch.md, where they are proposed; the pack proposes Incidencias de a bordo for Ship trouble and Despertar en frío for the title.
 -->
 
 # La promesa

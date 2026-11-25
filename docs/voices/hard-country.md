@@ -1,7 +1,7 @@
 ---
 key: hard-country
 gameSystem: Hard Country
-status: draft
+status: confirmed
 languages: [en, es]
 ---
 
@@ -47,29 +47,29 @@ Prayer is ordinary in this voice. Blessings, saints' days and small rites appear
 
 ## Lexicon ES
 
-Terms marked `confirmed` were chosen by the user in the calibration of 2026-11-25. Every other term was proposed by an agent and needs a person to confirm or replace it.
+Every term was confirmed by the user on 2026-11-25: *el santo*, *Carga* and *La gran Carga* in the calibration of The Promise, the rest in the follow-ups of `manual-voice` ([#401](https://github.com/iribarren/ogami/issues/401)).
 
 | EN | ES | Status | Note |
 |---|---|---|---|
-| the carry | el acarreo | proposed | *Carga* already names Burden and the flow's title, so the journey takes another word |
-| bearer | porteador, porteadora | proposed | |
+| the carry | el acarreo | confirmed | *Carga* already names Burden and the flow's title, so the journey takes another word |
+| bearer | porteador, porteadora | confirmed | |
 | the saint | el santo | confirmed | Generic masculine, whatever the Fact says about who the saint was |
-| the litter | las andas | proposed | The word used for carrying saints in Spanish processions |
-| the shrine | el santuario | proposed | |
-| the road | el camino | proposed | |
-| Winter, first snow | Invierno, las primeras nieves | proposed | Tracker name capitalised |
+| the litter | las andas | confirmed | The word used for carrying saints in Spanish processions |
+| the shrine | el santuario | confirmed | |
+| the road | el camino | confirmed | |
+| Winter, first snow | Invierno, las primeras nieves | confirmed | Tracker name capitalised |
 | Burden | Carga | confirmed | Tracker name, capitalised. The same word as the flow's title, on purpose |
-| Load, slots | Hatillo, huecos | proposed | The bundle a traveller carries; *Carga* is taken and *casilla* belongs to Fact slots. Alternative: *bultos* |
-| Wind | Aliento | proposed | Covers both breath and courage |
-| a Wound | una Herida | proposed | |
-| Back, Feet, Head | Espalda, Pies, Cabeza | proposed | Trait names |
-| pennies | cuartos | proposed | Old coin and colloquial word for money in Spain |
-| the vow | el voto | proposed | Religious sense |
-| the Sin | el Pecado | proposed | |
-| Road Risks | Peligros del camino | proposed | Table name |
-| Camp, Ford, Stranger, Ruin, Omen | Campamento, Vado, Forastero, Ruina, Presagio | proposed | Scene Types |
-| The Shrine Gate | La puerta del santuario | proposed | |
-| Clean success, Goes badly | Éxito limpio, Sale mal | proposed | Check results |
+| Load, slots | Hatillo, huecos | confirmed | The bundle a traveller carries; *Carga* is taken and *casilla* belongs to Fact slots |
+| Wind | Aliento | confirmed | Covers both breath and courage |
+| a Wound | una Herida | confirmed | |
+| Back, Feet, Head | Espalda, Pies, Cabeza | confirmed | Trait names |
+| pennies | cuartos | confirmed | Old coin and colloquial word for money in Spain |
+| the vow | el voto | confirmed | Religious sense |
+| the Sin | el Pecado | confirmed | |
+| Road Risks | Peligros del camino | confirmed | Table name |
+| Camp, Ford, Stranger, Ruin, Omen | Campamento, Vado, Forastero, Ruina, Presagio | confirmed | Scene Types |
+| The Shrine Gate | La puerta del santuario | confirmed | |
+| Clean success, Goes badly | Éxito limpio, Sale mal | confirmed | Check results |
 | The Long Carry | La gran Carga | confirmed | Translated by meaning: *carga* is both the saint on the bearers' shoulders and the Burden Tracker |
 
 Tracker names take the article in Spanish prose, as the names of seasons and other common nouns do, so the clock is written *el Invierno avanza un segmento* and the counter *la Carga sube en uno*. The article is dropped only where the name stands on its own, as when a sentence introduces it (*un reloj llamado Invierno*) or in a title, a sheet label or a table heading.
@@ -125,7 +125,3 @@ At dial 1 the voice belongs to the player writing in the notebook, so the played
 At dial 2 the old bearer speaks in chapter openers and in sidebars, always in a blockquote and always in the first person. A passage should stay short, around five sentences, because it sets the mood for the rules beside it rather than competing with them. It must never contradict a number in the rules: if the old bearer mentions the snow, the snow still comes when Winter's ten boxes say so.
 
 Rules text in Hard Country chapters stays in the house voice at every dial, including the check table, the kit and the endings.
-
-## Open questions
-
-- The Spanish word for Load and its slots. *Hatillo* and *huecos* are proposed, with *bultos* as the alternative, because *Carga* now belongs to Burden.

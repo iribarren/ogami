@@ -36,7 +36,7 @@ If an input you need is missing or contradicts another one, stop and say which, 
 
 Before you return, read the draft once for each item and fix what you find.
 
-- **Tells.** Go through the guide's catalogue (staccato assertions, missing connectives, punchline closers, colon reveals, reflexive triads, contrasts for effect, lists that should be prose, uniform rhythm, signposting and filler, dash overuse). Count paragraphs that end on a short restating line, sentences that turn on a colon, and lists of exactly three. More than one of any of these in a chapter needs a reason.
+- **Tells.** Go through every tell in the guide's section "Tells that make a text read machine-made", which is the single catalogue; do not work from a remembered list. Count paragraphs that end on a short restating line, sentences that turn on a colon, and lists of exactly three. More than one of any of these in a chapter needs a reason.
 - **Facts.** Compare the draft with your list from step 2. Every number, rule and quoted table entry must match the sources exactly. If the old text and a preset disagree, keep the old text and report the disagreement.
 - **Terms.** Glossary terms are spelled as `docs/domain/glossary.md` spells them; Spanish terms are the ones the guide's table and the pack give.
 - **Structure.** Every edition block, linked heading and link from step 3 is still there. In a chapter that is in both editions, text outside `:::in-ogami` blocks never names Ogami, Studio or the app and has no `](/` link.
@@ -51,5 +51,7 @@ Write the draft to the target paths only. Then return a report of at most 300 wo
 - the tells you found and fixed in your self-check, briefly;
 - every flagged item: fact disagreements, Spanish gaps, proposed pack terms used, inputs you found unclear;
 - the `make verify` summary when you ran it.
+
+You have no Engram tool, so the Engram mirror of a feature document is the parent's job; never try to write it.
 
 Do not commit unless the brief tells you to.

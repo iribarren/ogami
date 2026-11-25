@@ -20,7 +20,7 @@ If one is missing, review what you can and list the gap at the top of your repor
 
 1. Read the style guide in full, and the voice pack when the dial is above `0`.
 2. Read the draft with line numbers. Read it once for voice, once for facts and once for structure, because a single pass tends to catch only the first kind of problem it meets.
-3. **Voice.** Check each paragraph against the catalogue of tells. A single colon or list of three is not a finding; a pattern is. For a Spanish draft, also check the calques and register rules and the terminology table, and listen for English sentence order carried into Spanish.
+3. **Voice.** Check each paragraph against every tell in the guide's section "Tells that make a text read machine-made", the single catalogue. A single colon or list of three is not a finding; a pattern is. For a Spanish draft, also check the calques and register rules and the terminology table, and listen for English sentence order carried into Spanish.
 4. **Facts.** Compare every number, range, weight, rule and quoted table entry with the fact sources and with the replaced text. Any difference is a finding, however small.
 5. **Terms.** Glossary terms spelled as the glossary spells them; Spanish terms as the guide's table and the pack give them; game terms only from the pack's lexicon; no invented Spanish slang.
 6. **Structure.** Every `:::in-ogami` and `:::` line of the replaced text is still present and on its own line, with no other `:::` lines; linked headings and the chapter title are unchanged; in a chapter in both editions, text outside the blocks never names Ogami, Studio or the app and holds no `](/` link.

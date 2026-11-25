@@ -47,19 +47,19 @@ Prayer is ordinary in this voice. Blessings, saints' days and small rites appear
 
 ## Lexicon ES
 
-Every Spanish term below was proposed by an agent and needs a person to confirm or replace it.
+Terms marked `confirmed` were chosen by the user in the calibration of 2026-11-25. Every other term was proposed by an agent and needs a person to confirm or replace it.
 
 | EN | ES | Status | Note |
 |---|---|---|---|
-| the carry | el acarreo | proposed | *La carga* would clash with Load and Burden |
+| the carry | el acarreo | proposed | *Carga* already names Burden and the flow's title, so the journey takes another word |
 | bearer | porteador, porteadora | proposed | |
-| the saint | el santo, la santa | gap | The presets never give the saint a gender; Spanish needs one. See Open questions |
+| the saint | el santo | confirmed | Generic masculine, whatever the Fact says about who the saint was |
 | the litter | las andas | proposed | The word used for carrying saints in Spanish processions |
 | the shrine | el santuario | proposed | |
 | the road | el camino | proposed | |
 | Winter, first snow | Invierno, las primeras nieves | proposed | Tracker name capitalised |
-| Burden | Lastre | proposed | Weight you drag along, figuratively too |
-| Load | carga | proposed | The eight slots |
+| Burden | Carga | confirmed | Tracker name, capitalised. The same word as the flow's title, on purpose |
+| Load, slots | Hatillo, huecos | proposed | The bundle a traveller carries; *Carga* is taken and *casilla* belongs to Fact slots. Alternative: *bultos* |
 | Wind | Aliento | proposed | Covers both breath and courage |
 | a Wound | una Herida | proposed | |
 | Back, Feet, Head | Espalda, Pies, Cabeza | proposed | Trait names |
@@ -70,7 +70,7 @@ Every Spanish term below was proposed by an agent and needs a person to confirm 
 | Camp, Ford, Stranger, Ruin, Omen | Campamento, Vado, Forastero, Ruina, Presagio | proposed | Scene Types |
 | The Shrine Gate | La puerta del santuario | proposed | |
 | Clean success, Goes badly | Éxito limpio, Sale mal | proposed | Check results |
-| The Long Carry | — | gap | The flow's Spanish title needs a person's choice |
+| The Long Carry | La gran Carga | confirmed | Translated by meaning: *carga* is both the saint on the bearers' shoulders and the Burden Tracker |
 
 ## Samples EN
 
@@ -94,7 +94,7 @@ Every Spanish term below was proposed by an agent and needs a person to confirm 
 
 > La tabla da: _A hard frost in the night. Everything you own is stiff by morning._
 >
-> Las cuerdas están tiesas como palos hasta que las acercamos al fuego, y a la madre Ilse no le cierran las manos sobre las varas. Escribo: «La helada nos quita la primera hora del día. Ilse camina junto a las andas y reza en lugar de cargar».
+> Las cuerdas están tiesas como palos hasta que las acercamos al fuego, y a la madre Ilse no le cierran las manos sobre las varas. Escribo: «La helada nos quita la primera hora del día. Ilse camina junto a las andas y reza en lugar de llevarlas».
 
 The table entry stays in English until the preset has a Spanish edition, since the reader rolls the preset's words.
 
@@ -126,5 +126,4 @@ Rules text in Hard Country chapters stays in the house voice at every dial, incl
 
 ## Open questions
 
-- The saint's gender in Spanish. The presets leave it open, and Spanish forces a choice on every article and adjective. Options are a fixed *el santo* or *la santa*, letting the Fact "The saint" decide it per campaign, or *el cuerpo santo* where the sentence allows.
-- The Spanish title of The Long Carry.
+- The Spanish word for Load and its slots. *Hatillo* and *huecos* are proposed, with *bultos* as the alternative, because *Carga* now belongs to Burden.

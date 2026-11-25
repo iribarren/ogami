@@ -300,7 +300,7 @@
           ],
           "worldTurn": [
             {"key": "shorter-days", "kind": "prompt", "title": "The days shorten", "prompt": "Winter closes by one. What is different about the light today?", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "winter", "op": "add", "value": 1}]},
-            {"key": "road-risk", "kind": "table", "title": "What does the road do?", "tip": "Roll the Road Risks table. Most results are quiet.", "table": "road-risks", "mandatory": true}
+            {"key": "road-risk", "kind": "table", "title": "What does the road do?", "tip": "Roll the Road Risks table. The quiet result is the most common, one roll in three.", "table": "road-risks", "mandatory": true}
           ]
         },
         {

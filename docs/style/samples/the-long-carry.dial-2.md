@@ -1,6 +1,6 @@
 # The Long Carry at dial 2
 
-A calibration sample for the [game dial](../manual-voice.md#the-game-dial), drawn from the [Hard Country voice pack](../../voices/hard-country.md). Only the opener speaks in the old bearer's voice, set apart as a blockquote, while the rules paragraphs stay in the house voice and the played moment belongs to the player's own bearers, written in the pack's register around a table entry quoted exactly from `road-risks` in `backend/presets/hard-country.json`. The Spanish half was written from the same moment rather than from the English, and its game terms are the pack's proposed ones, so they are as provisional as the pack.
+A calibration sample for the [game dial](../manual-voice.md#the-game-dial), drawn from the [Hard Country voice pack](../../voices/hard-country.md). Only the opener speaks in the old bearer's voice, set apart as a blockquote, while the rules paragraphs stay in the house voice and the played moment belongs to the player's own bearers, written in the pack's register around a table entry quoted exactly from `road-risks` in `backend/presets/hard-country.json`. The Spanish half was written from the same moment rather than from the English, and its game terms come from the pack, so those the pack still marks as proposed are as provisional as it is.
 
 ## English
 
@@ -26,7 +26,7 @@ The next scene is an Omen, which asks what you now believe the saint did. At the
 
 ### Apertura del capítulo
 
-> Cuatro veces he hecho el acarreo, y las cuatro nos siguió algo antes de llegar a la mitad. Dos fueron perros. Otra, un hombre con un abrigo gris que nunca pasó de la colina de enfrente, por más piedras que le tiramos mientras nos quedó aliento. Ahora solo llevo la cuenta de los días, porque eso, sea lo que sea, no tiene prisa, y la nieve sí. De noche rezo por ello lo mismo que rezo por la santa, y luego me curo los pies.
+> Cuatro veces he hecho el acarreo, y las cuatro nos siguió algo antes de llegar a la mitad. Dos fueron perros. Otra, un hombre con un abrigo gris que nunca pasó de la colina de enfrente, por más piedras que le tiramos mientras nos quedó aliento. Ahora solo llevo la cuenta de los días, porque eso, sea lo que sea, no tiene prisa, y la nieve sí. De noche rezo por ello lo mismo que rezo por el santo, y luego me curo los pies.
 
 ### El turno del mundo
 
@@ -40,4 +40,4 @@ Los porteadores han dejado atrás un Campamento, Invierno ha avanzado un segment
 >
 > Lo vimos todos al salir del recodo del valle, algo bajo y gris, y nadie dijo «lobo». Ansel, que iba el último apoyado en el bastón, no paraba de volver la cabeza, hasta que Hedda le mandó mirar dónde ponía el pie malo. Escribo: «Nos sigue a un campo de distancia toda la tarde. No paramos a comer».
 
-La escena siguiente será un Presagio, que te pregunta qué crees ahora que hizo la santa. En el primero el Pecado todavía está en blanco y lo escribes por primera vez; en los siguientes vuelves a escribirlo, y el último que escribas será la Verdad.
+La escena siguiente será un Presagio, que te pregunta qué crees ahora que hizo el santo. En el primero el Pecado todavía está en blanco y lo escribes por primera vez; en los siguientes vuelves a escribirlo, y el último que escribas será la Verdad.

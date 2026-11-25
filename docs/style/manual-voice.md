@@ -34,7 +34,7 @@ A numbered list is right when the order of the steps matters and the reader will
 
 ## Tells that make a text read machine-made
 
-The tells below are the ones we found in the first manual and in drafts since. None of them is wrong on its own; a colon or a list of three is sometimes exactly right. They become tells when they repeat, because repetition shows that a pattern is producing the text rather than the thought. Each entry names the tell, says why readers notice it, and shows a sentence from the first draft of *The Promise* beside a rewrite.
+The tells below are the ones we found in the first manual and in drafts since. None of them is wrong on its own; a colon or a list of three is sometimes exactly right. They become tells when they repeat, because repetition shows that a pattern is producing the text rather than the thought. Each entry names the tell, says why readers notice it, and shows a sentence from a draft of *The Promise* beside a rewrite.
 
 ### Staccato assertions
 
@@ -99,6 +99,22 @@ Every sentence opens with its subject, runs to about the same length and ends wi
 ### Dash overuse
 
 The em dash is a useful mark that drafts lean on until every second sentence has an aside in it. We prefer commas, brackets or a new sentence, and we use a dash only where none of those works, which in most chapters is nowhere.
+
+### Figures that fail a literal reading
+
+A figure of speech has to make sense when it is read word for word. Drafts reach for idioms because they sound fluent, and then bend them to fit the point, so the phrase only works for a reader who already knows what the writer meant. Everyone else stops to decode it and loses the thread of the argument, which is worse still for someone reading in a second language. If the literal reading of a figure is odd, we replace it with the plain statement it stands for.
+
+> **Before.** A NarrativeFlow is how you hire the jobs out to paper, with each job given to a different part of the flow.
+>
+> **After.** A NarrativeFlow does these jobs in the game master's place, with each job written into a different part of the flow.
+
+### One word in two senses
+
+When a word is one of a chapter's terms, it keeps that meaning wherever the term is nearby, and the everyday sense goes to another word. A reader who meets "promise" as the idea of a chapter, then as the card that records it, then as something a character swore three sessions ago, has to stop each time and work out which one is meant, and in a chapter about promises the confusion is about the very idea being taught. "Table" is the same trap in a flow chapter, where it means an oracle table and should not also mean the people playing. The Spanish terminology below reserves some words in the same way.
+
+> **Before.** Tone is a promise about feelings, and you keep it with the tables you write.
+>
+> **After.** The tone says how the story should feel, and the tables you write are where you make it feel that way.
 
 ## Writing in English
 
@@ -167,6 +183,8 @@ Terms of a particular game, such as a GameSystem's traits, Trackers and tables, 
 Because a term in this table means one thing everywhere, some ordinary Spanish words are no longer free for ordinary use. *Juego* names the GameSystem, so a stretch of play is a *partida*. *Prueba* is a Check, so when the sense is "a test" we write *comprobar* or *la forma de comprobarlo*. *Casilla* belongs to the Fact slot, so the segments of a clock are *segmentos* and the boxes you draw for them on paper are *cuadros*. A reader who meets one of these words in its plain sense will look for the rule it names, which is why the plain sense has to go to another word.
 
 Preset text other than oracle entries, such as flow titles, phase and Scene Type names, flow descriptions and chapter titles, has no Spanish edition yet, and translating it in passing would fix a name that nobody has chosen. The default is to leave it as the pack has it, and when the pack has nothing, to record it there as a `gap` and flag it in the report. A calibration sample may fill such a gap provisionally when the Spanish sentence cannot be written without it, as long as the sample says so at the top.
+
+When a person does choose a Spanish title or name, they translate its meaning and what it calls to mind rather than its words. *The Long Carry* became *La gran Carga*, because *carga* is both the saint on the bearers' shoulders and the Spanish name of the Burden Tracker, so the title holds the game's central idea in a way that a literal *El largo acarreo* did not. *Carga* keeps its capital because it is a Tracker's name, which the rule on title case allows. A title can also borrow resonance from something the reader already knows, as *El camino del santo* would by echoing the Camino de Santiago, and that kind of echo is the reason to prefer a free translation over a faithful one.
 
 ## The game dial
 

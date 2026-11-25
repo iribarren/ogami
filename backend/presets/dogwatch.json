@@ -344,7 +344,7 @@
           ],
           "worldTurn": [
             {"key": "watch", "kind": "prompt", "title": "The watch turns", "prompt": "Threat climbs by one. What has changed on the ship?", "mandatory": true, "effects": [{"kind": "tracker", "tracker": "threat", "op": "add", "value": 1}]},
-            {"key": "trouble", "kind": "table", "title": "What does the ship do?", "tip": "Roll Ship trouble. Most results are quiet.", "table": "ship-trouble", "mandatory": true},
+            {"key": "trouble", "kind": "table", "title": "What does the ship do?", "tip": "Roll Ship trouble. The quiet result is the most common, one roll in three.", "table": "ship-trouble", "mandatory": true},
             {"key": "missing", "kind": "pick", "title": "Who goes missing?", "tip": "The ship picks a crew member from the manifest. If no one is left, nothing is taken.", "of": "npc", "tags": ["crew"], "mode": "random", "mandatory": true, "branches": {"found": {"next": "gone"}, "none": {"next": "end"}}},
             {"key": "gone", "kind": "prompt", "title": "{picked} is not where they were", "tip": "Close {picked} in the NPC list now, so the ship cannot take them again.", "prompt": "Where were they last seen, and what was left behind?", "next": "end", "effects": [{"kind": "createThread", "name": "Where is {picked}?"}]}
           ]

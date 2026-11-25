@@ -1,12 +1,12 @@
 # The Promise
 
-Every flow starts with a promise about what the story is about, how it should feel and how long it will last. We ask you to make it before you design a single scene, because each later piece of the flow is chosen to keep that promise, and you cannot choose well without knowing what it is.
+Every flow starts with a promise that says what the story is about, how it should feel and how long it will last. We ask you to make it before you design a single scene, because each later piece of the flow is chosen to serve it, and you cannot choose well without knowing what it says.
 
 ## The three jobs of a game master
 
-At a table with a game master, one person does three jobs for everyone else. They keep the pace, knowing when to rest the players, when to press them and when the story is over. They bring the surprises, because they know things the players do not and can choose the moment to bring them in. And they are the table's memory, the one who still has the names, the debts, the open questions and the promises made three sessions ago.
+When a group plays with a game master, one person does three jobs for everyone else. They set the pace, knowing when to rest the players, when to press them and when the story is over. They bring the surprises, because they know things the players do not and can choose the moment to bring them in. And they are the group's memory, the one who still has the names, the debts, the open questions and the bargains struck three sessions ago.
 
-When you play alone, nobody else is there to do these jobs, and you cannot do the surprising one yourself, since anything you decide is already known to you by the time you decide it. A **NarrativeFlow** is how you hire the jobs out to paper, with each job given to a different part of the flow.
+When you play alone, nobody else is there to do these jobs, and you cannot do the surprising one yourself, since anything you decide is already known to you by the time you decide it. A **NarrativeFlow** does these jobs in the game master's place, with each job written into a different part of the flow.
 
 | Job      | What the flow does about it                                                                                                            |
 | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -26,9 +26,9 @@ Write the premise as a sentence you could say aloud to a friend. It will end up 
 
 ## The tone
 
-Tone is a promise about feelings, and you keep it with the tables you write. We ask for three words and one thing the story is not, so that the words tell you what to put in your oracle tables and the exclusion tells you what to leave out. With "Grim, tender, slow; not heroic" written down, an entry in which someone wins a fight against the odds stands out as wrong, and so does one that hurries the story along.
+The tone says how the story should feel, and the tables you write are where you make it feel that way. We ask for three words and one thing the story is not, so that the words tell you what to put in your oracle tables and the exclusion tells you what to leave out. With "Grim, tender, slow; not heroic" written down, an entry in which someone wins a fight against the odds stands out as wrong, and so does one that hurries the story along.
 
-Choosing the entries is only half of it, though, because tone lives in the weights of a table as much as in its words. If every result brings trouble, you learn to brace for it, and by the third roll trouble has stopped meaning anything. When the quiet result comes up more often than any other, the bad ones break a pattern you had started to trust, and that is why they land. So give the quiet results the most chances, and the trouble will mean something when it comes.
+Choosing the entries is only half of it, though, because tone depends on the weights of a table as much as on its words. If every result brings trouble, you learn to brace for it, and by the third roll trouble has stopped meaning anything. When the quiet result comes up more often than any other, the bad ones break a pattern you had started to trust, and that is why you feel them. So give the quiet result more chances than any other, and the trouble will mean something when it comes.
 
 ## The length
 
@@ -55,7 +55,7 @@ In Studio, open **Flows** in the GameSystem's left rail and choose **New flow**.
 
 **The tone.** Weary, devout, unfair, and not heroic, because nobody in this flow carries the saint through a storm and wins. Its tables are full of small things going wrong, such as a stiff frost or a bad foot, and hold few things going well.
 
-**The length.** Three to four sessions, kept by a clock called Winter. It starts empty and has ten segments, and every round of the road adds one, so the carry cannot go on for ever however carefully it is walked.
+**The length.** Three to four sessions, measured by a clock called Winter. It starts empty and has ten segments, and every round of the road adds one, so the carry cannot go on for ever however carefully it is walked.
 
 **Surprise.** The Road Risks table is rolled after every scene. Of its nine chances, three go to "A quiet road. Nothing happens that you can name" and one each to the six results that change something. We made the quiet result the most common single result on purpose. It comes up one roll in three, which is often enough for the road to have quiet stretches for the others to break into.
 
@@ -67,7 +67,7 @@ A road scene has just ended, and the player rolls Road Risks.
 >
 > I decide it is Ansel, who has been limping since the ford. Nobody says it. I write: "Ansel's foot. We shorten the day."
 
-The table never said which bearer it meant, only that something heavy had landed, so the name was the player's to choose, and the scene that came out of the roll belongs to both of them.
+The table never said which bearer it meant, only that a foot had gone bad and the others had to take the weight, so the name was the player's to choose, and the scene that came out of the roll belongs to both of them.
 
 ## Cold Berth
 
@@ -75,13 +75,13 @@ The table never said which bearer it meant, only that something heavy had landed
 
 **The tone.** Cold, dry, watchful, and not a monster story. The ship follows rules that someone else wrote, and that is more frightening than hostility would be. The danger is a ship that is too orderly, with no one to explain it.
 
-**The length.** Two to three sessions, kept by a clock called Threat, with eight segments. It rises by one every round, and from the fifth segment the Reveal may come at the end of any scene.
+**The length.** Two to three sessions, measured by a clock called Threat, with eight segments. It rises by one every round, and from the fifth segment the Reveal may come at the end of any scene.
 
 **Surprise.** Three of its oracle tables hold the answers to the three questions, and another, Ship trouble, is rolled every round. Like Road Risks, it keeps three of its nine chances for "A quiet hour. The ship ticks and settles."
 
 **Memory.** Two Trackers (Threat and Clues) and three Facts (what is aboard, who let it on, why we were woken).
 
-Here the round has turned, and the player rolls Ship trouble.
+Here it is the World turn, and the player rolls Ship trouble.
 
 > The table gives: _A sound in the walls that stops when you listen._ The ship wants a Hide scene next.
 >
@@ -93,7 +93,7 @@ By taking the next decision away from the player, the table did what a good game
 
 Both promises ask a question, but not the same kind of question. The Long Carry asks whether, and at what price, while Cold Berth asks what and who. That difference decides each flow's clock, because a "whether" story needs a deadline, so its clock is the calendar, and a "what" story needs a reveal, so its clock is the ship's patience.
 
-Neither promise says how its story ends. The flow keeps the promise instead by making the ending depend on what you do and on a number you can see.
+Neither promise says how its story ends. Each flow honours its promise another way, by making the ending depend on what you do and on a number you can see.
 
 ## Try it
 

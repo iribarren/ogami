@@ -25,7 +25,7 @@ The Hard Country pack is still `draft`, so every Spanish chapter on it would shi
 
 ## Constraints
 
-- No product code or preset changes.
+- No product code changes. Preset text changes only to fix a finding, and the preset is then published with `make presets`.
 - The Dogwatch pack follows `docs/voices/README.md` exactly (front matter, fixed headings in order) and draws facts only from `backend/presets/dogwatch.json`, `rules-dogwatch.md`, `flow-cold-berth.md` and The Promise.
 - A pack evokes its genre and never copies the text, names or slang of an existing game.
 
@@ -35,15 +35,16 @@ Forecasts include docs. Hard ceiling ~1,700 per slice.
 
 | # | Branch | PR title | Tasks | Forecast |
 |---|---|---|---|---|
-| 1 | `docs/manual-voice-followups-1-packs` | `docs(manual): manual-voice-followups 1/1 voice packs` | T1–T3 | ~300 |
+| 1 | `docs/manual-voice-followups-1-packs` | `docs(manual): manual-voice-followups 1/1 voice packs` | T1–T4 | ~300 |
 
 ## Tasks
 
 | ID | Task | Route | Status | Commit |
 |---|---|---|---|---|
 | T1 | Hard Country pack confirmed: every Spanish term `confirmed`, Load = *Hatillo* / *huecos*, `status: confirmed`, the open question closed; the ES sample's provisional note updated | Inline (one mechanical file plus a comment) | done | |
-| T2 | Dogwatch voice pack `docs/voices/dogwatch.md`, drafted by `doc-writer` with every ES term `proposed`, restating the Tracker article rule; the ES sample's Cold Berth note points at it | Delegated (`doc-writer`) | pending | |
+| T2 | Dogwatch voice pack `docs/voices/dogwatch.md`, drafted by `doc-writer` with every ES term `proposed`, restating the Tracker article rule; the ES sample's Cold Berth note points at it | Delegated (`doc-writer`) | done | |
 | T3 | New issue and roadmap backlog line for the manual rewrite; B28 records what this feature settled | Inline | done | |
+| T4 | Dogwatch preset tips that leaked Hard Country words (doc-writer finding): Repair's check tip says "A bearer", its scene tip "costs breath"; fixed in the preset and in the tip quoted by `scene-types.md`, published | Inline (two strings in one file, one quote) | done | |
 
 ## Applicable checks
 
@@ -60,7 +61,9 @@ Forecasts include docs. Hard ceiling ~1,700 per slice.
 
 - T1 done: every Hard Country Spanish term `confirmed` (Load *Hatillo* / *huecos*, *bultos* dropped), pack `status: confirmed`, its open question removed; the ES sample of The Promise keeps only *El arco* as provisional. Check: structural readback, `grep -c proposed` on the pack is 0.
 - T3 done: issue [#402](https://github.com/iribarren/ogami/issues/402) `manual-voice-rewrite` opened for the rewrite of the manual (`type:docs`); roadmap B28 records what this feature settled and B29 links #402.
+- T2 done: `docs/voices/dogwatch.md` (draft, 153 lines) drafted by `doc-writer`. The narrator is a watch officer who was once woken out of turn. Every ES term is `proposed`, Cold Berth is *Despertar en frío*, Ship trouble is *Incidencias de a bordo*, and the Tracker article rule is restated. The parent's fact check corrected the dial-1 EN sample, where the `air` entry adds Threat but does not force Repair. The ES sample note of The Promise now points at the pack. Check: structural readback against the README format, quoted entries match `dogwatch.json` word for word.
+- T4 done: Repair tips in `dogwatch.json` say "A crew member" and "costs Nerve" (the wrong band takes one Nerve), `scene-types.md` quotes the new tip, published as dogwatch v4.
 
 ## Next step
 
-T2.
+Native review assessment, then PR.

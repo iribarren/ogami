@@ -113,7 +113,7 @@ Every one of these Scene Types begins the same way: the setup picks a compartmen
 
 The Repair card:
 
-- **Tips:** _Open by picking a compartment. A repair buys time: it lowers Threat. A failed one costs breath. Harm takes Nerve first; with no Nerve left, mark an Injury._
+- **Tips:** _Open by picking a compartment. A repair buys time: it lowers Threat. A failed one costs Nerve. Harm takes Nerve first; with no Nerve left, mark an Injury._
 - **Setup:** Which compartment needs you? What has failed in it?
 - **Play:** How do you fix it? A check, on the Station you choose.
 - **Closing:** How long will the repair hold, and who knows it?

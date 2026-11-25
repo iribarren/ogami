@@ -70,6 +70,7 @@ phpunit_dirs=()
 frontend=0         # any frontend file that needs QA
 vitest_full=0
 vitest_related=()  # frontend/src files that still exist, with a safe path
+manual_content=0   # manual chapter changed: Markdown, so no QA, but its tests must run
 safe_path='^[A-Za-z0-9._/@+-]+$'  # only these reach `eval` and the make recipe
 unsafe_noted=0
 api_check=0
@@ -94,6 +95,9 @@ add_context() {
 while IFS= read -r file; do
   [[ -z "$file" ]] && continue
   case "$file" in
+    # chapters are loaded through a glob in pages.ts, so `related` on the .md finds
+    # nothing: run the tests that depend on pages.ts instead
+    frontend/src/manual/content/*.md) manual_content=1 ;;
     docs/*|odd/*|*.md) ;;
     backend/*)
       backend=1
@@ -151,6 +155,10 @@ if ((backend)); then
   fi
 fi
 ((api_check)) && steps+=("make api-check")
+if ((manual_content)); then
+  vitest_related+=("src/manual/pages.ts")
+  ((frontend)) || steps+=("make frontend-test-related FILES=\"src/manual/pages.ts\"")
+fi
 if ((frontend)); then
   steps+=("make frontend-qa")
   if ((vitest_full)); then

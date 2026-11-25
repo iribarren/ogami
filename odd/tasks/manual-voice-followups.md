@@ -43,7 +43,7 @@ Forecasts include docs. Hard ceiling ~1,700 per slice.
 |---|---|---|---|---|
 | T1 | Hard Country pack confirmed: every Spanish term `confirmed`, Load = *Hatillo* / *huecos*, `status: confirmed`, the open question closed; the ES sample's provisional note updated | Inline (one mechanical file plus a comment) | done | |
 | T2 | Dogwatch voice pack `docs/voices/dogwatch.md`, drafted by `doc-writer` with every ES term `proposed`, restating the Tracker article rule; the ES sample's Cold Berth note points at it | Delegated (`doc-writer`) | pending | |
-| T3 | New issue and roadmap backlog line for the manual rewrite; B28 records what this feature settled | Inline | pending | |
+| T3 | New issue and roadmap backlog line for the manual rewrite; B28 records what this feature settled | Inline | done | |
 
 ## Applicable checks
 
@@ -59,6 +59,7 @@ Forecasts include docs. Hard ceiling ~1,700 per slice.
 ## Progress
 
 - T1 done: every Hard Country Spanish term `confirmed` (Load *Hatillo* / *huecos*, *bultos* dropped), pack `status: confirmed`, its open question removed; the ES sample of The Promise keeps only *El arco* as provisional. Check: structural readback, `grep -c proposed` on the pack is 0.
+- T3 done: issue [#402](https://github.com/iribarren/ogami/issues/402) `manual-voice-rewrite` opened for the rewrite of the manual (`type:docs`); roadmap B28 records what this feature settled and B29 links #402.
 
 ## Next step
 

@@ -61,7 +61,7 @@ The road deck holds thirteen cards: three Camps, two Fords, three Strangers, two
 
 ## The tables
 
-Road Risks is rolled in every World turn. Most results are quiet; the rest cost a point of Winter or Burden, or force a Ford, a Stranger, a Ruin or an Omen as the next scene. A risen ford calls for a Back check. Three more tables, Strangers, Omens and Ruins, give ideas for their scenes.
+Road Risks is rolled in every World turn. The quiet result is the most common, one roll in three; the others cost a point of Winter or Burden, or force a Ford, a Stranger, a Ruin or an Omen as the next scene. A risen ford calls for a Back check. Three more tables, Strangers, Omens and Ruins, give ideas for their scenes.
 
 ## The Truth
 

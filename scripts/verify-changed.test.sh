@@ -55,6 +55,9 @@ check "Behat context" "backend/tests/Behat/PlayContext.php" 'make backend-qa
 make backend-test
 make api-check'
 check "Behat feature" "backend/features/play/x.feature" "$play"
+check "manual chapter" "frontend/src/manual/content/the-promise.md" 'make frontend-test-related FILES="src/manual/pages.ts"'
+check "manual chapter with frontend src" "frontend/src/manual/content/the-promise.md frontend/src/main.tsx" 'make frontend-qa
+make frontend-test-related FILES="src/main.tsx src/manual/pages.ts"'
 check "frontend src file" "frontend/src/main.tsx" 'make frontend-qa
 make frontend-test-related FILES="src/main.tsx"'
 # shellcheck disable=SC2016 # the literal $ and backticks are the point

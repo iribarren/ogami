@@ -12,7 +12,7 @@ That reader does not need to be entertained, and they do not want to be sold to.
 
 ### We argue for the method
 
-The model is the designer essay, the kind of writing found in books such as *Blades in the Dark* or *Shape Up*, where the author explains a method and argues for it at the same time. A rule in that kind of book rarely arrives alone; it comes with the problem it solves and with what goes wrong when you leave it out. We write the same way. When a chapter tells you to give the quiet results of a table the most weight, it also tells you what happens to a table that is all trouble.
+The model is the designer essay, the kind of writing found in books such as *Blades in the Dark* or *Shape Up*, where the author explains a method and argues for it at the same time. A rule in that kind of book rarely arrives alone; it comes with the problem it solves and with what goes wrong when you leave it out. We write the same way. When a chapter tells you to give the quiet result of a table the most weight, it also tells you what happens to a table that is all trouble.
 
 The narrator is "we", the people who make Ogami, and the reader is "you". We speak from experience of having built and played these flows, and we say so when it helps ("we tried a twelve-box clock first, and the middle sagged"). The voice is earnest. There are no jokes, and the warmth in it comes from taking the reader's problem seriously and explaining things properly, which is a kind of care that readers notice. In the Paper edition the common text never names the app, so "we" stays unnamed there.
 
@@ -42,7 +42,7 @@ A run of short, independent claims, each true, with the reasoning between them l
 
 > **Before.** Tone shows in the weights. A table that is all trouble wears you down by the third roll. A table where most results are quiet makes the bad ones land.
 >
-> **After.** Tone lives in the weights of your tables more than in their words. If every result brings trouble, you learn to brace for it, and by the third roll trouble has stopped meaning anything. When the quiet result comes up more often than any other, the bad ones break a pattern you had started to trust, which is why they land.
+> **After.** Tone depends on the weights of a table as much as on its words. If every result brings trouble, you learn to brace for it, and by the third roll trouble has stopped meaning anything. When the quiet result comes up more often than any other, the bad ones break a pattern you had started to trust, and that is why you feel them.
 
 ### Missing connectives
 
@@ -58,7 +58,7 @@ A paragraph that ends on a short, quotable line which restates what came before 
 
 > **Before.** Every flow starts with a promise: what this story is about, how it feels, and how long it lasts. You make it before you design a single scene. Everything below it exists to keep it.
 >
-> **After.** Every flow starts with a promise about what the story is about, how it should feel and how long it will last. We ask you to make it before you design a single scene, because each later piece of the flow is chosen to keep that promise, and you cannot choose well without knowing what it is.
+> **After.** Every flow starts with a promise that sets out what the story is about, how it should feel and how long it will last. We ask you to make it before you design a single scene, because each later piece of the flow is chosen to serve it, and you cannot choose well without knowing what it says.
 
 ### The colon reveal
 
@@ -130,7 +130,7 @@ The tells in the catalogue above apply to Spanish too. Spanish tolerates longer 
 
 This is the tone paragraph from the catalogue, written in Spanish from its meaning:
 
-> El tono de un flujo está más en el peso de sus tablas que en lo que dicen. Si cada resultado trae problemas, aprendes a esperarlos, y hacia la tercera tirada ya no significan nada. Cuando el resultado tranquilo es el que más sale, los malos rompen una costumbre en la que habías empezado a confiar, y por eso pesan tanto. Dale al resultado tranquilo más opciones que a ningún otro y deja que los malos, que salen menos, sostengan la escena.
+> El tono de un flujo está tanto en el peso de sus tablas como en lo que dicen. Si cada resultado trae problemas, aprendes a esperarlos, y hacia la tercera tirada ya no significan nada. Cuando el resultado tranquilo es el que más sale, los malos rompen una costumbre en la que habías empezado a confiar, y por eso se notan tanto. Así que dale al resultado tranquilo más opciones que a ningún otro, y cuando lleguen los problemas significarán algo.
 
 ### Calques and other tells in Spanish
 
@@ -180,11 +180,11 @@ One English term has one Spanish term, and the writer never varies it. The rule 
 
 Terms of a particular game, such as a GameSystem's traits, Trackers and tables, are not in this table. They live in the game's voice pack, and a person chooses them there.
 
-Because a term in this table means one thing everywhere, some ordinary Spanish words are no longer free for ordinary use. *Juego* names the GameSystem, so a stretch of play is a *partida*. *Prueba* is a Check, so when the sense is "a test" we write *comprobar* or *la forma de comprobarlo*. *Casilla* belongs to the Fact slot, so the segments of a clock are *segmentos* and the boxes you draw for them on paper are *cuadros*. A reader who meets one of these words in its plain sense will look for the rule it names, which is why the plain sense has to go to another word.
+Because a term in this table means one thing everywhere, some ordinary Spanish words are no longer free for ordinary use. *Juego* names the GameSystem, so a stretch of play is a *partida*. *Prueba* is a Check, so when the sense is "a test" we write *comprobar* or *la forma de comprobarlo*. *Casilla* belongs to the Fact slot, so the segments of a clock are *segmentos* and the boxes you draw for them on paper are *cuadros*. *Grupo* is the Party, so the people playing together are *la mesa*, which does not clash with the oracle's *tabla*. A reader who meets one of these words in its plain sense will look for the rule it names, which is why the plain sense has to go to another word.
 
 Preset text other than oracle entries, such as flow titles, phase and Scene Type names, flow descriptions and chapter titles, has no Spanish edition yet, and translating it in passing would fix a name that nobody has chosen. The default is to leave it as the pack has it, and when the pack has nothing, to record it there as a `gap` and flag it in the report. A calibration sample may fill such a gap provisionally when the Spanish sentence cannot be written without it, as long as the sample says so at the top.
 
-When a person does choose a Spanish title or name, they translate its meaning and what it calls to mind rather than its words. *The Long Carry* became *La gran Carga*, because *carga* is both the saint on the bearers' shoulders and the Spanish name of the Burden Tracker, so the title holds the game's central idea in a way that a literal *El largo acarreo* did not. *Carga* keeps its capital because it is a Tracker's name, which the rule on title case allows. A title can also borrow resonance from something the reader already knows, as *El camino del santo* would by echoing the Camino de Santiago, and that kind of echo is the reason to prefer a free translation over a faithful one.
+When a person does choose a Spanish title or name, they translate its meaning and what it calls to mind rather than its words. *The Long Carry* became *La gran Carga*, because *carga* is both the saint on the bearers' shoulders and the Spanish name of the Burden Tracker, so the title holds the game's central idea in a way that a literal *El largo acarreo* did not. *Carga* keeps its capital because it is a Tracker's name, which the rule on title case allows. A deliberate pun of this kind is an exception to the rule that a term keeps a single meaning, and it stops at the title, so inside rules prose *Carga* only ever means the Tracker and the work of carrying the saint is *el acarreo*. A title can also borrow resonance from something the reader already knows, as *El camino del santo* would by echoing the Camino de Santiago, and that kind of echo is the reason to prefer a free translation over a faithful one.
 
 ## The game dial
 

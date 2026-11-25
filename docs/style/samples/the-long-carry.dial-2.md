@@ -1,6 +1,6 @@
 # The Long Carry at dial 2
 
-A calibration sample for the [game dial](../manual-voice.md#the-game-dial), drawn from the [Hard Country voice pack](../../voices/hard-country.md). Only the opener speaks in the old bearer's voice, set apart as a blockquote, while the rules paragraphs stay in the house voice and the played moment belongs to the player's own bearers, written in the pack's register around a table entry quoted exactly from `road-risks` in `backend/presets/hard-country.json`. The Spanish half was written from the same moment rather than from the English, and its game terms come from the pack, so those the pack still marks as proposed are as provisional as it is.
+A calibration sample for the [game dial](../manual-voice.md#the-game-dial), drawn from the [Hard Country voice pack](../../voices/hard-country.md). Only the opener speaks in the old bearer's voice, set apart as a blockquote, while the rules paragraphs stay in the house voice and the played moment belongs to the player's own bearers, written in the pack's register around a table entry quoted exactly from `road-risks` in `backend/presets/hard-country.json`. The Spanish half was written from the same moment rather than from the English, and its game terms come from the pack, so those the pack still marks as proposed stay provisional until a person confirms them in the pack.
 
 ## English
 
@@ -30,11 +30,11 @@ The next scene is an Omen, which asks what you now believe the saint did. At the
 
 ### El turno del mundo
 
-Después de cada escena del camino viene el turno del mundo. Invierno avanza un segmento, así que marca un cuadro y escribe en qué se nota hoy distinta la luz. Luego tira en Peligros del camino. El resultado tranquilo es el más frecuente y sale en una de cada tres tiradas, pero hay cuatro que eligen por ti la escena siguiente, y el que viene a continuación lleva a los porteadores a un Presagio.
+Después de cada escena del camino viene el turno del mundo. El Invierno avanza un segmento, así que marca un cuadro y escribe en qué se nota hoy distinta la luz. Luego tira en Peligros del camino. El resultado tranquilo es el más frecuente y sale en una de cada tres tiradas, pero hay cuatro que eligen por ti la escena siguiente, y el que viene a continuación lleva a los porteadores a un Presagio.
 
 ### Un momento de juego
 
-Los porteadores han dejado atrás un Campamento, Invierno ha avanzado un segmento y el jugador tira en Peligros del camino.
+Los porteadores han dejado atrás un Campamento, el Invierno ha avanzado un segmento y el jugador tira en Peligros del camino.
 
 > La tabla da: _Something follows at the edge of sight and keeps its distance. It is waiting for something._
 >

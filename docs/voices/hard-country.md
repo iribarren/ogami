@@ -72,6 +72,8 @@ Terms marked `confirmed` were chosen by the user in the calibration of 2026-11-2
 | Clean success, Goes badly | Éxito limpio, Sale mal | proposed | Check results |
 | The Long Carry | La gran Carga | confirmed | Translated by meaning: *carga* is both the saint on the bearers' shoulders and the Burden Tracker |
 
+Tracker names take the article in Spanish prose, as the names of seasons and other common nouns do, so the clock is written *el Invierno avanza un segmento* and the counter *la Carga sube en uno*. The article is dropped only where the name stands on its own, as when a sentence introduces it (*un reloj llamado Invierno*) or in a title, a sheet label or a table heading.
+
 ## Samples EN
 
 ### Dial 1, played example

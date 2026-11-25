@@ -1,6 +1,6 @@
 # The Promise
 
-Every flow starts with a promise that says what the story is about, how it should feel and how long it will last. We ask you to make it before you design a single scene, because each later piece of the flow is chosen to serve it, and you cannot choose well without knowing what it says.
+Every flow starts with a promise that sets out what the story is about, how it should feel and how long it will last. We ask you to make it before you design a single scene, because each later piece of the flow is chosen to serve it, and you cannot choose well without knowing what it says.
 
 ## The three jobs of a game master
 
@@ -14,7 +14,7 @@ When you play alone, nobody else is there to do these jobs, and you cannot do th
 | Surprise | Oracle tables and shuffled decks answer when you would only answer yourself, and a Truth you have not seen yet pulls the story forward |
 | Memory   | Trackers count, lists hold names and Facts record what you decided, and the notebook holds all of it                                   |
 
-Each later chapter builds one of these pieces, and the promise is the first of them.
+Each later chapter builds one of these pieces, and this one comes before them because every piece serves the promise.
 
 ## The premise
 
@@ -67,7 +67,7 @@ A road scene has just ended, and the player rolls Road Risks.
 >
 > I decide it is Ansel, who has been limping since the ford. Nobody says it. I write: "Ansel's foot. We shorten the day."
 
-The table never said which bearer it meant, only that a foot had gone bad and the others had to take the weight, so the name was the player's to choose, and the scene that came out of the roll belongs to both of them.
+The table did not say whose foot it was, so the name was the player's to choose, and the scene that came out of the roll belongs to both of them.
 
 ## Cold Berth
 
@@ -93,7 +93,7 @@ By taking the next decision away from the player, the table did what a good game
 
 Both promises ask a question, but not the same kind of question. The Long Carry asks whether, and at what price, while Cold Berth asks what and who. That difference decides each flow's clock, because a "whether" story needs a deadline, so its clock is the calendar, and a "what" story needs a reveal, so its clock is the ship's patience.
 
-Neither promise says how its story ends. Each flow honours its promise another way, by making the ending depend on what you do and on a number you can see.
+Neither promise says how its story ends. Instead of a fixed ending, each flow honours its promise by making the ending depend on what you do and on a number you can see.
 
 ## Try it
 

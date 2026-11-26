@@ -11440,6 +11440,50 @@
                     }
                 }
             }
+        },
+        "/api/studio/published-game-systems": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "List the published GameSystems a draft can be copied from",
+                "operationId": "listPublishedGameSystemsForCopy",
+                "responses": {
+                    "200": {
+                        "description": "The latest release of every published GameSystem, ordered by name ignoring case, then key; empty when nothing was published.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/PublishedGameSystemForCopyResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -20716,6 +20760,40 @@
                         "items": {
                             "$ref": "#/components/schemas/LibraryPackCatalogSectionResponse"
                         }
+                    }
+                },
+                "type": "object"
+            },
+            "PublishedGameSystemForCopyResponse": {
+                "required": [
+                    "key",
+                    "name",
+                    "description",
+                    "latestVersion",
+                    "publishedAt"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "example": "ironsworn"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Ironsworn"
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "latestVersion": {
+                        "description": "The version of its latest release; every version from 1 to this one can be copied.",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "publishedAt": {
+                        "description": "When the latest release was published.",
+                        "type": "string",
+                        "format": "date-time"
                     }
                 },
                 "type": "object"

@@ -1790,6 +1790,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/published-game-systems": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the published GameSystems a draft can be copied from */
+        get: operations["listPublishedGameSystemsForCopy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -6370,6 +6387,23 @@ export interface components {
             updatedAt: string;
             /** @description Every section, in order, even when it has no items. */
             sections: components["schemas"]["LibraryPackCatalogSectionResponse"][];
+        };
+        PublishedGameSystemForCopyResponse: {
+            /** @example ironsworn */
+            key: string;
+            /** @example Ironsworn */
+            name: string;
+            description: string | null;
+            /**
+             * @description The version of its latest release; every version from 1 to this one can be copied.
+             * @example 3
+             */
+            latestVersion: number;
+            /**
+             * Format: date-time
+             * @description When the latest release was published.
+             */
+            publishedAt: string;
         };
     };
     responses: never;
@@ -15312,6 +15346,44 @@ export interface operations {
             };
             /** @description No library pack has this key (a GameSystem's key is not a pack). */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPublishedGameSystemsForCopy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The latest release of every published GameSystem, ordered by name ignoring case, then key; empty when nothing was published. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishedGameSystemForCopyResponse"][];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

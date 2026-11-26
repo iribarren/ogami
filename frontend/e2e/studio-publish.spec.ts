@@ -19,7 +19,7 @@ test('a game manager publishes a GameSystem in Studio and a solo player starts a
 
   const newForm = page.getByRole('form', { name: 'New GameSystem' })
   await page.getByRole('radio', { name: 'Copy a release' }).click()
-  await newForm.getByLabel('Source GameSystem key').fill('free-journal')
+  await newForm.getByLabel('Source GameSystem').selectOption('free-journal')
   await newForm.getByLabel('Key', { exact: true }).fill(key)
   await newForm.getByLabel('Name').fill(name)
   await newForm.getByRole('button', { name: 'Create GameSystem' }).click()

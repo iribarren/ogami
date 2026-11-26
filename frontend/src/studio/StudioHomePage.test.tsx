@@ -4,8 +4,15 @@ import userEvent from '@testing-library/user-event'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
-import { draft, neverPublished, published, withChanges, withLibraryChanges } from './fixtures'
-import { replaceText, typeText } from '@/test/typeText'
+import {
+  draft,
+  neverPublished,
+  published,
+  publishedForCopy,
+  withChanges,
+  withLibraryChanges,
+} from './fixtures'
+import { typeText } from '@/test/typeText'
 
 const gameManager = signedInAs('GAME_MANAGER')
 
@@ -154,7 +161,7 @@ describe('the New GameSystem dialog', () => {
     expect(within(form).getByLabelText('Key')).toHaveAccessibleDescription(
       /^Lower case letters, digits and hyphens\./,
     )
-    expect(within(form).queryByLabelText('Source GameSystem key')).not.toBeInTheDocument()
+    expect(within(form).queryByLabelText('Source GameSystem')).not.toBeInTheDocument()
     await typeText(user, within(form).getByLabelText('Key'), 'my-draft')
     await typeText(user, within(form).getByLabelText('Name'), 'My draft')
     expect(create).toBeEnabled()
@@ -170,11 +177,57 @@ describe('the New GameSystem dialog', () => {
     })
   })
 
+  const copyHandlers = { 'GET /api/studio/published-game-systems': json(publishedForCopy) }
+
+  async function openCopy(
+    handlers: Record<string, FakeHandler>,
+    user: ReturnType<typeof userEvent.setup>,
+  ) {
+    const opened = await openDialog(handlers, user)
+    await user.click(screen.getByRole('radio', { name: 'Copy a release' }))
+    return opened
+  }
+
+  it('lists the published GameSystems to copy and the versions of the one picked', async () => {
+    const user = userEvent.setup()
+    const { fakeApi, form } = await openDialog(copyHandlers, user)
+    expect(fakeApi.requests).not.toContain('GET /api/studio/published-game-systems')
+
+    await user.click(screen.getByRole('radio', { name: 'Copy a release' }))
+
+    const source = await within(form).findByLabelText('Source GameSystem')
+    await within(form).findByRole('option', { name: 'Ironsworn (ironsworn)' })
+    expect(
+      within(source)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Choose a GameSystem', 'Ironsworn (ironsworn)', 'Night job (night-job)'])
+    expect(within(form).getByRole('button', { name: 'Create GameSystem' })).toBeDisabled()
+
+    const version = within(form).getByLabelText('Source version')
+    expect(version).toHaveValue('')
+    await user.selectOptions(source, 'ironsworn')
+    expect(
+      within(version)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Latest (v3)', 'v3', 'v2', 'v1'])
+    await user.selectOptions(version, '2')
+    await user.selectOptions(source, 'night-job')
+    expect(version).toHaveValue('')
+    expect(
+      within(version)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Latest (v1)', 'v1'])
+  })
+
   it('creates a copy of a release, sending the source and the optional description', async () => {
     const user = userEvent.setup()
     const sent: unknown[] = []
-    const { router, form } = await openDialog(
+    const { router, form } = await openCopy(
       {
+        ...copyHandlers,
         'POST /api/studio/game-systems': async (request) => {
           sent.push(await request.json())
           return Response.json(draft, { status: 201 })
@@ -183,16 +236,13 @@ describe('the New GameSystem dialog', () => {
       user,
     )
 
-    await user.click(screen.getByRole('radio', { name: 'Copy a release' }))
     const create = within(form).getByRole('button', { name: 'Create GameSystem' })
     await typeText(user, within(form).getByLabelText('Key'), 'my-draft')
     await typeText(user, within(form).getByLabelText('Name'), 'My draft')
     expect(create).toBeDisabled()
-    await typeText(user, within(form).getByLabelText('Source GameSystem key'), 'ironsworn')
-    await user.type(within(form).getByLabelText(/Source version/), 'x')
-    expect(create).toBeDisabled()
-    expect(within(form).getByText('The version is a whole number from 1.')).toBeInTheDocument()
-    await replaceText(user, within(form).getByLabelText(/Source version/), '2')
+    await within(form).findByRole('option', { name: 'Ironsworn (ironsworn)' })
+    await user.selectOptions(within(form).getByLabelText('Source GameSystem'), 'ironsworn')
+    await user.selectOptions(within(form).getByLabelText('Source version'), '2')
     await typeText(user, within(form).getByLabelText('Description (optional)'), 'My own take.')
     await user.click(create)
 
@@ -209,11 +259,12 @@ describe('the New GameSystem dialog', () => {
     ])
   })
 
-  it('copies the latest release when the version is left empty', async () => {
+  it('copies the latest release when the version is left on Latest', async () => {
     const user = userEvent.setup()
     const sent: unknown[] = []
-    const { form } = await openDialog(
+    const { form } = await openCopy(
       {
+        ...copyHandlers,
         'POST /api/studio/game-systems': async (request) => {
           sent.push(await request.json())
           return Response.json(draft, { status: 201 })
@@ -222,15 +273,74 @@ describe('the New GameSystem dialog', () => {
       user,
     )
 
-    await user.click(screen.getByRole('radio', { name: 'Copy a release' }))
     await typeText(user, within(form).getByLabelText('Key'), 'my-draft')
     await typeText(user, within(form).getByLabelText('Name'), 'My draft')
-    await typeText(user, within(form).getByLabelText('Source GameSystem key'), 'ironsworn')
+    await within(form).findByRole('option', { name: 'Ironsworn (ironsworn)' })
+    await user.selectOptions(within(form).getByLabelText('Source GameSystem'), 'ironsworn')
     await user.click(within(form).getByRole('button', { name: 'Create GameSystem' }))
 
     await waitFor(() => {
       expect(sent).toEqual([{ key: 'my-draft', name: 'My draft', source: { key: 'ironsworn' } }])
     })
+  })
+
+  it('fills the empty Name with the source name and never the key, nor a typed name', async () => {
+    const user = userEvent.setup()
+    const { form } = await openCopy(copyHandlers, user)
+    await within(form).findByRole('option', { name: 'Ironsworn (ironsworn)' })
+    const source = within(form).getByLabelText('Source GameSystem')
+
+    await user.selectOptions(source, 'ironsworn')
+    expect(within(form).getByLabelText('Name')).toHaveValue('Ironsworn (copy)')
+    expect(within(form).getByLabelText('Key', { exact: true })).toHaveValue('')
+
+    // The prefilled name now counts as typed: a second pick leaves it alone.
+    await user.selectOptions(source, 'night-job')
+    expect(within(form).getByLabelText('Name')).toHaveValue('Ironsworn (copy)')
+
+    await user.clear(within(form).getByLabelText('Name'))
+    await user.selectOptions(source, 'night-job')
+    expect(within(form).getByLabelText('Name')).toHaveValue('Night job (copy)')
+  })
+
+  it('shows the list loading, and keeps Create disabled', async () => {
+    const user = userEvent.setup()
+    const { form } = await openCopy(
+      { 'GET /api/studio/published-game-systems': () => new Promise<Response>(() => undefined) },
+      user,
+    )
+
+    const source = within(form).getByLabelText('Source GameSystem')
+    expect(source).toBeDisabled()
+    expect(within(source).getByRole('option', { name: 'Loading…' })).toBeInTheDocument()
+    expect(within(form).getByRole('button', { name: 'Create GameSystem' })).toBeDisabled()
+  })
+
+  it('says why the list failed, and keeps Create disabled', async () => {
+    const user = userEvent.setup()
+    const { form } = await openCopy(
+      { 'GET /api/studio/published-game-systems': () => new Response('Oops', { status: 500 }) },
+      user,
+    )
+
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'Loading the published GameSystems failed with HTTP 500.',
+    )
+    await typeText(user, within(form).getByLabelText('Key'), 'my-draft')
+    await typeText(user, within(form).getByLabelText('Name'), 'My draft')
+    expect(within(form).getByRole('button', { name: 'Create GameSystem' })).toBeDisabled()
+  })
+
+  it('says so when no GameSystem has a published release, and keeps Create disabled', async () => {
+    const user = userEvent.setup()
+    const { form } = await openCopy({ 'GET /api/studio/published-game-systems': json([]) }, user)
+
+    expect(
+      await within(form).findByText('No GameSystem has a published release yet.'),
+    ).toBeInTheDocument()
+    await typeText(user, within(form).getByLabelText('Key'), 'my-draft')
+    await typeText(user, within(form).getByLabelText('Name'), 'My draft')
+    expect(within(form).getByRole('button', { name: 'Create GameSystem' })).toBeDisabled()
   })
 
   it.each([

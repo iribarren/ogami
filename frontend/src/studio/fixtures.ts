@@ -1,4 +1,4 @@
-import type { GameSystem, GameSystemSummary } from './useGameSystems'
+import type { GameSystem, GameSystemSummary, PublishedGameSystemForCopy } from './useGameSystems'
 
 // Shared by the Studio tests and stories.
 
@@ -923,3 +923,21 @@ export const checksV1 = {
   conditions: [],
   usages: {},
 }
+
+/** What `GET /api/studio/published-game-systems` lists: a preset with three releases and a single-release GameSystem. */
+export const publishedForCopy: PublishedGameSystemForCopy[] = [
+  {
+    key: 'ironsworn',
+    name: 'Ironsworn',
+    description: 'A solo-friendly fantasy game.',
+    latestVersion: 3,
+    publishedAt: '2026-10-14T09:00:00+00:00',
+  },
+  {
+    key: 'night-job',
+    name: 'Night job',
+    description: null,
+    latestVersion: 1,
+    publishedAt: '2026-10-15T09:00:00+00:00',
+  },
+]

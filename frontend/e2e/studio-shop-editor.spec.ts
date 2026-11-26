@@ -28,7 +28,7 @@ test('a game manager adds a shop step that offers a gear entry and a category wi
   await page.getByRole('button', { name: 'New GameSystem' }).click()
   const newForm = page.getByRole('form', { name: 'New GameSystem' })
   await page.getByRole('radio', { name: 'Copy a release' }).click()
-  await newForm.getByLabel('Source GameSystem key').fill('e2e-corner-shop')
+  await newForm.getByLabel('Source GameSystem').selectOption('e2e-corner-shop')
   await newForm.getByLabel('Key', { exact: true }).fill(key)
   await newForm.getByLabel('Name').fill(`E2E shop ${key}`)
   await newForm.getByRole('button', { name: 'Create GameSystem' }).click()

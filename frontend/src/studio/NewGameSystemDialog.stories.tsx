@@ -4,7 +4,7 @@ import { expect, userEvent, within } from 'storybook/test'
 import type { FakeHandler } from '@/test/fakeApi'
 import { StoryProviders } from '@/test/StoryProviders'
 
-import { draft } from './fixtures'
+import { draft, publishedForCopy } from './fixtures'
 import { NewGameSystemDialog } from './NewGameSystemDialog'
 
 const json =
@@ -15,7 +15,12 @@ const json =
 const meta = {
   title: 'Studio/NewGameSystemDialog',
   component: NewGameSystemDialog,
-  parameters: { api: { 'POST /api/studio/game-systems': json(draft, 201) } },
+  parameters: {
+    api: {
+      'GET /api/studio/published-game-systems': json(publishedForCopy),
+      'POST /api/studio/game-systems': json(draft, 201),
+    },
+  },
   decorators: [
     (Story, { parameters }) => (
       <StoryProviders handlers={parameters.api as Record<string, FakeHandler>}>
@@ -46,7 +51,22 @@ export const CopyOfARelease: Story = {
   play: async ({ canvasElement }) => {
     const form = await openDialog(canvasElement)
     await userEvent.click(within(document.body).getByRole('radio', { name: 'Copy a release' }))
-    await expect(form.getByLabelText('Source GameSystem key')).toBeInTheDocument()
+    const source = form.getByLabelText('Source GameSystem')
+    await expect(await form.findByRole('option', { name: 'Ironsworn (ironsworn)' })).toBeVisible()
+    await userEvent.selectOptions(source, 'ironsworn')
+    await expect(form.getByLabelText('Source version')).toHaveValue('')
+    await expect(form.getByLabelText('Name')).toHaveValue('Ironsworn (copy)')
+  },
+}
+
+export const NothingPublished: Story = {
+  parameters: { api: { 'GET /api/studio/published-game-systems': json([]) } },
+  play: async ({ canvasElement }) => {
+    const form = await openDialog(canvasElement)
+    await userEvent.click(within(document.body).getByRole('radio', { name: 'Copy a release' }))
+    await expect(
+      await form.findByText('No GameSystem has a published release yet.'),
+    ).toBeInTheDocument()
   },
 }
 

@@ -17,7 +17,7 @@ test('a game manager edits an oracle table of a copied preset, test-rolls it and
   await page.getByRole('button', { name: 'New GameSystem' }).click()
   const newForm = page.getByRole('form', { name: 'New GameSystem' })
   await page.getByRole('radio', { name: 'Copy a release' }).click()
-  await newForm.getByLabel('Source GameSystem key').fill('free-journal')
+  await newForm.getByLabel('Source GameSystem').selectOption('free-journal')
   await newForm.getByLabel('Key', { exact: true }).fill(key)
   await newForm.getByLabel('Name').fill(`E2E oracles ${key}`)
   await newForm.getByRole('button', { name: 'Create GameSystem' }).click()

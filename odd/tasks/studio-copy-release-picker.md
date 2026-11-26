@@ -1,7 +1,7 @@
 # Feature: studio-copy-release-picker
 
 - **Locator:** `odd/tasks/studio-copy-release-picker.md` · Engram topic `odd/studio-copy-release-picker/tasks`
-- **Issue:** [#414](https://github.com/iribarren/ogami/issues/414) · **Branch:** `feat/studio-copy-release-picker-1-picker` · **Status:** in progress
+- **Issue:** [#414](https://github.com/iribarren/ogami/issues/414) · **Branch:** `feat/studio-copy-release-picker-1-picker` · **Status:** slice 1 implemented, awaiting review
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 
@@ -49,7 +49,7 @@ Out of scope: a "Copy" action elsewhere in Studio (a preset catalog page), key s
 | ID | Slice | Task | Route | Done | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Studio endpoint listing published GameSystems for copy (D1–D4), API tests, `make api` | delegated writer (Sonnet): 2+ non-trivial files | [x] | |
-| T2 | 1 | Copy a release dialog picks from the list (D5–D7); Vitest, story, e2e specs and the Studio tour chapter updated | delegated writer (Sonnet) | [ ] | |
+| T2 | 1 | Copy a release dialog picks from the list (D5–D7); Vitest, story, e2e specs and the Studio tour chapter updated | delegated writer (Sonnet) | [x] | |
 
 ## Acceptance criteria
 
@@ -68,6 +68,7 @@ Out of scope: a "Copy" action elsewhere in Studio (a preset catalog page), key s
 
 - 2026-11-26: Feature doc created; one slice, two tasks.
 - 2026-11-26: T1 done: `GET /api/studio/published-game-systems` with API tests (200 order/fields, never-published and other managers', unreadable left out, empty, 401, 403); `make api` regenerated.
+- 2026-11-26: T2 done: Copy a release picks the source and version from native selects fed by the new endpoint; Vitest, story, six e2e specs and the Studio tour updated.
 
 ## Reviews
 
@@ -76,4 +77,4 @@ Out of scope: a "Copy" action elsewhere in Studio (a preset catalog page), key s
 
 ## Next step
 
-Slice 1: T1 then T2 on `feat/studio-copy-release-picker-1-picker`.
+Review slice 1, then PR.

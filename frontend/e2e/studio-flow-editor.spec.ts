@@ -29,7 +29,7 @@ test('a game manager edits a Scene Type step and a flow phase of a copied preset
   await page.getByRole('button', { name: 'New GameSystem' }).click()
   const newForm = page.getByRole('form', { name: 'New GameSystem' })
   await page.getByRole('radio', { name: 'Copy a release' }).click()
-  await newForm.getByLabel('Source GameSystem key').fill('night-job')
+  await newForm.getByLabel('Source GameSystem').selectOption('night-job')
   await newForm.getByLabel('Key', { exact: true }).fill(key)
   await newForm.getByLabel('Name').fill(`E2E flows ${key}`)
   await newForm.getByRole('button', { name: 'Create GameSystem' }).click()

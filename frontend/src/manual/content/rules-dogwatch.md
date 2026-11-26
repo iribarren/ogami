@@ -1,11 +1,11 @@
 # Dogwatch Rules
 
-A rules-light science fiction game about a small crew woken on a ship that should be asleep. One sheet, for a crew member. Cold Berth is played on it, and the cards are printed separately.
+Dogwatch is a rules-light science fiction game about a small crew woken on a ship that should be asleep. Its one sheet is for a crew member, and Cold Berth is played on it. The cards are printed separately.
 
 ## Making a crew member
 
-- **Name and role.** Who you are aboard: a hauler, an engineer, a medic.
-- **Stations.** Four Stations, and four dice to share between them: a d10, a d8, a d6 and a d4. Each die goes to one Station, and each is used once.
+- **Name and role.** Choose a name, and a role that says who you are aboard, such as a hauler, an engineer or a medic.
+- **Stations.** There are four Stations and four dice to share between them, a d10, a d8, a d6 and a d4. Each die goes to one Station, and each is used once.
 
 | Station | Used to                |
 | ------- | ---------------------- |
@@ -14,13 +14,13 @@ A rules-light science fiction game about a small crew woken on a ship that shoul
 | Eyes    | Notice, read, search   |
 | Voice   | Persuade, lie, calm    |
 
-- **Nerve.** Six. Nerve is calm under strain, and it starts full.
-- **Chits.** Twenty.
-- **Kit.** Six slots.
+- **Nerve.** You have six Nerve, which is your calm under strain, and it starts full.
+- **Chits.** You start with twenty chits.
+- **Kit.** You have six slots to carry kit in.
 
 ## Checks
 
-Name the Station that fits what you try. Set a **Difficulty** from 2 to 8; it is 3 unless the fiction says otherwise. Roll the die of that Station.
+Name the Station that fits what you try, and set the **Difficulty**. It is 3 unless the fiction says otherwise, and it can run from 2 to 8. Then roll the die of that Station and compare it with the Difficulty.
 
 | Roll                 | Result      |
 | -------------------- | ----------- |
@@ -28,15 +28,15 @@ Name the Station that fits what you try. Set a **Difficulty** from 2 to 8; it is
 | Under the Difficulty | Falls short |
 | At or over it        | Done        |
 
-If someone helps, roll the die twice and keep the highest. A 1 on the kept die still goes wrong.
+If someone helps, roll the die twice and keep the highest, although a 1 on the kept die still goes wrong.
 
 ## Harm
 
-Harm takes Nerve first. With no Nerve left, each harm is an **Injury**: mark a box. Three Injuries put you down.
+Harm takes Nerve first. When you have no Nerve left, each harm is an **Injury**, and you mark a box for it. Three Injuries put you down.
 
 ## Kit
 
-You carry six slots. Most things take one. Ration bars take none. A bulky item takes two.
+You carry six slots. Most things take one slot each, a bulky piece of kit such as the cutting torch takes two, and ration bars take none.
 
 | Tools         | Cost | Slots |
 | ------------- | ---- | ----- |

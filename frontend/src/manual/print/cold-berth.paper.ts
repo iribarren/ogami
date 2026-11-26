@@ -84,7 +84,7 @@ export const coldBerthPaper: PaperFlow = {
         lines: [
           'Session Zero: play The crew, The ship and The Truths, in that order. Write each compartment you name on a blank compartment card.',
           'Wake: The empty berth, then The custodian.',
-          'The Ship: lay the four job cards face up and pick one (Investigate, Repair, Confront or Hide). Choose a compartment card for it, or name a new one, and play it. Then do the World turn.',
+          'The Ship: lay the four job cards face up and pick one (Investigate, Repair, Confront or Hide). Choose a compartment card for it (if none is left, name a new one) and play it. Then do the World turn.',
           'The Reveal, then the Epilogue: one scene each.',
         ],
       },

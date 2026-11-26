@@ -16,7 +16,7 @@ Give every Tracker a **hint**, one line saying what it measures, because a bare 
 
 ## The World turn
 
-Between scenes the world gets a turn of its own. The World turn is a short step with two or three parts, and you play it every round without exception.
+Between scenes the world gets a turn of its own. The World turn is short, with two or three parts, and you play it every round without exception.
 
 1. **Tick the clock.** Add one to the main clock. This is the part that makes waiting cost.
 2. **Roll the events table.** It is one table, rolled every time, and it may add to a clock, send you into a scene or do nothing.

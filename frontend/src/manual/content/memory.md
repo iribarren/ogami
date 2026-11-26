@@ -16,7 +16,7 @@ If you have watched a detective series, you have seen the wall in the incident r
 
 **Places.** A Place is somewhere the story has been or may go, such as a shrine, a hold or a compartment of a ship, and a Place can be open or closed too.
 
-**Tags.** A tag is a word you attach to an NPC, a Thread or a Place so that the flow can find it later. "Crew" on a person means the ship may take them, and "Compartment" on a Place means the crew may go there. Tags are what turn a list into something the flow can draw from, since it can then ask for a random crew member, or offer you the compartments to choose from.
+**Tags.** A tag is a word you attach to an NPC, a character, a Thread or a Place so that the flow can find it later. "Crew" on a person means the ship may take them, and "Compartment" on a Place means the crew may go there. Tags are what turn a list into something the flow can draw from, since it can then ask for a random crew member, or offer you the compartments to choose from.
 
 An NPC, a Thread or a Place can also carry a **weight** from one to three. A weight of three means it matters more, and so it comes up more often when something is drawn from the list.
 

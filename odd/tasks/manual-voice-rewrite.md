@@ -1,7 +1,7 @@
 # Feature: manual-voice-rewrite
 
 - **Locator:** `odd/tasks/manual-voice-rewrite.md` · Engram topic `odd/manual-voice-rewrite/tasks`
-- **Issue:** [#402](https://github.com/iribarren/ogami/issues/402) · **Branch:** `docs/manual-voice-rewrite-4-studio` · **Status:** in progress (slice 4)
+- **Issue:** [#402](https://github.com/iribarren/ogami/issues/402) · **Branch:** `docs/manual-voice-rewrite-5-appendices` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Origin:** the follow-ups of [`manual-voice`](manual-voice.md) (#399, PR #400) and [`manual-voice-followups`](manual-voice-followups.md) (#401, PR #403)
@@ -26,6 +26,7 @@ The Promise was rewritten as the pilot and calibrated by the user, but the other
 | Slice 1 open points | Keep the playing-card substitute in choosing-the-next-scene (On paper), since index cards are optional. The cut-off third how-to-use note is dropped | User, 2026-11-26 |
 | Old-text fixes, slice 2 | Every mention of a Phase name is bolded exactly as the preset spells it, mid-sentence too (**The Road**, **The Shrine Gate**), in every chapter including slice 1's, outside `:::in-ogami` blocks. Capitalization fixes ("World turn") are allowed inside blocks, nothing else. Old text that a preset contradicts is corrected to match it. The glossary gains the `place` Fact slot type and Place tags, which the code and `dogwatch.json` already use | User, 2026-11-26 |
 | Old-text fixes, slice 4 | Old text that the Studio code contradicts is corrected to match it, like a preset: the Rules and Story rail list matches `SectionRail.tsx` (… Library, Validation, Releases and Sections). Sheets and Groups' Try it hint reads "a Number that goes down and back up to a maximum" (the old "only climbs" contradicted Wounds). Prose keeps "derived value" (the glossary's `DerivedValue` is the code term). Gear and Currency's 0-slot example is Dogwatch's ration bars, not a bearer's food (Hard Country's Trail rations take a slot). Validation matches the code: Studio refuses to rename or delete what a draft uses and every save keeps the item rules, so the list shows flow coherence errors (one per Flow at most), and Try it unticks a Tracker a reached Scene Type uses | User, 2026-11-26 |
+| Late findings, slice 5 | Fix the printed Cold Berth rules card on this branch; reword "The check" to "The test" in the glossary's Validation row inside its edition block; add characters to memory's Tags list; no Station glossary entry; the presets' "item" inventory hints become a follow-up issue | User, 2026-11-26 |
 | Per-task cycle | `doc-writer` drafts (no commit) → `doc-editor` reviews → `doc-writer` revises on a `revise` verdict → the parent runs the manual Vitest suite and commits | Parent |
 
 ## Constraints
@@ -63,10 +64,14 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 | T10 | 3 | Likelihood Oracles and Oracle Tables at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `0c5285dc` |
 | T11 | 3 | Inspiration and Random Events and Trackers and Clocks at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `176291d2` |
 | T12 | 3 | Cards and Dice and Journaling and Lists at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `1854e75d` |
-| T13 | 4 | Rules and Story, Sheets and Groups and Derived Values and Formulas at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T14 | 4 | Checks and Outcome Bands, Gear and Currency and Licensing and Credits at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T15 | 4 | A Tour of Studio, Library Packs and Validation at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T16 | 4 | Releases, Restore and Themes and Publishing and Campaigns at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
+| T13 | 4 | Rules and Story, Sheets and Groups and Derived Values and Formulas at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `23cdc979` |
+| T14 | 4 | Checks and Outcome Bands, Gear and Currency and Licensing and Credits at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `ea05dfaf` |
+| T15 | 4 | A Tour of Studio, Library Packs and Validation at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `6ba65602` |
+| T16 | 4 | Releases, Restore and Themes and Publishing and Campaigns at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `3ea3a072`, `bf9db6df` |
+| T17 | 5 | The Long Carry, Complete and Cold Berth, Complete at dial 1, with the Hard Country and Dogwatch voice packs | Delegated (`doc-writer`, `doc-editor`) | done | `ad7b3269` |
+| T18 | 5 | Hard Country Rules and Dogwatch Rules at dial 1, with their voice packs; rules statements neutral | Delegated (`doc-writer`, `doc-editor`) | done | `c9e93ed5` |
+| T19 | 5 | Blank Templates, Glossary, From Paper to Ogami and Credits and Inspirations at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `4d9e4cd1` |
+| T20 | 5 | Late findings of slice 5: the printed Cold Berth rules card, the glossary's Validation row, memory's Tags list | Inline (three one-line edits) | done | `d30831cb` |
 
 ## Applicable checks
 
@@ -81,6 +86,8 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 | 1 | `review-94fecfc8297b1652` (T1–T4), `review-913cf0cea1d31847` (T5), `review-8c92f1a591338de8` (whole branch) | `a343f47c`, `fb9467dd`, `63fe23fe`, `bcf83192`, `41f17be9` | Low risk, closed approved, acknowledged | [#405](https://github.com/iribarren/ogami/pull/405) | None blocking |
 | 2 | `review-f3091fc08e2859e8` | `52ab5b7d`, `3c04fb57`, `0ead3d4f`, `a064a068` | Low risk, closed approved, acknowledged | [#406](https://github.com/iribarren/ogami/pull/406) | None blocking. Preset mismatch found while writing: follow-up [#407](https://github.com/iribarren/ogami/issues/407) |
 | 3 | `review-3fc78e6fadfef7e6` | `0c5285dc`, `176291d2`, `1854e75d` | Passive (prose only), closed approved, acknowledged | [#408](https://github.com/iribarren/ogami/pull/408) | None |
+| 4 | None (assessed medium, prose; the user declined this candidate) | `23cdc979`, `ea05dfaf`, `6ba65602`, `3ea3a072`, `bf9db6df` | Not reviewed | [#409](https://github.com/iribarren/ogami/pull/409) | None |
+| 5 | None (assessed medium, prose; the user declined this candidate) | `ad7b3269`, `c9e93ed5`, `4d9e4cd1`, `d30831cb` | Not reviewed | [#410](https://github.com/iribarren/ogami/pull/410) | Late findings fixed in T20; the presets' "item" inventory hints are follow-up [#411](https://github.com/iribarren/ogami/issues/411) |
 
 ## Progress
 
@@ -106,6 +113,13 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 - T16 done: Releases, Restore and Themes and Publishing and Campaigns rewritten at dial 0. Old text corrected to the code: "Changes since version N" (`ReleaseChanges.tsx`), no "The outline" label, type changes are converted, trimmed or reset (`FieldChangeKind.php`), a Fact is freed when its slot is gone or changes type (`ReleaseUpgradePlanner.php`), release notes are only in Studio (`ReleasesTab.tsx`), so no co-authors and no advice to write them for players, and a campaign transfer also starts on the latest release (ADR 0046). Check: manual Vitest 277 passed, Prettier clean.
 - T16 editor read: revise for both, applied: Theme capitalised, the print-run comparison referred back to instead of repeated, "group" no longer used for readers, campaign transfer explained first and placed after the upgrade, release notes as the author's own record. Check: manual Vitest 277 passed, Prettier clean.
 
+- Slice 4 delivered in PR #409 (`make verify` 235 passed), merged by the user; the calibration read brought no notes.
+- T17 done: The Long Carry, Complete and Cold Berth, Complete rewritten at dial 1; no game voice added, since both packs give dial-1 voice only to a played example and these chapters have none. doc-editor revise for both, applied: Cold Berth's steps 2 and 3 now say the same thing (a 5 or 6 ends **The Ship**), so a reader does not play an extra World turn, and the old colons that became ", and" are split or given their real connective. Old text corrected to the presets and the engine: the closing check comes before the World turn, which it skips when it ends the Phase (`FlowRun::afterScene`); a compartment is named only when none is left ("If none is left, name one"); Winter also rises on a failed Ford check and Burden's row no longer claims it; Threat's row lists Falls short in Investigate, Hide and the Reveal, the custodian push and the Ship trouble and Treason results; Treason is rolled when a person is part of the scene, and some results change nothing. Late finding: the printed Cold Berth rules card (`frontend/src/manual/print/cold-berth.paper.ts:87`) still said "or name a new one", fixed in T20. Check: manual Vitest 277 passed, Prettier clean.
+- T18 done: Hard Country Rules and Dogwatch Rules rewritten at dial 1, again with no game voice (no played example); every rules statement neutral. doc-editor revise for Hard Country (an added "you are hoping for a low number", now the preset hint's "at or under the trait succeeds, a 1 is clean and a 20 goes badly"), ship for Dogwatch; all voice notes applied (one person per paragraph, a causal "so" removed, the Difficulty's default attached to it). "A bulky item" became "a bulky piece of kit", since Gear is never "item" in the manual's prose. Late finding: both presets' inventory hints say "item" (`hard-country.json` `sheet.fields[load].hint`, `dogwatch.json` `sheet.fields[kit].hint`); the manual does not quote them. Check: manual Vitest 277 passed, Prettier clean.
+- T19 done: Blank Templates, Glossary, From Paper to Ogami and Credits and Inspirations rewritten at dial 0; doc-editor ship for three, revise for Glossary (the Hook entry tied hooks to a Phase's own boundaries; renaming clauses in the lookup rows), applied. Old text corrected to the domain glossary and the code: Tags also go on characters; the Step and Effect lists read as complete and now say "most steps" and "such as" (ten kinds each, `stepDraft.ts`); the World turn is a Hook, not a step, here and in `pressure.md:19`; Scene Type and GameSystem definitions name their oracles; band labels as `dogwatch.json` spells them; the panel is **Guided play** (`GuidedPanel.tsx:26`; "Guided view" is only an `aria-label`). Kept: "a card of its own" for a drawn card, the Trait definition (the book uses trait only for Hard Country). Open for the user: "Validation | The check…" inside the glossary's edition block uses "check" next to the term Check; `memory.md:19` lists Tags without characters; Dogwatch's Stations have no glossary entry. Check: manual Vitest 277 passed, Prettier clean.
+- T20 done, with the user's rulings on the late findings: the printed Cold Berth rules card now says "Choose a compartment card for it (if none is left, name a new one)"; the glossary's Validation row says "The test" instead of "The check" (a word change inside its edition block, allowed by the user); `memory.md:19` puts tags on characters too. Not changed: no Station glossary entry (user); the presets' "item" hints are follow-up [#411](https://github.com/iribarren/ogami/issues/411) (`preset-gear-item-hints`), roadmap B32. Check: manual Vitest 277 passed, Prettier clean; `make verify` before T20 235 passed.
+- Slice 5 delivered in PR #410 (`make verify` 235 passed); native review declined by the user. Feature done: 39 chapters rewritten in five slices (PRs #405, #406, #408, #409, #410).
+
 ## Next step
 
-Slice 4: `make verify`, native review, PR and the user's calibration read before slice 5.
+None. Every finding is fixed or has an issue: #407 (Burden "Light"), #411 (preset "item" hints), and the Spanish edition is #404.

@@ -2,31 +2,31 @@
 
 _What is aboard, who let it on, and why were we woken?_
 
-Cold Berth is played on Dogwatch, in two to three sessions. This page is the whole flow on one spread. The cards are printed separately.
+Cold Berth is played on Dogwatch, over two to three sessions. This page sets out the whole flow on one spread. Its cards are printed separately.
 
 ## The premise
 
-You play a small crew woken from suspension on a ship that should still be asleep. You are the whole table: you describe, you roll, you decide.
+You play a small crew woken from suspension on a ship that should still be asleep. Since you play alone, you are the one who describes what happens, rolls the dice and decides.
 
-Two numbers keep score. **Threat** is a clock of eight boxes: the nearer it is to full, the nearer the ship is to showing what it is. **Clues** count what you have pieced together. Together they choose the ending.
+The ending is chosen by the two numbers that keep score. **Threat** is a clock of eight boxes, and the nearer it comes to full, the nearer the ship is to showing what it is. **Clues** count what you have pieced together.
 
 ## The Phases
 
-| Phase        | Run    | Selection  | What happens                                               |
-| ------------ | ------ | ---------- | ---------------------------------------------------------- |
-| Session Zero | once   | `sequence` | The crew, the ship, the Truths                             |
-| Wake         | once   | `sequence` | The empty berth, the custodian's refusal                   |
-| The Ship     | `loop` | `player`   | Pick a job and a compartment, play it, then the World turn |
-| Reveal       | once   | `sequence` | Open the Truths                                            |
-| Epilogue     | once   | `sequence` | Who gets out, by Clues and Threat                          |
+| Phase            | Run    | Selection  | What happens                                               |
+| ---------------- | ------ | ---------- | ---------------------------------------------------------- |
+| **Session Zero** | once   | `sequence` | The crew, the ship, the Truths                             |
+| **Wake**         | once   | `sequence` | The empty berth, the custodian's refusal                   |
+| **The Ship**     | `loop` | `player`   | Pick a job and a compartment, play it, then the World turn |
+| **Reveal**       | once   | `sequence` | Open the Truths                                            |
+| **Epilogue**     | once   | `sequence` | Who gets out, by Clues and Threat                          |
 
 ### The Ship
 
-Lay the four job cards face up. Each round:
+Lay the four job cards face up. Then play each round in this order.
 
-1. Pick one job: Investigate, Repair, Confront or Hide. Choose a compartment card for it, or name a new one, and play it.
-2. Do the World turn. Threat climbs by one: mark a box and write what has changed on the ship. Roll Ship trouble. The ship then takes a crew member from the manifest at random: cross them off, write where they were last seen and start a Thread to find them.
-3. Read the closing check. Threat 4 or less: play on. 5 to 7: roll a d6, and a 5 or 6 brings the Reveal. 8 ends it.
+1. Pick one job (Investigate, Repair, Confront or Hide) and choose a compartment card for it. If none is left, name a new compartment. Then play the job.
+2. Read the closing check. If Threat is 4 or less, play on. From 5 to 7, roll a d6, and a 5 or 6 ends **The Ship** and brings the **Reveal**. At 8, **The Ship** ends.
+3. Unless the closing check ended **The Ship**, do the World turn. Threat climbs by one, so mark a box and write what has changed on the ship. Then roll Ship trouble. After that the ship takes a crew member from the manifest at random, and you cross them off, write where they were last seen and start a Thread to find them.
 
 ## The Scene Types
 
@@ -44,14 +44,14 @@ Lay the four job cards face up. Each round:
 | The Reveal      | Open the three Truths, and see how near you were                      |
 | Epilogue        | Read who gets out                                                     |
 
-Each job opens by picking a compartment, a Place made in Session Zero.
+Each job opens by picking a compartment, which is one of the Places you made in **Session Zero**, or a new one you name when none is left.
 
 ## Trackers
 
-| Tracker | Kind    | Range  | Moves                                                                              |
-| ------- | ------- | ------ | ---------------------------------------------------------------------------------- |
-| Threat  | clock   | 8      | Up one every World turn and by checks that go wrong; a Repair that works lowers it |
-| Clues   | counter | 0 to 8 | Up by an Investigation or a Confrontation that works, and by some Treason results  |
+| Tracker | Kind    | Range  | Moves                                                                                                                                                                                                                       |
+| ------- | ------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Threat  | clock   | 8      | Up one every World turn, by any check that goes wrong, by a check that falls short in Investigate, Hide or the Reveal, by pushing the custodian and by some Ship trouble and Treason results; a Repair that works lowers it |
+| Clues   | counter | 0 to 8 | Up by an Investigation or a Confrontation that works, and by some Treason results                                                                                                                                           |
 
 ## Fact slots
 
@@ -61,13 +61,13 @@ Each job opens by picking a compartment, a Place made in Session Zero.
 
 ## The Truths
 
-The Truths are sealed. In Session Zero, roll each on its table, write the result on a slip and seal the slips without reading them. At the Reveal, open them and write the one story that makes all three true.
+The Truths are sealed. In **Session Zero**, roll each one on its table, write the result on a slip and seal the slips without reading them. At the **Reveal**, open them and write the one story that makes all three true.
 
-Treason is a fourth table, rolled in Investigate scenes. Its results name a suspect and add a Clue, or raise Threat.
+Treason is a fourth table, which you may roll in an Investigate scene when a person is part of it. Some of its results name a suspect, add a Clue or raise Threat, and some change nothing.
 
 ## The endings
 
-Threat 5 or less is contained, more is boiling over. Clues 2 or less is little, more is plenty.
+Threat at 5 or less counts as contained and anything higher as boiling over, while Clues at 2 or less count as little and anything higher as plenty.
 
 | Threat       | Clues  | Ending                    |
 | ------------ | ------ | ------------------------- |

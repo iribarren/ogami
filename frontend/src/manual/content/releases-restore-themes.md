@@ -27,7 +27,7 @@ Moving an item does not count as changing it, and a change to the name or the de
 
 ## Restore
 
-**Restore into the draft** on a release replaces the content of the draft with that version, while the key and the owner stay as they are. A confirmation tells you what this costs before you go ahead, because edits to the Overview that you have not saved are lost, and so is any draft content that was never published. Restore changes only the draft, which means that no release is created or removed and no campaign is touched.
+**Restore into the draft** on a release replaces the content of the draft with that version, while the key and the owner stay as they are. A confirmation tells you what this costs before you go ahead. Edits to the Overview that you have not saved are lost, and so is any draft content that was never published. Restore changes only the draft, which means that no release is created or removed and no campaign is touched.
 
 You can use it to go back after a bad run of edits, or to start version 5 from version 3. If the draft holds work you want to keep, publish it first.
 
@@ -43,9 +43,9 @@ When you open a printed game, its cover and its paper set a mood before you read
 | noir      | dark  |
 | eldritch  | dark  |
 
-The choice is made for the player, since inside a themed campaign the theme's mode wins over the player's Light, Dark or System choice. "None" uses the default app theme. New campaigns on the GameSystem start with the theme of their release, which is parchment for Hard Country and starship for Dogwatch.
+The choice is made for the player, since inside a themed campaign the Theme's mode wins over the player's Light, Dark or System choice. "None" uses the default app theme. New campaigns on the GameSystem start with the Theme of their release, which is parchment for Hard Country and starship for Dogwatch.
 
-The list is fixed, and the palettes live in the app rather than in the release. A theme can only be set on a schema version 2 draft, and it is not offered to library packs.
+The list is fixed, and the palettes live in the app rather than in the release. A Theme can only be set on a schema version 2 draft, and it is not offered to library packs.
 
 ## Credits
 

@@ -4,13 +4,13 @@ Publishing never changes a campaign that is already running. Once you have publi
 
 ## A campaign is pinned
 
-Think of a group that bought the first print run of a rulebook. When a revised print run comes out, the copy on their shelf does not change, and they go on playing from it until they choose to buy the new one. A campaign works the same way. When a player creates a campaign they choose a GameSystem, and the campaign **pins its latest release** at that moment. For the whole life of the campaign Play reads that release and only that release, which means its oracles, Flow, Sheet and Checks, and because releases are immutable, what the campaign reads cannot move under it.
+The print run from the chapter on releases helps here as well. Someone who owns a copy from the first print run of a rulebook goes on playing from it when a revised print run comes out, until they choose to buy the new one, and a campaign works the same way. When a player creates a campaign they choose a GameSystem, and the campaign **pins its latest release** at that moment. For the whole life of the campaign Play reads that release and only that release, with its oracles, Flow, Sheet and Checks. Because releases are immutable, what the campaign reads cannot move under it.
 
-So editing the draft changes nothing for anyone, since players never see the draft. Publishing a new release changes nothing for existing campaigns either, because they stay on the version they pinned, and only a campaign created after the publish starts on the new version. That is why a release is safe to publish, since you cannot break a game in progress by publishing one.
+So editing the draft changes nothing for anyone, since players never see the draft. Publishing a new release changes nothing for existing campaigns either, because they stay on the version they pinned, and only a campaign created after the publish starts on the new version.
 
 ## How a campaign moves to a new release
 
-The player decides, one campaign at a time. When the GameSystem has a newer release than the one the campaign pins, the campaign page offers **Upgrade to vN**, and Studio never moves a campaign on its own. A campaign transfer also reaches the new release, since it starts a new campaign from an existing one on the same GameSystem, pinned to the latest release, and it is refused until the existing campaign plays that release, so an older campaign is upgraded first.
+The player decides, one campaign at a time. When the GameSystem has a newer release than the one the campaign pins, the campaign page offers **Upgrade to vN**, and Studio never moves a campaign on its own. A campaign transfer is a different action, in which the player starts a new campaign from an existing one on the same GameSystem, with another Flow or free play. It comes after the upgrade rather than in its place. The transfer is refused until the existing campaign plays the latest release, so a campaign on an older one is upgraded first.
 
 The upgrade dialog shows a **preview** first, and nothing changes until the player confirms it. The preview lists what the new release changes in this campaign, such as Character fields that change, are reset or are removed, Tags that go, and Trackers that change. The player then chooses **Confirm upgrade**. The confirmation carries a fingerprint of the previewed plan, and the server refuses it if anything has changed since, so the player applies exactly what they saw.
 
@@ -30,8 +30,8 @@ Before you publish a change that a campaign will meet:
 
 - Keep the keys that have to survive. You can rename a display name freely, but not a key.
 - Treat removing a Sheet field or a Tracker as a loss, because the player loses the value and sees that in the preview.
-- Expect the Flow to restart. If your update changes the middle of The Long Carry, a campaign upgraded during **The Road** starts again at **Session Zero**. Note it in the release notes, and tell players that between stories is a good time to upgrade.
-- Write release notes you can read later. Players never see them: they are only in Studio's history, not in Play or the upgrade preview.
+- Expect the Flow to restart. If your update changes the middle of The Long Carry, a campaign upgraded during **The Road** starts again at **Session Zero**. Note it in your release notes for your own record, and tell players yourself that between stories is a good time to upgrade.
+- Write release notes you can read later. They live only in Studio's history, so players never see them, either in Play or in the upgrade preview.
 
 ## What publishing leaves alone
 

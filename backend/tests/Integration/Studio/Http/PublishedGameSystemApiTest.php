@@ -142,15 +142,20 @@ final class PublishedGameSystemApiTest extends WebTestCase
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * @return list<array<mixed>>
      */
     private function json(): array
     {
         $decoded = json_decode((string) $this->client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR);
         self::assertIsArray($decoded);
         self::assertTrue(array_is_list($decoded));
-        /* @var list<array<string, mixed>> $decoded */
 
-        return $decoded;
+        $items = [];
+        foreach ($decoded as $item) {
+            self::assertIsArray($item);
+            $items[] = $item;
+        }
+
+        return $items;
     }
 }

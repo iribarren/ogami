@@ -48,10 +48,11 @@ Out of scope: a "Copy" action elsewhere in Studio (a preset catalog page), key s
 
 | ID | Slice | Task | Route | Done | Commit |
 |---|---|---|---|---|---|
-| 1 | `review-78e1076a7d2c4d22` (T1–T2) | approved, acknowledged | R3-order-case-unproved (suggestion): fixed in T3 | [#415](https://github.com/iribarren/ogami/pull/415) |
+| 1 | `review-78e1076a7d2c4d22` (T1–T2) | approved, acknowledged | R3-order-case-unproved (suggestion): fixed in T3; CI PHPStan error fixed in T4 (T3, T4 and the doc commit: review skipped, test and doc only) | [#415](https://github.com/iribarren/ogami/pull/415) |
 | T1 | 1 | Studio endpoint listing published GameSystems for copy (D1–D4), API tests, `make api` | delegated writer (Sonnet): 2+ non-trivial files | [x] | `91a84e1a` |
 | T2 | 1 | Copy a release dialog picks from the list (D5–D7); Vitest, story, e2e specs and the Studio tour chapter updated | delegated writer (Sonnet) | [x] | `49599e47` |
 | T3 | 1 | Review finding R3-order-case-unproved: the ordering test proves case-insensitive order and the key tie-break | inline: one test file, already understood | [x] | `31885359` |
+| T4 | 1 | CI finding: PHPStan refused the API test's `json()` return type (CS-Fixer had turned its `@var` into a plain comment) | inline: one test helper | [x] | see PR #415 |
 
 ## Acceptance criteria
 
@@ -73,6 +74,7 @@ Out of scope: a "Copy" action elsewhere in Studio (a preset catalog page), key s
 - 2026-11-26: T2 done: Copy a release picks the source and version from native selects fed by the new endpoint; Vitest, story, six e2e specs and the Studio tour updated.
 - 2026-11-26: T3 done: the ordering test adds a lower-case name and two GameSystems with the same name; 4 tests, 63 assertions OK.
 - 2026-11-26: Slice 1 reviewed (approved), PR #415 opened; T3 assessed medium, under budget (no further review). Feature done.
+- 2026-11-26: T4 done: CI backend job failed on PHPStan in `PublishedGameSystemApiTest::json()`; each item is now asserted an array. PHPStan, CS-Fixer and the test green locally.
 
 ## Reviews
 

@@ -96,7 +96,7 @@
   },
   "trackers": [
     {"key": "winter", "name": "Winter", "hint": "How near the first snow is. Each World turn adds one; at 10 the road is closed.", "kind": "clock", "segments": 10},
-    {"key": "burden", "name": "Burden", "hint": "What you took on along the way: favours owed, things taken, things said aloud.", "kind": "counter", "min": 0, "max": 6, "initial": 0, "levels": [{"upTo": 0, "label": "Light"}, {"upTo": 2, "label": "Heavy"}, {"upTo": 4, "label": "Crushing"}, {"label": "Breaking"}]}
+    {"key": "burden", "name": "Burden", "hint": "What you took on along the way: favours owed, things taken, things said aloud.", "kind": "counter", "min": 0, "max": 6, "initial": 0, "levels": [{"upTo": 2, "label": "Light"}, {"upTo": 4, "label": "Heavy"}, {"upTo": 5, "label": "Crushing"}, {"label": "Breaking"}]}
   ],
   "factSlots": [
     {"key": "saint", "label": "The saint", "type": "text", "hint": "Whose body you carry"},

@@ -105,6 +105,8 @@ final class PresetsTest extends KernelTestCase
         $snapshot = $this->snapshot('hard-country');
         self::assertSame(['Hard Country', 1, 'parchment', 'the-long-carry'], [$snapshot->name(), $snapshot->releaseVersion(), $snapshot->theme(), $snapshot->defaultFlow()?->key]);
         self::assertSame(['winter', 'burden'], array_map(static fn (\App\Play\Domain\GameSystem\Tracker $tracker): string => $tracker->key, $snapshot->trackers()));
+        // Burden is "Light" up to 2, the same threshold the Epilogue reads for "Did you arrive light?".
+        self::assertSame([[2, 'Light'], [4, 'Heavy'], [5, 'Crushing'], [null, 'Breaking']], array_map(static fn (\App\Play\Domain\GameSystem\TrackerLevel $level): array => [$level->upTo, $level->label], $snapshot->tracker('burden')->levels ?? []));
         self::assertSame(['back', 'feet', 'head'], array_map(static fn (\App\Play\Domain\GameSystem\Check\Check $check): string => $check->key, $snapshot->checks()));
         self::assertCount(13, $snapshot->gear());
         // Weight is copies in the road deck: 3 + 2 + 3 + 2 + 3.

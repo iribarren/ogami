@@ -75,7 +75,7 @@ The table did not say whose foot it was, so the name was the player's to choose,
 
 **The tone.** Cold, dry, watchful, and not a monster story. The ship follows rules that someone else wrote, and that is more frightening than hostility would be. The danger is a ship that is too orderly, with no one to explain it.
 
-**The length.** Two to three sessions, measured by a clock called Threat, with eight segments. It rises by one every round, and from the fifth segment the Reveal may come at the end of any scene.
+**The length.** Two to three sessions, measured by a clock called Threat, with eight segments. It rises by one every round, and from the fifth segment the **Reveal** may come at the end of any scene.
 
 **Surprise.** Three of its oracle tables hold the answers to the three questions, and another, Ship trouble, is rolled every round. Like Road Risks, it keeps three of its nine chances for "A quiet hour. The ship ticks and settles."
 

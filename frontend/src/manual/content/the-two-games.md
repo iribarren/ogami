@@ -20,7 +20,7 @@ _What is aboard, who let it on, and why were we woken?_
 
 Dogwatch is a minimal science-fiction game, and in Cold Berth you play crew members woken early from cold sleep on a ship that should be empty. A character is a few numbers, and when an action could go either way you make a check, which is a single die. Cold Berth is played over two to three sessions.
 
-This story also opens with **Session Zero**, which gives each of you a crew card and seals three Truths in the notebook. **Wake** follows, with the empty berth and the custodian's refusal to explain. The middle of the story is **The Ship**, which repeats as the Road does. Each time you choose what to do (investigate, repair, confront or hide) and then which compartment of the ship to go to, and after every scene the World turn raises the **Threat** clock and picks a crew member to go missing. **Reveal** opens the sealed Truths, and **Epilogue** says who gets out, going by the **Clues** you found and the Threat that remains.
+This story also opens with **Session Zero**, which gives each of you a crew card and seals three Truths in the notebook. **Wake** follows, with the empty berth and the custodian's refusal to explain. The middle of the story is **The Ship**, which repeats as **The Road** does. Each time you choose what to do (investigate, repair, confront or hide) and then which compartment of the ship to go to, and after every scene the World turn raises the **Threat** clock and picks a crew member to go missing. **Reveal** opens the sealed Truths, and **Epilogue** says who gets out, going by the **Clues** you found and the Threat that remains.
 
 Here the Truths are sealed instead, which means they are written before play and opened at the end.
 

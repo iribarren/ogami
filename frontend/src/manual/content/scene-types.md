@@ -57,7 +57,7 @@ A Scene Type belongs to the GameSystem, not to a flow. Several flows can use the
 
 ## The Long Carry
 
-The Road is built from five Scene Types, **Camp**, **Ford**, **Stranger**, **Ruin** and **Omen**, one for each thing the carry can meet, and their purposes read as a list of different jobs.
+**The Road** is built from five Scene Types, **Camp**, **Ford**, **Stranger**, **Ruin** and **Omen**, one for each thing the carry can meet, and their purposes read as a list of different jobs.
 
 | Scene Type | Purpose                                                              |
 | ---------- | -------------------------------------------------------------------- |
@@ -90,7 +90,7 @@ The table did not describe the ford, since all it said was that the ford had ris
 
 ## Cold Berth
 
-The Ship loop has four Scene Types, **Investigate**, **Repair**, **Confront** and **Hide**, and each of them is a job the crew can take on.
+**The Ship** loop has four Scene Types, **Investigate**, **Repair**, **Confront** and **Hide**, and each of them is a job the crew can take on.
 
 | Scene Type  | Purpose                                                               |
 | ----------- | --------------------------------------------------------------------- |
@@ -101,7 +101,7 @@ The Ship loop has four Scene Types, **Investigate**, **Repair**, **Confront** an
 
 They differ in what each one does to Threat, Clues and the crew's Nerve, so each of the four is a different bargain. An Investigate scene that goes well adds a Clue, a Repair that goes well lowers Threat, a Confront puts Nerve at risk to gain a Clue, and a Hide can give Nerve back.
 
-Every one of these Scene Types begins in the same way, with a setup that picks a compartment you named in Session Zero and asks what is out of place, what has failed, what waits there or what makes it a place to hide. We made the setup shared on purpose, because it ties every job to a place on the ship, so the ship is never a backdrop.
+Every one of these Scene Types begins in the same way, with a setup that picks a compartment you named in **Session Zero** and asks what is out of place, what has failed, what waits there or what makes it a place to hide. We made the setup shared on purpose, because it ties every job to a place on the ship, so the ship is never a backdrop.
 
 This is the Repair card.
 

@@ -336,7 +336,7 @@
       {"key": "wind", "label": "Wind", "hint": "Breath and nerve. Harm takes it first. It starts at d6+2 and a rest in Camp restores d6+2, up to 8.", "group": "Body", "type": "track", "max": 8},
       {"key": "wounds", "label": "Wounds", "hint": "Harm that finds you with no Wind left. At 3 you are down.", "group": "Body", "type": "number", "min": 0, "max": 3, "default": 0},
       {"key": "pennies", "label": "Pennies", "hint": "What you carry to spend. Rolled with 2d6*10.", "group": "Pack", "type": "number", "min": 0, "max": 100000, "default": 60, "roll": {"dice": "2d6*10"}},
-      {"key": "load", "label": "Load", "hint": "Eight slots. A heavy item takes two.", "group": "Pack", "type": "inventory", "capacity": 8}
+      {"key": "load", "label": "Load", "hint": "Eight slots. Heavy things take two.", "group": "Pack", "type": "inventory", "capacity": 8}
     ],
     "currency": {
       "field": "pennies",

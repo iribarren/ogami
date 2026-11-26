@@ -109,6 +109,8 @@ final class PresetsTest extends KernelTestCase
         self::assertSame([[2, 'Light'], [4, 'Heavy'], [5, 'Crushing'], [null, 'Breaking']], array_map(static fn (\App\Play\Domain\GameSystem\TrackerLevel $level): array => [$level->upTo, $level->label], $snapshot->tracker('burden')->levels ?? []));
         self::assertSame(['back', 'feet', 'head'], array_map(static fn (\App\Play\Domain\GameSystem\Check\Check $check): string => $check->key, $snapshot->checks()));
         self::assertCount(13, $snapshot->gear());
+        // The inventory hint uses the manual's words for Gear, never "item".
+        self::assertSame('Eight slots. Heavy things take two.', $snapshot->sheet()->field('load')?->hint);
         // Weight is copies in the road deck: 3 + 2 + 3 + 2 + 3.
         $this->assertWeightedTableResolves($snapshot, 'road-deck', 13, 'Camp: a place to stop', 'Omen: the road says something about the saint');
     }
@@ -128,6 +130,8 @@ final class PresetsTest extends KernelTestCase
         // Eight Checks share the same bands, so a check step can offer the whole set (dice notation cannot read the sheet).
         self::assertSame(['d4', 'd4-help', 'd6', 'd6-help', 'd8', 'd8-help', 'd10', 'd10-help'], array_map(static fn (\App\Play\Domain\GameSystem\Check\Check $check): string => $check->key, $snapshot->checks()));
         self::assertCount(11, $snapshot->gear());
+        // The inventory hint uses the manual's words for Gear, never "item".
+        self::assertSame('Six slots. A bulky piece of kit takes two.', $snapshot->sheet()->field('kit')?->hint);
         foreach (['treason' => 8, 'ship-trouble' => 9, 'truth-aboard' => 8, 'truth-who' => 8, 'truth-why' => 8] as $table => $entries) {
             $this->assertWeightedTableResolves($snapshot, $table, $entries, $snapshot->resolveOracleTable($table, new ScriptedRandomNumberGenerator(1))->steps()[0]->text(), $snapshot->resolveOracleTable($table, new ScriptedRandomNumberGenerator($entries))->steps()[0]->text());
         }

@@ -383,7 +383,7 @@
       {"key": "nerve", "label": "Nerve", "hint": "Calm under strain. Harm takes it first. A crew member with no Nerve left marks an Injury instead.", "group": "Body", "type": "track", "max": 6},
       {"key": "injuries", "label": "Injuries", "hint": "Harm that finds you with no Nerve left. At 3 you are down.", "group": "Body", "type": "number", "min": 0, "max": 3, "default": 0},
       {"key": "chits", "label": "Chits", "hint": "What you carry to spend aboard.", "group": "Kit", "type": "number", "min": 0, "max": 100000, "default": 20},
-      {"key": "kit", "label": "Kit", "hint": "Six slots. A bulky item takes two.", "group": "Kit", "type": "inventory", "capacity": 6}
+      {"key": "kit", "label": "Kit", "hint": "Six slots. A bulky piece of kit takes two.", "group": "Kit", "type": "inventory", "capacity": 6}
     ],
     "currency": {
       "field": "chits",

@@ -1,7 +1,7 @@
 # Feature: manual-voice-rewrite
 
 - **Locator:** `odd/tasks/manual-voice-rewrite.md` · Engram topic `odd/manual-voice-rewrite/tasks`
-- **Issue:** [#402](https://github.com/iribarren/ogami/issues/402) · **Branch:** `docs/manual-voice-rewrite-3-toolbox` · **Status:** in progress (slice 3)
+- **Issue:** [#402](https://github.com/iribarren/ogami/issues/402) · **Branch:** `docs/manual-voice-rewrite-4-studio` · **Status:** in progress (slice 4)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Origin:** the follow-ups of [`manual-voice`](manual-voice.md) (#399, PR #400) and [`manual-voice-followups`](manual-voice-followups.md) (#401, PR #403)
@@ -25,6 +25,7 @@ The Promise was rewritten as the pilot and calibrated by the user, but the other
 | Calibration read, slice 1 | New terms get a friendly first explanation, introduced through something familiar (three acts of a film for the arc, a chase or a fight for Scene Types); chapters lean only on ideas already introduced; warmth from the reader's play (what your character did, the people you met); no remarks about the text that carry no information, no tacked-on qualifiers. Content: the two editions are play at a table vs. with the companion app; index cards are optional and a text file is a valid notebook; Where you play is about a cosy mood (music); The Two Games introduces GameSystem and NarrativeFlow gently and says the manual builds a flow that plays differently each time. Follow-through: On paper instructions say "an index card, or a page of your notebook" (here and in later slices, e.g. cards-and-print); The Arc's three-act opening is about shape, and its Acts section links the Act label back to film acts. The general rules are in `docs/style/manual-voice.md` ("New ideas arrive with something familiar", "Signposting and filler") | User, 2026-11-26 |
 | Slice 1 open points | Keep the playing-card substitute in choosing-the-next-scene (On paper), since index cards are optional. The cut-off third how-to-use note is dropped | User, 2026-11-26 |
 | Old-text fixes, slice 2 | Every mention of a Phase name is bolded exactly as the preset spells it, mid-sentence too (**The Road**, **The Shrine Gate**), in every chapter including slice 1's, outside `:::in-ogami` blocks. Capitalization fixes ("World turn") are allowed inside blocks, nothing else. Old text that a preset contradicts is corrected to match it. The glossary gains the `place` Fact slot type and Place tags, which the code and `dogwatch.json` already use | User, 2026-11-26 |
+| Old-text fixes, slice 4 | Old text that the Studio code contradicts is corrected to match it, like a preset: the Rules and Story rail list matches `SectionRail.tsx` (… Library, Validation, Releases and Sections). Sheets and Groups' Try it hint reads "a Number that goes down and back up to a maximum" (the old "only climbs" contradicted Wounds). Prose keeps "derived value" (the glossary's `DerivedValue` is the code term). Gear and Currency's 0-slot example is Dogwatch's ration bars, not a bearer's food (Hard Country's Trail rations take a slot) | User, 2026-11-26 |
 | Per-task cycle | `doc-writer` drafts (no commit) → `doc-editor` reviews → `doc-writer` revises on a `revise` verdict → the parent runs the manual Vitest suite and commits | Parent |
 
 ## Constraints
@@ -59,9 +60,13 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 | T7 | 2 | Session Rituals and Truths and Endings at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `3c04fb57` |
 | T8 | 2 | Cards and Print and Playtest and Share at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `a064a068` |
 | T9 | 2 | Every Phase name bolded in the slice 1 chapters; the glossary gains the `place` Fact slot type and Place tags | Delegated (`doc-writer`, Sonnet; mechanical) | done | `0ead3d4f` |
-| T10 | 3 | Likelihood Oracles and Oracle Tables at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T11 | 3 | Inspiration and Random Events and Trackers and Clocks at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T12 | 3 | Cards and Dice and Journaling and Lists at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
+| T10 | 3 | Likelihood Oracles and Oracle Tables at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `0c5285dc` |
+| T11 | 3 | Inspiration and Random Events and Trackers and Clocks at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `176291d2` |
+| T12 | 3 | Cards and Dice and Journaling and Lists at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `1854e75d` |
+| T13 | 4 | Rules and Story, Sheets and Groups and Derived Values and Formulas at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
+| T14 | 4 | Checks and Outcome Bands, Gear and Currency and Licensing and Credits at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
+| T15 | 4 | A Tour of Studio, Library Packs and Validation at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
+| T16 | 4 | Releases, Restore and Themes and Publishing and Campaigns at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
 
 ## Applicable checks
 
@@ -75,6 +80,7 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 |---|---|---|---|---|---|
 | 1 | `review-94fecfc8297b1652` (T1–T4), `review-913cf0cea1d31847` (T5), `review-8c92f1a591338de8` (whole branch) | `a343f47c`, `fb9467dd`, `63fe23fe`, `bcf83192`, `41f17be9` | Low risk, closed approved, acknowledged | [#405](https://github.com/iribarren/ogami/pull/405) | None blocking |
 | 2 | `review-f3091fc08e2859e8` | `52ab5b7d`, `3c04fb57`, `0ead3d4f`, `a064a068` | Low risk, closed approved, acknowledged | [#406](https://github.com/iribarren/ogami/pull/406) | None blocking. Preset mismatch found while writing: follow-up [#407](https://github.com/iribarren/ogami/issues/407) |
+| 3 | `review-3fc78e6fadfef7e6` | `0c5285dc`, `176291d2`, `1854e75d` | Passive (prose only), closed approved, acknowledged | [#408](https://github.com/iribarren/ogami/pull/408) | None |
 
 ## Progress
 
@@ -93,7 +99,9 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 - T10 done: Likelihood Oracles and Oracle Tables rewritten at dial 0 (doc-editor ship for both; voice notes applied: repeated "If you have ever…" and "In this played…" openers, wrong "so" connectives, padding, a closing aphorism). User decisions on old text: rerolling a table, on another table or the same one, is fine when a result makes no sense or gives too little, with a remark that too many rolls can leave the first meaningless, and no hard limit (the old "do not nest more than twice, because at three rolls…" contradicted itself); quiet lines are roll-based, about one roll in three as Road Risks has (3 of 9 copies), and Try it now matches; the Long Carry table list names the road deck. One quoted Strangers entry loses a full stop the preset lacks; the Thread is quoted as the preset names it. Check: manual Vitest 277 passed, Prettier clean, edition blocks unchanged.
 - T11 done: Inspiration and Random Events and Trackers and Clocks rewritten at dial 0; doc-editor revise for both (a "mostly quiet" claim, a d8 stated without its Station, circular and false connectives, a definition pointed at before it was given), fixed. The reroll rule now matches T10's: reroll when a result does not fit or gives too little, write both, no "once" limit. Old text corrected to the presets: quiet is the most common single result (3 of 9 chances), not "mostly"; one line can do both jobs (Road Risks' risen ford); only a ford that goes badly adds Burden (a plain failure adds Winter); "the Ship Phase" is **The Ship**; Clues is read in the **Epilogue**, not the Reveal. "World turn" capitalised inside one edition block. Check: manual Vitest 277 passed, Prettier clean.
 - T12 done: Cards and Dice and Journaling and Lists rewritten at dial 0; doc-editor revise for both (a "since" introducing examples, "edition" used for a game version, a punchline closer, a two-argument paragraph, the dropped purpose of weighting Threads and a dropped "weight of a purse" example, both restored). User decisions on old text: Cold Berth's compartment pack is one card per named compartment, as Cards and Print has it (no blank cards, no "nine cards, five named"), and its compartments make a small deck, so "no deck" no longer contradicts it; the example job is named by its Scene Type (Investigate), not "Okafor's job". "Promise" became "gives their word" and "table of contents" became "index", to keep the manual's terms single-sense. One Omens quote loses a full stop the preset lacks. Check: manual Vitest 277 passed, Prettier clean, edition blocks unchanged.
+- Slice 3 delivered in PR #408 (`make verify` 235 passed), merged by the user.
+- T13 done: Rules and Story, Sheets and Groups and Derived Values and Formulas rewritten at dial 0, each opened through something familiar (a rulebook and an adventure, a character sheet, a spreadsheet cell); doc-editor revise for Rules and Story (an added reason for Winter, kit and chits merged into one rule) and Sheets and Groups ("table" in two senses, "80 characters, such as a ferryman"), ship for Derived Values, all notes applied. User decisions: the rail list matches the code, the Track hint no longer contradicts Wounds, prose keeps "derived value". Check: manual Vitest 277 passed, Prettier clean.
 
 ## Next step
 
-Slice 3: T10–T12 (Solo Toolbox, six chapters at dial 0), then `make verify`, native review, PR and the user's calibration read before slice 4.
+Slice 4: T13–T16 (Parts III and IV, eleven full-edition chapters at dial 0), then `make verify`, native review, PR and the user's calibration read before slice 5.

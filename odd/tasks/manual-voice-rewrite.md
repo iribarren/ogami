@@ -60,7 +60,7 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 | T8 | 2 | Cards and Print and Playtest and Share at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `a064a068` |
 | T9 | 2 | Every Phase name bolded in the slice 1 chapters; the glossary gains the `place` Fact slot type and Place tags | Delegated (`doc-writer`, Sonnet; mechanical) | done | `0ead3d4f` |
 | T10 | 3 | Likelihood Oracles and Oracle Tables at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T11 | 3 | Inspiration and Random Events and Trackers and Clocks at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
+| T11 | 3 | Inspiration and Random Events and Trackers and Clocks at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
 | T12 | 3 | Cards and Dice and Journaling and Lists at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
 
 ## Applicable checks
@@ -91,6 +91,7 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 
 - Slice 2 delivered in PR #406 (`make verify` 235 passed); the user's calibration read brought no notes. The Burden Tracker / Epilogue "Light" mismatch is follow-up [#407](https://github.com/iribarren/ogami/issues/407) (`hard-country-burden-light`), roadmap B31.
 - T10 done: Likelihood Oracles and Oracle Tables rewritten at dial 0 (doc-editor ship for both; voice notes applied: repeated "If you have ever…" and "In this played…" openers, wrong "so" connectives, padding, a closing aphorism). User decisions on old text: rerolling a table, on another table or the same one, is fine when a result makes no sense or gives too little, with a remark that too many rolls can leave the first meaningless, and no hard limit (the old "do not nest more than twice, because at three rolls…" contradicted itself); quiet lines are roll-based, about one roll in three as Road Risks has (3 of 9 copies), and Try it now matches; the Long Carry table list names the road deck. One quoted Strangers entry loses a full stop the preset lacks; the Thread is quoted as the preset names it. Check: manual Vitest 277 passed, Prettier clean, edition blocks unchanged.
+- T11 done: Inspiration and Random Events and Trackers and Clocks rewritten at dial 0; doc-editor revise for both (a "mostly quiet" claim, a d8 stated without its Station, circular and false connectives, a definition pointed at before it was given), fixed. The reroll rule now matches T10's: reroll when a result does not fit or gives too little, write both, no "once" limit. Old text corrected to the presets: quiet is the most common single result (3 of 9 chances), not "mostly"; one line can do both jobs (Road Risks' risen ford); only a ford that goes badly adds Burden (a plain failure adds Winter); "the Ship Phase" is **The Ship**; Clues is read in the **Epilogue**, not the Reveal. "World turn" capitalised inside one edition block. Check: manual Vitest 277 passed, Prettier clean.
 
 ## Next step
 

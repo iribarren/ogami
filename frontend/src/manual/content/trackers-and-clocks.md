@@ -60,9 +60,9 @@ On paper the page is simple, with a row of ten boxes for Winter and a flag on th
 
 At the ford at the end of a hard day the player makes a Back check and rolls a 20.
 
-> Going badly. The ford takes d6 Wind, and Burden goes up by one, from 1 to 2. That is the top of Heavy. I draw the ring around the 2 and write the stretch beside it.
+> Going badly. The ford takes d6 Wind, and Burden goes up by one, from 1 to 2. That is the top of Light. I draw the ring around the 2 and write the stretch beside it.
 
-One more, and the bearers are Crushing. The name changes before the number gets frightening.
+One more, and the bearers are Heavy. The name changes before the number gets frightening.
 
 ## Cold Berth
 

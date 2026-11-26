@@ -40,7 +40,7 @@ Ask three questions of each Phase, one for each rule.
 - **Does a refusal mean something?** Then use a spread, where choosing Hide over Repair is the story.
 - **Should you be surprised?** Then use a deck, because if you wrote the next scene yourself, you would write the one you were hoping for.
 
-A flow mixes the rules, and between them the two flows here use all three. Both play their opening and closing Phases in sequence, The Long Carry deals the Road from a deck and Cold Berth lays the Ship out as a spread.
+A flow mixes the rules, and between them the two flows here use all three. Both play their opening and closing Phases in sequence, The Long Carry deals **The Road** from a deck and Cold Berth lays **The Ship** out as a spread.
 
 ## On paper
 
@@ -62,7 +62,7 @@ A sequence in a loop starts again from its first Scene Type. A `once` Phase with
 
 ## The Long Carry
 
-In The Long Carry you travel from one place to another, and the two ends of the journey are fixed. What the flow leaves open is what you meet on the way, because the Road between the two ends is a deck that chooses every scene nothing else has forced, and since it is shuffled, each journey meets its own scenes in its own order. Its table, The road deck, has thirteen copies.
+In The Long Carry you travel from one place to another, and the two ends of the journey are fixed. What the flow leaves open is what you meet on the way, because **The Road** between the two ends is a deck that chooses every scene nothing else has forced, and since it is shuffled, each journey meets its own scenes in its own order. Its table, The road deck, has thirteen copies.
 
 | Card                                          | Copies |
 | --------------------------------------------- | ------ |
@@ -74,7 +74,7 @@ In The Long Carry you travel from one place to another, and the two ends of the 
 
 The copies set how often each kind of scene turns up, and so what kind of road this is. There are three Camps because Camp is the only place where the bearers recover, and a road without rests would be a death march. Fords and Ruins are rarer, since each of them costs something. The Omens are common because the Sin is written there, and the story needs a steady supply of Omens.
 
-The Phases around the Road are sequences. Session Zero is a sequence because nobody should be able to skip the vow, and it plays the bearers, the saint and the vow in that order. The Shrine Gate and the Epilogue are one scene each.
+The Phases around **The Road** are sequences. **Session Zero** is a sequence because nobody should be able to skip the vow, and it plays the bearers, the saint and the vow in that order. **The Shrine Gate** and the **Epilogue** are one scene each.
 
 The last scene is over, the World turn is done and Road Risks said the road was quiet, so the player draws the next scene.
 
@@ -88,9 +88,9 @@ The deck did not say what was in the farm. It only said there was a Ruin, and th
 
 ## Cold Berth
 
-The Ship is a spread whose four cards, Investigate, Repair, Confront and Hide, lie face up every round. Nothing in the flow says which one to play, so the choice comes from the state of the crew.
+**The Ship** is a spread whose four cards, Investigate, Repair, Confront and Hide, lie face up every round. Nothing in the flow says which one to play, so the choice comes from the state of the crew.
 
-The spread also has a second layer. Every one of these Scene Types opens by picking a compartment, and that pick is a smaller spread of the places named in Session Zero, laid face up, from which the player chooses one. That second layer is why the Ship is built on choice, since a round becomes two decisions, a job and a place, and both of them can be wrong.
+The spread also has a second layer. Every one of these Scene Types opens by picking a compartment, and that pick is a smaller spread of the places named in **Session Zero**, laid face up, from which the player chooses one. That second layer is why **The Ship** is built on choice, since a round becomes two decisions, a job and a place, and both of them can be wrong.
 
 Nerve is low, Threat stands at four and Clues at one when the player chooses the next job.
 

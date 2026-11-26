@@ -56,7 +56,7 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 | T4 | 1 | Steps and Choosing the Next Scene at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `bcf83192` |
 | T5 | 1 | The user's calibration notes on slice 1 applied to seven chapters, and the general lessons added to the style guide | Delegated (`doc-writer`, `doc-editor`); guide inline | done | `41f17be9` |
 | T6 | 2 | Memory and Pressure at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T7 | 2 | Session Rituals and Truths and Endings at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
+| T7 | 2 | Session Rituals and Truths and Endings at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
 | T8 | 2 | Cards and Print and Playtest and Share at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
 | T9 | 2 | Every Phase name bolded in the slice 1 chapters; the glossary gains the `place` Fact slot type and Place tags | Delegated (`doc-writer`) | todo | |
 
@@ -81,6 +81,7 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 - T4 done: Steps and Choosing the Next Scene rewritten at dial 0; doc-editor revise for both (the "all three rules" claim the presets contradict, an added reason, full stops on quoted entries the presets lack, a repeated example frame), fixed with the user's decisions. Check: manual Vitest 10 files, 277 tests passed.
 - T5 done: the user's calibration notes applied to seven chapters (friendly first explanations through films and familiar scenes, the editions as table play vs. the companion app, optional index cards and a text-file notebook, a cosy Where you play); doc-editor asked for revisions on The Two Games (Session Zero is not a whole sitting, Cold Berth has three Truths, one definition of a flow), The Arc (the Act bridge) and the guide, all fixed. The Two Games now says the ship "picks a crew member to go missing", as the preset's "Who goes missing?" step does (the old text said "who is missing"). Guide: new section "New ideas arrive with something familiar", warmth from the player's side, two filler habits. Check: manual Vitest 10 files, 277 tests passed.
 - T6 done: Memory (doc-editor ship) and Pressure (revise: a quote with a full stop the preset lacks, a loop-length sentence that misread) rewritten at dial 0 and revised. Old text corrected to the presets: quiet is three of the nine chances, the "last seen" question is the World turn's last step, Cold Berth's loop length gets the Threat qualifier, the opening no longer contradicts The Promise's three jobs, the NPC list. "Five places" became "Five kinds of record" (unlinked). Check: manual Vitest 10 files, 277 tests passed.
+- T7 done: Session Rituals (doc-editor ship) and Truths and Endings (revise: an edition block reworded beyond capitals, unbolded Phase names) rewritten at dial 0 and revised. "Sitting" became "session" as the glossary names it, including the unlinked headings and the On paper card. Five quoted entries lose the final period the presets lack. The Burden Tracker's levels (only 0 is "Light") disagree with the Epilogue condition (2 or less is "Light"); the chapter quotes the condition, and the preset question is a follow-up. Check: manual Vitest 10 files, 277 tests passed.
 
 ## Next step
 

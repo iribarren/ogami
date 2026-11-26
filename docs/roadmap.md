@@ -65,6 +65,8 @@ Build in this order (M4 builds the flow editor third: 14, 15, 18, 16, 17, 18b). 
 
 Items here come after every feature defined above. Build them in this order: fixes and tooling first, then guided-play and theme polish before the next playtests, then each rules feature right before the presets that need it. Studio polish follows the first preset authored in Studio (B7), so its findings shape the design. Only `preset-cpr-campaign` needs `play-items-economy`; `preset-west-marches` uses it for shops only.
 
+B34–B38 are the visual features planned on 2026-11-27. Build them next, in their order, before the open items above them; B30 is low priority.
+
 | # | Item | Area | Depends on | Idea |
 |---|---|---|---|---|
 | B1 | `studio-atomic-write-read` | Studio | — | Run each Studio editor write and its read-back in one transaction, as `LibraryImportController` does, so an interleaved save's version never leaks into a response and a failing read rolls the write back ([#195](https://github.com/iribarren/ogami/issues/195)). One `fix/` slice, no API change |
@@ -115,10 +117,15 @@ Items here come after every feature defined above. Build them in this order: fix
 | B27 | `manual-voice` ([#399](https://github.com/iribarren/ogami/issues/399)) | Docs | B26 | Done in PR #400. A house voice for the manuals (designer essay as "we", English and Spain Spanish, a game dial), voice packs, and the `doc-writer` and `doc-editor` agents, calibrated on The Promise. Follow-ups in [#401](https://github.com/iribarren/ogami/issues/401) |
 | B28 | `manual-voice-followups` ([#401](https://github.com/iribarren/ogami/issues/401)) | Docs | B27 | Done in PR #403. Confirm the Hard Country Spanish lexicon (done: every term confirmed, Load is *Hatillo*), add a draft Dogwatch voice pack, and keep the Spanish Tracker article rule in each pack. The manual rewrite moved to B29. Feature doc: [manual-voice-followups](../odd/tasks/manual-voice-followups.md) |
 | B29 | `manual-voice-rewrite` ([#402](https://github.com/iribarren/ogami/issues/402)) | Docs | B28 | Done in PRs #405, #406, #408, #409 and #410. Rewrite every manual chapter except The Promise in the house voice with `doc-writer` and `doc-editor`, keeping the `:::in-ogami` blocks, headings and facts. English only, dial 0 except the four game appendices at dial 1, five slices by part. Feature doc: [manual-voice-rewrite](../odd/tasks/manual-voice-rewrite.md) |
-| B30 | `manual-spanish-edition` ([#404](https://github.com/iribarren/ogami/issues/404)) | Docs, Play | B29 | A Spanish edition of the manual, written natively in Spain Spanish. Needs the Dogwatch Spanish lexicon and the ES title of The Arc confirmed, and app work for a second manual language (content layout, route, Paper PDFs). Found while planning `manual-voice-rewrite` |
+| B30 | `manual-spanish-edition` ([#404](https://github.com/iribarren/ogami/issues/404)) | Docs, Play | B29 | Low priority. A Spanish edition of the manual, written natively in Spain Spanish. Needs the Dogwatch Spanish lexicon and the ES title of The Arc confirmed, and app work for a second manual language (content layout, route, Paper PDFs). Found while planning `manual-voice-rewrite` |
 | B31 | `hard-country-burden-light` ([#407](https://github.com/iribarren/ogami/issues/407)) | Presets | — | Done in PR #412. The Hard Country Burden Tracker calls only 0 "Light", while The Long Carry's Epilogue conditions treat 2 or less as "Light". Decide the intended threshold, fix the preset, republish it and check the manual chapters that quote it. Found in `manual-voice-rewrite` slice 2 |
 | B32 | `preset-gear-item-hints` ([#411](https://github.com/iribarren/ogami/issues/411)) | Presets | — | Done. The Hard Country and Dogwatch inventory hints call Gear an "item" ("A heavy item takes two.", "A bulky item takes two."), while the manual says "heavy things" and "a bulky piece of kit". Reword both, republish with `make presets`. Found in `manual-voice-rewrite` slice 5 |
 | B33 | `studio-copy-release-picker` ([#414](https://github.com/iribarren/ogami/issues/414)) | Studio | — | Done in PR #415. Copy a release picks the source GameSystem and version from a list of every published release, presets included, instead of a typed key. See [odd/tasks/studio-copy-release-picker.md](../odd/tasks/studio-copy-release-picker.md) |
+| B34 | `flow-diagram` | Manual, Studio | — | A read-only diagram of a narrative flow, laid out automatically: phases in order with their loop arrows, the Scene Types each phase selects, and the arrows that `nextScene`, `switchSceneType` and `endPhase` effects draw. Used first for flow diagrams in the manual (web and Paper PDF), drawn from the real preset data; B35 and B38 reuse it |
+| B35 | `studio-flow-map` | Studio | B34 | A Map tab in the flow editor, beside the outline: edit the flow on the B34 diagram by dragging, within the existing rules (reorder phases, toggle loop, drag Scene Types into a phase's selection, draw an arrow to add a `nextScene`, `switchSceneType` or `endPhase` effect to a chosen step). No new flow rules and no saved positions |
+| B36 | `studio-print-cards` | Studio | B34 | Print a published release's flow as a PDF: poker-size scene and deck cards, and A4 or A5 sheets for the flow description, its diagram and its oracle tables. A card back and a front frame image uploaded to the GameSystem and pinned by each release: the first image storage in the app |
+| B37 | `manual-flavor-images` | Manual | — | Flavor illustrations in the manual: an art style guide per game (Dogwatch, Hard Country) and a neutral house style for the Studio and Play chapters; placements with their prompt and alt text shown until the image lands; images in the web and Paper editions; AI images credited |
+| B38 | `play-tabletop` | Play | B34–B37 | A virtual tabletop view of a campaign: a mat where drawn scene cards are laid, the flow's decks, a dice tray and the journal as a notebook to open. Presentation only, beside the current Play page, which stays untouched. Starts with its own brainstorming session |
 
 ## Starter prompts
 
@@ -602,6 +609,74 @@ Start feature `preset-ironsworn` (ODD). Optional. Author an Ironsworn preset und
 ```
 
 Done: `preset-ironsworn`, #341 in eleven slices (PRs #342–#352). An Ironsworn preset on the SRD (CC BY 4.0), key `ironsworn`, unofficial: challenge dice as a new contract shape (ADR 0049) in the contract, Play and Studio, momentum that goes below zero and burns, five fixed vow slots, twenty moves as Scene Types, and the SRD's oracle tables. Follow-up: [#353](https://github.com/iribarren/ogami/issues/353) (B19).
+
+**B34. flow-diagram**
+
+```text
+Start feature `flow-diagram` (ODD). A read-only diagram of one narrative flow, laid out automatically (no saved positions), and flow diagrams in the manual. Planned on 2026-11-27 as the base of B35 `studio-flow-map`, B36 `studio-print-cards` and B38 `play-tabletop`, so keep the component independent of where the flow comes from: one neutral flow shape, with adapters from a preset or release and, in B35, from a Studio draft.
+
+What it draws, exactly as the model is today (ADR 0017, ADR 0018): phases in their fixed order with one arrow to the next phase; a self-arrow on a `loop` phase (none on `once`); the Scene Types of each phase's selection (`sequence` in order, `player` as a choice, `oracle` as one table node); arrows from a Scene Type to another for each `nextScene` (forced next scene) or `switchSceneType` (interruption) effect in its steps, and to the next phase for `endPhase`; the hooks shown compactly on their phase. Arrows that the model cannot express never appear.
+
+Manual: a Markdown directive places the diagram of a preset flow (or one phase of it) in a chapter, rendered from the real preset data so it cannot drift, themed like the manual, legible in light and dark, and printed as vector in the Paper edition (ADR 0050, `make manual-pdf`). Propose the placements first (the flow chapters `flow-cold-berth`, `flow-the-long-carry`, plus `the-arc`, `scene-types` or wherever phases and scenes are explained) and get them approved before writing. Mermaid is out: it cannot read preset data and does not match the theme.
+
+Decide and record as an ADR: the layout and rendering library (e.g. an SVG renderer with elkjs or dagre for layout, or React Flow if B35's editing needs it; weigh the bundle size, print output and B35 now), added only by this feature (ADR 0004). Accessible: a text alternative listing phases, scenes and transitions. Out of scope: editing (B35).
+```
+
+**B35. studio-flow-map**
+
+```text
+Start feature `studio-flow-map` (ODD). Studio: a Map tab in the flow editor, beside the outline and the existing panels, which stay. It shows the flow on the B34 `flow-diagram` component, laid out automatically, and edits it by dragging. It adds no flow rules: every edit maps to an edit the editor already makes, goes through the same draft and save, and the publisher's coherence checks still apply.
+
+Edits, as agreed on 2026-11-27:
+| Gesture | Model change |
+|---|---|
+| Drag a phase | Reorder phases (the arrow to the next phase follows the order) |
+| Toggle a phase's self-arrow | `mode` `loop` / `once` |
+| Drag a Scene Type into or out of a phase | Its `sequence` or `player` selection list (an `oracle` selection stays one read-only table node) |
+| Draw an arrow from a Scene Type to another | A `nextScene` or `switchSceneType` effect: the map asks which step, and which band or option, carries it, then opens that step's existing editor |
+| Draw an arrow from a Scene Type to the next phase | An `endPhase` effect, chosen the same way |
+| Draw an arrow to a phase that is not the next one, or back | Refused with a short reason: phases always run in order |
+
+Clicking a node opens its existing panel. Keyboard and screen-reader paths for every gesture (the outline remains the accessible editor). Validation errors from the save show on the node they belong to. Out of scope: phase jumps or branches between phases (a rules feature, only if needed), saved node positions.
+```
+
+**B36. studio-print-cards**
+
+```text
+Start feature `studio-print-cards` (ODD). Studio: print a flow of a published release (not a draft) as a PDF to play on a real table, generalising the manual's card sheets (`frontend/src/manual/print/`, `flowCards.ts`, `CardSheets.tsx`, `print.css`), which today read preset files and a hand-written `*.paper.ts` per flow. Players cannot print yet.
+
+What it prints, from the release only, with no new authored fields:
+- Poker-size cards (63 × 88 mm) for each Scene Type of the flow and anything that works as a deck (e.g. an oracle table drawn as cards); fronts and backs mirrored for double-sided printing, as the manual's sheets do.
+- A4 or A5 sheets (the author picks) for the flow description (with the B34 diagram of the flow) and the flow's oracle tables.
+Examine which other printables the release can produce without new fields (trackers and clocks, a blank character sheet) and propose them before building.
+
+Images: a card back image and a front frame image uploaded to the GameSystem and saved; the front's text sits in a fixed safe area inside the frame. A published release pins the exact images it was published with, so later uploads never change it. This is the first image storage in the app: decide and record as an ADR the storage (volume, database or object store), formats, size and pixel limits (recommended 63 × 88 mm at 300 dpi plus bleed), how a release references an image, and access rules. Without images the cards print plain.
+
+Out of scope: a user-defined visual style (fonts, colours, a Studio-made theme), planned later on top of these images; printing from Play.
+```
+
+**B37. manual-flavor-images**
+
+```text
+Start feature `manual-flavor-images` (ODD). Flavor illustrations in the manual, web and Paper edition (ADR 0050).
+
+1. Style guides: write one art style guide per game (Dogwatch for Cold Berth, Hard Country for The Long Carry), matching each game's voice pack, and a neutral house style for the Studio and Play chapters. Proposed neutral style: pen-and-ink line art with a flat, muted wash on warm paper; tabletop objects (cards, dice, an open notebook, a hand writing); no lettering in the image, no faces. Each guide ends in a reusable prompt preamble. Keep the format open to more styles: any game can be built in Studio, and flow-specific manuals may follow.
+2. Placements: examine every chapter and propose where an image earns its place (chapter openers, a game's mood, a concept that a picture explains), with its size and position. Get the list approved before writing.
+3. Placeholders: a Markdown directive per image with its file name, alt text and generation prompt (style preamble plus subject). Until the file exists, the manual shows the placeholder with its prompt and alt text, so the user sees the placement; the user generates each image and drops it in. Placeholders also render in the Paper PDF, so the layout can be checked there.
+4. Credits: credit the AI-generated images in the credits chapter.
+
+Out of scope: generating the images (the user does), the Spanish edition (B30).
+```
+
+**B38. play-tabletop**
+
+```text
+Start feature `play-tabletop` (ODD). Brainstorming session first, read-only until I approve the plan. A virtual tabletop view of a campaign: a mat in the middle where the scene cards drawn by the player are laid, the decks the flow needs, a tray to throw dice, and the journal as a notebook on the table that the player zooms into to write notes. Presentation only: the current Play page stays untouched and the backend changes as little as possible.
+
+Provisional answers from 2026-11-27, to re-examine in the session: a separate view if keeping it in sync with the current Play page would be a hassle; drawing a scene follows the flow's rules (a shuffled deck for `oracle`, a pick for `player`, the next card for `sequence`, forced by `nextScene`); 2D dice, no physics library; desktop first, but look for a tool or framework that makes tablet and phone easy. Simpler is better.
+
+Reuse B34's diagram, B36's card rendering and images, and the existing flow run, dice, oracle and journal APIs. Questions to settle: what the mat shows (this scene, this session, the whole campaign), where the mat state lives (derived from the flow run or stored), how steps, checks and oracles of a scene are played from the table, theming per campaign theme, and the slice plan.
+```
 
 ## Related
 

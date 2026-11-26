@@ -1,7 +1,7 @@
 # Feature: manual-voice-rewrite
 
 - **Locator:** `odd/tasks/manual-voice-rewrite.md` · Engram topic `odd/manual-voice-rewrite/tasks`
-- **Issue:** [#402](https://github.com/iribarren/ogami/issues/402) · **Branch:** `docs/manual-voice-rewrite-2-part-one-close` · **Status:** in progress (slice 2)
+- **Issue:** [#402](https://github.com/iribarren/ogami/issues/402) · **Branch:** `docs/manual-voice-rewrite-3-toolbox` · **Status:** in progress (slice 3)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Origin:** the follow-ups of [`manual-voice`](manual-voice.md) (#399, PR #400) and [`manual-voice-followups`](manual-voice-followups.md) (#401, PR #403)
@@ -55,10 +55,13 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 | T3 | 1 | The Arc and Scene Types at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `63fe23fe` |
 | T4 | 1 | Steps and Choosing the Next Scene at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `bcf83192` |
 | T5 | 1 | The user's calibration notes on slice 1 applied to seven chapters, and the general lessons added to the style guide | Delegated (`doc-writer`, `doc-editor`); guide inline | done | `41f17be9` |
-| T6 | 2 | Memory and Pressure at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T7 | 2 | Session Rituals and Truths and Endings at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T8 | 2 | Cards and Print and Playtest and Share at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T9 | 2 | Every Phase name bolded in the slice 1 chapters; the glossary gains the `place` Fact slot type and Place tags | Delegated (`doc-writer`, Sonnet; mechanical) | done | |
+| T6 | 2 | Memory and Pressure at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `52ab5b7d` |
+| T7 | 2 | Session Rituals and Truths and Endings at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `3c04fb57` |
+| T8 | 2 | Cards and Print and Playtest and Share at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `a064a068` |
+| T9 | 2 | Every Phase name bolded in the slice 1 chapters; the glossary gains the `place` Fact slot type and Place tags | Delegated (`doc-writer`, Sonnet; mechanical) | done | `0ead3d4f` |
+| T10 | 3 | Likelihood Oracles and Oracle Tables at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
+| T11 | 3 | Inspiration and Random Events and Trackers and Clocks at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
+| T12 | 3 | Cards and Dice and Journaling and Lists at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
 
 ## Applicable checks
 
@@ -71,6 +74,7 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 | Slice | Lineage | Commits | Outcome | PR | Findings |
 |---|---|---|---|---|---|
 | 1 | `review-94fecfc8297b1652` (T1–T4), `review-913cf0cea1d31847` (T5), `review-8c92f1a591338de8` (whole branch) | `a343f47c`, `fb9467dd`, `63fe23fe`, `bcf83192`, `41f17be9` | Low risk, closed approved, acknowledged | [#405](https://github.com/iribarren/ogami/pull/405) | None blocking |
+| 2 | `review-f3091fc08e2859e8` | `52ab5b7d`, `3c04fb57`, `0ead3d4f`, `a064a068` | Low risk, closed approved, acknowledged | [#406](https://github.com/iribarren/ogami/pull/406) | None blocking. Preset mismatch found while writing: follow-up [#407](https://github.com/iribarren/ogami/issues/407) |
 
 ## Progress
 
@@ -85,6 +89,11 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 - T9 done: every Phase name mention bolded in the slice 1 chapters and The Promise (the-arc 27 including its Phase tables, choosing-the-next-scene 8, scene-types 3, the-promise 1, the-two-games 1); quoted literal names, table names, the ship as a vessel and "a Ship round" left plain. The glossary's Fact slot, Tag and Place rows now state the `place` slot type and Place tags the code supports (`FactSlotType::Place`, `TAG_KINDS`). Check: manual Vitest 277 passed, Prettier clean, edition blocks unchanged.
 - T8 done: Playtest and Share (doc-editor ship) and Cards and Print (revise) rewritten at dial 0 and revised. User decisions on old text: the rules card points to Chapters 6, 7 and 9 for its parts (the old "Chapter 7 describes what goes on it" was wrong), and a seeded finale in the bottom five of fifteen ends between the eleventh and the fifteenth draw (not the tenth). Three quoted entries lose the final period the presets lack; the Shrine Gate card stays plain (a Scene Type card, not the Phase). Check: manual Vitest 277 passed, Prettier clean, edition blocks unchanged.
 
+- Slice 2 delivered in PR #406 (`make verify` 235 passed); the user's calibration read brought no notes. The Burden Tracker / Epilogue "Light" mismatch is follow-up [#407](https://github.com/iribarren/ogami/issues/407) (`hard-country-burden-light`), roadmap B31.
+- T10 done: Likelihood Oracles and Oracle Tables rewritten at dial 0 (doc-editor ship for both; voice notes applied: repeated "If you have ever…" and "In this played…" openers, wrong "so" connectives, padding, a closing aphorism). User decisions on old text: rerolling a table, on another table or the same one, is fine when a result makes no sense or gives too little, with a remark that too many rolls can leave the first meaningless, and no hard limit (the old "do not nest more than twice, because at three rolls…" contradicted itself); quiet lines are roll-based, about one roll in three as Road Risks has (3 of 9 copies), and Try it now matches; the Long Carry table list names the road deck. One quoted Strangers entry loses a full stop the preset lacks; the Thread is quoted as the preset names it. Check: manual Vitest 277 passed, Prettier clean, edition blocks unchanged.
+- T11 done: Inspiration and Random Events and Trackers and Clocks rewritten at dial 0; doc-editor revise for both (a "mostly quiet" claim, a d8 stated without its Station, circular and false connectives, a definition pointed at before it was given), fixed. The reroll rule now matches T10's: reroll when a result does not fit or gives too little, write both, no "once" limit. Old text corrected to the presets: quiet is the most common single result (3 of 9 chances), not "mostly"; one line can do both jobs (Road Risks' risen ford); only a ford that goes badly adds Burden (a plain failure adds Winter); "the Ship Phase" is **The Ship**; Clues is read in the **Epilogue**, not the Reveal. "World turn" capitalised inside one edition block. Check: manual Vitest 277 passed, Prettier clean.
+- T12 done: Cards and Dice and Journaling and Lists rewritten at dial 0; doc-editor revise for both (a "since" introducing examples, "edition" used for a game version, a punchline closer, a two-argument paragraph, the dropped purpose of weighting Threads and a dropped "weight of a purse" example, both restored). User decisions on old text: Cold Berth's compartment pack is one card per named compartment, as Cards and Print has it (no blank cards, no "nine cards, five named"), and its compartments make a small deck, so "no deck" no longer contradicts it; the example job is named by its Scene Type (Investigate), not "Okafor's job". "Promise" became "gives their word" and "table of contents" became "index", to keep the manual's terms single-sense. One Omens quote loses a full stop the preset lacks. Check: manual Vitest 277 passed, Prettier clean, edition blocks unchanged.
+
 ## Next step
 
-Slice 2: `make verify`, native review, PR, then the user's calibration read before slice 3. Follow-up to open: `hard-country.json` Burden Tracker levels (only 0 is "Light") disagree with the Epilogue condition (2 or less is "Light").
+Slice 3: T10–T12 (Solo Toolbox, six chapters at dial 0), then `make verify`, native review, PR and the user's calibration read before slice 4.

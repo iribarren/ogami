@@ -1,7 +1,7 @@
 # Feature: manual-voice-rewrite
 
 - **Locator:** `odd/tasks/manual-voice-rewrite.md` · Engram topic `odd/manual-voice-rewrite/tasks`
-- **Issue:** [#402](https://github.com/iribarren/ogami/issues/402) · **Branch:** `docs/manual-voice-rewrite-4-studio` · **Status:** in progress (slice 4)
+- **Issue:** [#402](https://github.com/iribarren/ogami/issues/402) · **Branch:** `docs/manual-voice-rewrite-5-appendices` · **Status:** in progress (slice 5)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Origin:** the follow-ups of [`manual-voice`](manual-voice.md) (#399, PR #400) and [`manual-voice-followups`](manual-voice-followups.md) (#401, PR #403)
@@ -63,10 +63,13 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 | T10 | 3 | Likelihood Oracles and Oracle Tables at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `0c5285dc` |
 | T11 | 3 | Inspiration and Random Events and Trackers and Clocks at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `176291d2` |
 | T12 | 3 | Cards and Dice and Journaling and Lists at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `1854e75d` |
-| T13 | 4 | Rules and Story, Sheets and Groups and Derived Values and Formulas at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T14 | 4 | Checks and Outcome Bands, Gear and Currency and Licensing and Credits at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T15 | 4 | A Tour of Studio, Library Packs and Validation at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T16 | 4 | Releases, Restore and Themes and Publishing and Campaigns at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
+| T13 | 4 | Rules and Story, Sheets and Groups and Derived Values and Formulas at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `23cdc979` |
+| T14 | 4 | Checks and Outcome Bands, Gear and Currency and Licensing and Credits at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `ea05dfaf` |
+| T15 | 4 | A Tour of Studio, Library Packs and Validation at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `6ba65602` |
+| T16 | 4 | Releases, Restore and Themes and Publishing and Campaigns at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `3ea3a072`, `bf9db6df` |
+| T17 | 5 | The Long Carry, Complete and Cold Berth, Complete at dial 1, with the Hard Country and Dogwatch voice packs | Delegated (`doc-writer`, `doc-editor`) | done | |
+| T18 | 5 | Hard Country Rules and Dogwatch Rules at dial 1, with their voice packs; rules statements neutral | Delegated (`doc-writer`, `doc-editor`) | todo | |
+| T19 | 5 | Blank Templates, Glossary, From Paper to Ogami and Credits and Inspirations at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
 
 ## Applicable checks
 
@@ -81,6 +84,7 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 | 1 | `review-94fecfc8297b1652` (T1–T4), `review-913cf0cea1d31847` (T5), `review-8c92f1a591338de8` (whole branch) | `a343f47c`, `fb9467dd`, `63fe23fe`, `bcf83192`, `41f17be9` | Low risk, closed approved, acknowledged | [#405](https://github.com/iribarren/ogami/pull/405) | None blocking |
 | 2 | `review-f3091fc08e2859e8` | `52ab5b7d`, `3c04fb57`, `0ead3d4f`, `a064a068` | Low risk, closed approved, acknowledged | [#406](https://github.com/iribarren/ogami/pull/406) | None blocking. Preset mismatch found while writing: follow-up [#407](https://github.com/iribarren/ogami/issues/407) |
 | 3 | `review-3fc78e6fadfef7e6` | `0c5285dc`, `176291d2`, `1854e75d` | Passive (prose only), closed approved, acknowledged | [#408](https://github.com/iribarren/ogami/pull/408) | None |
+| 4 | None (assessed medium, prose; the user declined this candidate) | `23cdc979`, `ea05dfaf`, `6ba65602`, `3ea3a072`, `bf9db6df` | Not reviewed | [#409](https://github.com/iribarren/ogami/pull/409) | None |
 
 ## Progress
 
@@ -106,6 +110,9 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 - T16 done: Releases, Restore and Themes and Publishing and Campaigns rewritten at dial 0. Old text corrected to the code: "Changes since version N" (`ReleaseChanges.tsx`), no "The outline" label, type changes are converted, trimmed or reset (`FieldChangeKind.php`), a Fact is freed when its slot is gone or changes type (`ReleaseUpgradePlanner.php`), release notes are only in Studio (`ReleasesTab.tsx`), so no co-authors and no advice to write them for players, and a campaign transfer also starts on the latest release (ADR 0046). Check: manual Vitest 277 passed, Prettier clean.
 - T16 editor read: revise for both, applied: Theme capitalised, the print-run comparison referred back to instead of repeated, "group" no longer used for readers, campaign transfer explained first and placed after the upgrade, release notes as the author's own record. Check: manual Vitest 277 passed, Prettier clean.
 
+- Slice 4 delivered in PR #409 (`make verify` 235 passed), merged by the user; the calibration read brought no notes.
+- T17 done: The Long Carry, Complete and Cold Berth, Complete rewritten at dial 1; no game voice added, since both packs give dial-1 voice only to a played example and these chapters have none. doc-editor revise for both, applied: Cold Berth's steps 2 and 3 now say the same thing (a 5 or 6 ends **The Ship**), so a reader does not play an extra World turn, and the old colons that became ", and" are split or given their real connective. Old text corrected to the presets and the engine: the closing check comes before the World turn, which it skips when it ends the Phase (`FlowRun::afterScene`); a compartment is named only when none is left ("If none is left, name one"); Winter also rises on a failed Ford check and Burden's row no longer claims it; Threat's row lists Falls short in Investigate, Hide and the Reveal, the custodian push and the Ship trouble and Treason results; Treason is rolled when a person is part of the scene, and some results change nothing. Late finding: the printed Cold Berth rules card (`frontend/src/manual/print/cold-berth.paper.ts:87`) still says "or name a new one". Check: manual Vitest 277 passed, Prettier clean.
+
 ## Next step
 
-Slice 4: `make verify`, native review, PR and the user's calibration read before slice 5.
+Slice 5: T17–T19, `make verify`, native review, PR, the closing doc commit and the user's calibration read.

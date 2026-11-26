@@ -48,11 +48,11 @@ Out of scope: a "Copy" action elsewhere in Studio (a preset catalog page), key s
 
 | ID | Slice | Task | Route | Done | Commit |
 |---|---|---|---|---|---|
-| 1 | `review-78e1076a7d2c4d22` (T1–T2) | approved, acknowledged | R3-order-case-unproved (suggestion): fixed in T3; CI PHPStan error fixed in T4 (T3, T4 and the doc commit: review skipped, test and doc only) | [#415](https://github.com/iribarren/ogami/pull/415) |
+| 1 | `review-78e1076a7d2c4d22` (T1–T2) | approved, acknowledged | R3-order-case-unproved (suggestion): fixed in T3; CI PHPStan error fixed in T4. Whole branch re-reviewed after T4: `review-df56dfad9bd2d06f` approved, acknowledged, no findings | [#415](https://github.com/iribarren/ogami/pull/415) |
 | T1 | 1 | Studio endpoint listing published GameSystems for copy (D1–D4), API tests, `make api` | delegated writer (Sonnet): 2+ non-trivial files | [x] | `91a84e1a` |
 | T2 | 1 | Copy a release dialog picks from the list (D5–D7); Vitest, story, e2e specs and the Studio tour chapter updated | delegated writer (Sonnet) | [x] | `49599e47` |
 | T3 | 1 | Review finding R3-order-case-unproved: the ordering test proves case-insensitive order and the key tie-break | inline: one test file, already understood | [x] | `31885359` |
-| T4 | 1 | CI finding: PHPStan refused the API test's `json()` return type (CS-Fixer had turned its `@var` into a plain comment) | inline: one test helper | [x] | see PR #415 |
+| T4 | 1 | CI finding: PHPStan refused the API test's `json()` return type (CS-Fixer had turned its `@var` into a plain comment) | inline: one test helper | [x] | `c24b0908` |
 
 ## Acceptance criteria
 

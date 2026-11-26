@@ -1,7 +1,7 @@
 # Feature: manual-voice-rewrite
 
 - **Locator:** `odd/tasks/manual-voice-rewrite.md` · Engram topic `odd/manual-voice-rewrite/tasks`
-- **Issue:** [#402](https://github.com/iribarren/ogami/issues/402) · **Branch:** `docs/manual-voice-rewrite-1-part-one` · **Status:** in progress (slice 1)
+- **Issue:** [#402](https://github.com/iribarren/ogami/issues/402) · **Branch:** `docs/manual-voice-rewrite-2-part-one-close` · **Status:** in progress (slice 2)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Origin:** the follow-ups of [`manual-voice`](manual-voice.md) (#399, PR #400) and [`manual-voice-followups`](manual-voice-followups.md) (#401, PR #403)
@@ -23,6 +23,8 @@ The Promise was rewritten as the pilot and calibrated by the user, but the other
 | Slicing | Five slices by part, each read by the user for calibration before the next | User, 2026-11-25 |
 | Old-text fixes, slice 1 | what-you-need: stop at a natural pause, not when a set time runs out ("clock" was ambiguous). the-two-games: **Epilogue**, the preset's phase name. how-to-use: Paper is played with pencil, paper, cards and dice only, the kit is in What you need. scene-types: two parts of text (purpose, tips) and three of play; Cold Berth jobs differ in what they do to Threat, Clues and the crew's Nerve (Clues is a counter, not a clock); its shared setup also asks Hide's question. Phase names are bolded exactly as the presets name them (**Epilogue**, **Reveal**), in this slice and the next ones; Cold Berth's Scene Type keeps "The Reveal". choosing-the-next-scene: between them the two flows use all three selection rules (The Long Carry `sequence` and `oracle`, Cold Berth `sequence` and `player`). Quoted preset entries match exactly, end punctuation included, in every slice. A writer's added reason is a new claim and goes, even when it is true by arithmetic | User, 2026-11-25 |
 | Calibration read, slice 1 | New terms get a friendly first explanation, introduced through something familiar (three acts of a film for the arc, a chase or a fight for Scene Types); chapters lean only on ideas already introduced; warmth from the reader's play (what your character did, the people you met); no remarks about the text that carry no information, no tacked-on qualifiers. Content: the two editions are play at a table vs. with the companion app; index cards are optional and a text file is a valid notebook; Where you play is about a cosy mood (music); The Two Games introduces GameSystem and NarrativeFlow gently and says the manual builds a flow that plays differently each time. Follow-through: On paper instructions say "an index card, or a page of your notebook" (here and in later slices, e.g. cards-and-print); The Arc's three-act opening is about shape, and its Acts section links the Act label back to film acts. The general rules are in `docs/style/manual-voice.md` ("New ideas arrive with something familiar", "Signposting and filler") | User, 2026-11-26 |
+| Slice 1 open points | Keep the playing-card substitute in choosing-the-next-scene (On paper), since index cards are optional. The cut-off third how-to-use note is dropped | User, 2026-11-26 |
+| Old-text fixes, slice 2 | Every mention of a Phase name is bolded exactly as the preset spells it, mid-sentence too (**The Road**, **The Shrine Gate**), in every chapter including slice 1's, outside `:::in-ogami` blocks. Capitalization fixes ("World turn") are allowed inside blocks, nothing else. Old text that a preset contradicts is corrected to match it. The glossary gains the `place` Fact slot type and Place tags, which the code and `dogwatch.json` already use | User, 2026-11-26 |
 | Per-task cycle | `doc-writer` drafts (no commit) → `doc-editor` reviews → `doc-writer` revises on a `revise` verdict → the parent runs the manual Vitest suite and commits | Parent |
 
 ## Constraints
@@ -49,10 +51,14 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 | ID | Slice | Task | Route | Status | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Follow-up issue for a Spanish edition of the app manual, and its `docs/roadmap.md` backlog line | Inline | done | `a343f47c` |
-| T2 | 1 | Front matter at dial 0: how-to-use, what-you-need, the-two-games, credits-and-license | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T3 | 1 | The Arc and Scene Types at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T4 | 1 | Steps and Choosing the Next Scene at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T5 | 1 | The user's calibration notes on slice 1 applied to seven chapters, and the general lessons added to the style guide | Delegated (`doc-writer`, `doc-editor`); guide inline | done | |
+| T2 | 1 | Front matter at dial 0: how-to-use, what-you-need, the-two-games, credits-and-license | Delegated (`doc-writer`, `doc-editor`) | done | `fb9467dd` |
+| T3 | 1 | The Arc and Scene Types at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `63fe23fe` |
+| T4 | 1 | Steps and Choosing the Next Scene at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `bcf83192` |
+| T5 | 1 | The user's calibration notes on slice 1 applied to seven chapters, and the general lessons added to the style guide | Delegated (`doc-writer`, `doc-editor`); guide inline | done | `41f17be9` |
+| T6 | 2 | Memory and Pressure at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
+| T7 | 2 | Session Rituals and Truths and Endings at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
+| T8 | 2 | Cards and Print and Playtest and Share at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
+| T9 | 2 | Every Phase name bolded in the slice 1 chapters; the glossary gains the `place` Fact slot type and Place tags | Delegated (`doc-writer`) | todo | |
 
 ## Applicable checks
 
@@ -64,6 +70,7 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 
 | Slice | Lineage | Commits | Outcome | PR | Findings |
 |---|---|---|---|---|---|
+| 1 | `review-94fecfc8297b1652` (T1–T4), `review-913cf0cea1d31847` (T5), `review-8c92f1a591338de8` (whole branch) | `a343f47c`, `fb9467dd`, `63fe23fe`, `bcf83192`, `41f17be9` | Low risk, closed approved, acknowledged | [#405](https://github.com/iribarren/ogami/pull/405) | None blocking |
 
 ## Progress
 
@@ -73,7 +80,8 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 - T3 done: The Arc (doc-editor ship) and Scene Types (revise: a repeated contrast frame replacing the old colons, a garbled tip clause) rewritten at dial 0 and revised; the user's old-text decisions applied. Check: manual Vitest 10 files, 277 tests passed.
 - T4 done: Steps and Choosing the Next Scene rewritten at dial 0; doc-editor revise for both (the "all three rules" claim the presets contradict, an added reason, full stops on quoted entries the presets lack, a repeated example frame), fixed with the user's decisions. Check: manual Vitest 10 files, 277 tests passed.
 - T5 done: the user's calibration notes applied to seven chapters (friendly first explanations through films and familiar scenes, the editions as table play vs. the companion app, optional index cards and a text-file notebook, a cosy Where you play); doc-editor asked for revisions on The Two Games (Session Zero is not a whole sitting, Cold Berth has three Truths, one definition of a flow), The Arc (the Act bridge) and the guide, all fixed. The Two Games now says the ship "picks a crew member to go missing", as the preset's "Who goes missing?" step does (the old text said "who is missing"). Guide: new section "New ideas arrive with something familiar", warmth from the player's side, two filler habits. Check: manual Vitest 10 files, 277 tests passed.
+- T6 done: Memory (doc-editor ship) and Pressure (revise: a quote with a full stop the preset lacks, a loop-length sentence that misread) rewritten at dial 0 and revised. Old text corrected to the presets: quiet is three of the nine chances, the "last seen" question is the World turn's last step, Cold Berth's loop length gets the Threat qualifier, the opening no longer contradicts The Promise's three jobs, the NPC list. "Five places" became "Five kinds of record" (unlinked). Check: manual Vitest 10 files, 277 tests passed.
 
 ## Next step
 
-Slice 1: `make verify`, native review, PR, then the user's calibration read before slice 2.
+Slice 2: T6–T8 (memory, pressure, session-rituals, truths-and-endings, cards-and-print, playtest-and-share), then `make verify`, native review, PR and the user's calibration read before slice 3.

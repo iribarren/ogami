@@ -64,7 +64,7 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 | T11 | 3 | Inspiration and Random Events and Trackers and Clocks at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `176291d2` |
 | T12 | 3 | Cards and Dice and Journaling and Lists at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `1854e75d` |
 | T13 | 4 | Rules and Story, Sheets and Groups and Derived Values and Formulas at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T14 | 4 | Checks and Outcome Bands, Gear and Currency and Licensing and Credits at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
+| T14 | 4 | Checks and Outcome Bands, Gear and Currency and Licensing and Credits at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
 | T15 | 4 | A Tour of Studio, Library Packs and Validation at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
 | T16 | 4 | Releases, Restore and Themes and Publishing and Campaigns at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
 
@@ -101,6 +101,7 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 - T12 done: Cards and Dice and Journaling and Lists rewritten at dial 0; doc-editor revise for both (a "since" introducing examples, "edition" used for a game version, a punchline closer, a two-argument paragraph, the dropped purpose of weighting Threads and a dropped "weight of a purse" example, both restored). User decisions on old text: Cold Berth's compartment pack is one card per named compartment, as Cards and Print has it (no blank cards, no "nine cards, five named"), and its compartments make a small deck, so "no deck" no longer contradicts it; the example job is named by its Scene Type (Investigate), not "Okafor's job". "Promise" became "gives their word" and "table of contents" became "index", to keep the manual's terms single-sense. One Omens quote loses a full stop the preset lacks. Check: manual Vitest 277 passed, Prettier clean, edition blocks unchanged.
 - Slice 3 delivered in PR #408 (`make verify` 235 passed), merged by the user.
 - T13 done: Rules and Story, Sheets and Groups and Derived Values and Formulas rewritten at dial 0, each opened through something familiar (a rulebook and an adventure, a character sheet, a spreadsheet cell); doc-editor revise for Rules and Story (an added reason for Winter, kit and chits merged into one rule) and Sheets and Groups ("table" in two senses, "80 characters, such as a ferryman"), ship for Derived Values, all notes applied. User decisions: the rail list matches the code, the Track hint no longer contradicts Wounds, prose keeps "derived value". Check: manual Vitest 277 passed, Prettier clean.
+- T14 done: Checks and Outcome Bands, Gear and Currency and Licensing and Credits rewritten at dial 0; doc-editor revise for Checks ("the number on the die" narrowed "a roll"; "can let the player choose" implied a single-Check step), ship for the other two, all voice notes applied. Four gear quotes restored to the presets word for word (rope, bandages, med patch, cutting torch); Gear is never "item" in the manual's own prose; "A fan GameSystem put" typo fixed. User decision: the 0-slot example is Dogwatch's ration bars and the patch kit. Check: manual Vitest 277 passed, Prettier clean.
 
 ## Next step
 

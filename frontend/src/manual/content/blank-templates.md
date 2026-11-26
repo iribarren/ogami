@@ -1,20 +1,20 @@
 # Blank Templates
 
-Four blanks to copy into your notebook or onto index cards: a Scene Type card, a flow plan, a Tracker and an oracle table. Each chapter that uses one says what to write in it.
+The four blanks below are a Scene Type card, a flow plan, a Tracker and an oracle table, set out so that you can copy each one onto an index card, or a page of your notebook. Each chapter that uses one says what to write in it.
 
 ## Scene Type card
 
-| Field   | Write here                                              |
-| ------- | ------------------------------------------------------- |
-| Name    |                                                         |
-| Purpose | One sentence: what this scene is for                    |
-| Tips    | One or two lines for whoever runs it                    |
-| Setup   | Steps before play: who is here, where, what is at stake |
-| Play    | Steps of the scene, each a question or a roll           |
-| Closing | Steps after play: what changes, which Tracker moves     |
-| Tables  | The oracle tables this scene may roll                   |
+| Field   | Write here                                                             |
+| ------- | ---------------------------------------------------------------------- |
+| Name    |                                                                        |
+| Purpose | One sentence saying what this scene is for                             |
+| Tips    | One or two lines for whoever runs it                                   |
+| Setup   | Steps before play that settle who is here, where, and what is at stake |
+| Play    | Steps of the scene, each a question or a roll                          |
+| Closing | Steps after play that say what changes and which Tracker moves         |
+| Tables  | The oracle tables this scene may roll                                  |
 
-For each step, write a prompt that asks a question rather than answering it. If a step rolls, write what each result costs or gives.
+Write the prompt of each step as a question rather than as its answer, and when a step rolls, write down what each result costs or gives.
 
 ## Flow plan
 
@@ -37,7 +37,7 @@ For each step, write a prompt that asks a question rather than answering it. If 
 |       |                    |                              |             |           |
 |       |                    |                              |             |           |
 
-**World turn** (after each scene of a looping phase):
+**World turn** (after each scene of a looping Phase):
 
 1.
 2.
@@ -84,4 +84,4 @@ A counter from 0 to 6:
 | 5    |        |                |
 | 6    |        |                |
 
-Give common results more rolls than rare ones. For a table with no dice, write one result per card and draw.
+Give the common results more rolls than the rare ones. If a table has no dice, write each of its results on a card of its own and draw one.

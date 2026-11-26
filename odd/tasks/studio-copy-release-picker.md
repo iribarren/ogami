@@ -50,6 +50,7 @@ Out of scope: a "Copy" action elsewhere in Studio (a preset catalog page), key s
 |---|---|---|---|---|---|
 | T1 | 1 | Studio endpoint listing published GameSystems for copy (D1–D4), API tests, `make api` | delegated writer (Sonnet): 2+ non-trivial files | [x] | |
 | T2 | 1 | Copy a release dialog picks from the list (D5–D7); Vitest, story, e2e specs and the Studio tour chapter updated | delegated writer (Sonnet) | [x] | |
+| T3 | 1 | Review finding R3-order-case-unproved: the ordering test proves case-insensitive order and the key tie-break | inline: one test file, already understood | [x] | |
 
 ## Acceptance criteria
 
@@ -69,6 +70,7 @@ Out of scope: a "Copy" action elsewhere in Studio (a preset catalog page), key s
 - 2026-11-26: Feature doc created; one slice, two tasks.
 - 2026-11-26: T1 done: `GET /api/studio/published-game-systems` with API tests (200 order/fields, never-published and other managers', unreadable left out, empty, 401, 403); `make api` regenerated.
 - 2026-11-26: T2 done: Copy a release picks the source and version from native selects fed by the new endpoint; Vitest, story, six e2e specs and the Studio tour updated.
+- 2026-11-26: T3 done: the ordering test adds a lower-case name and two GameSystems with the same name; 4 tests, 63 assertions OK.
 
 ## Reviews
 

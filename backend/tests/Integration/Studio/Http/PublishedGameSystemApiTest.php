@@ -70,6 +70,13 @@ final class PublishedGameSystemApiTest extends WebTestCase
         $this->client->jsonRequest('PUT', '/api/studio/game-systems/alpha/metadata', ['name' => 'Alpha', 'description' => 'The first one.']);
         $this->publish('alpha');
         $this->createDraft('unpublished', 'Unpublished');
+        // A lower-case name sorts with its letter, not after every capital; the same name falls back to the key.
+        $this->createDraft('beta', 'beta');
+        $this->publish('beta');
+        $this->createDraft('twin-b', 'Twin');
+        $this->publish('twin-b');
+        $this->createDraft('twin-a', 'Twin');
+        $this->publish('twin-a');
 
         // Another manager's published GameSystem is listed too; a draft of theirs is not.
         $this->signIn('bob@example.com', ['GAME_MANAGER']);
@@ -81,9 +88,9 @@ final class PublishedGameSystemApiTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(200);
         $items = $this->json();
-        self::assertSame(['alpha', 'bobs', 'zeta'], array_column($items, 'key'));
-        self::assertSame(['Alpha', 'Bob\'s', 'zeta'], array_column($items, 'name'));
-        self::assertSame([2, 1, 1], array_column($items, 'latestVersion'));
+        self::assertSame(['alpha', 'beta', 'bobs', 'twin-a', 'twin-b', 'zeta'], array_column($items, 'key'));
+        self::assertSame(['Alpha', 'beta', 'Bob\'s', 'Twin', 'Twin', 'zeta'], array_column($items, 'name'));
+        self::assertSame([2, 1, 1, 1, 1, 1], array_column($items, 'latestVersion'));
         self::assertSame('The first one.', $items[0]['description']);
         self::assertNull($items[1]['description']);
         foreach ($items as $item) {

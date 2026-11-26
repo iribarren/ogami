@@ -57,7 +57,7 @@ Shippable: slices 1 and 2 add code nothing imports outside its tests and story; 
 | ID | Slice | Task | Route | Done | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | ADR 0051 (D1, D2, D3) and its row in `docs/adr/README.md` | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T2 | 1 | `FlowDiagram` shape, release-content adapter (D2–D7), `phaseDiagram` (D8), `describeFlowDiagram` (D9), with Vitest on Cold Berth, The Long Carry, Ironsworn and hand-made fixtures | | [ ] | |
+| T2 | 1 | `FlowDiagram` shape, release-content adapter (D2–D7), `phaseDiagram` (D8), `describeFlowDiagram` (D9), with Vitest on Cold Berth, The Long Carry, Ironsworn and hand-made fixtures | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T3 | 2 | Layout: phases stacked in order, dagre inside each phase, phase and self arrows, exit stub, end marker; deterministic positions | | [ ] | |
 | T4 | 2 | `FlowDiagramView` SVG renderer (theme tokens, dashed `via` arrows, hook chips) with the text alternative, Storybook story, Vitest | | [ ] | |
 | T5 | 3 | `::flow-diagram{…}` directive, preset data in the manual chapter pages and the Paper edition, print styles | | [ ] | |
@@ -79,6 +79,7 @@ Shippable: slices 1 and 2 add code nothing imports outside its tests and story; 
 
 - 2026-11-27: Feature doc created; three slices, six tasks; placements and library approved.
 - 2026-11-27: T1 done: ADR 0051 and its index row.
+- 2026-11-27: T2 done: `shared/flowDiagram` (shape, adapter, phase cut, text alternative); 48 Vitest tests, RED then GREEN; `nextPhase` targets also carry the phase name so a one-phase cut can name its exit stub.
 
 ## Reviews
 

@@ -1,6 +1,8 @@
 # Scene Types
 
-The arc says which Phases the story has, and each Phase is made of scenes. Every scene is an instance of a **Scene Type**, which is a reusable kind of scene that you write once and play many times.
+Think of the scenes you expect from a thriller. Sooner or later there will be a chase and there will be a fight, and although no two chases are alike, you know what a chase is for and roughly how it goes before it starts, since every chase is someone running and someone else trying to catch them.
+
+A chase and a fight are kinds of scene, and a flow is built from kinds of scene in the same way. The arc says which Phases the story has, and each Phase is made of scenes. Every scene is an instance of a **Scene Type**, which is a reusable kind of scene that you write once and play many times.
 
 ## What a Scene Type is
 
@@ -40,7 +42,7 @@ You need fewer Scene Types than you think. A flow of four hours does not need tw
 
 ## On paper
 
-Use one index card per Scene Type.
+Use one index card per Scene Type, or a page of your notebook.
 
 - **Front:** the name, the purpose, and the tips.
 - **Back:** three short lists headed Setup, Play and Closing, each with its questions or its roll.

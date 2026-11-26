@@ -1,6 +1,8 @@
 # Steps
 
-A Scene Type is a list of **Steps**, and each step is one thing the scene asks of you, such as answering a question, making a choice, rolling on a table, making a check or reading a clock. The steps are where the flow and the story meet, and you will write more of them than of any other part of the flow.
+A Scene Type is a list of **Steps**, and each step is one thing the scene asks of you, such as answering a question, making a choice, rolling on a table, making a check or reading a clock.
+
+If a Scene Type is the recipe for a kind of scene, its steps are the instructions, the lines you follow one at a time. That is how they move the story forward, because you do not have to see the whole scene before you start, only answer the step in front of you, and each answer, roll or choice gives the next step something to work with. A recipe still leaves the cooking to you, though, and most steps ask rather than tell, which is why the steps are where the flow and the story meet.
 
 ## The kinds of step
 
@@ -58,7 +60,7 @@ A step is either a gate or a suggestion. A **mandatory** step must be answered b
 
 ## On paper
 
-Write each step as one line on its Scene Type card, in this form:
+Write each step as one line on its Scene Type's index card or notebook page, in this form:
 
 > **Kind** · the question or the options · what it changes
 
@@ -112,4 +114,4 @@ The effect on the table entry did the book-keeping, adding a Clue and a new ques
 
 ## Try it
 
-Take one of your Scene Types and write its steps as lines on its card. Check that each prompt is a question, and ask of each step whether it changes anything. If a step changes nothing and the scene reads as well without it, cut it.
+Take one of your Scene Types and write its steps as lines on its card or page. Check that each prompt is a question, and ask of each step whether it changes anything. If a step changes nothing and the scene reads as well without it, cut it.

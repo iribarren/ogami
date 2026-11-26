@@ -44,7 +44,7 @@ A flow mixes the rules, and between them the two flows here use all three. Both 
 
 ## On paper
 
-Make one card per Scene Type, as the Scene Types chapter describes, and then handle the cards by the rule.
+Make one card per Scene Type, either the index card the Scene Types chapter describes or a playing card that stands for it, and then handle the cards by the rule.
 
 - **Sequence.** Stack the cards face down in order. Play the top card and put it aside, or in a loop put it under the pile instead.
 - **Player.** Lay the cards face up. Pick one, play it, and put it back where it was.
@@ -62,7 +62,7 @@ A sequence in a loop starts again from its first Scene Type. A `once` Phase with
 
 ## The Long Carry
 
-The Road is a deck, and its table, The road deck, has thirteen copies.
+In The Long Carry you travel from one place to another, and the two ends of the journey are fixed. What the flow leaves open is what you meet on the way, because the Road between the two ends is a deck that chooses every scene nothing else has forced, and since it is shuffled, each journey meets its own scenes in its own order. Its table, The road deck, has thirteen copies.
 
 | Card                                          | Copies |
 | --------------------------------------------- | ------ |
@@ -72,7 +72,7 @@ The Road is a deck, and its table, The road deck, has thirteen copies.
 | Ruin: what the road left behind               | 2      |
 | Omen: the road says something about the saint | 3      |
 
-The numbers say what the road is like. There are three Camps because Camp is the only place where the bearers recover, and a road without rests would be a death march. Fords and Ruins are rarer, since each of them costs something. The Omens are common because the Sin is written there, and the story needs a steady supply of Omens.
+The copies set how often each kind of scene turns up, and so what kind of road this is. There are three Camps because Camp is the only place where the bearers recover, and a road without rests would be a death march. Fords and Ruins are rarer, since each of them costs something. The Omens are common because the Sin is written there, and the story needs a steady supply of Omens.
 
 The Phases around the Road are sequences. Session Zero is a sequence because nobody should be able to skip the vow, and it plays the bearers, the saint and the vow in that order. The Shrine Gate and the Epilogue are one scene each.
 

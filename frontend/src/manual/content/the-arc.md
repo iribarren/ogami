@@ -1,6 +1,8 @@
 # The Arc
 
-The promise says what the story is about, and the arc says in what order it happens. It is a short list of **Phases**, each of them a stretch of play with one job to do.
+Most films, and a good many novels, follow what screenwriters call the three-act structure. The first act introduces the people and what they want, the second puts something in their way, and the third settles whether they get it. You probably know that shape even if you have never named it, because you can feel it when a film you are watching moves from its setup into its long middle.
+
+A flow needs a shape of the same kind, and the arc is where you give it one. The promise says what the story is about, and the arc says in what order it happens, as a short list of **Phases**, each of them a stretch of play with one job to do. What the comparison with a film's three acts gives you is the shape, a story told in parts that each do their own work and then hand over to the next.
 
 ## Phases
 
@@ -29,7 +31,7 @@ The roll in the middle is what makes the ending feel found rather than scheduled
 
 ## Acts
 
-An **Act** is an optional label you put on a Phase to group it with its neighbours, such as "Act 2: The big job". It is only a label and not a level of the flow, so it changes nothing about how the Phases run. Use Acts in a long flow, when you want to say "we are in the second third". Neither of the two flows in this book uses them, because both are short.
+An **Act** is an optional label you put on a Phase to group it with its neighbours, so that several Phases make up one act in the film's sense, such as "Act 2: The big job". It is only a label and not a level of the flow, so it changes nothing about how the Phases run. Use Acts in a long flow, when you want to say "we are in the second third". Neither of the two flows in this book uses them, because both are short.
 
 ## Session Zero
 

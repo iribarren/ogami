@@ -4,12 +4,12 @@ This book teaches you to design a **NarrativeFlow**, the guided procedure that r
 
 ## One book, two editions
 
-The book comes in two editions, and both are written from the same pages. The **Paper** edition is for the table, and you play it with pencil, paper, cards and dice only, with no screen. The next chapter, What you need, lists the exact kit. The Paper edition ends with appendices that hold both flows in full, one rules sheet for each game, blank templates, a glossary and the credits, and the card sheets for the two flows are printed separately. The **Full** edition adds extra boxes to the Paper edition, along with the chapters on authoring a GameSystem, a reference for the authoring tool and a map from the paper tools to the screen.
+The book comes in two editions. The **Paper** edition is for playing at a table in the way of a traditional tabletop roleplaying game, with pencil, paper, cards and dice. The next chapter, What you need, lists the exact kit and the few things that can stand in for it. The Paper edition ends with appendices that hold both flows in full, one rules sheet for each game, blank templates, a glossary and the credits, and the card sheets for the two flows are printed separately. The **Full** edition expands the Paper one for play with a digital companion on screen as well as at the table, with extra boxes in the Paper text, the chapters on authoring a GameSystem, a reference for the authoring tool and a map from the paper tools to the screen.
 
 The method is the same in both editions. Terms keep one meaning wherever they appear. A **GameSystem**, for example, holds the rules, and a **NarrativeFlow** is one story played inside it.
 
 :::in-ogami
-You are reading the Full edition inside Ogami, and its "In Ogami" boxes show how the same step is done in the app. Studio, where GameSystems and flows are authored, links to this manual from its home page and from the header of every GameSystem. The Manual link in the main bar is there for everyone, signed in or not.
+You are reading the Full edition inside Ogami, the companion app, and its "In Ogami" boxes show how the same step is done in the app. Studio, where GameSystems and flows are authored, links to this manual from its home page and from the header of every GameSystem. The Manual link in the main bar is there for everyone, signed in or not.
 
 The three PDFs are published on a GitHub Release, so you can print them or keep them beside the screen.
 

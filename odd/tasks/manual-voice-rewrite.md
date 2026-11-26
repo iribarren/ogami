@@ -1,7 +1,7 @@
 # Feature: manual-voice-rewrite
 
 - **Locator:** `odd/tasks/manual-voice-rewrite.md` · Engram topic `odd/manual-voice-rewrite/tasks`
-- **Issue:** [#402](https://github.com/iribarren/ogami/issues/402) · **Branch:** `docs/manual-voice-rewrite-5-appendices` · **Status:** in progress (slice 5)
+- **Issue:** [#402](https://github.com/iribarren/ogami/issues/402) · **Branch:** `docs/manual-voice-rewrite-5-appendices` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Origin:** the follow-ups of [`manual-voice`](manual-voice.md) (#399, PR #400) and [`manual-voice-followups`](manual-voice-followups.md) (#401, PR #403)
@@ -68,10 +68,10 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 | T14 | 4 | Checks and Outcome Bands, Gear and Currency and Licensing and Credits at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `ea05dfaf` |
 | T15 | 4 | A Tour of Studio, Library Packs and Validation at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `6ba65602` |
 | T16 | 4 | Releases, Restore and Themes and Publishing and Campaigns at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `3ea3a072`, `bf9db6df` |
-| T17 | 5 | The Long Carry, Complete and Cold Berth, Complete at dial 1, with the Hard Country and Dogwatch voice packs | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T18 | 5 | Hard Country Rules and Dogwatch Rules at dial 1, with their voice packs; rules statements neutral | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T19 | 5 | Blank Templates, Glossary, From Paper to Ogami and Credits and Inspirations at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T20 | 5 | Late findings of slice 5: the printed Cold Berth rules card, the glossary's Validation row, memory's Tags list | Inline (three one-line edits) | done | |
+| T17 | 5 | The Long Carry, Complete and Cold Berth, Complete at dial 1, with the Hard Country and Dogwatch voice packs | Delegated (`doc-writer`, `doc-editor`) | done | `ad7b3269` |
+| T18 | 5 | Hard Country Rules and Dogwatch Rules at dial 1, with their voice packs; rules statements neutral | Delegated (`doc-writer`, `doc-editor`) | done | `c9e93ed5` |
+| T19 | 5 | Blank Templates, Glossary, From Paper to Ogami and Credits and Inspirations at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | `4d9e4cd1` |
+| T20 | 5 | Late findings of slice 5: the printed Cold Berth rules card, the glossary's Validation row, memory's Tags list | Inline (three one-line edits) | done | `d30831cb` |
 
 ## Applicable checks
 
@@ -87,6 +87,7 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 | 2 | `review-f3091fc08e2859e8` | `52ab5b7d`, `3c04fb57`, `0ead3d4f`, `a064a068` | Low risk, closed approved, acknowledged | [#406](https://github.com/iribarren/ogami/pull/406) | None blocking. Preset mismatch found while writing: follow-up [#407](https://github.com/iribarren/ogami/issues/407) |
 | 3 | `review-3fc78e6fadfef7e6` | `0c5285dc`, `176291d2`, `1854e75d` | Passive (prose only), closed approved, acknowledged | [#408](https://github.com/iribarren/ogami/pull/408) | None |
 | 4 | None (assessed medium, prose; the user declined this candidate) | `23cdc979`, `ea05dfaf`, `6ba65602`, `3ea3a072`, `bf9db6df` | Not reviewed | [#409](https://github.com/iribarren/ogami/pull/409) | None |
+| 5 | None (assessed medium, prose; the user declined this candidate) | `ad7b3269`, `c9e93ed5`, `4d9e4cd1`, `d30831cb` | Not reviewed | [#410](https://github.com/iribarren/ogami/pull/410) | Late findings fixed in T20; the presets' "item" inventory hints are follow-up [#411](https://github.com/iribarren/ogami/issues/411) |
 
 ## Progress
 
@@ -116,8 +117,9 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 - T17 done: The Long Carry, Complete and Cold Berth, Complete rewritten at dial 1; no game voice added, since both packs give dial-1 voice only to a played example and these chapters have none. doc-editor revise for both, applied: Cold Berth's steps 2 and 3 now say the same thing (a 5 or 6 ends **The Ship**), so a reader does not play an extra World turn, and the old colons that became ", and" are split or given their real connective. Old text corrected to the presets and the engine: the closing check comes before the World turn, which it skips when it ends the Phase (`FlowRun::afterScene`); a compartment is named only when none is left ("If none is left, name one"); Winter also rises on a failed Ford check and Burden's row no longer claims it; Threat's row lists Falls short in Investigate, Hide and the Reveal, the custodian push and the Ship trouble and Treason results; Treason is rolled when a person is part of the scene, and some results change nothing. Late finding: the printed Cold Berth rules card (`frontend/src/manual/print/cold-berth.paper.ts:87`) still said "or name a new one", fixed in T20. Check: manual Vitest 277 passed, Prettier clean.
 - T18 done: Hard Country Rules and Dogwatch Rules rewritten at dial 1, again with no game voice (no played example); every rules statement neutral. doc-editor revise for Hard Country (an added "you are hoping for a low number", now the preset hint's "at or under the trait succeeds, a 1 is clean and a 20 goes badly"), ship for Dogwatch; all voice notes applied (one person per paragraph, a causal "so" removed, the Difficulty's default attached to it). "A bulky item" became "a bulky piece of kit", since Gear is never "item" in the manual's prose. Late finding: both presets' inventory hints say "item" (`hard-country.json` `sheet.fields[load].hint`, `dogwatch.json` `sheet.fields[kit].hint`); the manual does not quote them. Check: manual Vitest 277 passed, Prettier clean.
 - T19 done: Blank Templates, Glossary, From Paper to Ogami and Credits and Inspirations rewritten at dial 0; doc-editor ship for three, revise for Glossary (the Hook entry tied hooks to a Phase's own boundaries; renaming clauses in the lookup rows), applied. Old text corrected to the domain glossary and the code: Tags also go on characters; the Step and Effect lists read as complete and now say "most steps" and "such as" (ten kinds each, `stepDraft.ts`); the World turn is a Hook, not a step, here and in `pressure.md:19`; Scene Type and GameSystem definitions name their oracles; band labels as `dogwatch.json` spells them; the panel is **Guided play** (`GuidedPanel.tsx:26`; "Guided view" is only an `aria-label`). Kept: "a card of its own" for a drawn card, the Trait definition (the book uses trait only for Hard Country). Open for the user: "Validation | The check…" inside the glossary's edition block uses "check" next to the term Check; `memory.md:19` lists Tags without characters; Dogwatch's Stations have no glossary entry. Check: manual Vitest 277 passed, Prettier clean.
-- T20 done, with the user's rulings on the late findings: the printed Cold Berth rules card now says "Choose a compartment card for it (if none is left, name a new one)"; the glossary's Validation row says "The test" instead of "The check" (a word change inside its edition block, allowed by the user); `memory.md:19` puts tags on characters too. Not changed: no Station glossary entry (user); the presets' "item" hints become a follow-up issue in the closing doc commit. Check: manual Vitest 277 passed, Prettier clean; `make verify` before T20 235 passed.
+- T20 done, with the user's rulings on the late findings: the printed Cold Berth rules card now says "Choose a compartment card for it (if none is left, name a new one)"; the glossary's Validation row says "The test" instead of "The check" (a word change inside its edition block, allowed by the user); `memory.md:19` puts tags on characters too. Not changed: no Station glossary entry (user); the presets' "item" hints are follow-up [#411](https://github.com/iribarren/ogami/issues/411) (`preset-gear-item-hints`), roadmap B32. Check: manual Vitest 277 passed, Prettier clean; `make verify` before T20 235 passed.
+- Slice 5 delivered in PR #410 (`make verify` 235 passed); native review declined by the user. Feature done: 39 chapters rewritten in five slices (PRs #405, #406, #408, #409, #410).
 
 ## Next step
 
-Slice 5: T17–T19, `make verify`, native review, PR, the closing doc commit and the user's calibration read.
+None. Every finding is fixed or has an issue: #407 (Burden "Light"), #411 (preset "item" hints), and the Spanish edition is #404.

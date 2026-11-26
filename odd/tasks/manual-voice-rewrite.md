@@ -57,7 +57,7 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 | T5 | 1 | The user's calibration notes on slice 1 applied to seven chapters, and the general lessons added to the style guide | Delegated (`doc-writer`, `doc-editor`); guide inline | done | `41f17be9` |
 | T6 | 2 | Memory and Pressure at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
 | T7 | 2 | Session Rituals and Truths and Endings at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
-| T8 | 2 | Cards and Print and Playtest and Share at dial 0 | Delegated (`doc-writer`, `doc-editor`) | todo | |
+| T8 | 2 | Cards and Print and Playtest and Share at dial 0 | Delegated (`doc-writer`, `doc-editor`) | done | |
 | T9 | 2 | Every Phase name bolded in the slice 1 chapters; the glossary gains the `place` Fact slot type and Place tags | Delegated (`doc-writer`, Sonnet; mechanical) | done | |
 
 ## Applicable checks
@@ -83,7 +83,8 @@ A rewrite counts about twice its source lines (deletions plus additions). Hard c
 - T6 done: Memory (doc-editor ship) and Pressure (revise: a quote with a full stop the preset lacks, a loop-length sentence that misread) rewritten at dial 0 and revised. Old text corrected to the presets: quiet is three of the nine chances, the "last seen" question is the World turn's last step, Cold Berth's loop length gets the Threat qualifier, the opening no longer contradicts The Promise's three jobs, the NPC list. "Five places" became "Five kinds of record" (unlinked). Check: manual Vitest 10 files, 277 tests passed.
 - T7 done: Session Rituals (doc-editor ship) and Truths and Endings (revise: an edition block reworded beyond capitals, unbolded Phase names) rewritten at dial 0 and revised. "Sitting" became "session" as the glossary names it, including the unlinked headings and the On paper card. Five quoted entries lose the final period the presets lack. The Burden Tracker's levels (only 0 is "Light") disagree with the Epilogue condition (2 or less is "Light"); the chapter quotes the condition, and the preset question is a follow-up. Check: manual Vitest 10 files, 277 tests passed.
 - T9 done: every Phase name mention bolded in the slice 1 chapters and The Promise (the-arc 27 including its Phase tables, choosing-the-next-scene 8, scene-types 3, the-promise 1, the-two-games 1); quoted literal names, table names, the ship as a vessel and "a Ship round" left plain. The glossary's Fact slot, Tag and Place rows now state the `place` slot type and Place tags the code supports (`FactSlotType::Place`, `TAG_KINDS`). Check: manual Vitest 277 passed, Prettier clean, edition blocks unchanged.
+- T8 done: Playtest and Share (doc-editor ship) and Cards and Print (revise) rewritten at dial 0 and revised. User decisions on old text: the rules card points to Chapters 6, 7 and 9 for its parts (the old "Chapter 7 describes what goes on it" was wrong), and a seeded finale in the bottom five of fifteen ends between the eleventh and the fifteenth draw (not the tenth). Three quoted entries lose the final period the presets lack; the Shrine Gate card stays plain (a Scene Type card, not the Phase). Check: manual Vitest 277 passed, Prettier clean, edition blocks unchanged.
 
 ## Next step
 
-Slice 2: T6–T8 (memory, pressure, session-rituals, truths-and-endings, cards-and-print, playtest-and-share), then `make verify`, native review, PR and the user's calibration read before slice 3.
+Slice 2: `make verify`, native review, PR, then the user's calibration read before slice 3. Follow-up to open: `hard-country.json` Burden Tracker levels (only 0 is "Light") disagree with the Epilogue condition (2 or less is "Light").

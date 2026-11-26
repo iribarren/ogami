@@ -2,17 +2,17 @@
 
 ## This book
 
-The whole book is released under the [Creative Commons Attribution-ShareAlike 4.0 license](https://creativecommons.org/licenses/by-sa/4.0/) (CC BY-SA 4.0). You may copy it, share it and adapt it, including for money, if you credit it and share your version under the same license.
+The whole book is released under the [Creative Commons Attribution-ShareAlike 4.0 license](https://creativecommons.org/licenses/by-sa/4.0/) (CC BY-SA 4.0), which means you may copy it, share it and adapt it, including for money, as long as you credit it and share your version under the same license.
 
 Hard Country and Dogwatch are original games written for this book, and they are released under CC BY-SA 4.0 like the rest of it. No rules text from any other game is used.
 
 ## Design influences
 
-Cairn, by Yochai Gal, and 24XX, by Jason Tocci, shaped the design of rules-light games like these two. They are influences only: no text from either game is used in this book.
+Cairn, by Yochai Gal, and 24XX, by Jason Tocci, shaped the design of rules-light games like these two. They are influences only, meaning that no text from either game is used in this book.
 
 ## Inspired by
 
-These works inspired the two flows. The book uses their ideas about situations and mood. It copies none of their text, characters or plots.
+These works inspired the two flows. The book uses their ideas about situations and mood, but it copies none of their text, characters or plots.
 
 **The Long Carry**
 

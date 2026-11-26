@@ -14,7 +14,7 @@ That reader does not need to be entertained, and they do not want to be sold to.
 
 The model is the designer essay, the kind of writing found in books such as *Blades in the Dark* or *Shape Up*, where the author explains a method and argues for it at the same time. A rule in that kind of book rarely arrives alone; it comes with the problem it solves and with what goes wrong when you leave it out. We write the same way. When a chapter tells you to give the quiet result of a table the most weight, it also tells you what happens to a table that is all trouble.
 
-The narrator is "we", the people who make Ogami, and the reader is "you". We speak from experience of having built and played these flows, and we say so when it helps ("we tried a twelve-box clock first, and the middle sagged"). The voice is earnest. There are no jokes, and the warmth in it comes from taking the reader's problem seriously and explaining things properly, which is a kind of care that readers notice. In the Paper edition the common text never names the app, so "we" stays unnamed there.
+The narrator is "we", the people who make Ogami, and the reader is "you". We speak from experience of having built and played these flows, and we say so when it helps ("we tried a twelve-box clock first, and the middle sagged"). The voice is earnest. There are no jokes, and the warmth in it comes from taking the reader's problem seriously and explaining things properly, which is a kind of care that readers notice. It also comes from describing the game from the side of the person playing it. A notebook is where you keep what your characters did, how far you got and the people you met on the way, which is the same fact as "it records your answers" told by someone holding the pencil. In the Paper edition the common text never names the app, so "we" stays unnamed there.
 
 ### Sentences carry their reasons
 
@@ -32,9 +32,15 @@ Lists and tables are right for material the reader looks things up in, such as t
 
 A numbered list is right when the order of the steps matters and the reader will follow them one at a time, as with the steps of filling in a promise card. Even then, each item can be a full sentence with its reason attached.
 
+### New ideas arrive with something familiar
+
+The first time a chapter brings in one of our terms, the reader has nothing to hang it on, so we give it a little room and a friendly explanation before we use it as shorthand. The quickest way in is something the reader already knows from films, books or other games. An arc of Phases is easier to grasp once it has been compared with the three acts of a film, and a Scene Type is easier to picture once the reader thinks of the chase or the fight that a thriller always has. The comparison opens the chapter and the exact definition follows it, because a newcomer who recognises the idea reads the definition as a sharper version of something they already know. A comparison must not borrow one of our terms in its everyday sense without saying so, though. The three acts of a film are a good way into the arc, but Act is also a term of ours, so the opening says the comparison is about shape and the chapter's section on Acts makes the link back.
+
+The same care applies to order. A chapter only leans on the ideas the book has already introduced, and front matter in particular is read before anything else, so it describes the games in words a newcomer can follow. When a later idea such as a session or an oracle table has to appear early, it gets a few plain words of explanation in passing, and the rest is left to the chapter that teaches it, since a front matter that glosses every term reads like a glossary.
+
 ## Tells that make a text read machine-made
 
-The tells below are the ones we found in the first manual and in drafts since. None of them is wrong on its own; a colon or a list of three is sometimes exactly right. They become tells when they repeat, because repetition shows that a pattern is producing the text rather than the thought. Each entry names the tell, says why readers notice it, and shows a sentence from a draft of *The Promise* beside a rewrite.
+The tells below are the ones we found in the first manual and in drafts since. None of them is wrong on its own; a colon or a list of three is sometimes exactly right. They become tells when they repeat, because repetition shows that a pattern is producing the text rather than the thought. Each entry names the tell, says why readers notice it, and most entries show a sentence from a draft of *The Promise* beside a rewrite.
 
 ### Staccato assertions
 
@@ -95,6 +101,8 @@ Every sentence opens with its subject, runs to about the same length and ends wi
 ### Signposting and filler
 
 "Here is the thing", "let's dive in", "it's worth noting that", "in this section we will". These phrases announce content instead of delivering it. Hedges such as "arguably", "in many ways" and "it can be said that" do the same work from the other direction, by weakening a claim the writer was not willing to make plainly. Cut both. If a claim needs qualifying, say what the exception is.
+
+Remarks about the text are a quieter kind of filler. "You will write more of them than of any other part of the flow", said of steps, sounds like information, but it tells the reader nothing about how steps work, so we replace it with what the steps do for the story. A tacked-on qualifier at the end of a sentence is a related habit, as in "you play it with pencil, paper, cards and dice only, with no screen", where the last phrase repeats what "only" already said and gives the sentence a second ending it did not need.
 
 ### Dash overuse
 

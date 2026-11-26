@@ -67,6 +67,6 @@ These terms only matter inside the app.
 | Restore      | Replaces a draft with the content of an older release                                     |
 | Library pack | A set of reusable items that GameSystems copy into their drafts                           |
 | Theme        | One of five looks a release may choose for its campaigns                                  |
-| Validation   | The check that says whether a draft could be published                                    |
+| Validation   | The test that says whether a draft could be published                                     |
 
 :::

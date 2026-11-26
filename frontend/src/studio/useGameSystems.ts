@@ -15,6 +15,7 @@ import { useApiClient } from '@/shared/api/useApiClient'
 export type GameSystemSummary = components['schemas']['GameSystemSummaryResponse2']
 export type GameSystem = components['schemas']['GameSystemResponse']
 export type GameSystemValidation = components['schemas']['GameSystemValidationResponse']
+export type PublishedGameSystemForCopy = components['schemas']['PublishedGameSystemForCopyResponse']
 export type CreateGameSystemRequest = components['schemas']['CreateGameSystemRequest']
 export type EditMetadataRequest = components['schemas']['EditGameSystemMetadataRequest']
 
@@ -136,6 +137,30 @@ export function useMyGameSystems() {
       }
       throw studioError(response, error, [], 'Loading your GameSystems')
     },
+  })
+}
+
+export const publishedGameSystemsKey = ['studio', 'published-game-systems'] as const
+
+/**
+ * `GET /api/studio/published-game-systems`: the latest release of every published GameSystem,
+ * the ones a draft can be copied from. It is only fetched while `enabled`.
+ */
+export function usePublishedGameSystemsForCopy(enabled: boolean) {
+  const api = useApiClient()
+
+  return useQuery({
+    queryKey: publishedGameSystemsKey,
+    queryFn: async ({ signal }): Promise<PublishedGameSystemForCopy[]> => {
+      const { data, error, response } = await api.GET('/api/studio/published-game-systems', {
+        signal,
+      })
+      if (data !== undefined) {
+        return data
+      }
+      throw studioError(response, error, [], 'Loading the published GameSystems')
+    },
+    enabled,
   })
 }
 

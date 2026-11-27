@@ -68,6 +68,7 @@ Shippable: slices 1 and 2 add code nothing imports outside its tests and story; 
 | T5 | 3 | `::flow-diagram{…}` directive, preset data in the manual chapter pages and the Paper edition, print styles | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T6 | 3 | Placements (D10) and a test that every directive in the chapters resolves; `make manual-pdf` checked by hand | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T6b | 3 | Print theme tokens and one label per hook table group (Chrome/PDF pass findings) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
+| T6c | 3 | Slice 3 review suggestions R3-001, R3-002 (tests) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 
 ## Acceptance criteria
 
@@ -94,6 +95,7 @@ Shippable: slices 1 and 2 add code nothing imports outside its tests and story; 
 - 2026-11-27: T5 done: `Segment` is a union and the splitter parses `::flow-diagram{flow="…" phase="…"}` (unknown or malformed `::` lines throw with their line); `manualFlowDiagram` resolves flows against the two manual presets; `ManualFlowDiagram` renders in the chapter page and the Paper edition (`PaperChapter.blocks`); `print.css` themes the diagram black on white and hides the text alternative; splitter tests RED (19 failing) then GREEN, the rest written with the code (no meaningful RED for glue).
 - 2026-11-27: T6 done: seven directives placed (D10), no new prose; phase keys `session-zero`, `the-ship`, `the-road` match their sequence, player and oracle rules; a content test resolves every directive and pins the seven placements; `make manual-pdf` ran and printed the Paper edition and both card sheets (visual check by the parent).
 - 2026-11-27: T6b done: `DIAGRAM_TOKENS` lists every theme token the view paints with and `print.css` defines `--muted` and `--accent` too (a test reads the CSS against the list); hook edges from one hook through one table share a single label, ending left of the group's leftmost gutter inside the phase box (bounds test on Cold Berth and The Long Carry); the text alternative still lists every transition. RED then GREEN for both.
+- 2026-11-27: T6c done (tests only): `PaperBook` render test (markdown, diagram, markdown in page order) and a `FlowDiagramView` test pinning the `figure` root with its svg and `details`, which `print.css` targets.
 
 ## Reviews
 

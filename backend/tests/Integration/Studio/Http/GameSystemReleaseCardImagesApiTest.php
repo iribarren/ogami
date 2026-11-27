@@ -105,9 +105,10 @@ final class GameSystemReleaseCardImagesApiTest extends WebTestCase
         $this->signIn('bob@example.com', ['GAME_MANAGER']);
         $this->client->request('GET', $old['url']);
         self::assertResponseStatusCodeSame(404);
-        $this->client->jsonRequest('POST', '/api/studio/game-systems', ['key' => 'mine', 'name' => 'Bob\'s']);
+        $this->client->jsonRequest('POST', '/api/studio/game-systems', ['key' => 'theirs', 'name' => 'Bob\'s']);
+        self::assertResponseStatusCodeSame(201, 'Bob has a GameSystem of his own, so the 404 below is about the image.');
         $this->client->request('GET', $old['url']);
-        self::assertResponseStatusCodeSame(404, 'Another manager\'s GameSystem with the same key does not use the image.');
+        self::assertResponseStatusCodeSame(404, 'A manager\'s own GameSystem does not use another one\'s pinned image.');
     }
 
     #[Test]

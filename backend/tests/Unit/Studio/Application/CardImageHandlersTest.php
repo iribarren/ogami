@@ -225,6 +225,25 @@ final class CardImageHandlersTest extends TestCase
         self::assertSame([hash('sha256', 'shared')], $this->store->hashes());
     }
 
+    #[Test]
+    public function everyCommandTakesAllItsImageLocksInOneCallBeforeItWritesAnything(): void
+    {
+        $this->upload('ann', 'mine', CardImageSlot::CardBack, 'one');
+        $this->upload('ann', 'mine', CardImageSlot::CardBack, 'two');
+        $this->upload('ann', 'mine', CardImageSlot::CardFront, 'three');
+        $this->remove('ann', 'mine', CardImageSlot::CardBack);
+        $this->images->discard(GameSystemId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a61'));
+
+        $hash = static fn (string $upload): string => hash('sha256', $upload);
+        self::assertSame([
+            [$hash('one')],
+            [$hash('two'), $hash('one')],
+            [$hash('three')],
+            [$hash('two')],
+            [$hash('three')],
+        ], $this->store->imageLocks, 'One call per command: the new image and the ones it replaces.');
+    }
+
     private function upload(string $owner, string $key, CardImageSlot $slot, string $upload, ?UploadedCardImage $receipt = null): void
     {
         $normalizer = new class implements ImageNormalizer {

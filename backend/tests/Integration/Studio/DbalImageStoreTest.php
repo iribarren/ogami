@@ -323,6 +323,48 @@ final class DbalImageStoreTest extends KernelTestCase
         self::assertFalse($this->store->isPinnedByReleaseOf('first', str_repeat('b', 64)));
     }
 
+    #[Test]
+    public function imageLocksAreTakenInOneSortedOrderWhateverOrderTheyAreAskedFor(): void
+    {
+        $a = str_repeat('a', 64);
+        $b = str_repeat('b', 64);
+        $c = str_repeat('c', 64);
+
+        self::assertSame([$a, $b, $c], DbalImageStore::imageLockOrder([$c, $a, $b, $a]));
+        self::assertSame(DbalImageStore::imageLockOrder([$a, $b]), DbalImageStore::imageLockOrder([$b, $a]));
+    }
+
+    #[Test]
+    public function lockImagesHoldsEveryHashItWasGivenAndNoOther(): void
+    {
+        $a = str_repeat('a', 64);
+        $b = str_repeat('b', 64);
+
+        $this->store->lockImages([$b, $a, $b]);
+
+        self::assertFalse($this->otherRequestGets(DbalImageStore::imageLockKey($a)));
+        self::assertFalse($this->otherRequestGets(DbalImageStore::imageLockKey($b)));
+        self::assertTrue($this->otherRequestGets(DbalImageStore::imageLockKey(str_repeat('c', 64))));
+    }
+
+    #[Test]
+    public function restoringTheDraftLocksTheImagesItDropsAndTheOnesItBringsUpFront(): void
+    {
+        $back = $this->image(TestImages::png());
+        $other = $this->image(TestImages::jpeg());
+        $first = GameSystemId::fromString(self::FIRST_ID);
+        $images = new CardImages($this->store, $this->store, $this->store);
+        $images->replace($first, CardImageSlot::CardBack, $back);
+        $release = $this->publishRelease(self::RELEASE_ID, 'first');
+        $this->store->pinAll($release, ['cardBack' => $back->image->sha256]);
+        $images->replace($first, CardImageSlot::CardBack, $other);
+
+        $images->restoreDraftFrom($first, $release);
+
+        self::assertFalse($this->otherRequestGets(DbalImageStore::imageLockKey($back->image->sha256)));
+        self::assertFalse($this->otherRequestGets(DbalImageStore::imageLockKey($other->image->sha256)), 'The image the draft drops is locked before it is released.');
+    }
+
     private function publishRelease(string $id, string $key): ReleaseId
     {
         $content = ReleaseContent::fromArray([

@@ -941,3 +941,21 @@ export const publishedForCopy: PublishedGameSystemForCopy[] = [
     publishedAt: '2026-10-15T09:00:00+00:00',
   },
 ]
+
+export const cardBackImage = {
+  slot: 'cardBack',
+  sha256: 'a'.repeat(64),
+  mediaType: 'image/png',
+  width: 815,
+  height: 1110,
+  url: `/api/studio/game-systems/my-draft/images/${'a'.repeat(64)}`,
+} as const
+
+export const cardFrontImage = {
+  slot: 'cardFront',
+  sha256: 'b'.repeat(64),
+  mediaType: 'image/jpeg',
+  width: 408,
+  height: 555,
+  url: `/api/studio/game-systems/my-draft/images/${'b'.repeat(64)}`,
+} as const

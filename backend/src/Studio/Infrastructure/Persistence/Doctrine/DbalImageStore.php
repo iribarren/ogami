@@ -30,7 +30,9 @@ use Doctrine\DBAL\ParameterType;
  * - an image lock for one hash. `put` takes it and keeps it until the pin is written, and
  *   `removeIfUnreferenced` takes it before it looks for pins, so a same-bytes upload and a removal
  *   cannot interleave and delete the blob between the `put` and the pin (a foreign key failure).
- * Commands always take the GameSystem lock first, so the two locks never wait on each other in a cycle.
+ * Commands always take the GameSystem lock first, then every image lock they need in one call
+ * (`lockImages`, sorted), so neither lock can wait on another in a cycle. `put` and
+ * `removeIfUnreferenced` ask for the image lock again, which is free inside the same transaction.
  */
 final readonly class DbalImageStore implements ImageStore, CardImagePins, ReleaseCardImagePins
 {
@@ -53,6 +55,28 @@ final readonly class DbalImageStore implements ImageStore, CardImagePins, Releas
     public static function imageLockKey(string $sha256): string
     {
         return 'studio-image:'.$sha256;
+    }
+
+    /**
+     * The order the image locks are taken in: sorted, each hash once.
+     *
+     * @param list<string> $sha256s
+     *
+     * @return list<string>
+     */
+    public static function imageLockOrder(array $sha256s): array
+    {
+        $ordered = array_values(array_unique($sha256s));
+        sort($ordered, \SORT_STRING);
+
+        return $ordered;
+    }
+
+    public function lockImages(array $sha256s): void
+    {
+        foreach (self::imageLockOrder($sha256s) as $sha256) {
+            $this->acquire(self::imageLockKey($sha256));
+        }
     }
 
     public function put(StoredImage $image): void

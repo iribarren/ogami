@@ -76,6 +76,14 @@ final class InMemoryCardImages implements ImageStore, CardImagePins, ReleaseCard
         return array_any($this->releases?->allFor($gameSystemKey) ?? [], fn ($release): bool => \in_array($sha256, $this->releasePins[$release->id()->toString()] ?? [], true));
     }
 
+    /** @var list<list<string>> the hashes of each lockImages() call, in call order */
+    public array $imageLocks = [];
+
+    public function lockImages(array $sha256s): void
+    {
+        $this->imageLocks[] = $sha256s;
+    }
+
     public function put(StoredImage $image): void
     {
         $this->blobs[$image->image->sha256] = $image;

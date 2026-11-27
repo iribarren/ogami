@@ -28,6 +28,7 @@ final readonly class CardImages
     public function replace(GameSystemId $gameSystem, CardImageSlot $slot, StoredImage $image): void
     {
         $this->pins->lock($gameSystem);
+        $this->store->lockImages([$image->image->sha256, ...$this->currentHashes($gameSystem, $slot)]);
         $this->store->put($image);
         $previous = $this->pins->pin($gameSystem, $slot, $image->image->sha256);
         $this->releaseIfChanged($previous, $image->image->sha256);
@@ -36,6 +37,7 @@ final readonly class CardImages
     public function remove(GameSystemId $gameSystem, CardImageSlot $slot): void
     {
         $this->pins->lock($gameSystem);
+        $this->store->lockImages($this->currentHashes($gameSystem, $slot));
         $this->releaseIfChanged($this->pins->unpin($gameSystem, $slot), null);
     }
 
@@ -45,9 +47,29 @@ final readonly class CardImages
      */
     public function discard(GameSystemId $gameSystem): void
     {
+        $this->pins->lock($gameSystem);
+        $this->store->lockImages($this->currentHashes($gameSystem));
         foreach (CardImageSlot::cases() as $slot) {
-            $this->remove($gameSystem, $slot);
+            $this->releaseIfChanged($this->pins->unpin($gameSystem, $slot), null);
         }
+    }
+
+    /**
+     * The hashes the draft pins now, in one slot or in both. Read under the GameSystem lock, so
+     * they are the ones the command will change.
+     *
+     * @return list<string>
+     */
+    private function currentHashes(GameSystemId $gameSystem, ?CardImageSlot $slot = null): array
+    {
+        $hashes = [];
+        foreach ($this->pins->of($gameSystem) as $pin) {
+            if (!$slot instanceof CardImageSlot || $pin->slot === $slot) {
+                $hashes[] = $pin->image->sha256;
+            }
+        }
+
+        return $hashes;
     }
 
     /**
@@ -97,6 +119,7 @@ final readonly class CardImages
     {
         $this->pins->lock($gameSystem);
         $target = $this->releasePins->hashesOf($release);
+        $this->store->lockImages([...array_values($target), ...$this->currentHashes($gameSystem)]);
         foreach (CardImageSlot::cases() as $slot) {
             $sha256 = $target[$slot->value] ?? null;
             $previous = null === $sha256 ? $this->pins->unpin($gameSystem, $slot) : $this->pins->pin($gameSystem, $slot, $sha256);

@@ -144,13 +144,13 @@ describe('readRelease', () => {
     })
 
     it('reads an exceptional percent of 0', () => {
-    const raw = miniRelease()
-    Object.assign(raw.oracles.likelihood[0] ?? {}, { exceptionalPercent: 0 })
+      const raw = miniRelease()
+      Object.assign(raw.oracles.likelihood[0] ?? {}, { exceptionalPercent: 0 })
 
-    expect(readRelease(raw).likelihoodOracles[0]?.exceptionalPercent).toBe(0)
-  })
+      expect(readRelease(raw).likelihoodOracles[0]?.exceptionalPercent).toBe(0)
+    })
 
-  it('reads a likelihood oracle without an exceptional percent', () => {
+    it('reads a likelihood oracle without an exceptional percent', () => {
       const raw = miniRelease()
       Object.assign(raw.oracles.likelihood[0] ?? {}, { exceptionalPercent: undefined })
 

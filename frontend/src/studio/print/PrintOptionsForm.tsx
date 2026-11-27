@@ -6,7 +6,7 @@ import type { Release } from '@/shared/print/release'
 import type { PrintSearch } from './printOptions'
 
 /** The oracle tables of a flow that a card deck can be made of: tables, not likelihood oracles. */
-export function deckCandidates(release: Release, flowKey: unknown) {
+function deckCandidates(release: Release, flowKey: unknown) {
   const flow = release.flows.find((candidate) => candidate.key === flowKey)
   if (flow === undefined) {
     return { own: [], extra: [] }

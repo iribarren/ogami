@@ -397,8 +397,7 @@ describe('the release print page', () => {
 })
 
 describe('the print options form', () => {
-  const form = async () =>
-    within(await screen.findByRole('form', { name: 'Print options' }))
+  const form = async () => within(await screen.findByRole('form', { name: 'Print options' }))
 
   it('lists the flows, the papers and the extra decks of the chosen flow, and says which decks always print', async () => {
     renderPage(content(), { flow: 'mini' })
@@ -467,7 +466,11 @@ describe('the print options form', () => {
   it('writes the flow chosen from the list, and keeps no deck the flow does not offer', async () => {
     const user = userEvent.setup()
     const raw = miniRelease()
-    raw.flows.push({ ...structuredClone(raw.flows[0] ?? raw.flows[0]), key: 'other', name: 'Other' } as never)
+    raw.flows.push({
+      ...structuredClone(raw.flows[0] ?? raw.flows[0]),
+      key: 'other',
+      name: 'Other',
+    } as never)
     raw.flows[1]?.oracles.splice(0, 2)
     const { onSearchChange } = renderPage(content(raw), { flow: 'mini', decks: ['luck'] })
 
@@ -523,9 +526,9 @@ describe('the print options form', () => {
     raw.sceneTypes = [sceneType('scene', lines)]
     renderPage(content(raw))
 
-    expect(await screen.findByText(/These Scene Types continue on "\(cont\.\)" cards/)).toHaveTextContent(
-      /: Scene scene \(2 cards\)\.$/,
-    )
+    expect(
+      await screen.findByText(/These Scene Types continue on "\(cont\.\)" cards/),
+    ).toHaveTextContent(/: Scene scene \(2 cards\)\.$/)
   })
 
   it('has no overflow note when no card continues', async () => {

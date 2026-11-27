@@ -1563,6 +1563,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/game-systems/{key}/releases/{version}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the whole content of one release of one of my GameSystems, with its card images */
+        get: operations["getGameSystemReleaseContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/studio/game-systems/{key}/restore": {
         parameters: {
             query?: never;
@@ -4753,7 +4770,7 @@ export interface components {
              * @description A stable code for the refusal.
              * @enum {string}
              */
-            reason: "unsupported_format" | "unreadable" | "too_large" | "too_few_pixels" | "too_many_pixels" | "wrong_aspect_ratio";
+            reason: "missing_file" | "unsupported_format" | "unreadable" | "too_large" | "too_few_pixels" | "too_many_pixels" | "wrong_aspect_ratio";
         };
         /** @description The pool rolls count (plus the situational modifier, 1 to 100) dice of `sides` sides; each die showing at least `successAt` is a success, and the total is the number of successes. */
         GameSystemCheckPool: {
@@ -5946,6 +5963,20 @@ export interface components {
             /** @description A human-readable message. */
             error: string;
             code: components["schemas"]["PublishConflictCode"];
+        };
+        GameSystemReleaseContentResponse: {
+            /** @example ironsworn */
+            gameSystemKey: string;
+            /** @example 3 */
+            version: number;
+            /** Format: date-time */
+            publishedAt: string;
+            /** @description The release content as published, a JSON object of the release contract (docs/contracts/gamesystem-release.md) at the release's schema version. */
+            content: {
+                [key: string]: unknown;
+            };
+            /** @description The images the release pinned, by slot; none for a release published without images. The urls read the bytes whoever replaces the draft's images later. */
+            cardImages: components["schemas"]["CardImageResponse"][];
         };
         RestoreGameSystemRequest: {
             /**
@@ -13769,7 +13800,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Nothing was published; the code says why: no_changes (the draft equals the latest release), release_exists (another publish took the version first) or library_pack (a pack is never published). */
+            /** @description Nothing was published; the code says why: no_changes (the draft has the content and the card images of the latest release), release_exists (another publish took the version first) or library_pack (a pack is never published). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -13848,6 +13879,56 @@ export interface operations {
             };
         };
     };
+    getGameSystemReleaseContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The release as published: its content and the card images it pinned (none for a release published without images). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameSystemReleaseContentResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or it has no such release. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     restoreGameSystemRelease: {
         parameters: {
             query?: never;
@@ -13863,7 +13944,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The draft with the release's content. */
+            /** @description The draft with the release's content and card images. */
             200: {
                 headers: {
                     [name: string]: unknown;

@@ -8,7 +8,7 @@ doctrine:
         profiling_collect_backtrace: '%kernel.debug%'
 
         # The card image tables are plain SQL (DbalImageStore), outside the ORM's schema (ADR 0053).
-        schema_filter: '~^(?!studio_image$|studio_card_image_pin$)~'
+        schema_filter: '~^(?!studio_image$|studio_card_image_pin$|studio_release_card_image_pin$)~'
 
         # Value types that map domain objects to JSONB columns (ADR 0007).
         types:

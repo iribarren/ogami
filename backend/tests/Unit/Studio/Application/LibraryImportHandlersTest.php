@@ -577,7 +577,7 @@ final class LibraryImportHandlersTest extends TestCase
 
     private function publish(string $owner, string $key): void
     {
-        (new PublishGameSystemDraftHandler($this->owned(), new ReleasePublisher($this->releases, $this->clock), $this->releases))(new PublishGameSystemDraft($owner, $key, 'release-'.$this->releases->count(), null));
+        (new PublishGameSystemDraftHandler($this->owned(), new ReleasePublisher($this->releases, $this->clock), $this->releases, InMemoryCardImages::service()))(new PublishGameSystemDraft($owner, $key, 'release-'.$this->releases->count(), null));
     }
 
     /**

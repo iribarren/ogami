@@ -27,6 +27,8 @@ final readonly class UploadCardImageHandler implements CommandHandler
         $gameSystem = $this->owned->get($command->ownerId, $command->key);
         CardImage::assertUploadSize(\strlen($command->upload));
 
-        $this->images->replace($gameSystem->id(), $command->slot, $this->normalizer->normalize($command->upload));
+        $image = $this->normalizer->normalize($command->upload);
+        $this->images->replace($gameSystem->id(), $command->slot, $image);
+        $command->receipt->store($image->image);
     }
 }

@@ -13,6 +13,7 @@ use App\Studio\Application\GetCardImage;
 use App\Studio\Application\ListCardImages;
 use App\Studio\Application\RemoveCardImage;
 use App\Studio\Application\UploadCardImage;
+use App\Studio\Application\UploadedCardImage;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
 use App\Studio\Domain\Image\CardImagePin;
 use App\Studio\Domain\Image\CardImageSlot;
@@ -40,7 +41,6 @@ final readonly class GameSystemCardImageController
     use ReadsJsonBodies;
 
     private const string SLOT = 'cardBack|cardFront';
-    private const string NO_FILE = 'Send the image as a multipart/form-data file field named "image".';
 
     public function __construct(
         private CommandBus $commandBus,
@@ -85,26 +85,21 @@ final readonly class GameSystemCardImageController
 
         $file = $request->files->get('image');
         if (!$file instanceof UploadedFile) {
-            return $this->error(self::NO_FILE, Response::HTTP_UNPROCESSABLE_ENTITY);
+            return new JsonResponse(CardImageRefusedResponse::fromRefusal(ImageRefused::because(ImageRefusalReason::MissingFile)), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        $receipt = new UploadedCardImage();
         try {
             $upload = $this->contentsOf($file);
-            $this->commandBus->dispatch(new UploadCardImage($user->id(), $key, $slot, $upload));
-            $pins = $this->queryBus->ask(new ListCardImages($user->id(), $key));
+            $this->commandBus->dispatch(new UploadCardImage($user->id(), $key, $slot, $upload, $receipt));
         } catch (GameSystemNotFound $exception) {
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (ImageRefused $refusal) {
             return new JsonResponse(CardImageRefusedResponse::fromRefusal($refusal), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        foreach ($pins as $pin) {
-            if ($pin->slot === $slot) {
-                return new JsonResponse(CardImageResponse::fromPin($pin, $key));
-            }
-        }
-
-        throw new \LogicException('The uploaded image is not pinned.');
+        // The image this request stored, not a re-read of the pins: a concurrent removal may have emptied the slot since.
+        return new JsonResponse(CardImageResponse::fromPin(new CardImagePin($slot, $receipt->image()), $key));
     }
 
     #[Route('/api/studio/game-systems/{key}/card-images/{slot}', name: 'api_studio_card_images_remove', requirements: ['slot' => self::SLOT], methods: ['DELETE'])]

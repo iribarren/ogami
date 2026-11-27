@@ -36,6 +36,7 @@ use App\Studio\Domain\Release\InvalidReleaseContent;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Domain\Release\ReleaseId;
 use App\Tests\Support\Studio\FixedClock;
+use App\Tests\Support\Studio\InMemoryCardImages;
 use App\Tests\Support\Studio\InMemoryGameSystemReleaseRepository;
 use App\Tests\Support\Studio\InMemoryGameSystemRepository;
 use App\Tests\Support\Studio\InterleavingGameSystemReleaseRepository;
@@ -141,7 +142,7 @@ final class GameSystemPublicationHandlersTest extends TestCase
                 $releases->add(GameSystemRelease::publish(ReleaseId::fromString('other'), $release->content(), $release->version(), $release->publishedAt()));
             },
         );
-        $handler = new PublishGameSystemDraftHandler($this->owned(), new ReleasePublisher($racing, $this->clock), $racing);
+        $handler = new PublishGameSystemDraftHandler($this->owned(), new ReleasePublisher($racing, $this->clock), $racing, InMemoryCardImages::service());
 
         try {
             $handler(new PublishGameSystemDraft('ann', 'mine', 'mine-race', null));
@@ -337,7 +338,7 @@ final class GameSystemPublicationHandlersTest extends TestCase
 
         $this->expectException(GameSystemModifiedConcurrently::class);
 
-        (new RestoreGameSystemReleaseHandler(new OwnedGameSystems($stale), $stale, $this->releases, $this->clock))(new RestoreGameSystemRelease('ann', 'mine', 1));
+        (new RestoreGameSystemReleaseHandler(new OwnedGameSystems($stale), $stale, $this->releases, $this->clock, InMemoryCardImages::service()))(new RestoreGameSystemRelease('ann', 'mine', 1));
     }
 
     private function owned(): OwnedGameSystems
@@ -358,13 +359,13 @@ final class GameSystemPublicationHandlersTest extends TestCase
 
     private function publish(string $owner, string $key, ?string $notes): void
     {
-        $handler = new PublishGameSystemDraftHandler($this->owned(), new ReleasePublisher($this->releases, $this->clock), $this->releases);
+        $handler = new PublishGameSystemDraftHandler($this->owned(), new ReleasePublisher($this->releases, $this->clock), $this->releases, InMemoryCardImages::service());
         $handler(new PublishGameSystemDraft($owner, $key, 'release-'.++$this->releaseIds, $notes));
     }
 
     private function restore(string $owner, string $key, int $version): void
     {
-        (new RestoreGameSystemReleaseHandler($this->owned(), $this->gameSystems, $this->releases, $this->clock))(new RestoreGameSystemRelease($owner, $key, $version));
+        (new RestoreGameSystemReleaseHandler($this->owned(), $this->gameSystems, $this->releases, $this->clock, InMemoryCardImages::service()))(new RestoreGameSystemRelease($owner, $key, $version));
     }
 
     /**

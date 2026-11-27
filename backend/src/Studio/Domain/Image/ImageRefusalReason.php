@@ -9,6 +9,7 @@ namespace App\Studio\Domain\Image;
  */
 enum ImageRefusalReason: string
 {
+    case MissingFile = 'missing_file';
     case UnsupportedFormat = 'unsupported_format';
     case Unreadable = 'unreadable';
     case TooLarge = 'too_large';

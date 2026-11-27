@@ -177,14 +177,14 @@ final class LibraryPackHandlersTest extends TestCase
         $before = $this->gameSystems->ofKey('names')?->document();
 
         try {
-            (new PublishGameSystemDraftHandler($this->owned(), new ReleasePublisher($this->releases, $this->clock), $this->releases))(new PublishGameSystemDraft('ann', 'names', 'release-1', null));
+            (new PublishGameSystemDraftHandler($this->owned(), new ReleasePublisher($this->releases, $this->clock), $this->releases, InMemoryCardImages::service()))(new PublishGameSystemDraft('ann', 'names', 'release-1', null));
             self::fail('The pack was published.');
         } catch (LibraryPackRefuses $refusal) {
             self::assertStringContainsString('be published', $refusal->getMessage());
         }
 
         try {
-            (new RestoreGameSystemReleaseHandler($this->owned(), $this->gameSystems, $this->releases, $this->clock))(new RestoreGameSystemRelease('ann', 'names', 1));
+            (new RestoreGameSystemReleaseHandler($this->owned(), $this->gameSystems, $this->releases, $this->clock, InMemoryCardImages::service()))(new RestoreGameSystemRelease('ann', 'names', 1));
             self::fail('The pack was restored.');
         } catch (LibraryPackRefuses $refusal) {
             self::assertStringContainsString('restore a release', $refusal->getMessage());
@@ -201,14 +201,14 @@ final class LibraryPackHandlersTest extends TestCase
         $this->createPack('names', 'Names', 'ann');
 
         try {
-            (new PublishGameSystemDraftHandler($this->owned(), new ReleasePublisher($this->releases, $this->clock), $this->releases))(new PublishGameSystemDraft('bob', 'names', 'release-1', null));
+            (new PublishGameSystemDraftHandler($this->owned(), new ReleasePublisher($this->releases, $this->clock), $this->releases, InMemoryCardImages::service()))(new PublishGameSystemDraft('bob', 'names', 'release-1', null));
             self::fail('Another owner published the pack.');
         } catch (GameSystemNotFound) {
         }
 
         $this->expectException(GameSystemNotFound::class);
 
-        (new RestoreGameSystemReleaseHandler($this->owned(), $this->gameSystems, $this->releases, $this->clock))(new RestoreGameSystemRelease('bob', 'names', 1));
+        (new RestoreGameSystemReleaseHandler($this->owned(), $this->gameSystems, $this->releases, $this->clock, InMemoryCardImages::service()))(new RestoreGameSystemRelease('bob', 'names', 1));
     }
 
     #[Test]

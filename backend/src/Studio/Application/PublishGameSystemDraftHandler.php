@@ -9,6 +9,7 @@ use App\Studio\Domain\GameSystem\GameSystemNotFound;
 use App\Studio\Domain\GameSystem\LibraryImport;
 use App\Studio\Domain\GameSystem\LibraryPackRefuses;
 use App\Studio\Domain\Release\GameSystemDraftUnchanged;
+use App\Studio\Domain\Release\GameSystemRelease;
 use App\Studio\Domain\Release\GameSystemReleaseAlreadyExists;
 use App\Studio\Domain\Release\GameSystemReleaseRepository;
 use App\Studio\Domain\Release\InvalidGameSystemRelease;
@@ -22,6 +23,7 @@ final readonly class PublishGameSystemDraftHandler implements CommandHandler
         private OwnedGameSystems $owned,
         private ReleasePublisher $publisher,
         private GameSystemReleaseRepository $releases,
+        private CardImages $images,
     ) {
     }
 
@@ -30,7 +32,7 @@ final readonly class PublishGameSystemDraftHandler implements CommandHandler
      * @throws LibraryPackRefuses             when the GameSystem is a library pack, which is never published
      * @throws InvalidReleaseContent          naming the path of the first offending value in the draft; nothing is published
      * @throws InvalidGameSystemRelease       when the notes are blank or too long; nothing is published
-     * @throws GameSystemDraftUnchanged       when the draft has the content of the latest release
+     * @throws GameSystemDraftUnchanged       when the draft has the content and the card images of the latest release
      * @throws GameSystemReleaseAlreadyExists when another publish took the version first
      */
     public function __invoke(PublishGameSystemDraft $command): void
@@ -41,9 +43,16 @@ final readonly class PublishGameSystemDraftHandler implements CommandHandler
         }
 
         $content = ReleaseContent::fromArray($gameSystem->document());
+        $id = ReleaseId::fromString($command->releaseId);
 
-        if (!$this->publisher->publish(ReleaseId::fromString($command->releaseId), $content, $command->notes, true, array_map(static fn (LibraryImport $import): array => $import->toArray(), $gameSystem->libraryImports()))) {
-            throw GameSystemDraftUnchanged::for($command->key, $this->releases->latestFor($command->key)?->version() ?? 0);
+        // A changed, added or removed image is a change, though the content hash stays (ADR 0053).
+        $images = $this->images->draftHashes($gameSystem->id());
+        $latest = $this->releases->latestFor($command->key);
+        if ($latest instanceof GameSystemRelease && $latest->contentHash() === $content->hash() && $this->images->releaseHashes($latest->id()) === $images) {
+            throw GameSystemDraftUnchanged::for($command->key, $latest->version());
         }
+
+        $this->publisher->publish($id, $content, $command->notes, false, array_map(static fn (LibraryImport $import): array => $import->toArray(), $gameSystem->libraryImports()));
+        $this->images->pinToRelease($id, $images);
     }
 }

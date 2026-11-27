@@ -1,7 +1,7 @@
 # Feature: studio-print-cards
 
 - **Locator:** `odd/tasks/studio-print-cards.md` · Engram topic `odd/studio-print-cards/tasks`
-- **Issue:** [#427](https://github.com/iribarren/ogami/issues/427) · **Branch:** `feat/studio-print-cards-1-image-store` · **Status:** in progress (slice 1, size exception)
+- **Issue:** [#427](https://github.com/iribarren/ogami/issues/427) · **Branch:** `feat/studio-print-cards-2-pin-and-content` · **Status:** in progress (slice 2)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B36 in [`docs/roadmap.md`](../../docs/roadmap.md); builds on B34 `flow-diagram` ([ADR 0051](../../docs/adr/0051-flow-diagram-layout-and-rendering.md)); B38 `play-tabletop` will reuse its card rendering and images
@@ -91,37 +91,42 @@ Out of scope: a user-defined visual style (fonts, colours, a Studio-made theme),
 | D15 | Discarding a GameSystem unpins its images and releases unreferenced blobs explicitly (`DiscardGameSystemHandler` takes `CardImages`); the DB cascade alone would leave blobs and in-memory fakes behind | Writer |
 | D16 | A refused upload answers 422 `{error, reason}` with the stable reason code; a multipart `PUT` works because Symfony parses PUT bodies with `request_parse_body()` | Writer |
 | D17 | Slice 1 keeps T2 whole at ~3,130 changed lines (size exception, label `size:exception`); reviewed as three candidates: T1, T2 core (domain, store, normalizer, migration), T2 HTTP (controller, API tests, generated spec and types) | User (2026-11-27) |
+| D18 | Release pins live in their own plain DBAL table `studio_release_card_image_pin (release_id, slot, sha256)`, written once at publish, with a foreign key to `studio_image` (like D14) instead of a JSONB side column, so the database guarantees a pinned blob exists. A blob is unreferenced only when no draft pin and no release pin names it. ADR 0053 is updated to say so | Parent (2026-11-27) |
+| D19 | Restoring a release into the draft also restores its image pins: the draft's slots become the release's (a slot the release had empty is emptied), and images nobody pins any more are released | Parent (proposed) |
+| D20 | Slice 1 showed backend slices run about twice their forecast, so the plan is re-cut to six slices: the upload UI (T4) moves to slice 3 with T5, and the later tasks shift by one | Parent (2026-11-27) |
 
 ## Slice plan
 
 | Slice | Tasks | Forecast (incl. generated) | Branch |
 |---|---|---|---|
 | 1/5 | T1, T2 | ~1,400–1,650 lines: ADR 0053 + index ~90, `gd` in Dockerfile ~5, image domain + port + Doctrine `bytea` adapter + migration ~350, GD validation/re-encode ~150, upload/read/remove endpoints ~250, PHPUnit/Behat ~450, OpenAPI + `schema.d.ts` ~250, feature doc ~150 | `feat/studio-print-cards-1-image-store` |
-| 2/5 | slice 1 fixes, T3, T4 | ~1,400–1,600 lines: release pin at publish + `no_changes` + pinned-image read ~300, release content endpoint ~200, tests ~400, OpenAPI ~250, Studio "Card images" upload UI with preview and requirements ~250 + Vitest ~200 | `feat/studio-print-cards-2-pin-and-upload` |
-| 3/5 | slice 2 fixes, T5, T6 | ~1,500–1,700 lines: typed release reader ~250, shared card builder (generated wording D8, decks D9, continuation D10) ~400, manual moved onto it ~150, poker card sheets with frame/back images and bleed option ~250, Vitest ~600 | `feat/studio-print-cards-3-cards` |
-| 4/5 | slice 3 fixes, T7, T8 | ~1,300–1,600 lines: A4/A5 named pages ~80, flow sheet with diagram ~200, oracle tables sheet ~120, trackers and clocks ~200, checks reference ~200, campaign log ~100, Vitest ~600 | `feat/studio-print-cards-4-sheets` |
-| 5/5 | slice 4 fixes, T9, T10 | ~900–1,200 lines: print route (unlinked until here) and print options (paper, bleed, deck tables) ~300, a Print button on the Releases tab ~80, Vitest ~250, Playwright ~200, manual chapter ~100, glossary "Deck" + roadmap ~40 | `feat/studio-print-cards-5-print` |
+| 2/6 | slice 1 fixes, T3 | ~1,300–1,600 lines: four slice 1 warnings fixed with tests ~250, release pins table + publish pin + `no_changes` + restore + pinned-image read ~350, release content endpoint ~200, tests ~500, OpenAPI + `schema.d.ts` ~300 | `feat/studio-print-cards-2-pin-and-content` |
+| 3/6 | slice 2 fixes, T4, T5 | ~1,400–1,700 lines: Studio "Card images" upload UI with preview and requirements ~250 + Vitest ~200, typed release reader ~250, shared card builder (generated wording D8, decks D9, continuation D10) ~400, manual moved onto it ~150, Vitest ~400 | `feat/studio-print-cards-3-upload-and-cards` |
+| 4/6 | slice 3 fixes, T6, T7 | ~1,200–1,500 lines: poker card sheets with frame/back images and bleed option ~250, A4/A5 named pages ~80, flow sheet with diagram ~200, oracle tables sheet ~120, Vitest ~500 | `feat/studio-print-cards-4-sheets` |
+| 5/6 | slice 4 fixes, T8, T9 | ~1,300–1,600 lines: trackers and clocks ~200, checks reference ~200, campaign log ~100, print options (paper, bleed, deck tables) ~300, a Print button on the Releases tab ~80, Vitest ~550 | `feat/studio-print-cards-5-printables` |
+| 6/6 | slice 5 fixes, T10 | ~400–600 lines: Playwright ~200, manual chapter ~100, glossary "Deck" + roadmap ~40 | `feat/studio-print-cards-6-print-pass` |
 
 Shippable:
 - Slice 1 adds owner-only image endpoints with no UI.
-- Slice 2 adds the pin, the content read and the upload UI (images upload and preview, and nothing prints them yet).
+- Slice 2 adds the release pins and the content read, with no UI.
+- Slice 3 adds the upload UI (images upload and preview, and nothing prints them yet) and the card builder.
 - Slices 3–4 build the print views behind an unlinked route.
-- Slice 5 links them from the Releases tab.
+- Slice 5 links them from the Releases tab; slice 6 adds the Playwright pass and the manual chapter.
 
 ## Tasks
 
 | ID | Slice | Task | Route | Done | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | ADR 0053 (D4–D7) and its row in `docs/adr/README.md`; `gd` added to the PHP image and the upload limits raised (PHP `upload_max_filesize`/`post_max_size`) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `c619e7fe` |
-| T2 | 1 | Studio image store: `CardImage` domain (slot, sha256, media type, width, height, bytes), `ImageStore` port, Doctrine `bytea` adapter + migration, the draft's image pins on `studio_gamesystem`, GD validation and re-encoding (D6), endpoints `PUT/DELETE /api/studio/game-systems/{key}/card-images/{slot}` (multipart) and `GET /api/studio/game-systems/{key}/images/{sha256}` (D7), `make api` | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T3 | 2 | Release pins images at publish (D5): side column, `no_changes` counts pins, pinned images stay readable after the draft replaces them, unreferenced blobs removed on replace; release content endpoint (D13); `make api` | delegated writer | [ ] | |
-| T4 | 2 | Studio "Card images" section on the GameSystem page: upload, replace and remove both slots, preview, requirements text (D6), errors | delegated writer | [ ] | |
+| T2 | 1 | Studio image store: `CardImage` domain (slot, sha256, media type, width, height, bytes), `ImageStore` port, Doctrine `bytea` adapter + migration, the draft's image pins on `studio_gamesystem`, GD validation and re-encoding (D6), endpoints `PUT/DELETE /api/studio/game-systems/{key}/card-images/{slot}` (multipart) and `GET /api/studio/game-systems/{key}/images/{sha256}` (D7), `make api` | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `f79ac285`, `ae2fba90` |
+| T3 | 2 | Release pins images at publish (D5, D18): pins table, `no_changes` counts pins, pinned images stay readable after the draft replaces them, unreferenced blobs removed on replace; restore re-pins the draft (D19); release content endpoint (D13); `make api` | delegated writer | [x] | |
+| T4 | 3 | Studio "Card images" section on the GameSystem page: upload, replace and remove both slots, preview, requirements text (D6), errors | delegated writer | [ ] | |
 | T5 | 3 | Typed release reader for print (narrow, throw-first, like `readPreset`), shared card builder with generated wording (D8), decks (D9), continuation cards (D10); manual moved onto it (D12), its tests unchanged | delegated writer | [ ] | |
-| T6 | 3 | Poker card sheets: plain, framed front (safe area) and image back, mirrored duplex, bleed + crop marks option (D11); the print route under Studio, not linked yet | delegated writer | [ ] | |
+| T6 | 4 | Poker card sheets: plain, framed front (safe area) and image back, mirrored duplex, bleed + crop marks option (D11); the print route under Studio, not linked yet | delegated writer | [ ] | |
 | T7 | 4 | Paper size A4/A5 as named `@page` sizes; flow sheet (description, introduction, phases, selection, hooks) with the diagram, one per phase when too tall; oracle tables sheet | delegated writer | [ ] | |
-| T8 | 4 | Trackers and clocks sheet, checks reference (checks, likelihood oracles), campaign log (Fact slots, Tags) (D2) | delegated writer | [ ] | |
+| T8 | 5 | Trackers and clocks sheet, checks reference (checks, likelihood oracles), campaign log (Fact slots, Tags) (D2) | delegated writer | [ ] | |
 | T9 | 5 | Print options (flow, paper, bleed, deck tables) and the overflow list; a Print button per release on the Releases tab | delegated writer | [ ] | |
-| T10 | 5 | Playwright print pass (overflow check on `[data-card]`, images pinned), Studio manual chapter on printing, glossary "Deck", roadmap `Done:` line | delegated writer (+ doc-writer) | [ ] | |
+| T10 | 6 | Playwright print pass (overflow check on `[data-card]`, images pinned), Studio manual chapter on printing, glossary "Deck", roadmap `Done:` line | delegated writer (+ doc-writer) | [ ] | |
 
 ## Acceptance criteria
 
@@ -139,7 +144,7 @@ Shippable:
 - Behat where the Studio features already cover publishing.
 - Vitest for the reader, builder, sheets and print views; ESLint, Prettier, tsc via `make verify`.
 - `make qa test` in slice 1, because it changes the Dockerfile.
-- Playwright print pass in slice 5; a Chrome pass by hand at the end of slices 3–5, with a real duplex test print if possible.
+- Playwright print pass in slice 6; a Chrome pass by hand at the end of slices 3–6, with a real duplex test print if possible.
 
 ## Progress
 
@@ -148,11 +153,15 @@ Shippable:
 - 2026-11-27: T2 done. Image domain (`CardImage`, `CardImageSlot`, `ImageRefused` reasons), ports `ImageStore`/`CardImagePins`/`ImageNormalizer`, `DbalImageStore` and migration `Version20261127100000`, `GdImageNormalizer` (type and pixels checked before decoding, PNG alpha kept, JPEG q92), list/upload/remove/read handlers and `GameSystemCardImageController`, `make api`. 23 API tests plus unit and integration tests. No clean RED: tests were written with the code; the observed failures (a bad test PNG, the discard cascade) were fixed. `make verify` (full run) green except one PHPStan error in the new API test, fixed and `make backend-qa` clean.
 - 2026-11-27: Slice 1 came out at ~3,130 changed lines (T2 ~2,940: backend 991, tests 1,218, generated 693); the user kept it as one slice (D17).
 
+- 2026-11-27: Slice 1 review warnings fixed (slice 2, commit 1). Pin writes of a GameSystem and every put/remove of one image hash now take transaction-scoped advisory locks (a row lock cannot serialise an empty slot); the upload answers with the image it stored (`UploadedCardImage` receipt), no re-read; a missing file answers 422 `missing_file`. Commands already run in the bus's `doctrine_transaction`. Tests written with the code, not before; the lock tests use a second connection on `pg_try_advisory_xact_lock`.
+- 2026-11-27: T3 done. Migration `Version20261127110000` (`studio_release_card_image_pin`, D18), port `ReleaseCardImagePins` on `DbalImageStore`, `CardImages` pins a release / restores the draft / answers reads. Publish copies the draft's pins and counts them as a change (409 only when hash and pins both equal); console publisher untouched. `removeIfUnreferenced` checks both pin tables. Image read serves draft or any release pin of the owner's GameSystem (D7). Restore re-pins (D19). `GET .../releases/{version}/content` (D13) with the pinned images, `make api`. ADR 0053 updated. Unit, DBAL, API and Behat tests written with the code, not before; pinned-image tests assert the ordering of publish, replace and restore.
+
 ## Reviews
 
 | Slice | Lineage | Outcome | Findings | PR |
 |---|---|---|---|---|
+| 1 | T1 declined by the user; T2 core `review-ad4db4d3bd414073`; T2 HTTP `review-ba1b5380446595c7` | T2 core and HTTP approved | Four warnings, fixed in slice 2: R3-empty-slot-race (`DbalImageStore.php:93-98`, two first uploads to an empty slot orphan a blob), R3-release-fk-race (`DbalImageStore.php:45-51`, `removeIfUnreferenced` against a concurrent same-bytes re-upload breaks the pin's foreign key), R3-missing-file-422-contract (controller `:86-87`, the missing-file 422 has no `reason`), R3-upload-reread-race (controller `:92-106`, the response re-reads the pins and can 500) | [#428](https://github.com/iribarren/ogami/pull/428) |
 
 ## Next step
 
-Slice 1 (T1, T2): delegated writer on `feat/studio-print-cards-1-image-store`.
+Slice 2 (slice 1 fixes, T3): delegated writer on `feat/studio-print-cards-2-pin-and-content`.

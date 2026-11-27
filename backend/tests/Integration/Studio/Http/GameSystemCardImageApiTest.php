@@ -261,6 +261,31 @@ final class GameSystemCardImageApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aRequestWithoutTheImageFileIsUnprocessableWithTheMissingFileReason(): void
+    {
+        $this->signInWithDraft('ann');
+
+        $this->client->request('PUT', self::BASE.'/card-images/cardBack', [], [], ['CONTENT_TYPE' => 'multipart/form-data; boundary=x'], "--x--\r\n");
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame('missing_file', $this->error()['reason'] ?? null);
+        self::assertStringContainsString('"image"', $this->error()['error']);
+    }
+
+    #[Test]
+    public function theUploadAnswersWithTheStoredImageItself(): void
+    {
+        $this->signInWithDraft('ann');
+
+        $this->upload('cardFront', TestImages::jpeg());
+
+        self::assertResponseStatusCodeSame(200);
+        $pin = $this->pin();
+        self::assertSame(hash('sha256', $this->readBytes($pin['url'])), $pin['sha256']);
+        self::assertSame(['cardFront', 'image/jpeg', 815, 1110], [$pin['slot'], $pin['mediaType'], $pin['width'], $pin['height']]);
+    }
+
+    #[Test]
     public function aFileOverTheUploadLimitIsTooLarge(): void
     {
         $this->signInWithDraft('ann');
@@ -308,6 +333,13 @@ final class GameSystemCardImageApiTest extends WebTestCase
         self::assertResponseStatusCodeSame(204);
         self::assertSame(0, $this->rows('studio_card_image_pin'));
         self::assertSame(0, $this->rows('studio_image'));
+    }
+
+    private function readBytes(string $url): string
+    {
+        $this->client->request('GET', $url);
+
+        return (string) $this->client->getResponse()->getContent();
     }
 
     private function upload(string $slot, string $bytes): void

@@ -16,7 +16,7 @@ final readonly class CardImageRefusedResponse
     private function __construct(
         #[OA\Property(description: 'A human-readable message stating the limit and the recommended size.')]
         public string $error,
-        #[OA\Property(description: 'A stable code for the refusal.', enum: ['unsupported_format', 'unreadable', 'too_large', 'too_few_pixels', 'too_many_pixels', 'wrong_aspect_ratio'])]
+        #[OA\Property(description: 'A stable code for the refusal.', enum: ['missing_file', 'unsupported_format', 'unreadable', 'too_large', 'too_few_pixels', 'too_many_pixels', 'wrong_aspect_ratio'])]
         public string $reason,
     ) {
     }

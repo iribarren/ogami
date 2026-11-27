@@ -9299,7 +9299,7 @@
                         }
                     },
                     "409": {
-                        "description": "Nothing was published; the code says why: no_changes (the draft equals the latest release), release_exists (another publish took the version first) or library_pack (a pack is never published).",
+                        "description": "Nothing was published; the code says why: no_changes (the draft has the content and the card images of the latest release), release_exists (another publish took the version first) or library_pack (a pack is never published).",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9401,6 +9401,76 @@
                 }
             }
         },
+        "/api/studio/game-systems/{key}/releases/{version}/content": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Read the whole content of one release of one of my GameSystems, with its card images",
+                "operationId": "getGameSystemReleaseContent",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "\\d{1,9}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The release as published: its content and the card images it pinned (none for a release published without images).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameSystemReleaseContentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or it has no such release.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/studio/game-systems/{key}/restore": {
             "post": {
                 "tags": [
@@ -9430,7 +9500,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "The draft with the release's content.",
+                        "description": "The draft with the release's content and card images.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -17802,6 +17872,7 @@
                         "description": "A stable code for the refusal.",
                         "type": "string",
                         "enum": [
+                            "missing_file",
                             "unsupported_format",
                             "unreadable",
                             "too_large",
@@ -20154,6 +20225,42 @@
                     },
                     "code": {
                         "$ref": "#/components/schemas/PublishConflictCode"
+                    }
+                },
+                "type": "object"
+            },
+            "GameSystemReleaseContentResponse": {
+                "required": [
+                    "gameSystemKey",
+                    "version",
+                    "publishedAt",
+                    "content",
+                    "cardImages"
+                ],
+                "properties": {
+                    "gameSystemKey": {
+                        "type": "string",
+                        "example": "ironsworn"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "publishedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "content": {
+                        "description": "The release content as published, a JSON object of the release contract (docs/contracts/gamesystem-release.md) at the release's schema version.",
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "cardImages": {
+                        "description": "The images the release pinned, by slot; none for a release published without images. The urls read the bytes whoever replaces the draft's images later.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CardImageResponse"
+                        }
                     }
                 },
                 "type": "object"

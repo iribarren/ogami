@@ -15,6 +15,12 @@ use App\Studio\Domain\Image\CardImageSlot;
 interface CardImagePins
 {
     /**
+     * Holds off every other writer of this GameSystem's pins until the surrounding transaction ends.
+     * Commands take it first, because an empty slot has no row that could be locked instead.
+     */
+    public function lock(GameSystemId $gameSystem): void;
+
+    /**
      * @return list<CardImagePin> in slot order; none for a GameSystem that never had images
      *
      * @throws \UnexpectedValueException when a stored row breaks the image rules

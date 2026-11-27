@@ -2,10 +2,13 @@ import { useId, type CSSProperties, type KeyboardEvent, type MouseEvent } from '
 
 import { describeFlowDiagram } from './describeFlowDiagram'
 import { type DiagramToken } from './diagramTokens'
+import type { DiagramDrag, DragHandlers, DragState } from './diagramDrag'
 import type { DiagramIssues, FlowDiagram } from './flowDiagram'
 import {
+  CHAR_WIDTH,
   EDGE_LABEL_FONT_SIZE,
   FONT_SIZE,
+  type FlowDiagramLayout,
   type LayoutEdge,
   type LayoutEdgeKind,
   type LayoutHeaderItem,
@@ -49,7 +52,7 @@ const theme = (token: DiagramToken): string => `var(--${token})`
 const HALO: CSSProperties = { paintOrder: 'stroke', stroke: theme('background'), strokeWidth: 3 }
 
 /** What a node is, as `onActivate` says it: a phase box, a selection or Scene Type node, or a hook chip. */
-export type DiagramActivation = 'phase' | 'choice' | 'table' | 'sceneType' | 'hook'
+export type DiagramActivation = 'phase' | 'choice' | 'table' | 'sceneType' | 'hook' | 'mode'
 
 export interface FlowDiagramViewProps {
   diagram: FlowDiagram
@@ -63,6 +66,12 @@ export interface FlowDiagramViewProps {
    * Space and click). Without it the drawing is static, as the manual and print edition use it.
    */
   onActivate?: (id: string, kind: DiagramActivation) => void
+  /** Accessible names by node id, in place of the default one (the mode chip says what it switches to). */
+  labels?: Record<string, string>
+  /** Told which node was focused or pressed last, for what acts on "the node you are on". */
+  onFocusNode?: (id: string, kind: DiagramActivation) => void
+  /** Makes the nodes `drag.canDrag` allows draggable, and draws the ghost and the drop target. */
+  drag?: DiagramDrag
 }
 
 /** What the interactive parts of the drawing share. */
@@ -70,25 +79,52 @@ interface Interaction {
   selectedId: string | undefined
   issues: DiagramIssues
   onActivate: ((id: string, kind: DiagramActivation) => void) | undefined
+  labels: Record<string, string>
+  onFocusNode: ((id: string, kind: DiagramActivation) => void) | undefined
+  drag: DiagramDrag | undefined
+}
+
+/** What makes a node of the drawing a button: nothing while the drawing is static. */
+type ButtonProps = Partial<DragHandlers> & {
+  role?: 'button'
+  tabIndex?: number
+  'aria-label'?: string
+  'aria-current'?: 'true'
+  className?: string
+  onFocus?: () => void
+  onPointerDownCapture?: () => void
+  onClick?: (event: MouseEvent) => void
+  onKeyDown?: (event: KeyboardEvent) => void
 }
 
 /** The button behaviour of a node: none while the drawing is static. */
-function activation(interaction: Interaction, id: string, kind: DiagramActivation, label: string) {
-  const { onActivate, issues, selectedId } = interaction
+function activation(
+  interaction: Interaction,
+  id: string,
+  kind: DiagramActivation,
+  label: string,
+): ButtonProps {
+  const { onActivate, issues, selectedId, drag, onFocusNode } = interaction
   if (onActivate === undefined) {
     return {}
   }
   const messages = issues[id] ?? []
+  const name = interaction.labels[id] ?? label
 
   return {
     role: 'button',
     tabIndex: 0,
-    'aria-label': messages.length === 0 ? label : `${label}. Issues: ${messages.join(' ')}`,
+    'aria-label': messages.length === 0 ? name : `${name}. Issues: ${messages.join(' ')}`,
     'aria-current': selectedId === id ? ('true' as const) : undefined,
     className: 'cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-primary',
+    ...(drag?.canDrag(id) ? drag.bind(id, label) : {}),
+    onFocus: () => onFocusNode?.(id, kind),
+    onPointerDownCapture: () => onFocusNode?.(id, kind),
     onClick: (event: MouseEvent) => {
       event.stopPropagation()
-      onActivate(id, kind)
+      if (!drag?.consumeClick()) {
+        onActivate(id, kind)
+      }
     },
     onKeyDown: (event: KeyboardEvent) => {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -121,8 +157,11 @@ export function FlowDiagramView({
   selectedId,
   issues = {},
   onActivate,
+  labels = {},
+  onFocusNode,
+  drag,
 }: FlowDiagramViewProps) {
-  const interaction: Interaction = { selectedId, issues, onActivate }
+  const interaction: Interaction = { selectedId, issues, onActivate, labels, onFocusNode, drag }
   const layout = layoutFlowDiagram(diagram)
   const description = describeFlowDiagram(diagram)
   const id = useId().replaceAll(':', '')
@@ -133,6 +172,7 @@ export function FlowDiagramView({
     <figure className={className}>
       <svg
         // An image hides its children from assistive technology: with buttons in it, it is a group.
+        ref={drag?.svgRef}
         role={onActivate === undefined ? 'img' : 'group'}
         aria-label={`Flow diagram: ${diagram.name}`}
         aria-describedby={wordsId}
@@ -174,6 +214,7 @@ export function FlowDiagramView({
         {layout.nodes.map((node) => (
           <NodeShape key={node.id} node={node} interaction={interaction} />
         ))}
+        {drag?.state != null && <DragLayer state={drag.state} layout={layout} />}
       </svg>
       <details className="mt-2 text-sm">
         <summary className="cursor-pointer">The flow in words</summary>
@@ -213,7 +254,11 @@ export function FlowDiagramView({
 function PhaseBox({ phase, interaction }: { phase: LayoutPhase; interaction: Interaction }) {
   const { rect } = phase
   const look = outline(interaction, phase.id, { color: 'border', width: 1.5 })
-  const { onClick, ...button } = activation(interaction, phase.id, 'phase', `Phase: ${phase.name}`)
+  const {
+    onClick,
+    style: touch,
+    ...button
+  } = activation(interaction, phase.id, 'phase', `Phase: ${phase.name}`)
 
   return (
     // A click anywhere in the box (its title included) opens it; the chips stop theirs.
@@ -222,7 +267,7 @@ function PhaseBox({ phase, interaction }: { phase: LayoutPhase; interaction: Int
         {...rect}
         {...button}
         rx={10}
-        style={{ fill: theme('card'), stroke: theme(look.color) }}
+        style={{ ...touch, fill: theme('card'), stroke: theme(look.color) }}
         strokeWidth={look.width}
       />
       <IssueBadge rect={rect} marked={(interaction.issues[phase.id] ?? []).length > 0} />
@@ -279,7 +324,12 @@ function HeaderItem({ item, interaction }: { item: LayoutHeaderItem; interaction
     </text>
   )
   if (item.kind === 'title') {
-    return <g data-header-id={item.id}>{text}</g>
+    // The title lets presses through to the box under it, which is the button.
+    return (
+      <g data-header-id={item.id} pointerEvents={interaction.onActivate ? 'none' : undefined}>
+        {text}
+      </g>
+    )
   }
 
   const look = outline(interaction, item.id, { color: 'border', width: 1 })
@@ -291,7 +341,7 @@ function HeaderItem({ item, interaction }: { item: LayoutHeaderItem; interaction
           'hook',
           `Hook: ${item.label}, ${String(item.count)} ${item.count === 1 ? 'step' : 'steps'}`,
         )
-      : {}
+      : activation(interaction, item.id, 'mode', `Mode: ${item.label}`)
 
   return (
     <g data-header-id={item.id} {...button}>
@@ -309,6 +359,68 @@ function HeaderItem({ item, interaction }: { item: LayoutHeaderItem; interaction
     </g>
   )
 }
+
+/** The dashed ghost of what is being dragged and the outline of the phase it is over. */
+function DragLayer({ state, layout }: { state: DragState; layout: FlowDiagramLayout }) {
+  const source =
+    layout.nodes.find(({ id }) => id === state.sourceId)?.rect ??
+    layout.phases.find(({ id }) => id === state.sourceId)?.rect
+  const target = layout.phases.find(({ key }) => key === state.hit?.phase)
+  const dx = state.point.x - state.grab.x
+  const dy = state.point.y - state.grab.y
+  const look = { fill: 'none', stroke: theme('primary') }
+
+  return (
+    <g aria-hidden="true" pointerEvents="none">
+      {target !== undefined && (
+        <rect
+          data-drop-target={target.id}
+          {...target.rect}
+          rx={10}
+          strokeWidth={3}
+          strokeDasharray="6 4"
+          style={look}
+        />
+      )}
+      {source === undefined ? (
+        <g data-drag-ghost={state.sourceId}>
+          <rect
+            x={state.point.x - 4}
+            y={state.point.y - 12}
+            width={textWidthOf(state.label)}
+            height={24}
+            rx={6}
+            strokeWidth={1.5}
+            style={{ fill: theme('background'), stroke: theme('primary') }}
+          />
+          <text
+            x={state.point.x + 4}
+            y={state.point.y}
+            dominantBaseline="central"
+            fontSize={FONT_SIZE}
+            style={{ fill: theme('foreground') }}
+          >
+            {state.label}
+          </text>
+        </g>
+      ) : (
+        <rect
+          data-drag-ghost={state.sourceId}
+          {...source}
+          x={source.x + dx}
+          y={source.y + dy}
+          rx={8}
+          strokeWidth={2}
+          strokeDasharray="2 3"
+          opacity={0.8}
+          style={look}
+        />
+      )}
+    </g>
+  )
+}
+
+const textWidthOf = (text: string): number => text.length * CHAR_WIDTH + 16
 
 const NODE_ACTIVATION: Partial<Record<LayoutNode['kind'], [DiagramActivation, string]>> = {
   sceneType: ['sceneType', 'Scene Type'],

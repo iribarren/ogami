@@ -1,5 +1,14 @@
 export { describeFlowDiagram } from './describeFlowDiagram'
 export type { FlowDiagramDescription, PhaseDescription } from './describeFlowDiagram'
+export { clientToSvg, DRAG_THRESHOLD, hitTestDiagram, useDiagramDrag } from './diagramDrag'
+export type {
+  DiagramDrag,
+  DiagramDrop,
+  DiagramHit,
+  DragHandlers,
+  DragState,
+  ScreenMatrix,
+} from './diagramDrag'
 export { DIAGRAM_TOKENS } from './diagramTokens'
 export { FlowDiagramView } from './FlowDiagramView'
 export type { DiagramActivation, FlowDiagramViewProps } from './FlowDiagramView'

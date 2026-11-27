@@ -1,6 +1,7 @@
 import {
   flowDiagramFromDraftContent,
   layoutFlowDiagram,
+  type FlowDiagramLayout,
   type DiagramIssues,
   type FlowDiagram,
 } from '@/shared/flowDiagram'
@@ -17,6 +18,8 @@ export interface FlowMapDiagram {
   flowIssues: string[]
   /** The ids of the phase boxes, nodes and header items the drawing has. */
   drawn: ReadonlySet<string>
+  /** Where the drawing puts them; null when it cannot be laid out. */
+  layout: FlowDiagramLayout | null
   /** The key of each phase of the draft, by position, as its node ids spell it (`mapPhaseKeys`). */
   phaseKeys: string[]
 }
@@ -124,7 +127,8 @@ export function flowDiagramFromDraft(
     ],
   }
   const built = flowDiagramFromDraftContent(content, flowKey)
-  const drawn = drawnIds(built.diagram)
+  const layout = layoutOf(built.diagram)
+  const drawn = drawnIds(built.diagram, layout)
   const placed: DiagramIssues = {}
   for (const [id, messages] of Object.entries(mergeIssues(built.issues, issues))) {
     if (drawn.has(id)) {
@@ -133,7 +137,7 @@ export function flowDiagramFromDraft(
       flowIssues.push(...messages.map((message) => orphanMessage(id, message)))
     }
   }
-  return { diagram: built.diagram, issues: placed, flowIssues, drawn, phaseKeys }
+  return { diagram: built.diagram, issues: placed, flowIssues, drawn, layout, phaseKeys }
 }
 
 /** Every hook of every phase built blank, with what each held, for a draft whose hooks could not be built one by one. */
@@ -154,17 +158,24 @@ function stripHooks(draft: FlowDraft) {
   return { draft: stripped, unbuilt }
 }
 
-/** The ids the drawing gives its phase boxes, nodes and header items; only the phase boxes when it cannot be laid out. */
-function drawnIds(diagram: FlowDiagram): Set<string> {
+/** The drawing's positions, or null when a transition cannot be placed. */
+function layoutOf(diagram: FlowDiagram): FlowDiagramLayout | null {
   try {
-    const layout = layoutFlowDiagram(diagram)
-    return new Set([
-      ...layout.nodes.map(({ id }) => id),
-      ...layout.phases.flatMap(({ id, header }) => [id, ...header.map((item) => item.id)]),
-    ])
+    return layoutFlowDiagram(diagram)
   } catch {
+    return null
+  }
+}
+
+/** The ids the drawing gives its phase boxes, nodes and header items; only the phase boxes when it cannot be laid out. */
+function drawnIds(diagram: FlowDiagram, layout: FlowDiagramLayout | null): Set<string> {
+  if (layout === null) {
     return new Set(diagram.phases.map(({ key }) => `phase:${key}`))
   }
+  return new Set([
+    ...layout.nodes.map(({ id }) => id),
+    ...layout.phases.flatMap(({ id, header }) => [id, ...header.map((item) => item.id)]),
+  ])
 }
 
 /** A message about something no node stands for (a list of the catalog, the flow's name), with what it is about. */

@@ -46,6 +46,9 @@ Out of scope: new flow rules, phase jumps or branches between phases, saved node
 | D12 | Toggling a phase's mode is activating its `mode:<phase>` header chip on the Map (Once ↔ Loop), not opening the panel; its label says what it switches to | Parent |
 | D13 | The keyboard path of D6 is an action bar beside the Map for the last focused node (focus or pointer-down sets it): a phase gets Move earlier / Move later / mode; a phase with a `sequence` or `player` selection gets "Add Scene Type" (a select of the GameSystem's Scene Types); a Scene Type node in a selection gets Remove from the selection and, in a `sequence`, Move earlier / later. Buttons, no menu inside the SVG | Parent |
 | D14 | Drag rules: a 4px move threshold keeps clicks as activation; Escape or a drop on nothing cancels, except a selected Scene Type dropped outside every phase, which leaves the selection (D8). Dropping a selected Scene Type on another phase moves it (removed from the first, added to the second). Each Map edit announces what it did, or why it was refused, in one live region | Parent |
+| D15 | The drag engine is `useDiagramDrag` in `shared/flowDiagram` (with the pure `hitTestDiagram` and `clientToSvg`): the pointer is captured on the first move past the threshold, not at the press, since a captured press would retarget the click of a chip; a click that follows a drag is swallowed. `FlowDiagramView` takes `drag`, `labels` (accessible names by id) and `onFocusNode`; the drag source may sit outside the drawing (the palette) | Writer |
+| D16 | A phase is dragged by its box (its title lets presses through; the chips never start a drag). The mode chip is a button whenever the drawing is interactive (kind `mode`), named by the host (`Mode of "Setup": once. Switch to loop`). Dropping a phase on itself, or outside every phase, changes nothing and says so | Writer |
+| D17 | `FlowMapDiagram` also carries `drawn` (ids the drawing has), `layout` and `flowIssues` (what no node can carry, shown as an alert above the Map); `mapTarget` resolves a `scene:` id against the drawing's phases, and is null when two phases could own it | Writer |
 
 ## Slice plan
 
@@ -65,7 +68,7 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 | T1 | 1 | ADR 0052 (D1, D2, D4) and its row in `docs/adr/README.md` | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `e85c8675` |
 | T2 | 1 | `flowDiagramFromDraft` (D4) sharing the release adapter's building, issues per node, Vitest on draft fixtures and on the Cold Berth preset read as a draft | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `48c5b313`, `5ce11931` |
 | T3 | 1 | `FlowDiagramView` interaction props (selected id, issues, `onActivate`, focusable nodes with labels), Map tab (`view=map`, D3), save errors on nodes (D5), keyboard open (D6 part) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `41678f85` |
-| T4 | 2 | Drag engine on the SVG; drag a phase to reorder; toggle a phase's self-arrow for `mode`; keyboard menu equivalents | | [ ] | |
+| T4 | 2 | Drag engine on the SVG; drag a phase to reorder; toggle a phase's self-arrow for `mode`; keyboard menu equivalents | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T5 | 2 | Scene Type palette; drag into or out of a `sequence` / `player` selection, drop position in a sequence; `oracle` refusal (D7, D8) | | [ ] | |
 | T6 | 3 | Arrow gesture between nodes with the refusals (D7) and a keyboard "Add transition" path | | [ ] | |
 | T7 | 3 | Carrier picker (step, then the step itself or a band, option or outcome) and the hook-source effect in the flow draft, opening the hook step panel (D2) | | [ ] | |
@@ -95,6 +98,7 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 - 2026-11-27: Slice 1 came out at ~2,000 changed lines (T3 ~1,100, mostly tests); the user kept it as one slice (size exception) to be reviewed as two candidates, T1–T2 against `main` and T3 against the T2 commit. The parent fixed two test type errors `tsc` caught after the writer stopped.
 
 - 2026-11-27 slice 1 review fixes (delegated writer, Sonnet): `flowDiagramFromDraft` now strips every hook when the second build is still refused, so the phases are drawn; issues with no node (catalog lists, flow name) go to `flowIssues`, shown as an alert above the Map, and `drawn` lists the ids the drawing has; `answerIssues` falls back to `phase:<key>` and dedupes Scene Type nodes; `mapTarget`/`sceneOf` resolve `scene:` ids against the drawing instead of key lengths. RED observed for the nodes and orphan tests (7 failures); the second-build test needs a stubbed `flowToItem` (the real one never refuses twice), so it is a mocked test in `flowMapDiagramRefused.test.ts`.
+- 2026-11-27 T4: `useDiagramDrag`/`hitTestDiagram` in `shared/flowDiagram`, `FlowDiagramView` `drag`/`labels`/`onFocusNode`, `flowMapEdits.ts` (`movePhase`, `toggleMode`, `followNode`), `MapActionBar`, live region in `FlowMap`, `editFromMap` in `FlowEditor` (answers and selection follow a moved phase). Vitest: 8 drag tests, 8 edit tests, 8 Map gesture tests; the existing flow editor tests are green unchanged and the view test only counts the new mode button. No RED observed: engine and tests were written together (jsdom has no layout, so the tests stub the CTM).
 
 ## Reviews
 

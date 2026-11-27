@@ -38,6 +38,8 @@ export function mapTarget(
         ? null
         : { type: 'node', node: { kind: 'hook', phase, hook } }
     }
+    case 'mode':
+      return null
     case 'sceneType': {
       const scene = sceneOf(id, phaseKeys, diagram)
       return scene === null ? null : { type: 'sceneType', sceneType: scene.sceneType }

@@ -98,6 +98,7 @@ body {
   --muted-foreground: #444;
   --primary: #000;
   --info: #000;
+  --destructive: #000;
 }
 
 .paper figure {

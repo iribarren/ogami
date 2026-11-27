@@ -12,6 +12,7 @@ export const DIAGRAM_TOKENS = [
   'muted-foreground',
   'primary',
   'info',
+  'destructive',
 ] as const
 
 export type DiagramToken = (typeof DIAGRAM_TOKENS)[number]

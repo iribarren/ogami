@@ -1,6 +1,14 @@
 import { flowToDraft } from './flowDraft'
 import { flowAnswer, flowChecks } from './flowError'
-import { answerNode, nodePath, nodeParam, nodeTrail, parseNodePath, resolveNode } from './flowNode'
+import {
+  answerNode,
+  nodePath,
+  nodeParam,
+  nodeTrail,
+  parseNodePath,
+  resolveNode,
+  viewParam,
+} from './flowNode'
 
 const step = { key: 'tick', kind: 'prompt', title: 'Tick' }
 
@@ -199,5 +207,15 @@ describe('the node an answer is about', () => {
       kind: 'selection',
       phase: 1,
     })
+  })
+})
+
+describe('viewParam', () => {
+  it('keeps only `map`; anything else is the Panel', () => {
+    expect(viewParam('map')).toBe('map')
+    expect(viewParam('panel')).toBeUndefined()
+    expect(viewParam('')).toBeUndefined()
+    expect(viewParam(['map'])).toBeUndefined()
+    expect(viewParam(undefined)).toBeUndefined()
   })
 })

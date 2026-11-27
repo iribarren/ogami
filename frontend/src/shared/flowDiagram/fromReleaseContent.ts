@@ -1,5 +1,6 @@
 import {
   type DiagramHook,
+  type DiagramIssues,
   type DiagramPhase,
   type DiagramSceneType,
   type DiagramSelection,
@@ -7,6 +8,7 @@ import {
   type DiagramTransition,
   FlowDiagramError,
   type FlowDiagram,
+  type LenientFlowDiagram,
   PHASE_HOOKS,
   type TransitionKind,
   type TransitionSource,
@@ -18,6 +20,10 @@ import { HOOK_LABELS } from './hookLabels'
  * share). It reads only what a diagram draws and walks the same places the backend does to find
  * effects (StepParts, FlowReferences). Anything the contract does not allow throws a FlowDiagramError
  * naming where it is: a malformed release must fail loudly, never draw a wrong diagram.
+ *
+ * The same builder has a lenient mode for content that is still being written (the Studio draft):
+ * what it cannot read is left out of the drawing and becomes an issue on the node it belongs to,
+ * so the diagram never blanks. Only content that is not a flow at all still throws.
  */
 
 type Json = Record<string, unknown>
@@ -33,6 +39,37 @@ interface Entry {
 interface Catalog {
   sceneTypes: Map<string, Entry>
   tables: Map<string, Entry>
+  where: string
+}
+
+/** What the build collects while it reads: null issues is the strict mode, which throws instead. */
+interface Build {
+  issues: DiagramIssues | null
+  /** Where an unknown reference was looked up, as the message says it. */
+  where: string
+}
+
+/**
+ * Runs `read`; in the lenient mode a FlowDiagramError becomes an issue on `node` and `fallback` is
+ * the result. The strict mode never catches.
+ */
+function attempt<T>(build: Build, node: string, fallback: T, read: () => T): T {
+  if (build.issues === null) {
+    return read()
+  }
+  try {
+    return read()
+  } catch (error) {
+    if (!(error instanceof FlowDiagramError)) {
+      throw error
+    }
+    const messages = (build.issues[node] ??= [])
+    if (!messages.includes(error.problem)) {
+      messages.push(error.problem)
+    }
+
+    return fallback
+  }
 }
 
 /** The step lists of a Scene Type, in the order the player meets them. */
@@ -43,10 +80,31 @@ function isTransitionKind(kind: unknown): kind is TransitionKind {
 }
 
 export function flowDiagramFromReleaseContent(content: unknown, flowKey: string): FlowDiagram {
+  return buildDiagram(content, flowKey, { issues: null, where: 'the release' })
+}
+
+/**
+ * The lenient builder, for release-shaped content that may be incomplete (the Studio draft turned
+ * into a release item). Unknown Scene Types and tables, and parts it cannot read, are left out and
+ * reported by the id of the node they belong to (`LayoutNode`, `LayoutPhase`, `LayoutHeaderItem`).
+ */
+export function flowDiagramFromDraftContent(content: unknown, flowKey: string): LenientFlowDiagram {
+  const issues: DiagramIssues = {}
+  const diagram = buildDiagram(content, flowKey, { issues, where: 'the draft' })
+
+  return { diagram, issues }
+}
+
+function buildDiagram(content: unknown, flowKey: string, build: Build): FlowDiagram {
   const root = readObject(content, 'content')
   const catalog: Catalog = {
-    sceneTypes: readCatalog(root.sceneTypes, 'sceneTypes'),
-    tables: readCatalog(readOptionalObject(root.oracles, 'oracles').tables, 'oracles.tables'),
+    sceneTypes: readCatalog(build, root.sceneTypes, 'sceneTypes'),
+    tables: readCatalog(
+      build,
+      readOptionalObject(root.oracles, 'oracles').tables,
+      'oracles.tables',
+    ),
+    where: build.where,
   }
 
   const flows = readList(root.flows, 'flows')
@@ -61,12 +119,29 @@ export function flowDiagramFromReleaseContent(content: unknown, flowKey: string)
   const phaseBodies = readList(flow.phases, `${flowPath}.phases`)
   const transitions: DiagramTransition[] = []
   const phases = phaseBodies.map((item, index) => {
-    const body = readObject(item, `${flowPath}.phases[${String(index)}]`)
-    const walked = walkPhase(
-      catalog,
-      body,
-      `${flowPath}.phases[${String(index)}]`,
-      readNextPhase(phaseBodies, index, flowPath),
+    const phasePath = `${flowPath}.phases[${String(index)}]`
+    const phaseKey = isObject(item) && typeof item.key === 'string' ? item.key : String(index)
+    // A phase the lenient mode cannot read at all is drawn empty, with the reason on its box.
+    const unreadable: PhaseWalk = {
+      phase: {
+        key: phaseKey,
+        name: phaseKey,
+        act: null,
+        mode: 'once',
+        selection: { rule: 'sequence', sceneTypes: [] },
+        reached: [],
+        hooks: [],
+      },
+      transitions: [],
+    }
+    const walked = attempt(build, `phase:${phaseKey}`, unreadable, () =>
+      walkPhase(
+        build,
+        catalog,
+        readObject(item, phasePath),
+        phasePath,
+        readNextPhase(phaseBodies, index, flowPath),
+      ),
     )
     transitions.push(...walked.transitions)
 
@@ -75,7 +150,7 @@ export function flowDiagramFromReleaseContent(content: unknown, flowKey: string)
 
   return {
     key: flowKey,
-    name: readText(flow.name, `${flowPath}.name`),
+    name: attempt(build, `flow:${flowKey}`, flowKey, () => readText(flow.name, `${flowPath}.name`)),
     phases,
     transitions,
   }
@@ -108,6 +183,7 @@ interface Source {
 }
 
 function walkPhase(
+  build: Build,
   catalog: Catalog,
   body: Json,
   path: string,
@@ -125,9 +201,11 @@ function walkPhase(
   const act = body.act === undefined || body.act === null ? null : readText(body.act, `${path}.act`)
 
   const selection = readSelection(
+    build,
     catalog,
     readObject(body.selection, `${path}.selection`),
     `${path}.selection`,
+    key,
   )
   const selected = new Set(selection.sceneTypes.map((sceneType) => sceneType.key))
   const reached: DiagramSceneType[] = []
@@ -153,24 +231,27 @@ function walkPhase(
     if (!isTransitionKind(kind)) {
       return
     }
-    let to: DiagramTransition['to']
-    if (kind === 'endPhase') {
-      to =
-        nextPhase === null
-          ? { type: 'end' }
-          : { type: 'nextPhase', phase: nextPhase.key, name: nextPhase.name }
-    } else {
-      const sceneType = readKnown(
-        catalog.sceneTypes,
-        effect.sceneType,
-        `${effectPath}.sceneType`,
-        'Scene Type',
-      )
-      to = { type: 'sceneType', sceneType: sceneType.key }
-      reach(sceneType)
-    }
-    const transition: DiagramTransition = { kind, phase: key, from, to, via }
-    transitions.set(JSON.stringify(transition), transition)
+    attempt(build, nodeOf(key, from), undefined, () => {
+      let to: DiagramTransition['to']
+      if (kind === 'endPhase') {
+        to =
+          nextPhase === null
+            ? { type: 'end' }
+            : { type: 'nextPhase', phase: nextPhase.key, name: nextPhase.name }
+      } else {
+        const sceneType = readKnown(
+          catalog,
+          'sceneTypes',
+          effect.sceneType,
+          `${effectPath}.sceneType`,
+          'Scene Type',
+        )
+        to = { type: 'sceneType', sceneType: sceneType.key }
+        reach(sceneType)
+      }
+      const transition: DiagramTransition = { kind, phase: key, from, to, via }
+      transitions.set(JSON.stringify(transition), transition)
+    })
   }
 
   /**
@@ -182,54 +263,86 @@ function walkPhase(
       return
     }
     seen.add(table.key)
-    readList(table.body.entries, `${table.path}.entries`).forEach((item, index) => {
-      const entryPath = `${table.path}.entries[${String(index)}]`
-      const entry = readObject(item, entryPath)
-      readList(entry.effects, `${entryPath}.effects`).forEach((effect, effectIndex) => {
-        const effectPath = `${entryPath}.effects[${String(effectIndex)}]`
-        const via = from.type === 'selectionTable' ? null : toTable(table)
-        emit(readObject(effect, effectPath), effectPath, from, via)
+    const node = nodeOf(key, from)
+    attempt(build, node, undefined, () => {
+      readList(table.body.entries, `${table.path}.entries`).forEach((item, index) => {
+        const entryPath = `${table.path}.entries[${String(index)}]`
+        attempt(build, node, undefined, () => {
+          const entry = readObject(item, entryPath)
+          readList(entry.effects, `${entryPath}.effects`).forEach((effect, effectIndex) => {
+            const effectPath = `${entryPath}.effects[${String(effectIndex)}]`
+            const via = from.type === 'selectionTable' ? null : toTable(table)
+            attempt(build, node, undefined, () => {
+              emit(readObject(effect, effectPath), effectPath, from, via)
+            })
+          })
+          // `table: null` is an entry with no nested table, as FlowReferences and the preset reader read it.
+          if (entry.table !== undefined && entry.table !== null) {
+            rollTable(
+              readKnown(catalog, 'tables', entry.table, `${entryPath}.table`, 'table'),
+              from,
+              seen,
+            )
+          }
+        })
       })
-      // `table: null` is an entry with no nested table, as FlowReferences and the preset reader read it.
-      if (entry.table !== undefined && entry.table !== null) {
-        rollTable(readKnown(catalog.tables, entry.table, `${entryPath}.table`, 'table'), from, seen)
-      }
     })
   }
 
   const walkSteps = (source: Source): void => {
+    const node = nodeOf(key, source.from)
     for (const { path: listPath, steps } of source.lists) {
-      readList(steps, listPath).forEach((item, index) => {
-        const stepPath = `${listPath}[${String(index)}]`
-        const step = readObject(item, stepPath)
-        for (const [outcomePath, outcome] of outcomes(step, stepPath)) {
-          readList(outcome.effects, `${outcomePath}.effects`).forEach((effect, effectIndex) => {
-            const effectPath = `${outcomePath}.effects[${String(effectIndex)}]`
-            emit(readObject(effect, effectPath), effectPath, source.from, null)
+      attempt(build, node, undefined, () => {
+        readList(steps, listPath).forEach((item, index) => {
+          const stepPath = `${listPath}[${String(index)}]`
+          attempt(build, node, undefined, () => {
+            const step = readObject(item, stepPath)
+            for (const [outcomePath, outcome] of outcomes(step, stepPath)) {
+              readList(outcome.effects, `${outcomePath}.effects`).forEach((effect, effectIndex) => {
+                const effectPath = `${outcomePath}.effects[${String(effectIndex)}]`
+                emit(readObject(effect, effectPath), effectPath, source.from, null)
+              })
+            }
+            for (const [tablePath, tableKey] of rolledTables(step, stepPath)) {
+              attempt(build, node, undefined, () => {
+                rollTable(
+                  readKnown(catalog, 'tables', tableKey, tablePath, 'table'),
+                  source.from,
+                  new Set(),
+                )
+              })
+            }
           })
-        }
-        for (const [tablePath, tableKey] of rolledTables(step, stepPath)) {
-          rollTable(readKnown(catalog.tables, tableKey, tablePath, 'table'), source.from, new Set())
-        }
+        })
       })
     }
   }
 
   if (selection.rule === 'oracle') {
-    const table = readKnown(catalog.tables, selection.table.key, `${path}.selection.table`, 'table')
-    rollTable(table, { type: 'selectionTable' }, new Set())
+    attempt(build, `table:${key}`, undefined, () => {
+      const table = readKnown(
+        catalog,
+        'tables',
+        selection.table.key,
+        `${path}.selection.table`,
+        'table',
+      )
+      rollTable(table, { type: 'selectionTable' }, new Set())
+    })
   }
 
   for (const sceneType of selection.sceneTypes) {
     queue.push(
       sceneTypeSource(
-        readKnown(catalog.sceneTypes, sceneType.key, `${path}.selection`, 'Scene Type'),
+        readKnown(catalog, 'sceneTypes', sceneType.key, `${path}.selection`, 'Scene Type'),
       ),
     )
   }
   const hooks: DiagramHook[] = []
   for (const hook of PHASE_HOOKS) {
-    const steps = readList(body[hook], `${path}.${hook}`)
+    const steps = attempt(build, `hook:${key}:${hook}`, [], () =>
+      readList(body[hook], `${path}.${hook}`),
+    )
     if (steps.length > 0) {
       hooks.push({ hook, label: HOOK_LABELS[hook], steps: steps.length })
       queue.push({ from: { type: 'hook', hook }, lists: [{ path: `${path}.${hook}`, steps }] })
@@ -247,6 +360,18 @@ function walkPhase(
   }
 }
 
+/** The id of the node a source is drawn from (the ids `layoutFlowDiagram` gives its nodes and chips). */
+function nodeOf(phase: string, from: TransitionSource): string {
+  switch (from.type) {
+    case 'sceneType':
+      return `scene:${phase}:${from.sceneType}`
+    case 'hook':
+      return `hook:${phase}:${from.hook}`
+    case 'selectionTable':
+      return `table:${phase}`
+  }
+}
+
 function sceneTypeSource(entry: Entry): Source {
   return {
     from: { type: 'sceneType', sceneType: entry.key },
@@ -257,31 +382,65 @@ function sceneTypeSource(entry: Entry): Source {
   }
 }
 
-function readSelection(catalog: Catalog, selection: Json, path: string): DiagramSelection {
+function readSelection(
+  build: Build,
+  catalog: Catalog,
+  selection: Json,
+  path: string,
+  phase: string,
+): DiagramSelection {
   const rule = selection.rule
   if (rule === 'sequence' || rule === 'player') {
-    const sceneTypes = readList(selection.sceneTypes, `${path}.sceneTypes`).map((key, index) =>
-      toSceneType(
-        readKnown(catalog.sceneTypes, key, `${path}.sceneTypes[${String(index)}]`, 'Scene Type'),
-      ),
-    )
+    // A Scene Type the lenient mode cannot find is not drawn; its reason sits on the choice node of
+    // a player selection, and on the phase of a sequence, which has no node of its own.
+    const node = rule === 'player' ? `choice:${phase}` : `phase:${phase}`
+    const sceneTypes: DiagramSceneType[] = []
+    readList(selection.sceneTypes, `${path}.sceneTypes`).forEach((key, index) => {
+      attempt(build, node, undefined, () => {
+        sceneTypes.push(
+          toSceneType(
+            readKnown(
+              catalog,
+              'sceneTypes',
+              key,
+              `${path}.sceneTypes[${String(index)}]`,
+              'Scene Type',
+            ),
+          ),
+        )
+      })
+    })
 
     return { rule, sceneTypes }
   }
   if (rule === 'oracle') {
-    const table = readKnown(catalog.tables, selection.table, `${path}.table`, 'table')
+    const node = `table:${phase}`
+    const unknown: Entry = {
+      key: typeof selection.table === 'string' ? selection.table : '',
+      name: typeof selection.table === 'string' && selection.table !== '' ? selection.table : '?',
+      body: {},
+      path: `${path}.table`,
+    }
+    const table = attempt(build, node, unknown, () =>
+      readKnown(catalog, 'tables', selection.table, `${path}.table`, 'table'),
+    )
     // The backend requires every entry of an oracle selection table to name a Scene Type
     // (FlowReferences::checkOracleSelections), so an entry without one is malformed content.
     const sceneTypes = new Map<string, DiagramSceneType>()
-    readList(table.body.entries, `${table.path}.entries`).forEach((item, index) => {
-      const entryPath = `${table.path}.entries[${String(index)}]`
-      const sceneType = readKnown(
-        catalog.sceneTypes,
-        readObject(item, entryPath).sceneType,
-        `${entryPath}.sceneType`,
-        'Scene Type',
-      )
-      sceneTypes.set(sceneType.key, toSceneType(sceneType))
+    attempt(build, node, undefined, () => {
+      readList(table.body.entries, `${table.path}.entries`).forEach((item, index) => {
+        const entryPath = `${table.path}.entries[${String(index)}]`
+        attempt(build, node, undefined, () => {
+          const sceneType = readKnown(
+            catalog,
+            'sceneTypes',
+            readObject(item, entryPath).sceneType,
+            `${entryPath}.sceneType`,
+            'Scene Type',
+          )
+          sceneTypes.set(sceneType.key, toSceneType(sceneType))
+        })
+      })
     })
 
     return { rule, table: toTable(table), sceneTypes: [...sceneTypes.values()] }
@@ -352,24 +511,40 @@ function toTable(entry: Entry): DiagramTable {
 }
 
 /** The named items of a list, by key. A missing list is empty; an item without key or name throws. */
-function readCatalog(value: unknown, path: string): Map<string, Entry> {
+function readCatalog(build: Build, value: unknown, path: string): Map<string, Entry> {
   const catalog = new Map<string, Entry>()
-  readList(value, path).forEach((item, index) => {
-    const itemPath = `${path}[${String(index)}]`
-    const body = readObject(item, itemPath)
-    const key = readText(body.key, `${itemPath}.key`)
-    if (!catalog.has(key)) {
-      catalog.set(key, { key, name: readText(body.name, `${itemPath}.name`), body, path: itemPath })
-    }
+  // An unreadable list or item is left out of the lenient catalog: whatever names it is then unknown.
+  attempt(build, path, undefined, () => {
+    readList(value, path).forEach((item, index) => {
+      const itemPath = `${path}[${String(index)}]`
+      attempt(build, path, undefined, () => {
+        const body = readObject(item, itemPath)
+        const key = readText(body.key, `${itemPath}.key`)
+        if (!catalog.has(key)) {
+          catalog.set(key, {
+            key,
+            name: readText(body.name, `${itemPath}.name`),
+            body,
+            path: itemPath,
+          })
+        }
+      })
+    })
   })
 
   return catalog
 }
 
-function readKnown(catalog: Map<string, Entry>, key: unknown, path: string, what: string): Entry {
-  const entry = typeof key === 'string' ? catalog.get(key) : undefined
+function readKnown(
+  catalog: Catalog,
+  list: 'sceneTypes' | 'tables',
+  key: unknown,
+  path: string,
+  what: string,
+): Entry {
+  const entry = typeof key === 'string' ? catalog[list].get(key) : undefined
   if (entry === undefined) {
-    throw new FlowDiagramError(path, `${what} ${JSON.stringify(key)} is not in the release`)
+    throw new FlowDiagramError(path, `${what} ${JSON.stringify(key)} is not in ${catalog.where}`)
   }
 
   return entry

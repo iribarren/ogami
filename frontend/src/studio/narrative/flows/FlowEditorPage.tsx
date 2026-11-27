@@ -21,15 +21,18 @@ declare module '@tanstack/react-router' {
 /**
  * `/studio/game-systems/$key/flows/$flow`: edits one flow of a draft. `node` is the outline node
  * the URL selects (the `node` search param); anything it does not name opens the flow settings.
+ * `view` is the tab of the right-hand pane: `map` draws the flow, anything else is the Panel.
  */
 export function FlowEditorPage({
   gameSystemKey,
   flow,
   node,
+  view,
 }: {
   gameSystemKey: string
   flow: string
   node?: string
+  view?: 'map'
 }) {
   // Router history state, not a search param: it is not part of the URL a person shares or bookmarks.
   const justCreated = useLocation({ select: (location) => location.state.justCreated === true })
@@ -134,6 +137,7 @@ export function FlowEditorPage({
           initial={open.draft}
           version={open.version}
           selected={node}
+          view={view}
           justCreated={justCreated}
           savedAt={renamed?.key === flow ? renamed.at : null}
           onRenamed={(key, at) => {

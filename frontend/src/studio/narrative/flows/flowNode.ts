@@ -63,6 +63,14 @@ export function nodeParam(value: unknown): string | undefined {
   return typeof value === 'string' && parseNodePath(value) !== null ? value : undefined
 }
 
+/** The tabs of the editor's right-hand pane: the form of the selected node, or the flow drawn as a map. */
+export type EditorView = 'panel' | 'map'
+
+/** The `view` search param: `map` when it says so, else undefined (the Panel), never the raw value. */
+export function viewParam(value: unknown): 'map' | undefined {
+  return value === 'map' ? 'map' : undefined
+}
+
 export function nodePath(node: FlowNode): string {
   switch (node.kind) {
     case 'settings':

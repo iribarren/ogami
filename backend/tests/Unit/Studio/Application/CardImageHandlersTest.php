@@ -51,7 +51,7 @@ final class CardImageHandlersTest extends TestCase
     {
         $this->gameSystems = new InMemoryGameSystemRepository();
         $this->store = new InMemoryCardImages();
-        $this->images = new CardImages($this->store, $this->store);
+        $this->images = new CardImages($this->store, $this->store, $this->store);
         $this->owned = new OwnedGameSystems($this->gameSystems);
         $this->gameSystems->add(GameSystem::createBlank(GameSystemId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a61'), 'mine', 'Mine', null, 'ann', new \DateTimeImmutable('2026-11-27T10:00:00')));
         $this->gameSystems->add(GameSystem::createBlank(GameSystemId::fromString('0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a62'), 'other', 'Other', null, 'bob', new \DateTimeImmutable('2026-11-27T10:00:00')));
@@ -256,6 +256,6 @@ final class CardImageHandlersTest extends TestCase
 
     private function read(string $owner, string $key, string $sha256): StoredImage
     {
-        return new GetCardImageHandler($this->owned, $this->store, $this->store)(new GetCardImage($owner, $key, $sha256));
+        return new GetCardImageHandler($this->owned, $this->images, $this->store)(new GetCardImage($owner, $key, $sha256));
     }
 }

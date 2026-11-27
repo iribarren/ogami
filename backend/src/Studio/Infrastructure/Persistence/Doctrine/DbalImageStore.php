@@ -6,18 +6,21 @@ namespace App\Studio\Infrastructure\Persistence\Doctrine;
 
 use App\Studio\Application\CardImagePins;
 use App\Studio\Application\ImageStore;
+use App\Studio\Application\ReleaseCardImagePins;
 use App\Studio\Application\StoredImage;
 use App\Studio\Domain\GameSystem\GameSystemId;
 use App\Studio\Domain\Image\CardImage;
 use App\Studio\Domain\Image\CardImagePin;
 use App\Studio\Domain\Image\CardImageSlot;
 use App\Studio\Domain\Image\ImageRefused;
+use App\Studio\Domain\Release\ReleaseId;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
 /**
  * Card images as `bytea` rows keyed by the hash of their bytes, and the draft's pins in a table of
- * their own (ADR 0053). Plain SQL: the tables are not part of the ORM's schema.
+ * their own, and what each release pinned when it was published (ADR 0053). Plain SQL: the tables
+ * are not part of the ORM's schema.
  *
  * Two transaction-scoped advisory locks keep concurrent requests from interleaving badly, and both
  * are held until the surrounding command commits:
@@ -29,7 +32,7 @@ use Doctrine\DBAL\ParameterType;
  *   cannot interleave and delete the blob between the `put` and the pin (a foreign key failure).
  * Commands always take the GameSystem lock first, so the two locks never wait on each other in a cycle.
  */
-final readonly class DbalImageStore implements ImageStore, CardImagePins
+final readonly class DbalImageStore implements ImageStore, CardImagePins, ReleaseCardImagePins
 {
     public function __construct(
         private Connection $connection,
@@ -74,8 +77,8 @@ final readonly class DbalImageStore implements ImageStore, CardImagePins
         // Waits for a concurrent put + pin of the same bytes to commit; the DELETE then sees its pin.
         $this->acquire(self::imageLockKey($sha256));
         $this->connection->executeStatement(
-            'DELETE FROM studio_image WHERE sha256 = ? AND NOT EXISTS (SELECT 1 FROM studio_card_image_pin WHERE sha256 = ?)',
-            [$sha256, $sha256],
+            'DELETE FROM studio_image WHERE sha256 = ? AND NOT EXISTS (SELECT 1 FROM studio_card_image_pin WHERE sha256 = ?) AND NOT EXISTS (SELECT 1 FROM studio_release_card_image_pin WHERE sha256 = ?)',
+            [$sha256, $sha256, $sha256],
         );
     }
 
@@ -114,6 +117,45 @@ final readonly class DbalImageStore implements ImageStore, CardImagePins
     public function isPinned(GameSystemId $gameSystem, string $sha256): bool
     {
         return false !== $this->connection->fetchOne('SELECT 1 FROM studio_card_image_pin WHERE game_system_id = ? AND sha256 = ?', [$gameSystem->toString(), $sha256]);
+    }
+
+    public function pinAll(ReleaseId $release, array $hashBySlot): void
+    {
+        foreach ($hashBySlot as $slot => $sha256) {
+            $this->connection->executeStatement(
+                'INSERT INTO studio_release_card_image_pin (release_id, slot, sha256) VALUES (?, ?, ?)',
+                [$release->toString(), $slot, $sha256],
+            );
+        }
+    }
+
+    public function hashesOf(ReleaseId $release): array
+    {
+        /** @var array<string, string> $hashes */
+        $hashes = $this->connection->fetchAllKeyValue('SELECT slot, sha256 FROM studio_release_card_image_pin WHERE release_id = ? ORDER BY slot', [$release->toString()]);
+
+        return array_map(trim(...), $hashes);
+    }
+
+    public function pinsOf(ReleaseId $release): array
+    {
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT p.slot, i.sha256, i.media_type, i.width, i.height, i.byte_size, i.data FROM studio_release_card_image_pin p JOIN studio_image i ON i.sha256 = p.sha256 WHERE p.release_id = ? ORDER BY p.slot',
+            [$release->toString()],
+        );
+
+        return array_map(
+            fn (array $row): CardImagePin => new CardImagePin($this->slot($row['slot']), $this->stored($row)->image),
+            $rows,
+        );
+    }
+
+    public function isPinnedByReleaseOf(string $gameSystemKey, string $sha256): bool
+    {
+        return false !== $this->connection->fetchOne(
+            'SELECT 1 FROM studio_release_card_image_pin p JOIN studio_gamesystem_release r ON r.id = p.release_id WHERE r.game_system_key = ? AND p.sha256 = ?',
+            [$gameSystemKey, $sha256],
+        );
     }
 
     public function lock(GameSystemId $gameSystem): void

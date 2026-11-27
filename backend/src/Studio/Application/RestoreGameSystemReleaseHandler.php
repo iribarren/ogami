@@ -20,10 +20,13 @@ final readonly class RestoreGameSystemReleaseHandler implements CommandHandler
         private GameSystemRepository $gameSystems,
         private GameSystemReleaseRepository $releases,
         private Clock $clock,
+        private CardImages $images,
     ) {
     }
 
     /**
+     * The draft's card images become the release's too, in the same transaction.
+     *
      * @throws GameSystemNotFound             when the user has no such GameSystem
      * @throws LibraryPackRefuses             when the GameSystem is a library pack
      * @throws GameSystemReleaseNotFound      when it has no such release; the draft is unchanged
@@ -44,5 +47,6 @@ final readonly class RestoreGameSystemReleaseHandler implements CommandHandler
 
         $gameSystem->restore($release->content()->toArray(), $this->clock->now());
         $this->gameSystems->save($gameSystem);
+        $this->images->restoreDraftFrom($gameSystem->id(), $release->id());
     }
 }

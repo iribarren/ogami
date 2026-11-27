@@ -25,6 +25,19 @@ Feature: Publish a GameSystem draft
     Then the publish is refused because there are no changes
     And the GameSystem "my-system" has 1 release
 
+  Scenario: Publishing only a new card image is a change
+    Given ann published the GameSystem "my-system"
+    And ann uploaded a cardBack image to the GameSystem "my-system"
+    When ann publishes the GameSystem "my-system"
+    Then the GameSystem "my-system" has 2 releases
+
+  Scenario: A draft with the card images of the latest release is not published again
+    Given ann uploaded a cardBack image to the GameSystem "my-system"
+    And ann published the GameSystem "my-system"
+    When ann publishes the GameSystem "my-system"
+    Then the publish is refused because there are no changes
+    And the GameSystem "my-system" has 1 release
+
   Scenario: The history lists the releases newest first
     Given ann published the GameSystem "my-system" with the notes "First cut."
     And ann renames the GameSystem "my-system" to "Renamed" with the theme "noir"

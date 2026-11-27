@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Behat;
 
 use App\Randomness\Application\OracleTableResultView;
+use App\Studio\Application\CardImages;
 use App\Studio\Application\CreateGameSystem;
 use App\Studio\Application\CreateGameSystemHandler;
 use App\Studio\Application\DeleteLikelihoodOracle;
@@ -54,6 +55,7 @@ use App\Studio\Application\SaveNarrativeItem;
 use App\Studio\Application\SaveNarrativeItemHandler;
 use App\Studio\Application\SaveOracleTable;
 use App\Studio\Application\SaveOracleTableHandler;
+use App\Studio\Application\StoredImage;
 use App\Studio\Application\TestAskLikelihoodOracle;
 use App\Studio\Application\TestAskLikelihoodOracleHandler;
 use App\Studio\Application\TestRollOracleTable;
@@ -72,6 +74,8 @@ use App\Studio\Domain\GameSystem\NarrativeSection;
 use App\Studio\Domain\GameSystem\OracleInUse;
 use App\Studio\Domain\GameSystem\OracleKeyTaken;
 use App\Studio\Domain\GameSystem\OracleNotFound;
+use App\Studio\Domain\Image\CardImage;
+use App\Studio\Domain\Image\CardImageSlot;
 use App\Studio\Domain\Release\GameSystemDraftUnchanged;
 use App\Studio\Domain\Release\GameSystemReleaseNotFound;
 use App\Studio\Domain\Release\InvalidReleaseContent;
@@ -110,6 +114,7 @@ final class StudioContext implements Context
     private readonly SequentialGameSystemIdGenerator $draftIds;
     private readonly FixedClock $clock;
     private readonly OwnedGameSystems $owned;
+    private readonly CardImages $cardImages;
     private ?\Throwable $draftRefusal = null;
     private ScriptedRandomNumberGenerator $dice;
     private ?OracleTableResultView $tableRoll = null;
@@ -126,6 +131,7 @@ final class StudioContext implements Context
         $this->publish = new PublishGameSystemReleaseHandler(new ReleasePublisher($this->releases, $this->clock), $this->drafts);
         $this->draftIds = new SequentialGameSystemIdGenerator();
         $this->owned = new OwnedGameSystems($this->drafts);
+        $this->cardImages = InMemoryCardImages::service($this->releases);
         $this->getRelease = new GetPublishedReleaseHandler($this->releases);
         $this->dice = new ScriptedRandomNumberGenerator();
     }
@@ -298,22 +304,30 @@ final class StudioContext implements Context
     #[When('/^(?P<user>\w+) discards the GameSystem "(?P<key>[^"]+)"$/')]
     public function discards(string $user, string $key): void
     {
-        $this->attempt(fn () => (new DiscardGameSystemHandler($this->owned, $this->drafts, $this->releases, InMemoryCardImages::service()))(new DiscardGameSystem($user, $key)));
+        $this->attempt(fn () => (new DiscardGameSystemHandler($this->owned, $this->drafts, $this->releases, $this->cardImages))(new DiscardGameSystem($user, $key)));
     }
 
     #[Given('/^(?P<user>\w+) published the GameSystem "(?P<key>[^"]+)"(?: with the notes "(?P<notes>[^"]+)")?$/')]
     #[When('/^(?P<user>\w+) publishes the GameSystem "(?P<key>[^"]+)"(?: with the notes "(?P<notes>[^"]+)")?$/')]
     public function publishes(string $user, string $key, ?string $notes = null): void
     {
-        $this->attempt(fn () => (new PublishGameSystemDraftHandler($this->owned, new ReleasePublisher($this->releases, $this->clock), $this->releases))(
+        $this->attempt(fn () => (new PublishGameSystemDraftHandler($this->owned, new ReleasePublisher($this->releases, $this->clock), $this->releases, $this->cardImages))(
             new PublishGameSystemDraft($user, $key, $this->ids->generate()->toString(), '' === $notes ? null : $notes),
         ));
+    }
+
+    #[Given('/^(?P<user>\w+) uploaded a (?P<slot>cardBack|cardFront) image to the GameSystem "(?P<key>[^"]+)"$/')]
+    public function uploadedACardImage(string $user, string $slot, string $key): void
+    {
+        $bytes = 'the '.$slot.' image of '.$key;
+        $image = new StoredImage(CardImage::of(hash('sha256', $bytes), CardImage::PNG, 815, 1110, \strlen($bytes)), $bytes);
+        $this->cardImages->replace($this->owned->get($user, $key)->id(), CardImageSlot::from($slot), $image);
     }
 
     #[When('/^(?P<user>\w+) restores release (?P<version>\d+) of "(?P<key>[^"]+)"$/')]
     public function restores(string $user, int $version, string $key): void
     {
-        $this->attempt(fn () => (new RestoreGameSystemReleaseHandler($this->owned, $this->drafts, $this->releases, $this->clock))(new RestoreGameSystemRelease($user, $key, $version)));
+        $this->attempt(fn () => (new RestoreGameSystemReleaseHandler($this->owned, $this->drafts, $this->releases, $this->clock, $this->cardImages))(new RestoreGameSystemRelease($user, $key, $version)));
     }
 
     #[Then('ann sees release :version of :key with the notes :notes')]

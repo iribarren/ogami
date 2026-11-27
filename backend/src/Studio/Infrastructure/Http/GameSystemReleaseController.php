@@ -10,6 +10,7 @@ use App\Shared\Application\Bus\QueryBus;
 use App\Shared\Infrastructure\Http\ErrorResponse;
 use App\Studio\Application\GetGameSystem;
 use App\Studio\Application\GetGameSystemRelease;
+use App\Studio\Application\GetGameSystemReleaseContent;
 use App\Studio\Application\GetPublishedReleaseById;
 use App\Studio\Application\ListGameSystemReleases;
 use App\Studio\Application\PublishedReleaseView;
@@ -35,7 +36,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 /**
- * Publishing a GameSystem draft, its release history and restoring a release into the draft
+ * Publishing a GameSystem draft, its release history, a release's whole content and restoring a release into the draft
  * (security.yaml restricts these routes to ROLE_GAME_MANAGER). Another user's key is not found,
  * exactly like an unknown one.
  */
@@ -87,7 +88,7 @@ final readonly class GameSystemReleaseController
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 404, description: 'The user has no GameSystem with this key.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
-    #[OA\Response(response: 409, description: 'Nothing was published; the code says why: no_changes (the draft equals the latest release), release_exists (another publish took the version first) or library_pack (a pack is never published).', content: new OA\JsonContent(ref: new Model(type: PublishConflictResponse::class)))]
+    #[OA\Response(response: 409, description: 'Nothing was published; the code says why: no_changes (the draft has the content and the card images of the latest release), release_exists (another publish took the version first) or library_pack (a pack is never published).', content: new OA\JsonContent(ref: new Model(type: PublishConflictResponse::class)))]
     #[OA\Response(response: 415, description: 'A body was sent and it is not JSON.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 422, description: 'The draft breaks the release contract (the message names the path of the first error) or the notes are blank, contain NUL or invalid UTF-8, or are longer than 2,000 characters; nothing was published.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     public function publish(string $key, Request $request, #[CurrentUser] AuthenticatedUser $user): JsonResponse
@@ -146,10 +147,25 @@ final readonly class GameSystemReleaseController
         }
     }
 
+    #[Route('/api/studio/game-systems/{key}/releases/{version}/content', name: 'api_studio_game_systems_releases_content', requirements: ['version' => '\d{1,9}'], methods: ['GET'])]
+    #[OA\Get(operationId: 'getGameSystemReleaseContent', summary: 'Read the whole content of one release of one of my GameSystems, with its card images')]
+    #[OA\Response(response: 200, description: 'The release as published: its content and the card images it pinned (none for a release published without images).', content: new OA\JsonContent(ref: new Model(type: GameSystemReleaseContentResponse::class)))]
+    #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    #[OA\Response(response: 404, description: 'The user has no GameSystem with this key, or it has no such release.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
+    public function content(string $key, int $version, #[CurrentUser] AuthenticatedUser $user): JsonResponse
+    {
+        try {
+            return new JsonResponse(GameSystemReleaseContentResponse::fromView($this->queryBus->ask(new GetGameSystemReleaseContent($user->id(), $key, $version))));
+        } catch (GameSystemNotFound|GameSystemReleaseNotFound $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
+        }
+    }
+
     #[Route('/api/studio/game-systems/{key}/restore', name: 'api_studio_game_systems_restore', methods: ['POST'])]
     #[OA\Post(operationId: 'restoreGameSystemRelease', summary: 'Replace my GameSystem draft with the content of one of its releases')]
     #[OA\RequestBody(required: true, content: new OA\JsonContent(ref: new Model(type: RestoreGameSystemRequest::class)))]
-    #[OA\Response(response: 200, description: 'The draft with the release\'s content.', content: new OA\JsonContent(ref: new Model(type: GameSystemResponse::class)))]
+    #[OA\Response(response: 200, description: 'The draft with the release\'s content and card images.', content: new OA\JsonContent(ref: new Model(type: GameSystemResponse::class)))]
     #[OA\Response(response: 400, description: 'The JSON body is malformed or has no integer "version".', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 401, description: 'No session.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]
     #[OA\Response(response: 403, description: 'The user is not a game manager.', content: new OA\JsonContent(ref: new Model(type: ErrorResponse::class)))]

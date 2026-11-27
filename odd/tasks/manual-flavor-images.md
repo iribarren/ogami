@@ -91,7 +91,7 @@ Shippable: the placeholders are meant to be visible on `main` until each image l
 | ID | Slice | Task | Route | Done | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Art style guides `docs/art/` (D1, D2, D6): README, house, hard-country, dogwatch, each with a prompt preamble | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T2 | 1 | `::image` directive (D3), `styles.ts` (D5), image lookup (D7), web figure and placeholder (D4, D6), Paper block and print CSS (D6), PDF spec MIME and image wait (D8), tests | delegated writer (Sonnet): slice of 2+ non-trivial files | [ ] | |
+| T2 | 1 | `::image` directive (D3), `styles.ts` (D5), image lookup (D7), web figure and placeholder (D4, D6), Paper block and print CSS (D6), PDF spec MIME and image wait (D8), tests | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T3 | 1 | The 24 placements (D9) in the chapters, with a content test pinning slug, file, style and size, all common, styles known, no app words in alt/subject | delegated writer (Sonnet): slice of 2+ non-trivial files | [ ] | |
 | T4 | 1 | Credits (D10) in both "This book" sections | delegated writer (Sonnet), with T3 | [ ] | |
 
@@ -114,6 +114,7 @@ Shippable: the placeholders are meant to be visible on `main` until each image l
 
 - 2026-11-27: Feature doc created; one slice, four tasks. Placements (D9) and the credit wording (D10) approved by the user; the tool name stays a placeholder. Issue #435.
 - 2026-11-27: T1 done: `docs/art/` README plus house, hard-country and dogwatch guides, each taboo traced to its voice pack line. Docs only, so no RED; checked by reading the guides back against the packs.
+- 2026-11-27: T2 done: `::image` parser, `styles.ts`, glob lookup, `ManualImage` (web and Paper), print CSS, PDF spec. RED observed for the parser (25 failing before the code, 58 passing after); the component, Paper and style tests were written together with their code, so no separate RED was observed for them. `make frontend-fix` run; Vitest on `src/manual` green.
 
 ## Reviews
 

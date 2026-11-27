@@ -7,6 +7,8 @@ export interface MapEdit {
   phases: PhaseDraft[]
   /** Set when a phase changed place: the save answers and the selection follow it. */
   move?: { from: number; to: number }
+  /** Set when the edit leaves the Map: the node whose panel the editor then shows. */
+  select?: FlowNode
   say: string
 }
 

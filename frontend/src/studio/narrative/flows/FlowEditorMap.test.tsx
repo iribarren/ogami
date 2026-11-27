@@ -741,13 +741,26 @@ describe('arrows on the Map', () => {
     fireEvent.pointerUp(port, { ...press, ...to })
   }
   const said = () => screen.getByRole('status')
-  const opening = { phaseOpening: [{ key: 'open', kind: 'prompt', title: 'Open' }] }
+  const opening = {
+    phaseOpening: [
+      { key: 'open', kind: 'prompt', title: 'Open' },
+      {
+        key: 'roll',
+        kind: 'roll',
+        title: 'Roll',
+        dice: '1d6',
+        bands: [{ upTo: 3, label: 'Hard' }, { label: 'rest' }],
+      },
+    ],
+  }
   const withOpening = () =>
     json(withPhases([{ ...heistPhases[0], ...opening }, heistPhases[1] ?? {}]))
 
-  it('adds a transition to a Scene Type of its phase to the first step of a hook, and saves it', async () => {
+  const dialog = () => within(screen.getByRole('dialog', { name: 'Add a transition' }))
+
+  it('asks where in the hook the transition goes, writes it there, shows that step and saves it', async () => {
     const sent: unknown[] = []
-    const { user } = await openEditor('heist?view=map', {
+    const { user, router } = await openEditor('heist?view=map', {
       [`GET ${base}/narrative`]: withOpening(),
       [put]: async (request) => {
         sent.push(await request.clone().json())
@@ -757,33 +770,112 @@ describe('arrows on the Map', () => {
     const region = await map()
 
     arrow(region, 'hook:setup:phaseOpening', centreOf(region, 'scene:setup:ambush'))
+    await chooseOption(user, 'Step', '2. Roll', dialog())
+    await chooseOption(user, 'Part', 'Up to 3: Hard', dialog())
+    await chooseOption(user, /^Kind of transition to/, 'Switch Scene Type', dialog())
+    await user.click(dialog().getByRole('button', { name: 'Add transition' }))
 
-    expect(said()).toHaveTextContent(
-      'Added next scene "Ambush" to step "Open" of the hook "Phase opening" of phase "Setup".',
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Panel' })).toHaveAttribute('aria-selected', 'true')
+    expect(search(router)).toMatchObject({ node: 'phases.0.hooks.phaseOpening.1' })
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Added switch to Scene Type "Ambush" to step "Roll" of the hook "Phase opening" of phase "Setup".',
     )
     expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
-    expect(region.querySelector('[data-kind="nextScene"]')).not.toBeNull()
     await user.click(screen.getByRole('button', { name: 'Save' }))
     await vi.waitFor(() => {
       expect(sent).toHaveLength(1)
     })
     expect(JSON.stringify(sent[0])).toContain(
-      '"effects":[{"kind":"nextScene","sceneType":"ambush"}]',
+      '"effects":[{"kind":"switchSceneType","sceneType":"ambush"}]',
     )
   })
 
-  it('ends a phase by an arrow to the next phase, once, and refuses the same arrow twice', async () => {
-    await openEditor('heist?view=map', { [`GET ${base}/narrative`]: withOpening() })
+  it('ends a phase by an arrow to the next phase with no kind to pick, and refuses the same effect twice', async () => {
+    const { user } = await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: withOpening(),
+    })
     const region = await map()
-
     arrow(region, 'hook:setup:phaseOpening', phaseCorner(region, 'job'))
-    expect(said()).toHaveTextContent(
+    expect(
+      dialog().queryByRole('combobox', { name: /^Kind of transition/ }),
+    ).not.toBeInTheDocument()
+    await user.click(dialog().getByRole('button', { name: 'Add transition' }))
+    expect(screen.getByRole('status')).toHaveTextContent(
       'Added end the phase to step "Open" of the hook "Phase opening" of phase "Setup".',
     )
-    expect(region.querySelector('[data-kind="endPhase"]')).not.toBeNull()
 
-    arrow(region, 'hook:setup:phaseOpening', phaseCorner(region, 'job'))
-    expect(said()).toHaveTextContent('Step "Open" already has this effect: end the phase.')
+    await user.click(screen.getByRole('tab', { name: 'Map' }))
+    const again = await map()
+    arrow(again, 'hook:setup:phaseOpening', phaseCorner(again, 'job'))
+    await user.click(dialog().getByRole('button', { name: 'Add transition' }))
+    expect(dialog().getByRole('alert')).toHaveTextContent(
+      'Step "Open" already has this effect: end the phase.',
+    )
+    await chooseOption(user, 'Step', '2. Roll', dialog())
+    expect(dialog().queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('changes nothing when the dialog is cancelled, and starts afresh the next time', async () => {
+    const { user } = await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: withOpening(),
+    })
+    const region = await map()
+
+    arrow(region, 'hook:setup:phaseOpening', centreOf(region, 'scene:setup:ambush'))
+    await chooseOption(user, 'Step', '2. Roll', dialog())
+    await user.click(dialog().getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(said()).toHaveTextContent('No transition added.')
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
+    arrow(region, 'hook:setup:phaseOpening', centreOf(region, 'scene:setup:ambush'))
+    expect(dialog().getByRole('combobox', { name: 'Step' })).toHaveTextContent('1. Open')
+  })
+
+  it('adds a transition from the action bar of a focused hook chip, asking where it goes', async () => {
+    const { user, router } = await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: withOpening(),
+    })
+    const region = await map()
+    const bar = within(screen.getByRole('group', { name: 'Map actions' }))
+
+    act(() => {
+      within(region)
+        .getByRole('button', { name: /^Hook: Phase opening/ })
+        .focus()
+    })
+    expect(bar.getByText('Hook "Phase opening" of phase "Setup"')).toBeInTheDocument()
+    await user.click(bar.getByRole('button', { name: 'Add transition' }))
+    const to = dialog().getByRole('combobox', { name: 'To' })
+    expect(to).toHaveTextContent('Ambush')
+    await chooseOption(user, 'To', 'End of the phase', dialog())
+    expect(
+      dialog().queryByRole('combobox', { name: /^Kind of transition/ }),
+    ).not.toBeInTheDocument()
+    await user.click(dialog().getByRole('button', { name: 'Add transition' }))
+
+    expect(search(router)).toMatchObject({ node: 'phases.0.hooks.phaseOpening.0' })
+    expect(screen.getByRole('status')).toHaveTextContent('Added end the phase to step "Open"')
+  })
+
+  it('offers the end of the flow from the last phase', async () => {
+    const { user } = await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: json(
+        withPhases([heistPhases[0] ?? {}, { ...heistPhases[1], ...opening }]),
+      ),
+    })
+    const region = await map()
+
+    act(() => {
+      within(region)
+        .getByRole('button', { name: /^Hook: Phase opening/ })
+        .focus()
+    })
+    await user.click(screen.getByRole('button', { name: 'Add transition' }))
+
+    await chooseOption(user, 'To', 'End of the flow', dialog())
+    expect(dialog().getByRole('combobox', { name: 'To' })).toHaveTextContent('End of the flow')
   })
 
   it('refuses an arrow that breaks the rules, and changes nothing', async () => {
@@ -812,7 +904,7 @@ describe('arrows on the Map', () => {
     expect(said()).toHaveTextContent('Its effects sit on table entries')
   })
 
-  it('refuses an arrow from a hook whose first step is kept as stored', async () => {
+  it('refuses an arrow from a hook whose steps are all kept as stored', async () => {
     await openEditor('heist?view=map', {
       [`GET ${base}/narrative`]: json(
         withPhases([
@@ -825,7 +917,7 @@ describe('arrows on the Map', () => {
 
     arrow(region, 'hook:setup:phaseOpening', centreOf(region, 'scene:setup:ambush'))
 
-    expect(said()).toHaveTextContent('cannot be edited here: open its panel.')
+    expect(said()).toHaveTextContent('can be edited here: open its panel.')
     expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
   })
 

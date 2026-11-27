@@ -81,6 +81,8 @@ export function FlowEditor({
   const [answer, setAnswer] = useState<FlowAnswer>(noAnswer)
   // Why a reload did not replace the draft; the old version is kept then, so a save still conflicts.
   const [reloadNote, setReloadNote] = useState<string | null>(null)
+  // What the Map's last edit said, when that edit took the person to a panel.
+  const [mapNote, setMapNote] = useState<string | null>(null)
   // The draft as it was last loaded or saved: the form is unsaved while it differs.
   const [baseline, setBaseline] = useState(() => JSON.stringify(initial))
   const [savedAt, setSavedAt] = useState<Date | null>(initialSavedAt)
@@ -152,6 +154,7 @@ export function FlowEditor({
 
   /** Switches the right-hand pane between the Panel and the Map; the selected node stays. */
   function showView(next: 'panel' | 'map') {
+    setMapNote(null)
     void navigate({
       to: '/studio/game-systems/$key/flows/$flow',
       params: { key: gameSystemKey, flow: current },
@@ -323,8 +326,13 @@ export function FlowEditor({
   }
 
   /** An edit of the Map: the draft changes as the outline's buttons change it, and the answers and the selection follow a phase that moved. */
-  function editFromMap({ phases: next, move }: MapEdit) {
+  function editFromMap({ phases: next, move, select: show, say }: MapEdit) {
     changePhases(next, move ? moveItem(aligned, move.from, move.to - move.from) : aligned)
+    // An edit that leaves the Map shows its panel; the Map's own live region goes with the Map.
+    setMapNote(show === undefined ? null : say)
+    if (show !== undefined) {
+      select(show)
+    }
     if (move !== undefined) {
       const followed = followNode(node, move)
       if (nodePath(followed) !== nodePath(node)) {
@@ -525,6 +533,11 @@ export function FlowEditor({
             </>
           )}
         </EditorPane>
+        {mapNote !== null && view !== 'map' && (
+          <p role="status" className="text-sm">
+            {mapNote}
+          </p>
+        )}
         {answer.page !== null && <Alert>{answer.page}</Alert>}
         {reloadNote !== null && <Alert>{reloadNote}</Alert>}
         <div className="sticky bottom-4 panel">

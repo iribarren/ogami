@@ -107,8 +107,8 @@ export function FlowDiagramView({ diagram, className }: FlowDiagramViewProps) {
         <summary className="cursor-pointer">The flow in words</summary>
         <div id={wordsId} className="mt-2 space-y-2">
           <ol className="list-decimal space-y-1 pl-5">
-            {description.phases.map((phase) => (
-              <li key={phase.title}>
+            {description.phases.map((phase, index) => (
+              <li key={`${String(index)}:${phase.title}`}>
                 <strong>{phase.title}</strong>. {phase.selection}.
                 <ul className="list-disc pl-5">
                   {phase.sceneTypes.length > 0 && (
@@ -126,8 +126,8 @@ export function FlowDiagramView({ diagram, className }: FlowDiagramViewProps) {
             <>
               <p className="font-medium">Transitions</p>
               <ul className="list-disc pl-5">
-                {description.transitions.map((transition) => (
-                  <li key={transition}>{transition}</li>
+                {description.transitions.map((transition, index) => (
+                  <li key={`${String(index)}:${transition}`}>{transition}</li>
                 ))}
               </ul>
             </>

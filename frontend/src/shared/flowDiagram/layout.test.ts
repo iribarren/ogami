@@ -231,6 +231,40 @@ describe('layoutFlowDiagram', () => {
     expect(() => layoutFlowDiagram(orphan)).toThrow(/nowhere/)
   })
 
+  it('keeps every edge point, and every hook gutter, inside its phase box and the drawing', () => {
+    for (const diagram of [coldBerth, longCarry, ironsworn]) {
+      const layout = layoutFlowDiagram(diagram)
+      const hookEdges = layout.edges.filter((edge) => {
+        const index = /^transition:(\d+)$/.exec(edge.id)?.[1]
+        return index !== undefined && diagram.transitions[Number(index)]?.from.type === 'hook'
+      })
+      for (const edge of layout.edges) {
+        for (const point of edge.points) {
+          expect(point.x).toBeGreaterThanOrEqual(0)
+          expect(point.x).toBeLessThanOrEqual(layout.width)
+          expect(point.y).toBeGreaterThanOrEqual(0)
+          expect(point.y).toBeLessThanOrEqual(layout.height)
+        }
+      }
+      for (const edge of hookEdges) {
+        const home = layout.phases.find((item) =>
+          edge.points.every(
+            (point) =>
+              point.x >= item.rect.x &&
+              point.x <= item.rect.x + item.rect.width &&
+              point.y >= item.rect.y &&
+              point.y <= item.rect.y + item.rect.height,
+          ),
+        )
+        expect(home, `hook edge ${edge.id} leaves its phase box`).toBeDefined()
+      }
+    }
+    // Cold Berth's the-ship has four world-turn edges: the case that used to overflow.
+    expect(
+      coldBerth.transitions.filter((item) => item.from.type === 'hook').length,
+    ).toBeGreaterThan(3)
+  })
+
   it('lays out the presets without throwing', () => {
     for (const diagram of [coldBerth, longCarry, ironsworn, phaseDiagram(longCarry, 'the-road')]) {
       const layout = layoutFlowDiagram(diagram)

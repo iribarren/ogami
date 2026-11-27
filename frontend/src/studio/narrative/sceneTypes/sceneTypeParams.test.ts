@@ -43,7 +43,18 @@ describe('the Scene Type search params', () => {
     ]) {
       expect(carrierParam(good)).toBe(good)
     }
-    for (const bad of ['', 'band', 'band:x', 'other', 'step:1', 'oracle:', 'band:1234', 4]) {
+    for (const bad of [
+      '',
+      'band',
+      'band:x',
+      'other',
+      'step:1',
+      'oracle:',
+      'oracle:maybe',
+      'pick:lost',
+      'band:1234',
+      4,
+    ]) {
       expect(carrierParam(bad)).toBeUndefined()
     }
   })

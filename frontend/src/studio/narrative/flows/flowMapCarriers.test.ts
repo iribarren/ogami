@@ -3,6 +3,7 @@ import { step } from '@/shared/flowDiagram/testSupport'
 import { newEffect } from '../steps/effectDraft'
 import { stepsToDrafts } from '../steps/stepDraft'
 import { sceneTypeToDraft } from '../sceneTypes/sceneTypeDraft'
+import { carrierParam } from '../sceneTypes/sceneTypeParams'
 import { flowToDraft, type PhaseDraft } from './flowDraft'
 import {
   addEffect,
@@ -227,6 +228,12 @@ describe('carriersOf', () => {
     step === undefined ? [] : carriersOf(step).map(({ label }) => label)
   const ids = (step: typeof roll) =>
     step === undefined ? [] : carriersOf(step).map(({ id }) => id)
+
+  it('builds only ids the Scene Type page takes as a carrier param', () => {
+    const built = [roll, choice, oracle, pick, table, check, prompt].flatMap(ids)
+    expect(built).toContain('oracle:exceptionalYes')
+    expect(built.filter((id) => carrierParam(id) !== id)).toEqual([])
+  })
 
   it('names the step itself and each band, option and outcome by what the author wrote', () => {
     expect(labels(roll)).toEqual([

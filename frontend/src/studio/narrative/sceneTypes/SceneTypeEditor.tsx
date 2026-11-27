@@ -108,6 +108,9 @@ export function SceneTypeEditor({
   }, [])
   const dirty = JSON.stringify(draft) !== baseline
   const asked = pending !== null
+  // The step as a string: the page parses it anew on every render, so the object is no dependency.
+  const shownStep =
+    step === null || step === undefined ? null : `${step.part}.${String(step.index)}`
   useEffect(() => {
     if (!asked) {
       return
@@ -117,12 +120,11 @@ export function SceneTypeEditor({
     void navigate({
       to: '/studio/game-systems/$key/scene-types/$sceneType',
       params: { key: gameSystemKey, sceneType: original },
-      search:
-        step === null || step === undefined ? {} : { step: `${step.part}.${String(step.index)}` },
+      search: shownStep === null ? {} : { step: shownStep },
       replace: true,
       ignoreBlocker: true,
     }).catch(() => undefined)
-  }, [asked, navigate, gameSystemKey, original, step])
+  }, [asked, navigate, gameSystemKey, original, shownStep])
   // Kept while the narrative is the same, so the step cards below can skip renders.
   // The checks say which special results a check step may branch on; until they load, none is offered.
   const checks = useGameSystemChecks(gameSystemKey)

@@ -1,4 +1,5 @@
 import type { EditedEffect } from '../steps/effectDraft'
+import { oracleAnswers, pickOutcomes } from '../steps/stepDraft'
 import { scenePartNames, type ScenePart } from './sceneTypeDraft'
 
 // The search params the flow Map hands to the Scene Type page (D31, D32): which step to show, and
@@ -41,8 +42,11 @@ export const stepParam = (value: unknown): string | undefined =>
   typeof value === 'string' && parseStep(value) !== null ? value : undefined
 
 // A carrier id is `step`, `otherwise`, or a kind and a position or answer (`band:0`, `oracle:yes`).
-// Whether the step has that part is for the page to say when it applies it.
-const CARRIER = /^(step|otherwise|(band|option|branch|check):\d{1,3}|(oracle|pick):[A-Za-z]{1,20})$/
+// The answers and outcomes come from the same lists `partsOf` reads, so every id the Map offers
+// passes. Whether the step has that part is for the page to say when it applies it.
+const CARRIER = new RegExp(
+  `^(step|otherwise|(band|option|branch|check):\\d{1,3}|oracle:(${oracleAnswers.join('|')})|pick:(${pickOutcomes.join('|')}))$`,
+)
 
 /** The `carrier` search param: the value when it is shaped like a carrier id, else undefined. */
 export const carrierParam = (value: unknown): string | undefined =>

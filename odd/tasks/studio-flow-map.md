@@ -1,7 +1,7 @@
 # Feature: studio-flow-map
 
 - **Locator:** `odd/tasks/studio-flow-map.md` · Engram topic `odd/studio-flow-map/tasks`
-- **Issue:** [#421](https://github.com/iribarren/ogami/issues/421) · **Branch:** `feat/studio-flow-map-5-scene-types` · **Status:** in progress
+- **Issue:** [#421](https://github.com/iribarren/ogami/issues/421) · **Branch:** `feat/studio-flow-map-5-scene-types` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B35 in [`docs/roadmap.md`](../../docs/roadmap.md); builds on B34 `flow-diagram` ([ADR 0051](../../docs/adr/0051-flow-diagram-layout-and-rendering.md))
@@ -89,9 +89,9 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 | T5 | 3 | Scene Type palette; drag into or out of a `sequence` / `player` selection, drop position in a sequence; `oracle` refusal (D7, D8) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `e56f58ac` |
 | T6 | 4 | Arrow gesture between nodes with the refusals (D7) and a keyboard "Add transition" path | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `ae4c6bc2` |
 | T7 | 4 | Carrier picker (step, then the step itself or a band, option or outcome) and the hook-source effect in the flow draft, opening the hook step panel (D2) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `e98b437c` |
-| T8 | 5 | Scene Type source: Scene Type page search params for the step and the pending effect, added as an unsaved edit (D2, D30-D33) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T9 | 5 | Playwright pass on the Map, the Studio manual's flow editor chapter, roadmap `Done:` line | delegated writer (doc-writer) | [x] | |
-| T10 | 5 | Slice 5 review fixes: the `carrier` param takes exactly the oracle answers and pick outcomes `partsOf` builds; the URL-cleaning effect depends on the step string | inline (parent): two small edits, already understood | [x] | |
+| T8 | 5 | Scene Type source: Scene Type page search params for the step and the pending effect, added as an unsaved edit (D2, D30-D33) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `6028280a` |
+| T9 | 5 | Playwright pass on the Map, the Studio manual's flow editor chapter, roadmap `Done:` line | delegated writer (doc-writer) | [x] | `4f68b2ab`, `b0372eef` |
+| T10 | 5 | Slice 5 review fixes: the `carrier` param takes exactly the oracle answers and pick outcomes `partsOf` builds; the URL-cleaning effect depends on the step string | inline (parent): two small edits, already understood | [x] | `65544918` |
 
 ## Acceptance criteria
 
@@ -130,6 +130,7 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 - 2026-11-27 T9 (Playwright half): `e2e/studio-flow-map.spec.ts` on a copied night-job preset: opens the Map, drags a Scene Type from the palette into a phase (real layout, dirty state), adds a hook transition from the action bar and lands on the hook step panel, saves, then adds a Scene Type transition from the action bar and lands on the Scene Type page with the unsaved effect, still unsaved and not added twice after a reload. `make e2e` green for the spec (the first run clashed on the GameSystem key with the other flow spec: same-millisecond keys, so the key has its own prefix). The manual chapter and the roadmap line are still to do, so T9 stays open.
 - 2026-11-27 T9: manual: a Map passage in `the-arc.md` (tabs, drag, arrows, refusals, action bar) and a pointer in `choosing-the-next-scene.md`; doc-only; Vitest `src/manual` 314/314, Prettier clean.
 - 2026-11-27 T10: slice 5 review fixes (R3-carrier-param-narrower-than-carriers, R3-replace-effect-unstable-step-dep): `CARRIER` built from `oracleAnswers` / `pickOutcomes`, a test that every id `carriersOf` builds passes `carrierParam`, the effect keyed on the step string. Vitest 125/125 (Scene Type suites and carriers), ESLint and tsc clean. No RED: the old regex already accepted today's answers; the new test guards the drift.
+- 2026-11-27: Feature done in five slices (PRs #422–#426). Every review finding is fixed. The manual Chrome pass was not run for slice 5; the Playwright spec `studio-flow-map.spec.ts` covers the palette drag, the hook transition and the Scene Type transition.
 
 ## Reviews
 
@@ -140,7 +141,8 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 | 2 (fixes, T4) | `review-543bc240f9732c99` | approved | R3-stale-click-swallow (a drag that ends without a click leaves the swallow flag set, so the next click on any node is ignored, `diagramDrag.ts:136-148`). Fixed in slice 3 | [#423](https://github.com/iribarren/ogami/pull/423) |
 | 3 (fix, T5) | `review-dca88735c757be3a` | approved | R3-add-picker-state-carries-across-phases (`MapActionBar.tsx:40`, the Add select keeps its value when the bar moves to another phase); R3-swallow-reset-listener-unmount (`diagramDrag.ts:144-150`, the capture listener survives unmount); R3-ctm-stub-not-restored (`FlowEditorMap.test.tsx:417-422`); R3-test-title-overclaims (`FlowEditorMap.test.tsx:521`). Fixed in slice 4 (`R3-*` all four) | [#424](https://github.com/iribarren/ogami/pull/424) |
 | 4 (fixes, T6–T7) | `review-86e4a7aef2f996c1` | approved | R3-001 (`FlowMap.tsx:181-194`, `confirmTransition` applies the effect at the phase index and hook captured when the dialog opened, without re-checking `locked` or that the phase is still the one named; untested); R3-002 (`FlowEditor.tsx:332`, the "Added …" status line stays visible across later panel edits; untested). Fixed in slice 5 | [#425](https://github.com/iribarren/ogami/pull/425) |
+| 5 (fixes, T8–T9) | `review-3f142ba17f745aa3` | approved | R3-carrier-param-narrower-than-carriers (warning, `sceneTypeParams.ts:45`, the `carrier` param regex not tied to the ids `carriersOf` builds); R3-replace-effect-unstable-step-dep (`SceneTypeEditor.tsx:125`, the URL-cleaning effect depends on a fresh `parseStep` object). Fixed in T10 (`65544918`, review declined by the user: 38 lines of fixes) | [#426](https://github.com/iribarren/ogami/pull/426) |
 
 ## Next step
 
-Slice 5 on `feat/studio-flow-map-5-scene-types`: slice 4 review fixes (R3-001, R3-002), T8 (D30-D33), T9 (Playwright, manual), native review, PR, then the closing doc commit on the same PR.
+None.

@@ -1,7 +1,7 @@
 # Feature: flow-diagram
 
 - **Locator:** `odd/tasks/flow-diagram.md` · Engram topic `odd/flow-diagram/tasks`
-- **Issue:** [#417](https://github.com/iribarren/ogami/issues/417) · **Branch:** `feat/flow-diagram-3-manual` · **Status:** slice 3 in progress
+- **Issue:** [#417](https://github.com/iribarren/ogami/issues/417) · **Branch:** `feat/flow-diagram-3-manual` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B34 in [`docs/roadmap.md`](../../docs/roadmap.md); base of B35 `studio-flow-map`, B36 `studio-print-cards`, B38 `play-tabletop`
@@ -64,11 +64,11 @@ Shippable: slices 1 and 2 add code nothing imports outside its tests and story; 
 | T2b | 2 | Slice 1 review fixes R3-001–R3-004 | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `566f2875` |
 | T3 | 2 | Layout: phases stacked in order, dagre inside each phase, phase and self arrows, exit stub, end marker; deterministic positions | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `4692459d`, `83da4bdf` |
 | T4 | 2 | `FlowDiagramView` SVG renderer (theme tokens, dashed `via` arrows, hook chips) with the text alternative, Storybook story, Vitest | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `52b9b189` |
-| T4b | 3 | Slice 2 review fixes R3-001–R3-004 | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T5 | 3 | `::flow-diagram{…}` directive, preset data in the manual chapter pages and the Paper edition, print styles | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T6 | 3 | Placements (D10) and a test that every directive in the chapters resolves; `make manual-pdf` checked by hand | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T6b | 3 | Print theme tokens and one label per hook table group (Chrome/PDF pass findings) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T6c | 3 | Slice 3 review suggestions R3-001, R3-002 (tests) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
+| T4b | 3 | Slice 2 review fixes R3-001–R3-004 | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `e673ea5d` |
+| T5 | 3 | `::flow-diagram{…}` directive, preset data in the manual chapter pages and the Paper edition, print styles | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `1fa87aa8` |
+| T6 | 3 | Placements (D10) and a test that every directive in the chapters resolves; `make manual-pdf` checked by hand | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `11bc39e6` |
+| T6b | 3 | Print theme tokens and one label per hook table group (Chrome/PDF pass findings) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `152a706d` |
+| T6c | 3 | Slice 3 review suggestions R3-001, R3-002 (tests) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `d9ca308c` |
 
 ## Acceptance criteria
 
@@ -96,14 +96,16 @@ Shippable: slices 1 and 2 add code nothing imports outside its tests and story; 
 - 2026-11-27: T6 done: seven directives placed (D10), no new prose; phase keys `session-zero`, `the-ship`, `the-road` match their sequence, player and oracle rules; a content test resolves every directive and pins the seven placements; `make manual-pdf` ran and printed the Paper edition and both card sheets (visual check by the parent).
 - 2026-11-27: T6b done: `DIAGRAM_TOKENS` lists every theme token the view paints with and `print.css` defines `--muted` and `--accent` too (a test reads the CSS against the list); hook edges from one hook through one table share a single label, ending left of the group's leftmost gutter inside the phase box (bounds test on Cold Berth and The Long Carry); the text alternative still lists every transition. RED then GREEN for both.
 - 2026-11-27: T6c done (tests only): `PaperBook` render test (markdown, diagram, markdown in page order) and a `FlowDiagramView` test pinning the `figure` root with its svg and `details`, which `print.css` targets.
+- 2026-11-27: Feature done: diagrams in four chapters of the web manual and the Paper edition; PR #420 closes #417.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | Findings | PR |
 |---|---|---|---|---|
 | 1 | review-6645489f33876474 | approved, acknowledged | R3-001 `testSupport.ts` reads presets from `process.cwd()`, use `import.meta.url`; R3-002 oracle-selection entries without `sceneType` throw, check the backend validation and relax if it accepts them; R3-003 a non-string nested `table` reference must throw `FlowDiagramError`; R3-004 `describeFlowDiagram` lower-cases Scene Type origins of `via` transitions, only hook labels should be. All fixed in slice 2 (T2b) | [#418](https://github.com/iribarren/ogami/pull/418) |
-| 2 | review-a927f41ced1bf32e | approved, acknowledged | R3-001 `layout.ts:578/588` hook gutter x (`width - PHASE_PAD/2 + GUTTER_STEP*index`) leaves the phase box and viewBox with several hook edges (Cold Berth `the-ship` has four); R3-002 `FlowDiagramView.tsx:130` text-alternative key is the sentence, duplicates possible; R3-003 `testSupport.test.ts` chdirs to a fixed system directory, use `os.tmpdir()`; R3-004 `fromReleaseContent.ts:193` nested `table: null` throws (D14). All to fix in slice 3 (T4b) | [#419](https://github.com/iribarren/ogami/pull/419) |
+| 2 | review-a927f41ced1bf32e | approved, acknowledged | R3-001 `layout.ts:578/588` hook gutter x (`width - PHASE_PAD/2 + GUTTER_STEP*index`) leaves the phase box and viewBox with several hook edges (Cold Berth `the-ship` has four); R3-002 `FlowDiagramView.tsx:130` text-alternative key is the sentence, duplicates possible; R3-003 `testSupport.test.ts` chdirs to a fixed system directory, use `os.tmpdir()`; R3-004 `fromReleaseContent.ts:193` nested `table: null` throws (D14). All fixed in slice 3 (T4b) | [#419](https://github.com/iribarren/ogami/pull/419) |
+| 3 | review-41c9f819ce49aeab (T4b–T6b); T6c declined (tests only) | approved, acknowledged | R3-001 no render test of `PaperBook` with a diagram block; R3-002 the `print.css` figure rules assume a `figure` wrapper no test pins. Both fixed in T6c before merge. Chrome/PDF pass findings (black fills in print, stacked `via` labels) fixed in T6b | [#420](https://github.com/iribarren/ogami/pull/420) |
 
 ## Next step
 
-Slice 3 (T4b, T5, T6), Chrome pass on the manual pages and `make manual-pdf`, review, PR, closing doc commit.
+None. Every finding is fixed.

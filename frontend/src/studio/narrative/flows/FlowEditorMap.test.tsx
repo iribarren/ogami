@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
+import { chooseOption } from '@/test/chooseOption'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
 
@@ -409,5 +410,259 @@ describe('editing on the Map', () => {
         'A Scene Type of the narrative cannot be read: must be a non-empty string.',
       ),
     ).toBeVisible()
+  })
+})
+
+describe('Scene Types on the Map', () => {
+  beforeAll(() => {
+    Object.defineProperty(SVGElement.prototype, 'getScreenCTM', {
+      configurable: true,
+      value: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
+    })
+  })
+
+  const press = { pointerId: 1, isPrimary: true, button: 0 }
+  const rectOf = (element: Element) => {
+    const rect = element.tagName === 'rect' ? element : element.querySelector('rect')
+    const at = (name: string) => Number(rect?.getAttribute(name))
+    return { x: at('x'), y: at('y'), width: at('width'), height: at('height') }
+  }
+  const node = (region: HTMLElement, id: string) => {
+    const found = region.querySelector(`[data-node-id="${id}"]`)
+    if (found === null) {
+      throw new Error(`Expected the node ${id}.`)
+    }
+    return found
+  }
+  /** The point `dx` px right of the middle of a node's rectangle. */
+  const besideNode = (region: HTMLElement, id: string, dx: number) => {
+    const { x, y, width, height } = rectOf(node(region, id))
+    return { clientX: x + width / 2 + dx, clientY: y + height / 2 }
+  }
+  const ofPhase = (region: HTMLElement, phase: string) => {
+    const { x, y, width, height } = rectOf(
+      region.querySelector(`[data-phase-id="phase:${phase}"]`) ?? region,
+    )
+    return { clientX: x + width - 12, clientY: y + height - 12 }
+  }
+  /** Presses at `from` (a palette item has no drawing position), moves past the threshold, lets go at `to`. */
+  function drag(source: Element, from: { clientX: number; clientY: number }, to: typeof from) {
+    fireEvent.pointerDown(source, { ...press, ...from })
+    fireEvent.pointerMove(source, { ...press, ...to })
+    fireEvent.pointerUp(source, { ...press, ...to })
+  }
+  const nowhere = { clientX: -40, clientY: -40 }
+  const said = () => screen.getByRole('status')
+  const palette = (name: string) =>
+    within(screen.getByRole('list', { name: 'Scene Types to drag' })).getByText(name)
+  /** The Scene Type nodes of a phase, left to right. */
+  const scenesOf = (region: HTMLElement, phase: string) =>
+    [...region.querySelectorAll(`[data-node-id^="scene:${phase}:"]`)]
+      .sort((a, b) => rectOf(a).x - rectOf(b).x)
+      .map((found) => found.getAttribute('data-node-id'))
+  const sequence = (...sceneTypes: string[]) =>
+    withPhases([
+      { ...heistPhases[0], selection: { rule: 'sequence', sceneTypes } },
+      heistPhases[1] ?? {},
+    ])
+
+  it('lists the Scene Types of the GameSystem beside the Map', async () => {
+    await openEditor('heist?view=map')
+    await map()
+
+    const list = within(screen.getByRole('list', { name: 'Scene Types to drag' }))
+    expect(list.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Ambush',
+      'Quiet',
+      'Odd',
+    ])
+  })
+
+  it('adds a palette Scene Type to a sequence where it is dropped, or at the end', async () => {
+    await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: json(sequence('quiet')),
+    })
+    const region = await map()
+
+    drag(
+      palette('Ambush'),
+      { clientX: -90, clientY: 5 },
+      besideNode(region, 'scene:setup:quiet', -30),
+    )
+    expect(scenesOf(region, 'setup')).toEqual(['scene:setup:ambush', 'scene:setup:quiet'])
+    expect(said()).toHaveTextContent('Added "Ambush" to phase "Setup".')
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+
+    drag(palette('Odd'), { clientX: -90, clientY: 5 }, besideNode(region, 'scene:setup:quiet', 30))
+    expect(scenesOf(region, 'setup')).toEqual([
+      'scene:setup:ambush',
+      'scene:setup:quiet',
+      'scene:setup:odd',
+    ])
+  })
+
+  it('appends a palette Scene Type to a player selection', async () => {
+    await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: json(
+        withPhases([
+          heistPhases[0] ?? {},
+          { ...heistPhases[1], selection: { rule: 'player', sceneTypes: ['ambush'] } },
+        ]),
+      ),
+    })
+    const region = await map()
+
+    drag(palette('Quiet'), { clientX: -90, clientY: 5 }, ofPhase(region, 'job'))
+
+    expect(said()).toHaveTextContent('Added "Quiet" to phase "The job".')
+    expect(scenesOf(region, 'job')).toContain('scene:job:quiet')
+  })
+
+  it('refuses a Scene Type for an oracle phase, one the phase lists already, and a drop on nothing', async () => {
+    await openEditor('side-job?view=map')
+    const region = await map()
+
+    drag(palette('Quiet'), { clientX: -90, clientY: 5 }, ofPhase(region, 'main'))
+    expect(said()).toHaveTextContent(
+      'Phase "Main" draws its Scene Types from table "places": edit the table instead.',
+    )
+
+    drag(palette('Quiet'), { clientX: -90, clientY: 5 }, nowhere)
+    expect(said()).toHaveTextContent('Dropped outside every phase: nothing changed.')
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
+  })
+
+  it('refuses a Scene Type the phase lists already', async () => {
+    await openEditor('heist?view=map')
+    const region = await map()
+
+    drag(palette('Ambush'), { clientX: -90, clientY: 5 }, ofPhase(region, 'setup'))
+
+    expect(said()).toHaveTextContent('"Ambush" is already in phase "Setup".')
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
+  })
+
+  it('removes a selected Scene Type dragged out of every phase, and the bar leaves its node', async () => {
+    await openEditor('heist?view=map')
+    const region = await map()
+    const quiet = node(region, 'scene:job:quiet')
+
+    drag(quiet, besideNode(region, 'scene:job:quiet', 0), nowhere)
+
+    expect(said()).toHaveTextContent('Removed "Quiet" from phase "The job".')
+    expect(region.querySelector('[data-node-id="scene:job:quiet"]')).toBeNull()
+    expect(
+      within(screen.getByRole('group', { name: 'Map actions' })).getByText('Phase "The job"'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+  })
+
+  it('moves a Scene Type to another phase, and changes nothing when that phase refuses it', async () => {
+    await openEditor('heist?view=map', { [`GET ${base}/narrative`]: json(sequence('ambush')) })
+    const region = await map()
+
+    drag(
+      node(region, 'scene:job:ambush'),
+      besideNode(region, 'scene:job:ambush', 0),
+      ofPhase(region, 'setup'),
+    )
+    expect(said()).toHaveTextContent('"Ambush" is already in phase "Setup".')
+    expect(scenesOf(region, 'job')).toEqual(['scene:job:ambush', 'scene:job:quiet'])
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
+
+    drag(
+      node(region, 'scene:job:quiet'),
+      besideNode(region, 'scene:job:quiet', 0),
+      besideNode(region, 'scene:setup:ambush', -30),
+    )
+    expect(said()).toHaveTextContent('Moved "Quiet" from phase "The job" to phase "Setup".')
+    expect(scenesOf(region, 'setup')).toEqual(['scene:setup:quiet', 'scene:setup:ambush'])
+    expect(scenesOf(region, 'job')).toEqual(['scene:job:ambush'])
+  })
+
+  it('repositions a Scene Type inside its sequence, and leaves a player selection as it is', async () => {
+    await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: json(sequence('ambush', 'quiet')),
+    })
+    const region = await map()
+
+    drag(
+      node(region, 'scene:setup:quiet'),
+      besideNode(region, 'scene:setup:quiet', 0),
+      besideNode(region, 'scene:setup:ambush', -30),
+    )
+    expect(scenesOf(region, 'setup')).toEqual(['scene:setup:quiet', 'scene:setup:ambush'])
+    expect(said()).toHaveTextContent('Moved "Quiet" to place 1 of phase "Setup".')
+
+    drag(
+      node(region, 'scene:job:quiet'),
+      besideNode(region, 'scene:job:quiet', 0),
+      besideNode(region, 'scene:job:ambush', -30),
+    )
+    expect(said()).toHaveTextContent('"Quiet" stays where it is in phase "The job".')
+  })
+
+  it('keeps the other Scene Types draggable when a selection lists one the GameSystem lacks', async () => {
+    await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: json(sequence('ghost', 'quiet')),
+    })
+    const region = await map()
+
+    drag(node(region, 'scene:setup:quiet'), besideNode(region, 'scene:setup:quiet', 0), nowhere)
+
+    expect(said()).toHaveTextContent('Removed "Quiet" from phase "Setup".')
+  })
+
+  it('adds, removes and moves Scene Types with the action bar, and saves what the Map changed', async () => {
+    const sent: unknown[] = []
+    const { user } = await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: json(sequence('ambush')),
+      [put]: async (request) => {
+        sent.push(await request.clone().json())
+        return Response.json(narrativeFlows)
+      },
+    })
+    const region = await map()
+    const bar = () => within(screen.getByRole('group', { name: 'Map actions' }))
+
+    act(() => {
+      within(region).getByRole('button', { name: 'Phase: Setup' }).focus()
+    })
+    await chooseOption(user, 'Scene Type to add', 'Quiet', bar())
+    await user.click(bar().getByRole('button', { name: 'Add Scene Type' }))
+    expect(said()).toHaveTextContent('Added "Quiet" to phase "Setup".')
+    await chooseOption(user, 'Scene Type to add', 'Quiet', bar())
+    await user.click(bar().getByRole('button', { name: 'Add Scene Type' }))
+    expect(said()).toHaveTextContent('"Quiet" is already in phase "Setup".')
+
+    act(() => {
+      region.querySelector<HTMLElement>('[data-node-id="scene:setup:quiet"]')?.focus()
+    })
+    expect(bar().getByText('Scene Type "Quiet" in phase "Setup"')).toBeInTheDocument()
+    expect(bar().getByRole('button', { name: 'Move later' })).toBeDisabled()
+    await user.click(bar().getByRole('button', { name: 'Move earlier' }))
+    expect(scenesOf(region, 'setup')).toEqual(['scene:setup:quiet', 'scene:setup:ambush'])
+    expect(bar().getByRole('button', { name: 'Move earlier' })).toBeDisabled()
+
+    await user.click(bar().getByRole('button', { name: 'Remove from the selection' }))
+    expect(said()).toHaveTextContent('Removed "Quiet" from phase "Setup".')
+    expect(bar().getByText('Phase "Setup"')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+    expect(JSON.stringify(sent[0])).toContain('"sceneTypes":["ambush"]')
+  })
+
+  it('offers no way to add a Scene Type to an oracle phase from the bar', async () => {
+    await openEditor('side-job?view=map')
+    const region = await map()
+
+    act(() => {
+      within(region).getByRole('button', { name: 'Phase: Main' }).focus()
+    })
+
+    expect(screen.queryByRole('button', { name: 'Add Scene Type' })).not.toBeInTheDocument()
   })
 })

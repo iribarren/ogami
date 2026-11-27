@@ -88,6 +88,7 @@ export const chapters: readonly Chapter[] = [
     part: PART_IV,
     editions: 'full',
   },
+  { slug: 'printing-a-release', title: 'Printing a Release', part: PART_IV, editions: 'full' },
   {
     slug: 'publishing-and-campaigns',
     title: 'What Publishing Does to Running Campaigns',

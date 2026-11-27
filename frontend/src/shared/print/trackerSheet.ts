@@ -52,6 +52,9 @@ function counterSheet(tracker: ReleaseTracker): CounterSheet {
       throw new Error(`the level "${level.label}" has no "upTo" but is not the last.`)
     }
     const to = level.upTo ?? max
+    if (!Number.isInteger(to)) {
+      throw new Error(`the level "${level.label}" ends at ${String(to)}: expected a whole number.`)
+    }
     if (to > max) {
       throw new Error(`the level "${level.label}" runs to ${String(to)}, above ${String(max)}.`)
     }

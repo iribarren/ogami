@@ -72,7 +72,7 @@ export function resolvePrintOptions(search: PrintSearch, release: Release): Reso
   const flowIsText = typeof flow === 'string'
   const flowKnown = flowIsText && flows.some((candidate) => candidate.key === flow)
   if (flow === undefined) {
-    problems.push('Choose a flow to print: add flow=<key> to the address.')
+    problems.push('Choose a flow to print.')
   } else if (!flowIsText) {
     problems.push(notText('flow', flow))
   } else if (!flowKnown) {

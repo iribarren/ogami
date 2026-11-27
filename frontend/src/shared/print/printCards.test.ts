@@ -70,4 +70,11 @@ describe('printCards.css', () => {
     expect(css).toMatch(/\.print-doc\.print-log\.print-a5\s*\{\s*min-height: 209mm;/)
     expect(css).toMatch(/\.print-ruled\s*\{\s*flex: 1;/)
   })
+
+  it('prints on white and drops the development tools, only while a print view is on the page', () => {
+    expect(css).toMatch(
+      /html:has\(\.print-cards\),\s*body:has\(\.print-cards\),\s*body:has\(\.print-cards\) \[data-app-shell\]\s*\{\s*background: #fff;/,
+    )
+    expect(css).toMatch(/body:has\(\.print-cards\) \[data-app-shell\] ~ \*\s*\{\s*display: none;/)
+  })
 })

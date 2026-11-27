@@ -141,6 +141,12 @@ describe('buildTrackerSheet', () => {
       /The Tracker "nerve" cannot be printed: .*whole numbers/,
     ],
     [
+      'a level with a fractional threshold',
+      'mini',
+      (raw: Raw) => Object.assign(nerve(raw), { levels: [{ upTo: 2.5, label: 'A' }] }),
+      /The Tracker "nerve" cannot be printed: .*level "A".*whole number/,
+    ],
+    [
       'a starting value outside the counter',
       'mini',
       (raw: Raw) => Object.assign(nerve(raw), { initial: 9 }),

@@ -88,7 +88,7 @@ describe('the manual content', () => {
     )
   })
 
-  it('lists the five pages of Part IV, all Full only, after Part III', () => {
+  it('lists the six pages of Part IV, all Full only, after Part III', () => {
     const partIV = chapters.filter((chapter) => chapter.part === 'Part IV, Studio Reference')
 
     expect(partIV.map((chapter) => chapter.slug)).toEqual([
@@ -96,6 +96,7 @@ describe('the manual content', () => {
       'library-packs',
       'validation',
       'releases-restore-themes',
+      'printing-a-release',
       'publishing-and-campaigns',
     ])
     expect(partIV.every((chapter) => chapter.editions === 'full')).toBe(true)

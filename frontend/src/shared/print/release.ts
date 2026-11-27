@@ -375,6 +375,13 @@ function readLikelihoodOracle(o: Rec, at: string): ReleaseLikelihoodOracle {
   if (sides < 2) {
     fail(`${at}.sides`, 'expected a whole number of at least 2.')
   }
+  const percent =
+    o.exceptionalPercent === undefined || o.exceptionalPercent === null
+      ? undefined
+      : asInt(o.exceptionalPercent, `${at}.exceptionalPercent`)
+  if (percent !== undefined && (percent < 0 || percent > 100)) {
+    fail(`${at}.exceptionalPercent`, 'expected a whole number from 0 to 100.')
+  }
   return {
     key: str(o, 'key', at),
     name: str(o, 'name', at),
@@ -386,10 +393,7 @@ function readLikelihoodOracle(o: Rec, at: string): ReleaseLikelihoodOracle {
       }
       return { key: str(level, 'key', here), label: str(level, 'label', here), target }
     }),
-    exceptionalPercent:
-      o.exceptionalPercent === undefined || o.exceptionalPercent === null
-        ? undefined
-        : asInt(o.exceptionalPercent, `${at}.exceptionalPercent`),
+    exceptionalPercent: percent,
   }
 }
 

@@ -1,5 +1,5 @@
 import type { DeckCard, FlowCards, SceneCard } from './flowCards'
-import { mirrorRows, paginate } from './sheets'
+import { mirrorRows, paginate } from '@/shared/print/sheets'
 
 /** A card on a sheet, or a gap where the last sheet has no card. `data-card` names it for the print spec. */
 function Slot({

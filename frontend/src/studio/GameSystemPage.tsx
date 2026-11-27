@@ -14,6 +14,7 @@ import {
 } from '@/shared/ui/dialog'
 import { IconTile } from '@/shared/ui/icon-tile'
 
+import { CardImagesSection } from './CardImagesSection'
 import type { GameSystemTab } from './gameSystemTabs'
 import { LibraryChangesBadge } from './LibraryChangesBadge'
 import { LibraryTab } from './library/LibraryTab'
@@ -227,6 +228,7 @@ function GameSystemView({
               gameSystem={formStart.gameSystem}
               onReload={reload}
             />
+            {!pack && <CardImagesSection gameSystemKey={gameSystem.key} />}
             {(pack || gameSystem.latestReleaseVersion === null) && (
               <Discard gameSystemKey={gameSystem.key} pack={pack} />
             )}

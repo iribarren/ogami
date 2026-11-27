@@ -4,7 +4,8 @@ import { resolve } from 'node:path'
 import { readRelease } from './release'
 import { miniRelease, step } from './testRelease'
 
-const presets = resolve(process.cwd(), '../backend/presets')
+// Relative to this file, so the test does not depend on where Vitest runs.
+const presets = resolve(import.meta.dirname, '../../../../backend/presets')
 
 describe('readRelease', () => {
   it('reads what printing needs from a release', () => {
@@ -130,6 +131,16 @@ describe('readRelease', () => {
       'a weight that is not whole',
       (raw) => Object.assign(raw.oracles.tables[0]?.entries[0] ?? {}, { weight: 1.5 }),
       /tables\[0\]\.entries\[0\]\.weight/,
+    ],
+    [
+      'a weight of zero',
+      (raw) => Object.assign(raw.oracles.tables[0]?.entries[0] ?? {}, { weight: 0 }),
+      /tables\[0\]\.entries\[0\]\.weight: expected a whole number of at least 1/,
+    ],
+    [
+      'a negative weight',
+      (raw) => Object.assign(raw.oracles.tables[0]?.entries[0] ?? {}, { weight: -2 }),
+      /tables\[0\]\.entries\[0\]\.weight: expected a whole number of at least 1/,
     ],
     [
       'a range that runs backwards',

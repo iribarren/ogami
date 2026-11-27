@@ -9,7 +9,9 @@ import { theLongCarryPaper } from './the-long-carry.paper'
 // The presets PHP loads too (backend/presets/). A missing file fails the suite: the node
 // container mounts them, see compose.yaml.
 const preset = (name: string): unknown =>
-  JSON.parse(readFileSync(resolve(process.cwd(), `../backend/presets/${name}.json`), 'utf8'))
+  JSON.parse(
+    readFileSync(resolve(import.meta.dirname, `../../../../backend/presets/${name}.json`), 'utf8'),
+  )
 
 const step = (key: string, kind: string, extra: object = {}) => ({
   key,
@@ -232,6 +234,82 @@ describe('buildFlowCards', () => {
     expect(rulesSheet.credit).toMatch(/Mini.*CC BY-SA 4\.0/)
   })
 
+  it('throws on a Tracker with no hint to print on the rules sheet', () => {
+    const raw = mini()
+    Object.assign(raw.trackers[0] ?? {}, { hint: undefined })
+
+    expect(() => buildFlowCards(raw, paper())).toThrow(/Tracker "doom" needs a hint/)
+  })
+
+  it('throws on a flow with no description and on a release with no license', () => {
+    const bare = mini()
+    Object.assign(bare.flows[0] ?? {}, { description: undefined })
+    const unlicensed = mini()
+    Object.assign(unlicensed.gameSystem, { credits: {} })
+
+    expect(() => buildFlowCards(bare, paper())).toThrow(
+      /needs a description and its release a license/,
+    )
+    expect(() => buildFlowCards(unlicensed, paper())).toThrow(
+      /needs a description and its release a license/,
+    )
+  })
+
+  describe('the guard on every text of a Scene Type card', () => {
+    // Each text is clean until a placeholder is replaced: the guard sees what the card prints.
+    const appFact = (raw: ReturnType<typeof mini>) =>
+      Object.assign(raw.factSlots[0] ?? {}, { label: 'The app slot' })
+
+    it('sees the Scene Type name', () => {
+      const raw = mini()
+      Object.assign(raw.sceneTypes[0] ?? {}, { name: 'Open the app' })
+
+      expect(() => buildFlowCards(raw, paper())).toThrow(/scene: "Open the app" names the app/)
+    })
+
+    it('sees the purpose', () => {
+      const raw = mini()
+      Object.assign(raw.sceneTypes[0] ?? {}, { purpose: 'Use {picked}.' })
+
+      expect(() => buildFlowCards(raw, paper())).toThrow(
+        /scene: "Use \{picked\}\." holds a placeholder/,
+      )
+    })
+
+    it('sees the tips after a Fact placeholder is replaced', () => {
+      const raw = mini()
+      appFact(raw)
+      Object.assign(raw.sceneTypes[0] ?? {}, { tips: 'Write {fact:sin} down.' })
+
+      expect(() => buildFlowCards(raw, paper())).toThrow(
+        /scene tips: "Write The app slot down\." names the app/,
+      )
+    })
+
+    it('sees a generated line after a step placeholder is replaced', () => {
+      const raw = mini([
+        step('ask', 'prompt'),
+        step('then', 'prompt', { prompt: 'After {step:ask}.' }),
+      ])
+      Object.assign(raw.sceneTypes[0]?.setup[0] ?? {}, { title: 'the app' })
+      // Paper wording keeps the first line clean: the second names the app only once {step:ask} is replaced.
+      const flow = paper({ steps: { 'scene.ask': 'Clean.' } })
+
+      expect(() => buildFlowCards(raw, flow)).toThrow(
+        /scene\.then: .*After the app\..* names the app/,
+      )
+    })
+
+    it('sees a generated line after a Fact placeholder is replaced', () => {
+      const raw = mini([step('ask', 'prompt', { prompt: 'Note {fact:sin}.' })])
+      appFact(raw)
+
+      expect(() => buildFlowCards(raw, paper())).toThrow(
+        /scene\.ask: .*The app slot.* names the app/,
+      )
+    })
+  })
+
   it('throws when a Fact slot has no paper wording or the wording has no slot', () => {
     expect(() => buildFlowCards(mini(), paper({ rules: { slots: {}, sections: [] } }))).toThrow(
       /sin/,
@@ -266,6 +344,28 @@ describe('the effects printed beside a table row', () => {
 })
 
 describe('the deck table', () => {
+  it('says a table of more than 54 copies would print a card per entry, and names the table', () => {
+    const raw = mini()
+    Object.assign(raw.oracles.tables[0]?.entries[0] ?? {}, { weight: 60 })
+
+    expect(() => buildFlowCards(raw, paper())).toThrow(
+      /deck table "deck" has more than 54 copies.*one card per entry/,
+    )
+  })
+
+  it('still says a deck table the flow does not have is not a table', () => {
+    const flow = paper({
+      deck: {
+        kind: 'table',
+        table: 'missing',
+        back: 'x',
+        finale: { sceneType: 'scene', note: 'y' },
+      },
+    })
+
+    expect(() => buildFlowCards(mini(), flow)).toThrow(/deck table "missing" is not a table/)
+  })
+
   it('throws on a deck entry that has effects, which a card cannot print', () => {
     const raw = mini()
     Object.assign(raw.oracles.tables[0]?.entries[0] ?? {}, { effects: [doomUp] })
@@ -417,6 +517,21 @@ describe.each<[string, PaperFlow, string, number, [string, string]]>([
 describe('The Long Carry cards', () => {
   const cards = buildFlowCards(preset('hard-country'), theLongCarryPaper)
 
+  it('prints a card for each Scene Type of the preset, in order', () => {
+    expect(cards.sceneCards.map((card) => card.name)).toEqual([
+      'The bearers',
+      'The saint',
+      'The vow',
+      'Camp',
+      'Ford',
+      'Stranger',
+      'Ruin',
+      'Omen',
+      'The Shrine Gate',
+      'Epilogue',
+    ])
+  })
+
   it('prints the road deck: thirteen copies and the Shrine Gate to seed', () => {
     expect(cards.deck).toHaveLength(14)
     const finales = cards.deck.filter((card) => card.kind === 'finale')
@@ -447,6 +562,22 @@ describe('The Long Carry cards', () => {
 
 describe('Cold Berth cards', () => {
   const cards = buildFlowCards(preset('dogwatch'), coldBerthPaper)
+
+  it('prints a card for each Scene Type of the preset, in order', () => {
+    expect(cards.sceneCards.map((card) => card.name)).toEqual([
+      'The crew',
+      'The ship',
+      'The Truths',
+      'The empty berth',
+      'The custodian',
+      'Investigate',
+      'Repair',
+      'Confront',
+      'Hide',
+      'The Reveal',
+      'Epilogue',
+    ])
+  })
 
   it('prints nine blank compartment cards and no deck', () => {
     expect(cards.deck).toEqual(Array.from({ length: 9 }, () => ({ kind: 'compartment' })))

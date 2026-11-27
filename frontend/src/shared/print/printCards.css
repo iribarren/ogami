@@ -1,0 +1,172 @@
+/*
+ * Poker card sheets for printing. Everything is scoped under `.print-cards`, and the paper sizes
+ * are named pages, so printing any other page of the app is unaffected (printCards.test.ts checks
+ * both). The geometry (grid, offsets, face padding, image placement) is inline, from layout.ts.
+ */
+
+@page print-a4 {
+  size: A4;
+  margin: 0;
+}
+
+@page print-a5 {
+  size: A5;
+  margin: 0;
+}
+
+.print-cards .print-a4 {
+  page: print-a4;
+}
+
+.print-cards .print-a5 {
+  page: print-a5;
+}
+
+.print-cards .print-sheet {
+  position: relative;
+  margin: 0 auto 8mm;
+  overflow: hidden;
+  background: #fff;
+  color: #000;
+  font-family: Georgia, 'Times New Roman', serif;
+  box-shadow: 0 0 2mm rgb(0 0 0 / 30%);
+  break-after: page;
+}
+
+.print-cards .print-sheet:last-child {
+  break-after: auto;
+}
+
+.print-cards .print-grid {
+  position: absolute;
+  display: grid;
+}
+
+.print-cards .print-marks {
+  position: absolute;
+  inset: 0;
+}
+
+.print-cards .print-marks line {
+  stroke: #000;
+  stroke-width: 0.15;
+}
+
+/* A face. The frame and back images are inline backgrounds: they must print without the
+   browser's "background graphics" option. */
+.print-cards .print-card {
+  position: relative;
+  overflow: hidden;
+  background-color: #fff;
+  background-repeat: no-repeat;
+  box-sizing: border-box;
+  line-height: 1.15;
+  outline: 0.2mm dashed rgb(0 0 0 / 35%);
+  outline-offset: -0.1mm;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.print-cards .print-bleed .print-card {
+  outline: none;
+}
+
+.print-cards .print-card h2,
+.print-cards .print-card h3,
+.print-cards .print-card p,
+.print-cards .print-card ul {
+  margin: 0;
+}
+
+.print-cards .print-card h2 {
+  margin-bottom: 3mm;
+  font-size: 17pt;
+  line-height: 1.05;
+}
+
+.print-cards .print-card .print-purpose {
+  margin-bottom: 3mm;
+  font-size: 10.5pt;
+  font-style: italic;
+}
+
+.print-cards .print-card .print-tips {
+  font-size: 9pt;
+}
+
+.print-cards .print-card.print-back-text {
+  font-size: 8pt;
+}
+
+.print-cards .print-card h3 {
+  margin: 1.5mm 0 0.5mm;
+  font-size: 8.5pt;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.print-cards .print-card h3:first-child {
+  margin-top: 0;
+}
+
+.print-cards .print-card ul {
+  padding-left: 3mm;
+}
+
+.print-cards .print-card li {
+  margin-bottom: 0.7mm;
+}
+
+.print-cards .print-card.print-deck-front {
+  display: flex;
+  flex-direction: column;
+  font-size: 9pt;
+}
+
+.print-cards .print-card .print-entry {
+  flex: 1;
+  font-size: 13pt;
+  line-height: 1.2;
+}
+
+.print-cards .print-card .print-range {
+  font-size: 9pt;
+  font-weight: 700;
+}
+
+.print-cards .print-card .print-label {
+  font-size: 8pt;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.print-cards .print-card.print-deck-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14pt;
+  text-align: center;
+}
+
+/* The page: only the cards print. The shell's header and the padding of its main area are
+   dropped while a print view is on the page, so any other page prints as before. */
+@media print {
+  body:has(.print-cards) [data-app-chrome] {
+    display: none;
+  }
+
+  body:has(.print-cards) [data-app-main] {
+    max-width: none;
+    padding: 0;
+  }
+
+  .print-cards .print-sheet {
+    margin: 0;
+    box-shadow: none;
+  }
+
+  .print-cards .print-note {
+    display: none;
+  }
+}

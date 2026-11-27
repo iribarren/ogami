@@ -121,6 +121,21 @@ describe('the card images section', () => {
     expect(await within(back).findByRole('alert')).toHaveTextContent('The image has a new problem.')
   })
 
+  it.each([
+    ['an empty body', () => new Response('', { status: 422 })],
+    ['a text body', () => new Response('Unprocessable', { status: 422 })],
+    ['a JSON body that is not an object', () => Response.json('nope', { status: 422 })],
+  ])('answers generically to a 422 with %s', async (_name, respond) => {
+    renderSection({ [LIST]: json([]), [BACK]: respond })
+
+    const back = await screen.findByRole('group', { name: 'Card back' })
+    await userEvent.upload(within(back).getByLabelText('Upload card back file'), png())
+
+    expect(await within(back).findByRole('alert')).toHaveTextContent(
+      'Uploading the image failed with HTTP 422.',
+    )
+  })
+
   it('says a 413 is the upload limit, and any other failure generically', async () => {
     let status = 413
     renderSection({

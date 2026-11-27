@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground">
-      <header className="border-b">
+      <header className="border-b" data-app-chrome>
         <div
           className={`mx-auto flex min-h-(--header-height) ${containerWidth} flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2`}
         >
@@ -79,7 +79,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </div>
       </header>
-      <main className={`mx-auto w-full ${containerWidth} flex-1 px-4 py-10`}>{children}</main>
+      <main className={`mx-auto w-full ${containerWidth} flex-1 px-4 py-10`} data-app-main>
+        {children}
+      </main>
     </div>
   )
 }

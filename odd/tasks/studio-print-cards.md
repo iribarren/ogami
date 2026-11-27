@@ -1,7 +1,7 @@
 # Feature: studio-print-cards
 
 - **Locator:** `odd/tasks/studio-print-cards.md` · Engram topic `odd/studio-print-cards/tasks`
-- **Issue:** [#427](https://github.com/iribarren/ogami/issues/427) · **Branch:** `feat/studio-print-cards-2-pin-and-content` · **Status:** in progress (slice 2)
+- **Issue:** [#427](https://github.com/iribarren/ogami/issues/427) · **Branch:** `feat/studio-print-cards-3-upload-and-cards` · **Status:** in progress (slice 3)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B36 in [`docs/roadmap.md`](../../docs/roadmap.md); builds on B34 `flow-diagram` ([ADR 0051](../../docs/adr/0051-flow-diagram-layout-and-rendering.md)); B38 `play-tabletop` will reuse its card rendering and images
@@ -99,7 +99,7 @@ Out of scope: a user-defined visual style (fonts, colours, a Studio-made theme),
 
 | Slice | Tasks | Forecast (incl. generated) | Branch |
 |---|---|---|---|
-| 1/5 | T1, T2 | ~1,400–1,650 lines: ADR 0053 + index ~90, `gd` in Dockerfile ~5, image domain + port + Doctrine `bytea` adapter + migration ~350, GD validation/re-encode ~150, upload/read/remove endpoints ~250, PHPUnit/Behat ~450, OpenAPI + `schema.d.ts` ~250, feature doc ~150 | `feat/studio-print-cards-1-image-store` |
+| 1/6 | T1, T2 | ~1,400–1,650 lines: ADR 0053 + index ~90, `gd` in Dockerfile ~5, image domain + port + Doctrine `bytea` adapter + migration ~350, GD validation/re-encode ~150, upload/read/remove endpoints ~250, PHPUnit/Behat ~450, OpenAPI + `schema.d.ts` ~250, feature doc ~150 | `feat/studio-print-cards-1-image-store` |
 | 2/6 | slice 1 fixes, T3 | ~1,300–1,600 lines: four slice 1 warnings fixed with tests ~250, release pins table + publish pin + `no_changes` + restore + pinned-image read ~350, release content endpoint ~200, tests ~500, OpenAPI + `schema.d.ts` ~300 | `feat/studio-print-cards-2-pin-and-content` |
 | 3/6 | slice 2 fixes, T4, T5 | ~1,400–1,700 lines: Studio "Card images" upload UI with preview and requirements ~250 + Vitest ~200, typed release reader ~250, shared card builder (generated wording D8, decks D9, continuation D10) ~400, manual moved onto it ~150, Vitest ~400 | `feat/studio-print-cards-3-upload-and-cards` |
 | 4/6 | slice 3 fixes, T6, T7 | ~1,200–1,500 lines: poker card sheets with frame/back images and bleed option ~250, A4/A5 named pages ~80, flow sheet with diagram ~200, oracle tables sheet ~120, Vitest ~500 | `feat/studio-print-cards-4-sheets` |
@@ -119,7 +119,7 @@ Shippable:
 |---|---|---|---|---|---|
 | T1 | 1 | ADR 0053 (D4–D7) and its row in `docs/adr/README.md`; `gd` added to the PHP image and the upload limits raised (PHP `upload_max_filesize`/`post_max_size`) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `c619e7fe` |
 | T2 | 1 | Studio image store: `CardImage` domain (slot, sha256, media type, width, height, bytes), `ImageStore` port, Doctrine `bytea` adapter + migration, the draft's image pins on `studio_gamesystem`, GD validation and re-encoding (D6), endpoints `PUT/DELETE /api/studio/game-systems/{key}/card-images/{slot}` (multipart) and `GET /api/studio/game-systems/{key}/images/{sha256}` (D7), `make api` | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `f79ac285`, `ae2fba90` |
-| T3 | 2 | Release pins images at publish (D5, D18): pins table, `no_changes` counts pins, pinned images stay readable after the draft replaces them, unreferenced blobs removed on replace; restore re-pins the draft (D19); release content endpoint (D13); `make api` | delegated writer | [x] | |
+| T3 | 2 | Release pins images at publish (D5, D18): pins table, `no_changes` counts pins, pinned images stay readable after the draft replaces them, unreferenced blobs removed on replace; restore re-pins the draft (D19); release content endpoint (D13); `make api` | delegated writer | [x] | `920abce7`, `2252b951` |
 | T4 | 3 | Studio "Card images" section on the GameSystem page: upload, replace and remove both slots, preview, requirements text (D6), errors | delegated writer | [ ] | |
 | T5 | 3 | Typed release reader for print (narrow, throw-first, like `readPreset`), shared card builder with generated wording (D8), decks (D9), continuation cards (D10); manual moved onto it (D12), its tests unchanged | delegated writer | [ ] | |
 | T6 | 4 | Poker card sheets: plain, framed front (safe area) and image back, mirrored duplex, bleed + crop marks option (D11); the print route under Studio, not linked yet | delegated writer | [ ] | |
@@ -152,16 +152,17 @@ Shippable:
 - 2026-11-27: T1 done. ADR 0053 and its index row, `gd` in the PHP image and `upload_max_filesize` 5M / `post_max_size` 8M. Docs and config only, so no RED. Observed after `make build up`: `gd_info()` reports PNG and JPEG support, and `ini_get` returns 5M and 8M.
 - 2026-11-27: T2 done. Image domain (`CardImage`, `CardImageSlot`, `ImageRefused` reasons), ports `ImageStore`/`CardImagePins`/`ImageNormalizer`, `DbalImageStore` and migration `Version20261127100000`, `GdImageNormalizer` (type and pixels checked before decoding, PNG alpha kept, JPEG q92), list/upload/remove/read handlers and `GameSystemCardImageController`, `make api`. 23 API tests plus unit and integration tests. No clean RED: tests were written with the code; the observed failures (a bad test PNG, the discard cascade) were fixed. `make verify` (full run) green except one PHPStan error in the new API test, fixed and `make backend-qa` clean.
 - 2026-11-27: Slice 1 came out at ~3,130 changed lines (T2 ~2,940: backend 991, tests 1,218, generated 693); the user kept it as one slice (D17).
-
 - 2026-11-27: Slice 1 review warnings fixed (slice 2, commit 1). Pin writes of a GameSystem and every put/remove of one image hash now take transaction-scoped advisory locks (a row lock cannot serialise an empty slot); the upload answers with the image it stored (`UploadedCardImage` receipt), no re-read; a missing file answers 422 `missing_file`. Commands already run in the bus's `doctrine_transaction`. Tests written with the code, not before; the lock tests use a second connection on `pg_try_advisory_xact_lock`.
 - 2026-11-27: T3 done. Migration `Version20261127110000` (`studio_release_card_image_pin`, D18), port `ReleaseCardImagePins` on `DbalImageStore`, `CardImages` pins a release / restores the draft / answers reads. Publish copies the draft's pins and counts them as a change (409 only when hash and pins both equal); console publisher untouched. `removeIfUnreferenced` checks both pin tables. Image read serves draft or any release pin of the owner's GameSystem (D7). Restore re-pins (D19). `GET .../releases/{version}/content` (D13) with the pinned images, `make api`. ADR 0053 updated. Unit, DBAL, API and Behat tests written with the code, not before; pinned-image tests assert the ordering of publish, replace and restore.
+- 2026-11-27: Slice 2 review warning R3-vacuous-same-key-assertion fixed (slice 3, commit 1): the assertion was vacuous because GameSystem keys are globally unique, so bob's create with the same key answered 409; the test now gives bob a GameSystem of his own and asserts the 201. R3-image-lock-deadlock is not fixed yet: it needs a new method on the `ImageStore` port and in `tests/Support/Studio/InMemoryCardImages.php`, outside the writer's edit surfaces.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | Findings | PR |
 |---|---|---|---|---|
 | 1 | T1 declined by the user; T2 core `review-ad4db4d3bd414073`; T2 HTTP `review-ba1b5380446595c7` | T2 core and HTTP approved | Four warnings, fixed in slice 2: R3-empty-slot-race (`DbalImageStore.php:93-98`, two first uploads to an empty slot orphan a blob), R3-release-fk-race (`DbalImageStore.php:45-51`, `removeIfUnreferenced` against a concurrent same-bytes re-upload breaks the pin's foreign key), R3-missing-file-422-contract (controller `:86-87`, the missing-file 422 has no `reason`), R3-upload-reread-race (controller `:92-106`, the response re-reads the pins and can 500) | [#428](https://github.com/iribarren/ogami/pull/428) |
+| 2 | `review-689ddf4911f82f81` (commits `920abce7`, `2252b951`) | Approved | Two warnings, fixed in slice 3: R3-image-lock-deadlock (`DbalImageStore.php:76-77`, per-hash advisory locks taken in different orders by two GameSystems swapping images, and by `restoreDraftFrom`, can deadlock), R3-vacuous-same-key-assertion (`GameSystemReleaseCardImagesApiTest.php:108-110`, bob's create is not asserted to succeed) | [#429](https://github.com/iribarren/ogami/pull/429) |
 
 ## Next step
 
-Slice 2 (slice 1 fixes, T3): delegated writer on `feat/studio-print-cards-2-pin-and-content`.
+Slice 3 (slice 2 fixes, T4, T5): delegated writer on `feat/studio-print-cards-3-upload-and-cards`.

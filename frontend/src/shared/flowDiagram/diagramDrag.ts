@@ -124,6 +124,8 @@ export function useDiagramDrag({
   const svgRef = useRef<SVGSVGElement | null>(null)
   const pending = useRef<Pending | null>(null)
   const clicked = useRef(false)
+  // Removes the one-shot listener that clears `clicked`, while it is waiting for the next press.
+  const forgetReset = useRef<(() => void) | null>(null)
   const [state, setState] = useState<DragState | null>(null)
 
   const toSvg = useCallback((event: PointerEvent): LayoutPoint | null => {
@@ -141,13 +143,16 @@ export function useDiagramDrag({
       clicked.current = true
       // The click belongs to this gesture: a drag that ends with none (Escape, a cancelled pointer,
       // a release off the source) must not swallow the click of the next press, on any node.
-      window.addEventListener(
-        'pointerdown',
-        () => {
-          clicked.current = false
-        },
-        { capture: true, once: true },
-      )
+      forgetReset.current?.()
+      const reset = () => {
+        clicked.current = false
+        forgetReset.current = null
+      }
+      window.addEventListener('pointerdown', reset, { capture: true, once: true })
+      forgetReset.current = () => {
+        window.removeEventListener('pointerdown', reset, { capture: true })
+        forgetReset.current = null
+      }
       try {
         current.element.releasePointerCapture(current.pointerId)
       } catch {
@@ -155,6 +160,14 @@ export function useDiagramDrag({
       }
     }
   }, [])
+
+  // The listener must not outlive the drawing: it would reach into an unmounted host.
+  useEffect(
+    () => () => {
+      forgetReset.current?.()
+    },
+    [],
+  )
 
   const dragging = state !== null
   useEffect(() => {

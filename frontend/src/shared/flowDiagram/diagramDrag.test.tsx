@@ -82,7 +82,7 @@ const press = { pointerId: 1, isPrimary: true, button: 0 }
 function setup() {
   const onDrop = vi.fn()
   const onActivate = vi.fn()
-  const { container } = render(<Harness onDrop={onDrop} onActivate={onActivate} />)
+  const { container, unmount } = render(<Harness onDrop={onDrop} onActivate={onActivate} />)
   // jsdom has no layout: the drawing's matrix is the identity.
   const svg = container.querySelector('svg')
   if (svg === null) {
@@ -90,7 +90,7 @@ function setup() {
   }
   svg.getScreenCTM = () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }) as DOMMatrix
   const source = screen.getByRole('button', { name: 'Phase: The Ship' })
-  return { container, source, onDrop, onActivate }
+  return { container, source, onDrop, onActivate, unmount }
 }
 
 describe('useDiagramDrag', () => {
@@ -173,6 +173,20 @@ describe('useDiagramDrag', () => {
     fireEvent.pointerUp(node, { ...press, ...centre(scene.rect) })
     fireEvent.click(node)
     expect(onActivate).toHaveBeenCalledTimes(1)
+  })
+
+  it('takes its click-reset listener off the window when the drawing unmounts', () => {
+    const removed = vi.spyOn(window, 'removeEventListener')
+    const { source, unmount } = setup()
+
+    fireEvent.pointerDown(source, { ...press, ...centre(box.rect) })
+    fireEvent.pointerMove(source, { ...press, ...centre(scene.rect) })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    removed.mockClear()
+    unmount()
+
+    expect(removed.mock.calls.filter(([type]) => type === 'pointerdown')).toHaveLength(1)
+    removed.mockRestore()
   })
 
   it('ignores a press with another button, and a press on a node that cannot be dragged', () => {

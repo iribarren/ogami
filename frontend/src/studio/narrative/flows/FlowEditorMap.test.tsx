@@ -414,11 +414,20 @@ describe('editing on the Map', () => {
 })
 
 describe('Scene Types on the Map', () => {
+  const ctm = Object.getOwnPropertyDescriptor(SVGElement.prototype, 'getScreenCTM')
   beforeAll(() => {
     Object.defineProperty(SVGElement.prototype, 'getScreenCTM', {
       configurable: true,
       value: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
     })
+  })
+  afterAll(() => {
+    // jsdom has none: put back what was there, or remove the stub.
+    if (ctm === undefined) {
+      Reflect.deleteProperty(SVGElement.prototype, 'getScreenCTM')
+    } else {
+      Object.defineProperty(SVGElement.prototype, 'getScreenCTM', ctm)
+    }
   })
 
   const press = { pointerId: 1, isPrimary: true, button: 0 }
@@ -518,7 +527,7 @@ describe('Scene Types on the Map', () => {
     expect(scenesOf(region, 'job')).toContain('scene:job:quiet')
   })
 
-  it('refuses a Scene Type for an oracle phase, one the phase lists already, and a drop on nothing', async () => {
+  it('refuses a Scene Type for an oracle phase, and a drop on nothing', async () => {
     await openEditor('side-job?view=map')
     const region = await map()
 
@@ -653,6 +662,26 @@ describe('Scene Types on the Map', () => {
       expect(sent).toHaveLength(1)
     })
     expect(JSON.stringify(sent[0])).toContain('"sceneTypes":["ambush"]')
+  })
+
+  it('starts the Add Scene Type pick empty on every phase the bar moves to', async () => {
+    const { user } = await openEditor('heist?view=map')
+    const region = await map()
+    const bar = () => within(screen.getByRole('group', { name: 'Map actions' }))
+
+    act(() => {
+      within(region).getByRole('button', { name: 'Phase: Setup' }).focus()
+    })
+    await chooseOption(user, 'Scene Type to add', 'Quiet', bar())
+    expect(bar().getByRole('combobox', { name: 'Scene Type to add' })).toHaveTextContent('Quiet')
+
+    act(() => {
+      within(region).getByRole('button', { name: 'Phase: The job' }).focus()
+    })
+
+    expect(bar().getByRole('combobox', { name: 'Scene Type to add' })).toHaveTextContent(
+      'Pick a Scene Type',
+    )
   })
 
   it('offers no way to add a Scene Type to an oracle phase from the bar', async () => {

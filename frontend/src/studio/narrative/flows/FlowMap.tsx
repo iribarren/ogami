@@ -315,6 +315,8 @@ export function FlowMap({
             </Button>
             {current.selection.rule !== 'oracle' && (
               <AddSceneType
+                // A pick belongs to the phase it was made on: another phase starts empty.
+                key={focus}
                 sceneTypes={scenes}
                 disabled={locked}
                 onAdd={(sceneType) => {

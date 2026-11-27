@@ -1,7 +1,7 @@
 # Feature: manual-flavor-images
 
 - **Locator:** `odd/tasks/manual-flavor-images.md` · Engram topic `odd/manual-flavor-images/tasks`
-- **Issue:** [#435](https://github.com/iribarren/ogami/issues/435) · **Branch:** `feat/manual-flavor-images-1-illustrations` · **Status:** slice 1/1 in progress
+- **Issue:** [#435](https://github.com/iribarren/ogami/issues/435) · **Branch:** `feat/manual-flavor-images-1-illustrations` · **Status:** done (PR #436)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B37 in [`docs/roadmap.md`](../../docs/roadmap.md); manual shape from [ADR 0050](../../docs/adr/0050-manual-one-source-two-editions.md)
@@ -90,11 +90,11 @@ Shippable: the placeholders are meant to be visible on `main` until each image l
 
 | ID | Slice | Task | Route | Done | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Art style guides `docs/art/` (D1, D2, D6): README, house, hard-country, dogwatch, each with a prompt preamble | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T2 | 1 | `::image` directive (D3), `styles.ts` (D5), image lookup (D7), web figure and placeholder (D4, D6), Paper block and print CSS (D6), PDF spec MIME and image wait (D8), tests | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T3 | 1 | The 24 placements (D9) in the chapters, with a content test pinning slug, file, style and size, all common, styles known, no app words in alt/subject | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T4 | 1 | Credits (D10) in both "This book" sections | delegated writer (Sonnet), with T3 | [x] | |
-| T5 | 1 | Native review findings: placeholder grows to fit its prompt (web and Paper), `ManualPages` test independent of image files, credit wording without an author (D10) | delegated writer (Sonnet): 2+ files | [x] | |
+| T1 | 1 | Art style guides `docs/art/` (D1, D2, D6): README, house, hard-country, dogwatch, each with a prompt preamble | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `1833c3e3` |
+| T2 | 1 | `::image` directive (D3), `styles.ts` (D5), image lookup (D7), web figure and placeholder (D4, D6), Paper block and print CSS (D6), PDF spec MIME and image wait (D8), tests | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `64c40a79` |
+| T3 | 1 | The 24 placements (D9) in the chapters, with a content test pinning slug, file, style and size, all common, styles known, no app words in alt/subject | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `e06af236` |
+| T4 | 1 | Credits (D10) in both "This book" sections | delegated writer (Sonnet), with T3 | [x] | `e06af236` |
+| T5 | 1 | Native review findings: placeholder grows to fit its prompt (web and Paper), `ManualPages` test independent of image files, credit wording without an author (D10) | delegated writer (Sonnet): 2+ files | [x] | `e833e43f` |
 
 ## Acceptance criteria
 
@@ -118,12 +118,14 @@ Shippable: the placeholders are meant to be visible on `main` until each image l
 - 2026-11-27: T2 done: `::image` parser, `styles.ts`, glob lookup, `ManualImage` (web and Paper), print CSS, PDF spec. RED observed for the parser (25 failing before the code, 58 passing after); the component, Paper and style tests were written together with their code, so no separate RED was observed for them. `make frontend-fix` run; Vitest on `src/manual` green.
 - 2026-11-28: T3 and T4 done: 24 directives placed in 20 chapters, content pin and credits sentence tested, placeholder shown on a real chapter page. No separate RED: the pin was written with the placements; its one failure on a first run (a "no faces" phrase and "card faces" in two subjects) was fixed in the subjects. `‹author›` stays a placeholder because neither credits chapter names the book's author. Illustration directive after the first opening paragraph, so text wraps the float.
 - 2026-11-28: T5 done: review findings fixed. RED observed: the new placeholder test (no overflow or fixed height) failed before the fix and passed after; the credit pin was changed together with the chapters; the `ManualPages` lookup mock was added without a separate RED (the test passed either way today).
+- 2026-11-28: Slice 1 reviewed (approved), PR #436 opened; follow-up #437 for the image generator's name; roadmap Done line and B39 added. Chrome pass not run.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-78bf77db194c8462` | `1833c3e3..e06af236` | approved, acknowledged; 2 warnings (placeholder test depends on missing image file; placeholder clips the prompt in print) fixed in T5; 1 suggestion (credit placeholders pinned) tracked as #437 (B39). T5 `e833e43f` skipped by user choice | [#436](https://github.com/iribarren/ogami/pull/436) |
 
 ## Next step
 
-T1–T4 by one Sonnet writer on `feat/manual-flavor-images-1-illustrations`, then native review, PR `feat(manual): manual-flavor-images 1/1 illustrations`.
+None. Every finding is fixed (T5) or tracked (#437, B39). Open: the user generates the 24 images and drops them into `frontend/src/manual/images/`; the Chrome pass of two chapters (Checks) was not run.

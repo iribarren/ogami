@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { describeFlowDiagram } from './describeFlowDiagram'
 import { FlowDiagramView } from './FlowDiagramView'
@@ -109,5 +110,89 @@ describe('FlowDiagramView', () => {
       expect(value).toMatch(/^(var\(--[a-z-]+\)|context-stroke|none)$/)
     }
     expect(html).toContain('var(--foreground)')
+  })
+})
+
+describe('FlowDiagramView, interactive', () => {
+  const ship = phaseDiagram(coldBerth, 'the-ship')
+  const firstScene = ship.phases[0]?.selection.sceneTypes[0]?.key ?? ''
+
+  it('is static without onActivate: no button, nothing focusable', () => {
+    const { container } = render(
+      <FlowDiagramView diagram={ship} issues={{ 'phase:the-ship': ['x'] }} />,
+    )
+
+    expect(screen.queryAllByRole('button')).toHaveLength(0)
+    expect(container.querySelector('[tabindex]')).toBeNull()
+  })
+
+  it('makes the phase, its Scene Types, the selection node and the hook chips buttons, and nothing else', () => {
+    const { container } = render(<FlowDiagramView diagram={ship} onActivate={vi.fn()} />)
+    const layout = layoutFlowDiagram(ship)
+    const interactive = layout.nodes.filter(({ kind }) => !['end', 'exitStub'].includes(kind))
+
+    const buttons = screen.getAllByRole('button')
+    // The phase box, one per node that is not a marker, one per hook chip.
+    expect(buttons).toHaveLength(1 + interactive.length + (ship.phases[0]?.hooks.length ?? 0))
+    expect(screen.getByRole('button', { name: 'Phase: The Ship' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Hook: Scene closing, 2 steps' })).toBeInTheDocument()
+    expect(
+      container.querySelectorAll('[data-kind="end"][role], [data-kind="exitStub"][role]'),
+    ).toHaveLength(0)
+  })
+
+  it('says which kind of node was activated, by click, Enter and Space', async () => {
+    const user = userEvent.setup()
+    const onActivate = vi.fn()
+    render(<FlowDiagramView diagram={ship} onActivate={onActivate} />)
+
+    await user.click(screen.getByRole('button', { name: 'Phase: The Ship' }))
+    await user.click(screen.getByRole('button', { name: 'Hook: World turn, 4 steps' }))
+    screen.getByRole('button', { name: 'Selection: Player chooses' }).focus()
+    await user.keyboard('{Enter}')
+    await user.keyboard(' ')
+
+    expect(onActivate.mock.calls.slice(0, 2)).toEqual([
+      ['phase:the-ship', 'phase'],
+      ['hook:the-ship:worldTurn', 'hook'],
+    ])
+    // A chip does not open the phase behind it.
+    expect(onActivate).toHaveBeenCalledTimes(4)
+    expect(onActivate.mock.calls[2]).toEqual(onActivate.mock.calls[3])
+  })
+
+  it('does not toggle on other keys', async () => {
+    const user = userEvent.setup()
+    const onActivate = vi.fn()
+    render(<FlowDiagramView diagram={ship} onActivate={onActivate} />)
+
+    screen.getByRole('button', { name: 'Phase: The Ship' }).focus()
+    await user.keyboard('a{Escape}')
+
+    expect(onActivate).not.toHaveBeenCalled()
+  })
+
+  it('marks the selected node and lists the issues of a node in its name', () => {
+    const id = `scene:the-ship:${firstScene}`
+    const { container } = render(
+      <FlowDiagramView
+        diagram={ship}
+        onActivate={vi.fn()}
+        selectedId="phase:the-ship"
+        issues={{ [id]: ['Scene Type is not in the draft.', 'Another.'] }}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Phase: The Ship' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
+    const named = container.querySelector(`[data-node-id="${id}"]`)
+    expect(named?.getAttribute('aria-label')).toMatch(
+      /^Scene Type: .*\. Issues: Scene Type is not in the draft\. Another\.$/,
+    )
+    // The mark is a "!" as well as a colour.
+    expect(named?.textContent).toContain('!')
+    expect(container.querySelectorAll('[aria-current]')).toHaveLength(1)
   })
 })

@@ -32,6 +32,9 @@ import {
   type Missing,
 } from './flowEnable'
 import { answerNode, hookLabels, nodePath, nodeTrail, resolveNode, type FlowNode } from './flowNode'
+import { EditorPane, EditorTabs } from './EditorTabs'
+import { FlowMap } from './FlowMap'
+import type { MapTarget } from './flowMapNodes'
 import { FlowOutline } from './FlowOutline'
 import { FlowSettings } from './FlowSettings'
 import { HookPanel } from './HookPanel'
@@ -41,7 +44,8 @@ import { SelectionEditor } from './SelectionEditor'
 /**
  * The editor of one flow: its outline, and the form of the selected node. It is filled once, from
  * `initial` read at `version`; a save sends that version, and a reload replaces the draft and the
- * version together or neither. `selected` is the `node` search param as the URL has it.
+ * version together or neither. `selected` is the `node` search param as the URL has it, and `view`
+ * the `view` one: the Map tab of the right-hand pane when it is `map`, the Panel otherwise.
  */
 export function FlowEditor({
   gameSystemKey,
@@ -50,6 +54,7 @@ export function FlowEditor({
   initial,
   version,
   selected,
+  view,
   justCreated,
   savedAt: initialSavedAt = null,
   onRenamed,
@@ -61,6 +66,7 @@ export function FlowEditor({
   initial: FlowDraft
   version: number
   selected: string | undefined
+  view?: 'map' | undefined
   /** The editor opened straight after New flow: its history entry says so until the first save. */
   justCreated: boolean
   /** When a rename save made this form: the page remounts it on the new key, which would lose it. */
@@ -125,15 +131,43 @@ export function FlowEditor({
     }
   }, [focusAt, path])
 
-  /** Selects a node; `replace` for the changes the editor makes itself, so back keeps to what the person chose. */
-  function select(next: FlowNode, replace = false) {
+  /**
+   * Selects a node and shows its panel; `replace` for the changes the editor makes itself, so back
+   * keeps to what the person chose. `onMap` keeps the Map tab instead (a refused save is shown on it).
+   */
+  function select(next: FlowNode, replace = false, onMap = false) {
     void navigate({
       to: '/studio/game-systems/$key/flows/$flow',
       params: { key: gameSystemKey, flow: current },
-      search: { node: next.kind === 'settings' ? undefined : nodePath(next) },
+      search: {
+        node: next.kind === 'settings' ? undefined : nodePath(next),
+        view: onMap ? view : undefined,
+      },
       replace,
       // A step scrolls itself into view; the router's reset to the top would undo that.
       resetScroll: next.kind !== 'step',
+    })
+  }
+
+  /** Switches the right-hand pane between the Panel and the Map; the selected node stays. */
+  function showView(next: 'panel' | 'map') {
+    void navigate({
+      to: '/studio/game-systems/$key/flows/$flow',
+      params: { key: gameSystemKey, flow: current },
+      search: { node: selected, view: next === 'map' ? 'map' : undefined },
+      resetScroll: false,
+    })
+  }
+
+  /** A node of the Map opens its panel; a Scene Type, its own page (the unsaved-changes guard asks first). */
+  function openFromMap(target: MapTarget) {
+    if (target.type === 'node') {
+      select(target.node)
+      return
+    }
+    void navigate({
+      to: '/studio/game-systems/$key/scene-types/$sceneType',
+      params: { key: gameSystemKey, sceneType: target.sceneType },
     })
   }
 
@@ -142,7 +176,7 @@ export function FlowEditor({
     setAnswer(next)
     const target = answerNode(next)
     if (target !== null) {
-      select(target, true)
+      select(target, true, true)
     }
   }
 
@@ -206,7 +240,7 @@ export function FlowEditor({
         await navigate({
           to: '/studio/game-systems/$key/flows/$flow',
           params: { key: gameSystemKey, flow: key },
-          search: { node: selected },
+          search: { node: selected, view },
           replace: true,
           // The blocker may still see the draft as unsaved right after the save.
           ignoreBlocker: true,
@@ -220,7 +254,7 @@ export function FlowEditor({
         await navigate({
           to: '/studio/game-systems/$key/flows/$flow',
           params: { key: gameSystemKey, flow: key },
-          search: { node: selected },
+          search: { node: selected, view },
           replace: true,
           state: {},
         })
@@ -435,28 +469,48 @@ export function FlowEditor({
         }}
       >
         <UnsavedChangesGuard dirty={dirty} />
-        <nav aria-label="Breadcrumb">
-          <ol className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-            {trail.map((label, at) => (
-              <li key={at} className="flex items-center gap-1">
-                {at > 0 && <ChevronRight aria-hidden="true" className="size-3.5" />}
-                {label}
-              </li>
-            ))}
-          </ol>
-        </nav>
-        <section aria-labelledby="flow-node-title" className="panel">
-          <div className="panel-head">
-            <IconTile size="sm">{shown.icon}</IconTile>
-            <h2 id="flow-node-title" className="font-heading text-panel-title">
-              {shown.title}
-            </h2>
-            {shown.actions}
-          </div>
-          <div ref={body} key={`${String(generation)}:${listKey}`} className="panel-body">
-            {shown.body}
-          </div>
-        </section>
+        <EditorTabs view={view === 'map' ? 'map' : 'panel'} onChange={showView} />
+        <EditorPane view={view === 'map' ? 'map' : 'panel'}>
+          {view === 'map' ? (
+            <section aria-label="Flow map" className="panel">
+              <div className="panel-body">
+                <FlowMap
+                  gameSystemKey={gameSystemKey}
+                  draft={draft}
+                  narrative={narrative}
+                  answer={answer}
+                  node={node}
+                  onOpen={openFromMap}
+                />
+              </div>
+            </section>
+          ) : (
+            <>
+              <nav aria-label="Breadcrumb">
+                <ol className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                  {trail.map((label, at) => (
+                    <li key={at} className="flex items-center gap-1">
+                      {at > 0 && <ChevronRight aria-hidden="true" className="size-3.5" />}
+                      {label}
+                    </li>
+                  ))}
+                </ol>
+              </nav>
+              <section aria-labelledby="flow-node-title" className="panel">
+                <div className="panel-head">
+                  <IconTile size="sm">{shown.icon}</IconTile>
+                  <h2 id="flow-node-title" className="font-heading text-panel-title">
+                    {shown.title}
+                  </h2>
+                  {shown.actions}
+                </div>
+                <div ref={body} key={`${String(generation)}:${listKey}`} className="panel-body">
+                  {shown.body}
+                </div>
+              </section>
+            </>
+          )}
+        </EditorPane>
         {answer.page !== null && <Alert>{answer.page}</Alert>}
         {reloadNote !== null && <Alert>{reloadNote}</Alert>}
         <div className="sticky bottom-4 panel">

@@ -41,6 +41,8 @@ Out of scope: new flow rules, phase jumps or branches between phases, saved node
 | D7 | Refusals, each with a short reason in a live region: an arrow to a phase that is not the next one or back ("phases always run in order"); a `nextScene` / `switchSceneType` arrow to a Scene Type in another phase; dropping a Scene Type on an `oracle` phase (edit the table instead); an arrow from an `oracle` table node (its effects sit on table entries, edited in the oracle editor) | Parent |
 | D8 | A Scene Type palette beside the map lists the GameSystem's Scene Types to drag into a phase; dropping between chained `sequence` nodes sets its position; dragging a selected node out of its phase removes it from the selection (it stays drawn if a transition still reaches it) | Parent |
 | D9 | Lenient builder: `FlowDiagramError` gains `problem` (message without path); unknown references say "is not in the draft". Issues sit on layout node ids: a dangling Scene Type in a `player` selection on `choice:<phase>`, in a `sequence` on `phase:<phase>`, a dangling effect target or table on the node the effect is drawn from, an unknown selection table on `table:<phase>` (still drawn, named by its key). Hook steps `flowToItem` refuses are drawn as a chip of blank steps with the refusal on `hook:<phase>:<hook>`. Phases with no or repeated keys get unique map keys (`mapPhaseKeys`) | Writer |
+| D10 | `FlowDiagramView` is `role="group"` instead of `role="img"` when `onActivate` is given: an image hides its buttons from assistive technology. `destructive` joins `DIAGRAM_TOKENS` and `print.css` for the issue mark (a "!" badge, so it is not colour alone). The phase box is the button (its rect), the chips stop their own clicks; plain tab order, no roving focus yet | Writer |
+| D11 | The Map reads the oracle tables with `useGameSystemOracles` only while it is shown (existing flow editor tests need no new handler); it waits for them, and on a failed read says so and marks every table. A refused save keeps the Map tab and puts the answer on the nodes (`refuse`), "Go to the first" and the outline go to the Panel. `view` is dropped from the URL for the Panel | Writer |
 
 ## Slice plan
 
@@ -59,7 +61,7 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 |---|---|---|---|---|---|
 | T1 | 1 | ADR 0052 (D1, D2, D4) and its row in `docs/adr/README.md` | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T2 | 1 | `flowDiagramFromDraft` (D4) sharing the release adapter's building, issues per node, Vitest on draft fixtures and on the Cold Berth preset read as a draft | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T3 | 1 | `FlowDiagramView` interaction props (selected id, issues, `onActivate`, focusable nodes with labels), Map tab (`view=map`, D3), save errors on nodes (D5), keyboard open (D6 part) | delegated writer (Sonnet): slice of 2+ non-trivial files | [ ] | |
+| T3 | 1 | `FlowDiagramView` interaction props (selected id, issues, `onActivate`, focusable nodes with labels), Map tab (`view=map`, D3), save errors on nodes (D5), keyboard open (D6 part) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T4 | 2 | Drag engine on the SVG; drag a phase to reorder; toggle a phase's self-arrow for `mode`; keyboard menu equivalents | | [ ] | |
 | T5 | 2 | Scene Type palette; drag into or out of a `sequence` / `player` selection, drop position in a sequence; `oracle` refusal (D7, D8) | | [ ] | |
 | T6 | 3 | Arrow gesture between nodes with the refusals (D7) and a keyboard "Add transition" path | | [ ] | |
@@ -85,6 +87,9 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 - 2026-11-27: Feature doc created; four slices, nine tasks; D1 and D2 decided by the user.
 - 2026-11-27 T1: ADR 0052 (D1, D2, D4) and its index row; doc-only, structural readback.
 - 2026-11-27 T2: `flowDiagramFromDraft` in `studio/narrative/flows/flowMapDiagram.ts` on a lenient mode of the release builder (`flowDiagramFromDraftContent`); 16 new Vitest tests, the release adapter's 40 unchanged and green. No RED observed: the refactor and its tests were written together and the existing strict tests served as the regression net.
+- 2026-11-27 T3: interaction props on `FlowDiagramView` (buttons, selected, issues), `EditorTabs` (Panel / Map tablist), `FlowMap`, `view=map` in the route, D5 mapping in `flowMapNodes.ts`. Vitest: 5 view tests, 13 `FlowEditorMap` tests, 12 `flowMapNodes` tests, `viewParam`. Existing 263 flow editor tests green unchanged. No meaningful RED: the view tests first failed on the `img` role hiding the buttons (D10), the rest were written with the code.
+
+- 2026-11-27: Slice 1 came out at ~2,000 changed lines (T3 ~1,100, mostly tests); the user kept it as one slice (size exception) to be reviewed as two candidates, T1–T2 against `main` and T3 against the T2 commit. The parent fixed two test type errors `tsc` caught after the writer stopped.
 
 ## Reviews
 
@@ -93,4 +98,4 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 
 ## Next step
 
-Slice 1: T1–T3 on `feat/studio-flow-map-1-map`.
+Slice 1 is done (T1–T3 on `feat/studio-flow-map-1-map`): native review, PR, then slice 2 (T4, T5).

@@ -6237,6 +6237,326 @@
                 }
             }
         },
+        "/api/studio/game-systems/{key}/card-images": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "List the card images of one of my GameSystem drafts",
+                "operationId": "listCardImages",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The images in use, by slot; none when the GameSystem has never had any.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/CardImageResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/card-images/{slot}": {
+            "put": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Put an image in a slot, replacing the one there",
+                "operationId": "uploadCardImage",
+                "parameters": [
+                    {
+                        "name": "slot",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "cardBack|cardFront",
+                            "enum": [
+                                "cardBack",
+                                "cardFront"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "image"
+                                ],
+                                "properties": {
+                                    "image": {
+                                        "description": "A PNG or JPEG of at most 5 MB, 408 \u00d7 555 to 1630 \u00d7 2220 px, in the proportions 69:94 (recommended 815 \u00d7 1110 px).",
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The image now in the slot. The draft's version does not change.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CardImageResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or the slot is not cardBack or cardFront.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "The request is larger than the server accepts (8 MB).",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "There is no \"image\" file, or the image is refused (the reason says why); nothing was stored.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CardImageRefusedResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Empty a card image slot",
+                "operationId": "removeCardImage",
+                "parameters": [
+                    {
+                        "name": "slot",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "cardBack|cardFront",
+                            "enum": [
+                                "cardBack",
+                                "cardFront"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "The slot is empty, whether or not it held an image."
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or the slot is not cardBack or cardFront.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/studio/game-systems/{key}/images/{sha256}": {
+            "get": {
+                "tags": [
+                    "Studio"
+                ],
+                "summary": "Read the bytes of an image one of my GameSystem drafts uses",
+                "operationId": "readCardImage",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sha256",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[0-9a-f]{64}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The image, with its stored content type. The URL holds the hash, so it is cached for good.",
+                        "content": {
+                            "image/png": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            },
+                            "image/jpeg": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a game manager.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The user has no GameSystem with this key, or it does not use an image with this hash.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/studio/game-systems/{key}/checks": {
             "get": {
                 "tags": [
@@ -17419,6 +17739,75 @@
                         "enum": [
                             "ok",
                             "down"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "CardImageResponse": {
+                "required": [
+                    "slot",
+                    "sha256",
+                    "mediaType",
+                    "width",
+                    "height",
+                    "url"
+                ],
+                "properties": {
+                    "slot": {
+                        "description": "Where the image is used on a printed card.",
+                        "type": "string",
+                        "enum": [
+                            "cardBack",
+                            "cardFront"
+                        ]
+                    },
+                    "sha256": {
+                        "description": "The hash of the stored bytes, 64 hexadecimal digits.",
+                        "type": "string"
+                    },
+                    "mediaType": {
+                        "type": "string",
+                        "enum": [
+                            "image/png",
+                            "image/jpeg"
+                        ]
+                    },
+                    "width": {
+                        "description": "In pixels.",
+                        "type": "integer"
+                    },
+                    "height": {
+                        "description": "In pixels.",
+                        "type": "integer"
+                    },
+                    "url": {
+                        "description": "Where to read the image bytes.",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "CardImageRefusedResponse": {
+                "required": [
+                    "error",
+                    "reason"
+                ],
+                "properties": {
+                    "error": {
+                        "description": "A human-readable message stating the limit and the recommended size.",
+                        "type": "string"
+                    },
+                    "reason": {
+                        "description": "A stable code for the refusal.",
+                        "type": "string",
+                        "enum": [
+                            "unsupported_format",
+                            "unreadable",
+                            "too_large",
+                            "too_few_pixels",
+                            "too_many_pixels",
+                            "wrong_aspect_ratio"
                         ]
                     }
                 },

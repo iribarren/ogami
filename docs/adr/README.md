@@ -56,6 +56,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0050 | [One manual, two editions](0050-manual-one-source-two-editions.md) | Accepted |
 | 0051 | [Flow diagram: dagre layout, own SVG renderer](0051-flow-diagram-layout-and-rendering.md) | Accepted |
 | 0052 | [Studio flow map: editing on the diagram](0052-studio-flow-map-editing-on-the-diagram.md) | Accepted |
+| 0053 | [Card images stored in PostgreSQL, pinned by releases](0053-card-image-storage.md) | Accepted |
 
 ## Template
 

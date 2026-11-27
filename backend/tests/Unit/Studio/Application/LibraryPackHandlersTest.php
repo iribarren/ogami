@@ -38,6 +38,7 @@ use App\Studio\Domain\GameSystem\NarrativeSection;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Domain\Release\ReleaseId;
 use App\Tests\Support\Studio\FixedClock;
+use App\Tests\Support\Studio\InMemoryCardImages;
 use App\Tests\Support\Studio\InMemoryGameSystemReleaseRepository;
 use App\Tests\Support\Studio\InMemoryGameSystemRepository;
 use App\Tests\Support\Studio\ReleaseArrays;
@@ -215,7 +216,7 @@ final class LibraryPackHandlersTest extends TestCase
     {
         $this->createPack('names', 'Names', 'ann');
 
-        (new DiscardGameSystemHandler($this->owned(), $this->gameSystems, $this->releases))(new DiscardGameSystem('ann', 'names'));
+        (new DiscardGameSystemHandler($this->owned(), $this->gameSystems, $this->releases, InMemoryCardImages::service()))(new DiscardGameSystem('ann', 'names'));
 
         self::assertSame([], $this->gameSystems->libraryPacks());
     }

@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import type { FlowDiagram } from './flowDiagram'
 import { flowDiagramFromReleaseContent } from './fromReleaseContent'
-import { type LayoutRect, layoutFlowDiagram } from './layout'
+import {
+  EDGE_LABEL_CHAR_WIDTH,
+  EDGE_LABEL_FONT_SIZE,
+  type LayoutRect,
+  layoutFlowDiagram,
+} from './layout'
 import { phaseDiagram } from './phaseDiagram'
 import { loadPreset, phase, release, sceneType, step, table } from './testSupport'
 
@@ -126,10 +131,11 @@ describe('layoutFlowDiagram', () => {
     const { edges } = layoutFlowDiagram(coldBerth)
     const next = edges.filter((edge) => edge.kind === 'nextScene')
     expect(next).toHaveLength(4)
-    for (const edge of next) {
-      expect(edge.dashed).toBe(true)
-      expect(edge.label?.text).toBe('Ship trouble')
-    }
+    // The four edges share one hook and one table, so one of them carries the label.
+    expect(next.every((edge) => edge.dashed)).toBe(true)
+    expect(next.flatMap((edge) => (edge.label === undefined ? [] : [edge.label.text]))).toEqual([
+      'Ship trouble',
+    ])
     const end = edges.find((edge) => edge.kind === 'endPhase')
     expect(end?.dashed).toBe(false)
     expect(end?.label).toBeUndefined()
@@ -229,6 +235,71 @@ describe('layoutFlowDiagram', () => {
       transitions: [{ ...defined(coldBerth.transitions[0]), phase: 'nowhere' }],
     }
     expect(() => layoutFlowDiagram(orphan)).toThrow(/nowhere/)
+  })
+
+  it('keeps every edge point, and every hook gutter, inside its phase box and the drawing', () => {
+    for (const diagram of [coldBerth, longCarry, ironsworn]) {
+      const layout = layoutFlowDiagram(diagram)
+      const hookEdges = layout.edges.filter((edge) => {
+        const index = /^transition:(\d+)$/.exec(edge.id)?.[1]
+        return index !== undefined && diagram.transitions[Number(index)]?.from.type === 'hook'
+      })
+      for (const edge of layout.edges) {
+        for (const point of edge.points) {
+          expect(point.x).toBeGreaterThanOrEqual(0)
+          expect(point.x).toBeLessThanOrEqual(layout.width)
+          expect(point.y).toBeGreaterThanOrEqual(0)
+          expect(point.y).toBeLessThanOrEqual(layout.height)
+        }
+      }
+      for (const edge of hookEdges) {
+        const home = layout.phases.find((item) =>
+          edge.points.every(
+            (point) =>
+              point.x >= item.rect.x &&
+              point.x <= item.rect.x + item.rect.width &&
+              point.y >= item.rect.y &&
+              point.y <= item.rect.y + item.rect.height,
+          ),
+        )
+        expect(home, `hook edge ${edge.id} leaves its phase box`).toBeDefined()
+      }
+    }
+    // Cold Berth's the-ship has four world-turn edges: the case that used to overflow.
+    expect(
+      coldBerth.transitions.filter((item) => item.from.type === 'hook').length,
+    ).toBeGreaterThan(3)
+  })
+
+  it('labels each (hook, table) group of hook edges once, inside its phase and the drawing', () => {
+    for (const diagram of [coldBerth, longCarry]) {
+      const layout = layoutFlowDiagram(diagram)
+      const groups = new Map<string, string[]>()
+      diagram.transitions.forEach((transition, index) => {
+        if (transition.from.type === 'hook' && transition.via !== null) {
+          const group = `${transition.phase}|${transition.from.hook}|${transition.via.key}`
+          groups.set(group, [...(groups.get(group) ?? []), `transition:${String(index)}`])
+        }
+      })
+      expect(groups.size).toBeGreaterThan(0)
+      for (const [group, ids] of groups) {
+        const edges = layout.edges.filter((edge) => ids.includes(edge.id))
+        expect(edges.every((edge) => edge.dashed)).toBe(true)
+        const labelled = edges.filter((edge) => edge.label !== undefined)
+        expect(labelled, `group ${group}`).toHaveLength(1)
+        const label = defined(defined(labelled[0]).label)
+        const half = (label.text.length * EDGE_LABEL_CHAR_WIDTH) / 2
+        const box = {
+          x: label.anchor === 'end' ? label.x - 2 * half : label.x - half,
+          y: label.y - EDGE_LABEL_FONT_SIZE / 2,
+          width: 2 * half,
+          height: EDGE_LABEL_FONT_SIZE,
+        }
+        const home = defined(layout.phases.find((item) => item.key === group.split('|')[0]))
+        expect(inside(box, home.rect), `label of ${group}`).toBe(true)
+        expect(box.x + box.width).toBeLessThanOrEqual(layout.width)
+      }
+    }
   })
 
   it('lays out the presets without throwing', () => {

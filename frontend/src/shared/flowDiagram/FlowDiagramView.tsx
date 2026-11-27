@@ -1,6 +1,7 @@
 import { useId, type CSSProperties } from 'react'
 
 import { describeFlowDiagram } from './describeFlowDiagram'
+import { type DiagramToken } from './diagramTokens'
 import type { FlowDiagram } from './flowDiagram'
 import {
   EDGE_LABEL_FONT_SIZE,
@@ -23,7 +24,7 @@ import {
 type Marker = 'arrow' | 'diamond' | 'open'
 
 interface EdgeStyle {
-  color: string
+  color: DiagramToken
   width: number
   marker: Marker
 }
@@ -42,7 +43,7 @@ const MARKER_PATHS: Record<Marker, string> = {
   open: 'M0,1 L9,5 L0,9',
 }
 
-const theme = (token: string): string => `var(--${token})`
+const theme = (token: DiagramToken): string => `var(--${token})`
 
 const HALO: CSSProperties = { paintOrder: 'stroke', stroke: theme('background'), strokeWidth: 3 }
 
@@ -107,8 +108,8 @@ export function FlowDiagramView({ diagram, className }: FlowDiagramViewProps) {
         <summary className="cursor-pointer">The flow in words</summary>
         <div id={wordsId} className="mt-2 space-y-2">
           <ol className="list-decimal space-y-1 pl-5">
-            {description.phases.map((phase) => (
-              <li key={phase.title}>
+            {description.phases.map((phase, index) => (
+              <li key={`${String(index)}:${phase.title}`}>
                 <strong>{phase.title}</strong>. {phase.selection}.
                 <ul className="list-disc pl-5">
                   {phase.sceneTypes.length > 0 && (
@@ -126,8 +127,8 @@ export function FlowDiagramView({ diagram, className }: FlowDiagramViewProps) {
             <>
               <p className="font-medium">Transitions</p>
               <ul className="list-disc pl-5">
-                {description.transitions.map((transition) => (
-                  <li key={transition}>{transition}</li>
+                {description.transitions.map((transition, index) => (
+                  <li key={`${String(index)}:${transition}`}>{transition}</li>
                 ))}
               </ul>
             </>
@@ -265,7 +266,7 @@ function EdgePath({ edge, markerId }: { edge: LayoutEdge; markerId: (marker: Mar
         <text
           x={edge.label.x}
           y={edge.label.y}
-          textAnchor="middle"
+          textAnchor={edge.label.anchor ?? 'middle'}
           dominantBaseline="central"
           fontSize={EDGE_LABEL_FONT_SIZE}
           style={{ ...HALO, fill: theme('foreground') }}

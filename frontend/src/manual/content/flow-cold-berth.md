@@ -20,6 +20,8 @@ The ending is chosen by the two numbers that keep score. **Threat** is a clock o
 | **Reveal**       | once   | `sequence` | Open the Truths                                            |
 | **Epilogue**     | once   | `sequence` | Who gets out, by Clues and Threat                          |
 
+::flow-diagram{flow="cold-berth"}
+
 ### The Ship
 
 Lay the four job cards face up. Then play each round in this order.

@@ -1,29 +1,52 @@
-/** A run of a manual page: shown in every edition, or only where the book is read in Ogami. */
-export interface Segment {
-  edition: 'common' | 'in-ogami'
+type Edition = 'common' | 'in-ogami'
+
+/** A run of Markdown: shown in every edition, or only where the book is read in Ogami. */
+export interface MarkdownSegment {
+  edition: Edition
+  kind: 'markdown'
   text: string
 }
 
+/**
+ * A `::flow-diagram{…}` directive: the diagram of one flow of a manual preset, or of one of its
+ * phases. Where it sits decides its edition, like any other run.
+ */
+export interface FlowDiagramSegment {
+  edition: Edition
+  kind: 'flow-diagram'
+  flow: string
+  phase?: string
+}
+
+/** A run of a manual page, in page order. */
+export type Segment = MarkdownSegment | FlowDiagramSegment
+
 const opening = ':::in-ogami'
 const closing = ':::'
+const directiveName = 'flow-diagram'
+const flowDirective = /^::flow-diagram\{flow="([a-z0-9-]+)"(?: phase="([a-z0-9-]+)")?\}$/
 
 /**
  * Splits a page into common and `:::in-ogami` segments before it is rendered as Markdown, so the
  * Paper edition can leave the second kind out. A marker is a line of its own and is ignored inside
  * a fenced code block, which follows CommonMark's fence rules and must be closed. An unclosed, nested or stray block, or any other `:::` line, throws: a
  * manual with a broken block must fail loudly, never show a half page.
+ *
+ * A line of its own `::flow-diagram{flow="key"}` (or with ` phase="key"` too) becomes a diagram
+ * segment in the edition it sits in; the splitter only parses it, `manualFlowDiagram` resolves it.
+ * Any other `::name` line, or a malformed `::flow-diagram` line, throws.
  */
 export function splitEditionBlocks(source: string): Segment[] {
   const segments: Segment[] = []
   let lines: string[] = []
-  let edition: Segment['edition'] = 'common'
+  let edition: Edition = 'common'
   let openedAt = 0
   let fence: { char: string; length: number; at: number } | null = null
 
   function flush() {
     const text = lines.join('\n').trim()
     if (text !== '') {
-      segments.push({ edition, text })
+      segments.push({ edition, kind: 'markdown', text })
     }
     lines = []
   }
@@ -46,6 +69,24 @@ export function splitEditionBlocks(source: string): Segment[] {
       }
     }
     const marker = line.trimEnd()
+    if (fence === null && /^::[A-Za-z]/.test(marker)) {
+      const found = flowDirective.exec(marker)
+      if (found === null) {
+        throw new Error(
+          marker.startsWith(`::${directiveName}`)
+            ? `Line ${String(at)}: malformed directive "${marker}", expected ::${directiveName}{flow="key"} or ::${directiveName}{flow="key" phase="key"}.`
+            : `Line ${String(at)}: unknown directive "${marker}".`,
+        )
+      }
+      flush()
+      const [, flow = '', phase] = found
+      segments.push(
+        phase === undefined
+          ? { edition, kind: 'flow-diagram', flow }
+          : { edition, kind: 'flow-diagram', flow, phase },
+      )
+      continue
+    }
     if (fence !== null || !marker.startsWith(closing)) {
       lines.push(line)
       continue

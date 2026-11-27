@@ -622,6 +622,8 @@ Manual: a Markdown directive places the diagram of a preset flow (or one phase o
 Decide and record as an ADR: the layout and rendering library (e.g. an SVG renderer with elkjs or dagre for layout, or React Flow if B35's editing needs it; weigh the bundle size, print output and B35 now), added only by this feature (ADR 0004). Accessible: a text alternative listing phases, scenes and transitions. Out of scope: editing (B35).
 ```
 
+Done: `flow-diagram`, #417 in three slices (PRs #418–#420). A read-only flow diagram in `shared/flowDiagram`: one neutral shape with a release-content adapter, dagre inside each phase and an own SVG renderer on theme tokens (ADR 0051), a text alternative, one-phase cuts; `::flow-diagram{…}` places diagrams in the web manual and the Paper edition (seven placements).
+
 **B35. studio-flow-map**
 
 ```text

@@ -190,7 +190,8 @@ function walkPhase(
         const via = from.type === 'selectionTable' ? null : toTable(table)
         emit(readObject(effect, effectPath), effectPath, from, via)
       })
-      if (entry.table !== undefined) {
+      // `table: null` is an entry with no nested table, as FlowReferences and the preset reader read it.
+      if (entry.table !== undefined && entry.table !== null) {
         rollTable(readKnown(catalog.tables, entry.table, `${entryPath}.table`, 'table'), from, seen)
       }
     })

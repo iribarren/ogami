@@ -12,11 +12,15 @@ Use a sequence when the order is the point. Making characters comes before the r
 
 A sequence can also sit in a loop. When the stack runs out you start it again from the top, so a loop with three cards in sequence plays as a fixed rhythm of one, two, three, one, two, three.
 
+::flow-diagram{flow="the-long-carry" phase="session-zero"}
+
 ## Player: a face-up spread
 
 All the cards of a spread lie face up, and you choose which one to play, so the flow makes the offer and you make the decision.
 
 Use a spread when the story is about what the player chooses to do, and when each choice should cost something different. Each card is a job, and the player reads the clocks to decide which job the moment needs. A Scene Type appears once in a spread, since a spread with the same card twice has fewer choices than cards.
+
+::flow-diagram{flow="cold-berth" phase="the-ship"}
 
 ## Oracle: a shuffled deck
 
@@ -25,6 +29,8 @@ In a deck the cards are shuffled and you draw, so the choice belongs to the dice
 The deck is a weighted oracle table, and **weight is copies**. A card with weight 3 is in the deck three times, which makes it three times as likely as a card with weight 1. You do not need to count, because all you have to ask is how often each kind of scene should turn up. Once you have the answer, you write it down as a number.
 
 Each card in the deck names its Scene Type. The table entry is the card, and the entry's text is what is printed on it.
+
+::flow-diagram{flow="the-long-carry" phase="the-road"}
 
 ## Which serves the Promise
 

@@ -425,6 +425,20 @@ describe('malformed content', () => {
     expect(build(content)).toThrow(/phases\[0\]\.worldTurn\[0\]\.table.*"ghost"/)
   })
 
+  it('reads a nested table: null as no nested table', () => {
+    const content = release({
+      sceneTypes: [sceneType('a')],
+      tables: [table('t', [{ text: 'again', table: null }])],
+      phases: [
+        phase('p', {
+          selection: { rule: 'sequence', sceneTypes: ['a'] },
+          worldTurn: [step('r', { kind: 'table', table: 't' })],
+        }),
+      ],
+    })
+    expect(build(content)).not.toThrow()
+  })
+
   it('rejects a nested table reference that is not a table key', () => {
     const content = release({
       sceneTypes: [sceneType('a')],

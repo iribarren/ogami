@@ -23,6 +23,17 @@ describe('FlowDiagramView', () => {
     expect(container.querySelectorAll('[data-edge-id]')).toHaveLength(layout.edges.length)
   })
 
+  // print.css styles `.paper figure`, `figure svg` and `figure details`: the root must stay a figure
+  // holding the drawing and its text alternative, or the print rules stop applying.
+  it('is a figure holding the svg and the text alternative', () => {
+    const { container } = render(<FlowDiagramView diagram={coldBerth} />)
+
+    const root = container.firstElementChild
+    expect(root?.tagName.toLowerCase()).toBe('figure')
+    expect(root?.querySelector('svg[role="img"]')).not.toBeNull()
+    expect(root?.querySelector('details')).not.toBeNull()
+  })
+
   it('names the flow for assistive technology', () => {
     render(<FlowDiagramView diagram={coldBerth} />)
     const svg = screen.getByRole('img', { name: 'Flow diagram: Cold Berth' })
@@ -36,8 +47,11 @@ describe('FlowDiagramView', () => {
     expect(next).toHaveLength(4)
     for (const edge of next) {
       expect(edge.querySelector('polyline')?.getAttribute('stroke-dasharray')).toBe('5 4')
-      expect(edge.textContent).toBe('Ship trouble')
     }
+    // One label for the four edges of the same hook and table.
+    expect([...next].map((edge) => edge.textContent).filter((text) => text !== '')).toEqual([
+      'Ship trouble',
+    ])
     const end = container.querySelector('[data-kind="endPhase"] polyline')
     expect(end?.getAttribute('stroke-dasharray')).toBeNull()
   })

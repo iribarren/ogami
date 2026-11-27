@@ -3,7 +3,7 @@ import { splitEditionBlocks } from './editionBlocks'
 describe('splitEditionBlocks', () => {
   it('returns one common segment for a page without blocks', () => {
     expect(splitEditionBlocks('# Title\n\nSome text.\n')).toEqual([
-      { edition: 'common', text: '# Title\n\nSome text.' },
+      { edition: 'common', kind: 'markdown', text: '# Title\n\nSome text.' },
     ])
   })
 
@@ -11,15 +11,15 @@ describe('splitEditionBlocks', () => {
     const source = 'Before.\n\n:::in-ogami\nOpen Studio.\n:::\n\nAfter.\n'
 
     expect(splitEditionBlocks(source)).toEqual([
-      { edition: 'common', text: 'Before.' },
-      { edition: 'in-ogami', text: 'Open Studio.' },
-      { edition: 'common', text: 'After.' },
+      { edition: 'common', kind: 'markdown', text: 'Before.' },
+      { edition: 'in-ogami', kind: 'markdown', text: 'Open Studio.' },
+      { edition: 'common', kind: 'markdown', text: 'After.' },
     ])
   })
 
   it('drops segments that hold only blank lines', () => {
     expect(splitEditionBlocks(':::in-ogami\nOnly here.\n:::\n')).toEqual([
-      { edition: 'in-ogami', text: 'Only here.' },
+      { edition: 'in-ogami', kind: 'markdown', text: 'Only here.' },
     ])
   })
 
@@ -30,7 +30,7 @@ describe('splitEditionBlocks', () => {
 
     expect(segments).toHaveLength(1)
     expect(segments[0]).toMatchObject({ edition: 'common' })
-    expect(segments[0]?.text).toContain(':::in-ogami')
+    expect(segments[0]).toMatchObject({ text: expect.stringContaining(':::in-ogami') as string })
   })
 
   it('ignores markers inside a fence in a CRLF source', () => {
@@ -40,8 +40,8 @@ describe('splitEditionBlocks', () => {
     const segments = splitEditionBlocks(source)
 
     expect(segments.map((segment) => segment.edition)).toEqual(['common', 'in-ogami'])
-    expect(segments[0]?.text).toContain(':::in-ogami')
-    expect(segments[1]?.text).toBe('Here.')
+    expect(segments[0]).toMatchObject({ text: expect.stringContaining(':::in-ogami') as string })
+    expect(segments[1]).toMatchObject({ text: 'Here.' })
   })
 
   it('keeps a fence open until a closing fence at least as long', () => {
@@ -81,7 +81,9 @@ describe('splitEditionBlocks', () => {
   it('does not take backticks around an info string for a fence', () => {
     const source = ':::in-ogami\n``` a ```\nText.\n:::\n'
 
-    expect(splitEditionBlocks(source)).toEqual([{ edition: 'in-ogami', text: '``` a ```\nText.' }])
+    expect(splitEditionBlocks(source)).toEqual([
+      { edition: 'in-ogami', kind: 'markdown', text: '``` a ```\nText.' },
+    ])
   })
 
   it('does not close a fence with a line that has an info string', () => {
@@ -96,5 +98,72 @@ describe('splitEditionBlocks', () => {
     expect(() => splitEditionBlocks('Text\n```\n:::in-ogami\nMore.\n')).toThrow(
       /line 2.*fence.*never closed/i,
     )
+  })
+
+  describe('the flow-diagram directive', () => {
+    it('becomes its own segment between the text around it', () => {
+      const source = 'Before.\n\n::flow-diagram{flow="cold-berth"}\n\nAfter.\n'
+
+      expect(splitEditionBlocks(source)).toEqual([
+        { edition: 'common', kind: 'markdown', text: 'Before.' },
+        { edition: 'common', kind: 'flow-diagram', flow: 'cold-berth' },
+        { edition: 'common', kind: 'markdown', text: 'After.' },
+      ])
+    })
+
+    it('carries its phase when it names one', () => {
+      const source = '::flow-diagram{flow="the-long-carry" phase="the-road"}\n'
+
+      expect(splitEditionBlocks(source)).toEqual([
+        { edition: 'common', kind: 'flow-diagram', flow: 'the-long-carry', phase: 'the-road' },
+      ])
+    })
+
+    it('takes the edition it sits in', () => {
+      const source = ':::in-ogami\n::flow-diagram{flow="cold-berth"}\n:::\n'
+
+      expect(splitEditionBlocks(source)).toEqual([
+        { edition: 'in-ogami', kind: 'flow-diagram', flow: 'cold-berth' },
+      ])
+    })
+
+    it('stays text inside a code fence', () => {
+      const source = '```\n::flow-diagram{flow="cold-berth"}\n::unknown\n```\n'
+
+      const segments = splitEditionBlocks(source)
+
+      expect(segments).toHaveLength(1)
+      expect(segments[0]).toMatchObject({ kind: 'markdown' })
+    })
+
+    it('tolerates trailing spaces and a CRLF source', () => {
+      expect(splitEditionBlocks('::flow-diagram{flow="cold-berth"}  \r\n')).toEqual([
+        { edition: 'common', kind: 'flow-diagram', flow: 'cold-berth' },
+      ])
+    })
+
+    it('throws on a directive it does not know, naming the line', () => {
+      expect(() => splitEditionBlocks('Text\n::flow-map{flow="x"}\n')).toThrow(
+        /line 2.*unknown directive "::flow-map\{flow="x"\}"/i,
+      )
+    })
+
+    it.each([
+      ['no attributes', '::flow-diagram'],
+      ['empty braces', '::flow-diagram{}'],
+      ['a missing flow', '::flow-diagram{phase="the-road"}'],
+      ['an upper-case key', '::flow-diagram{flow="Cold-Berth"}'],
+      ['single quotes', "::flow-diagram{flow='cold-berth'}"],
+      ['an extra attribute', '::flow-diagram{flow="cold-berth" phase="the-ship" size="big"}'],
+      ['attributes in the other order', '::flow-diagram{phase="the-ship" flow="cold-berth"}'],
+      ['an unclosed brace', '::flow-diagram{flow="cold-berth"'],
+      ['text after the directive', '::flow-diagram{flow="cold-berth"} caption'],
+    ])('throws on a malformed directive: %s', (_, line) => {
+      expect(() => splitEditionBlocks(`Text\n${line}\n`)).toThrow(/line 2.*malformed directive/i)
+    })
+
+    it('does not take a line that merely starts with two colons for a directive', () => {
+      expect(splitEditionBlocks(':: not a directive\n')).toHaveLength(1)
+    })
   })
 })

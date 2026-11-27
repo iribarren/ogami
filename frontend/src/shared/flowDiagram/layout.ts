@@ -44,6 +44,7 @@ const RANK_SEP = 64
 const EDGE_LABEL_HEIGHT = 14
 const LANE_GAP = 6
 const GUTTER_STEP = 4
+const GUTTER_LABEL_GAP = 6
 const LOOP_BASE = 14
 const LOOP_STEP = 8
 
@@ -104,7 +105,7 @@ export interface LayoutEdge {
   /** The path, first point at the source, last at the target (where the arrow head goes). */
   points: LayoutPoint[]
   /** The table a transition comes through, with where to write it. */
-  label?: { text: string; x: number; y: number }
+  label?: { text: string; x: number; y: number; anchor?: 'end' }
   /** Edges that come through a table are dashed. */
   dashed: boolean
 }
@@ -175,7 +176,10 @@ export function layoutFlowDiagram(diagram: FlowDiagram): FlowDiagramLayout {
   const ending = endingNode(diagram)
   const width = Math.max(
     0,
-    ...measured.map((item) => Math.max(item.headerWidth, item.innerWidth) + 2 * PHASE_PAD),
+    ...measured.map(
+      (item) =>
+        Math.max(item.headerWidth, item.innerWidth) + 2 * PHASE_PAD + gutterSpace(item.resolved),
+    ),
     ending === null ? 0 : ending.width,
   )
   const portX = width / 2
@@ -477,10 +481,28 @@ interface Placed {
   edges: LayoutEdge[]
 }
 
+/** Hook transitions: the ones that leave a hook chip, and run down the right gutter of their phase. */
+function isHookEdge(entry: Resolved): boolean {
+  return entry.transition.from.type === 'hook'
+}
+
+/** The extra width a phase needs so each hook edge has its own gutter line inside the box. */
+function gutterSpace(resolved: Resolved[]): number {
+  return GUTTER_STEP * Math.max(0, resolved.filter(isHookEdge).length - 1)
+}
+
+/**
+ * The x of a hook edge's gutter line. The lines step inward from the right edge, in the space
+ * `gutterSpace` reserved, so none leaves the phase box or the drawing.
+ */
+function gutterX(width: number, count: number, index: number): number {
+  return width - PHASE_PAD / 2 - GUTTER_STEP * (count - 1 - index)
+}
+
 /** Puts a measured phase at `top`, `width` wide, and routes the edges only this module knows. */
 function placePhase(item: Measured, width: number, top: number): Placed {
   const key = item.phase.key
-  const hookEdges = item.resolved.filter((entry) => entry.transition.from.type === 'hook')
+  const hookEdges = item.resolved.filter(isHookEdge)
   const exitEdges = item.resolved.filter((entry) => entry.route === 'exit')
   const loops = new Map<string, number>()
   for (const entry of item.resolved) {
@@ -550,6 +572,8 @@ function placePhase(item: Measured, width: number, top: number): Placed {
     headerBottom + LANE_GAP * (hookEdges.indexOf(entry) + 1)
   const exitLane = (entry: Resolved): number =>
     innerBottom + LANE_GAP * (exitEdges.indexOf(entry) + 1)
+  // Hook edges from the same hook through the same table are one group, labelled once.
+  const labelled = new Set<string>()
   for (const entry of item.resolved) {
     if (entry.route === 'dagre') {
       continue
@@ -575,7 +599,7 @@ function placePhase(item: Measured, width: number, top: number): Placed {
       const target = rectOf(
         found(entry.to ?? undefined, `target of transition ${String(entry.index)}`),
       )
-      const gutter = width - PHASE_PAD / 2 + GUTTER_STEP * hookEdges.indexOf(entry)
+      const gutter = gutterX(width, hookEdges.length, hookEdges.indexOf(entry))
       const targetY = target.y + target.height / 2
       points = [
         start,
@@ -584,8 +608,8 @@ function placePhase(item: Measured, width: number, top: number): Placed {
         { x: gutter, y: targetY },
         { x: target.x + target.width, y: targetY },
       ]
-    } else if (entry.transition.from.type === 'hook') {
-      const gutter = width - PHASE_PAD / 2 + GUTTER_STEP * hookEdges.indexOf(entry)
+    } else if (isHookEdge(entry)) {
+      const gutter = gutterX(width, hookEdges.length, hookEdges.indexOf(entry))
       points = [
         start,
         { x: start.x, y: hookLane(entry) },
@@ -604,11 +628,28 @@ function placePhase(item: Measured, width: number, top: number): Placed {
     }
     const via = entry.transition.via
     const path = withoutRepeats(points)
+    let label: LayoutEdge['label']
+    if (via !== null && entry.transition.from.type === 'hook') {
+      // The first edge of the group is the leftmost gutter. The text ends left of it, on the lane
+      // under the header, so it stays inside the phase box.
+      const group = `${entry.transition.from.hook}|${via.key}`
+      if (!labelled.has(group)) {
+        labelled.add(group)
+        label = {
+          text: via.name,
+          x: gutterX(width, hookEdges.length, hookEdges.indexOf(entry)) - GUTTER_LABEL_GAP,
+          y: hookLane(entry),
+          anchor: 'end',
+        }
+      }
+    } else if (via !== null) {
+      label = { text: via.name, ...labelSpot(path) }
+    }
     edges.push({
       id: `transition:${String(entry.index)}`,
       kind: entry.transition.kind,
       points: path,
-      ...(via === null ? {} : { label: { text: via.name, ...labelSpot(path) } }),
+      ...(label === undefined ? {} : { label }),
       dashed: via !== null,
     })
   }

@@ -1,4 +1,4 @@
-import type { OutcomeEffect, ReleaseTracker } from './release'
+import type { EntryEffect, OutcomeEffect, Release, ReleaseTracker } from './release'
 
 /** How a card names each band of a check; a band this table lacks is named by its own key. */
 export const BAND_LABELS = new Map([
@@ -66,4 +66,43 @@ export function outcomeToken(
   }
   const gain = (effect.op === 'add') === effect.value >= 0
   return `${gain ? 'regain' : 'lose'} ${String(Math.abs(effect.value))} ${field}`
+}
+
+/**
+ * The effect of a table entry in words: "Doom +1", "Next scene: Road", "Start a Thread: The lamp".
+ * Throws an `UnwordableEffect` for what has no wording (an `other` effect, a tracker change that is
+ * not an add, unless `allowSet`: "Set Doom to 3"), and an `Error` for a Scene Type the release does
+ * not have.
+ */
+export function entryEffectText(
+  release: Pick<Release, 'trackers' | 'sceneTypes'>,
+  effect: EntryEffect,
+  where: string,
+  allowSet = false,
+): string {
+  if (effect.kind === 'tracker') {
+    const tracker = release.trackers.find((candidate) => candidate.key === effect.tracker)
+    if (tracker !== undefined && allowSet && effect.op === 'set') {
+      return `Set ${tracker.name} to ${String(effect.value)}`
+    }
+    if (tracker === undefined || effect.op !== 'add') {
+      throw new UnwordableEffect(
+        `${where}: a ${effect.op} effect on "${effect.tracker}" has no paper wording.`,
+      )
+    }
+    return `${tracker.name} ${effect.value < 0 ? '-' : '+'}${String(Math.abs(effect.value))}`
+  }
+  if (effect.kind === 'nextScene') {
+    const sceneType = release.sceneTypes.find((candidate) => candidate.key === effect.sceneType)
+    if (sceneType === undefined) {
+      throw new Error(
+        `${where} names the Scene Type "${effect.sceneType}", which the release does not have.`,
+      )
+    }
+    return `Next scene: ${sceneType.name}`
+  }
+  if (effect.kind === 'createThread') {
+    return `Start a Thread: ${effect.name}`
+  }
+  throw new UnwordableEffect(`${where}: a ${effect.name} effect has no paper wording.`)
 }

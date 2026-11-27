@@ -1,5 +1,7 @@
+import { readdirSync } from 'node:fs'
+
 import { flowDiagramFromReleaseContent, layoutFlowDiagram } from '@/shared/flowDiagram'
-import { phase, release, sceneType } from '@/shared/flowDiagram/testSupport'
+import { loadPreset, phase, release, sceneType } from '@/shared/flowDiagram/testSupport'
 
 import { diagramPages } from './diagramPages'
 import { printableArea } from './layout'
@@ -58,4 +60,28 @@ describe('diagramPages', () => {
       }
     },
   )
+
+  it('pages the diagram of every flow of every preset, each page within the printable area', () => {
+    const dir = new URL('../../../../backend/presets/', `file://${import.meta.dirname}/`)
+    const names = readdirSync(dir).filter((file) => file.endsWith('.json'))
+
+    expect(names.length).toBeGreaterThan(0)
+    for (const file of names) {
+      const content = loadPreset(file.replace(/\.json$/, ''))
+      // Schema version 1 has no flows.
+      const flows = (content as { flows?: { key: string }[] }).flows ?? []
+      for (const flow of flows) {
+        for (const paper of ['a4', 'a5'] as const) {
+          const pages = diagramPages(flowDiagramFromReleaseContent(content, flow.key), paper)
+          const area = printableArea(paper)
+
+          expect(pages.length, `${file} ${flow.key}`).toBeGreaterThan(0)
+          for (const page of pages) {
+            expect(page.width).toBeLessThanOrEqual(area.width + 1e-9)
+            expect(page.phase === null || page.height <= area.height + 1e-9).toBe(true)
+          }
+        }
+      }
+    }
+  })
 })

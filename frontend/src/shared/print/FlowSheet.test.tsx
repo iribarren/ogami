@@ -3,8 +3,9 @@ import { render } from '@testing-library/react'
 import { flowDiagramFromReleaseContent } from '@/shared/flowDiagram'
 
 import { diagramPages } from './diagramPages'
-import { FlowDiagramPages, FlowSheetText } from './FlowSheet'
+import { FlowDiagramPages, FlowSheetText, TablesSheet } from './FlowSheet'
 import type { FlowSheet } from './flowSheet'
+import type { OracleTableSheet } from './tablesSheet'
 import { miniRelease } from './testRelease'
 
 const sheet: FlowSheet = {
@@ -60,5 +61,40 @@ describe('the flow sheet', () => {
     expect(page?.querySelector('svg')).not.toBeNull()
     const figure = page?.querySelector<HTMLElement>('.print-figure')
     expect(figure?.style.width).toBe(`${String(pages[0]?.width)}mm`)
+  })
+
+  describe('the oracle tables', () => {
+    const tables: OracleTableSheet[] = [
+      {
+        key: 'luck',
+        name: 'Luck',
+        die: 6,
+        rollAgainAbove: 5,
+        rows: [
+          { range: '1-4', text: 'Good', effects: ['Doom -1', 'Next scene: Road'] },
+          { range: '5', text: 'Bad', effects: [] },
+        ],
+      },
+    ]
+
+    it('prints each table with its die, a row for each entry and its effects in words', () => {
+      const { container } = render(<TablesSheet tables={tables} paper="a4" />)
+
+      expect(container.querySelector('section[data-sheet="tables"]')).toHaveClass(
+        'print-doc',
+        'print-a4',
+      )
+      expect(container.querySelector('caption')?.textContent).toBe('Luck: d6, roll again above 5')
+      expect([...container.querySelectorAll('tr')].map((row) => row.textContent)).toEqual([
+        '1-4Good (Doom -1; Next scene: Road)',
+        '5Bad',
+      ])
+    })
+
+    it('prints nothing for a flow without tables', () => {
+      const { container } = render(<TablesSheet tables={[]} paper="a4" />)
+
+      expect(container).toBeEmptyDOMElement()
+    })
   })
 })

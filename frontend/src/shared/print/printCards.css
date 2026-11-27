@@ -258,6 +258,35 @@
   display: none;
 }
 
+.print-cards .print-doc table {
+  width: 100%;
+  margin-bottom: 5mm;
+  border-collapse: collapse;
+}
+
+.print-cards .print-doc caption {
+  padding-bottom: 1mm;
+  font-weight: 700;
+  text-align: left;
+}
+
+.print-cards .print-doc tr {
+  break-inside: avoid;
+}
+
+.print-cards .print-doc th,
+.print-cards .print-doc td {
+  padding: 0.8mm 1.5mm;
+  border: 0.2mm solid #000;
+  vertical-align: top;
+  text-align: left;
+}
+
+.print-cards .print-doc th {
+  width: 14mm;
+  white-space: nowrap;
+}
+
 .print-cards .print-doc:last-child {
   break-after: auto;
 }

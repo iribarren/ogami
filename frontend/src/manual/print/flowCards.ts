@@ -5,18 +5,17 @@ import {
   type SceneCard,
 } from '@/shared/print/cards'
 import {
-  type EntryEffect,
   type Release,
   type ReleaseFlow,
   type ReleaseTracker,
   type StepOutcome,
   readRelease,
 } from '@/shared/print/release'
-import { BAND_LABELS, outcomeToken } from '@/shared/print/wording'
+import { tableRanges } from '@/shared/print/tableRanges'
+import { BAND_LABELS, entryEffectText, outcomeToken } from '@/shared/print/wording'
 
 import { BOOK_TITLE } from './paperEdition'
 import type { PaperFlow } from './paperFlow'
-import { tableRanges } from './tableRanges'
 
 export type { BackSection, SceneCard } from '@/shared/print/cards'
 
@@ -138,14 +137,6 @@ function checkPaperEntries(preset: Release, paper: PaperFlow) {
   }
 }
 
-function sceneName(preset: Release, key: string, where: string): string {
-  const found = preset.sceneTypes.find((st) => st.key === key)
-  if (found === undefined) {
-    throw new Error(`${where} names the Scene Type "${key}", which the preset does not have.`)
-  }
-  return found.name
-}
-
 function deckCards(
   preset: Release,
   paper: PaperFlow,
@@ -193,25 +184,6 @@ function deckCards(
   return { cards, back: guard(deck.back, 'deck back') }
 }
 
-function effectText(preset: Release, effect: EntryEffect, where: string): string {
-  if (effect.kind === 'tracker') {
-    const tracker = preset.trackers.find((candidate) => candidate.key === effect.tracker)
-    if (tracker === undefined || effect.op !== 'add') {
-      throw new Error(
-        `${where}: a ${effect.op} effect on "${effect.tracker}" has no paper wording.`,
-      )
-    }
-    return `${tracker.name} ${effect.value < 0 ? '-' : '+'}${String(Math.abs(effect.value))}`
-  }
-  if (effect.kind === 'nextScene') {
-    return `Next scene: ${sceneName(preset, effect.sceneType, where)}`
-  }
-  if (effect.kind === 'createThread') {
-    return `Start a Thread: ${effect.name}`
-  }
-  throw new Error(`${where}: a ${effect.name} effect has no paper wording.`)
-}
-
 /** The tables of the flow to print: all but the likelihood oracle and the deck. */
 function tableSheets(
   preset: Release,
@@ -233,7 +205,7 @@ function tableSheets(
         rows: table.entries.map((entry, index) => ({
           range: ranges[index] ?? '',
           text: guard(entry.text, key),
-          effects: entry.effects.map((effect) => guard(effectText(preset, effect, key), key)),
+          effects: entry.effects.map((effect) => guard(entryEffectText(preset, effect, key), key)),
         })),
       }
     })

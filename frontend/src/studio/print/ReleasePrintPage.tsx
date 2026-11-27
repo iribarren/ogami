@@ -1,9 +1,14 @@
 import { useMemo } from 'react'
 
 import { DeckBack, DeckFront, SceneBack, SceneFront } from '@/shared/print/CardFaces'
+import { flowDiagramFromReleaseContent } from '@/shared/flowDiagram'
 import { buildCards, CARD_CAPACITY, type Cards } from '@/shared/print/cards'
+import { diagramPages, type DiagramPage } from '@/shared/print/diagramPages'
+import { FlowDiagramPages, FlowSheetText, TablesSheet } from '@/shared/print/FlowSheet'
+import { buildFlowSheet, type FlowSheet } from '@/shared/print/flowSheet'
 import { pageLayout } from '@/shared/print/layout'
 import { DuplexSheets, PrintCards } from '@/shared/print/PokerSheets'
+import { buildTablesSheet, type OracleTableSheet } from '@/shared/print/tablesSheet'
 
 import { resolvePrintOptions, type PrintOptions, type PrintSearch } from './printOptions'
 import { useReleaseContent, type PinnedImages } from './useReleaseContent'
@@ -39,17 +44,26 @@ function Problems({
   )
 }
 
+/** Everything one flow prints: the cards, then the flow sheet, its diagram and its oracle tables. */
+interface Built {
+  cards: Cards
+  flowSheet: FlowSheet
+  diagram: DiagramPage[]
+  tables: OracleTableSheet[]
+}
+
 function Sheets({
-  cards,
+  built,
   options,
   images,
   note,
 }: {
-  cards: Cards
+  built: Built
   options: PrintOptions
   images: PinnedImages
   note: string
 }) {
+  const { cards, flowSheet, diagram, tables } = built
   const layout = pageLayout(options.paper, options.bleed)
   const text = { bleed: options.bleed, image: images.cardFront }
   const back = { bleed: options.bleed, image: images.cardBack }
@@ -73,13 +87,16 @@ function Sheets({
           back={({ index }) => <DeckBack deck={deck} index={index} face={back} />}
         />
       ))}
+      <FlowSheetText sheet={flowSheet} paper={options.paper} />
+      <FlowDiagramPages pages={diagram} paper={options.paper} />
+      <TablesSheet tables={tables} paper={options.paper} />
     </PrintCards>
   )
 }
 
 /**
- * The cards of one flow of a published release, ready for the browser's print dialog. Everything
- * that can go wrong (an unknown release, content the reader refuses, a bad option, a flow the
+ * The cards, flow sheet, diagram and oracle tables of one flow of a published release, ready for the browser's print dialog. Everything
+ * that can go wrong (an unknown release, content the reader refuses, a bad option, a flow a
  * builder cannot build) is a message on the page, never a blank sheet or a crash.
  */
 export function ReleasePrintPage({
@@ -93,7 +110,7 @@ export function ReleasePrintPage({
 }) {
   const validVersion = VERSION.test(version)
   const content = useReleaseContent(gameSystemKey, validVersion ? Number(version) : 0, validVersion)
-  const built = useMemo(() => {
+  const outcome = useMemo(() => {
     if (content.data === undefined) {
       return undefined
     }
@@ -108,11 +125,17 @@ export function ReleasePrintPage({
         deckTables: options.decks,
         capacity: options.bleed ? CARD_CAPACITY.bleed : CARD_CAPACITY.poker,
       })
-      return { ok: true as const, options, cards }
+      const flowSheet = buildFlowSheet(content.data.release, options.flow)
+      const diagram = diagramPages(
+        flowDiagramFromReleaseContent(content.data.content, options.flow),
+        options.paper,
+      )
+      const tables = buildTablesSheet(content.data.release, options.flow)
+      return { ok: true as const, options, built: { cards, flowSheet, diagram, tables } }
     } catch (error) {
       return {
         ok: false as const,
-        problems: [error instanceof Error ? error.message : 'The cards could not be built.'],
+        problems: [error instanceof Error ? error.message : 'The flow could not be built.'],
         flows: [],
       }
     }
@@ -127,13 +150,13 @@ export function ReleasePrintPage({
   if (content.isError) {
     return <Problems problems={[content.error.message]} />
   }
-  if (built === undefined) {
+  if (outcome === undefined) {
     return null
   }
-  if (!built.ok) {
-    return <Problems problems={built.problems} flows={built.flows} />
+  if (!outcome.ok) {
+    return <Problems problems={outcome.problems} flows={outcome.flows} />
   }
-  const { options } = built
+  const { options } = outcome
   const note = `${content.data.release.systemName}, release ${version}: print on ${options.paper.toUpperCase()}${options.bleed ? ' with bleed' : ''} from the browser, with margins set to none and background graphics on.`
-  return <Sheets cards={built.cards} options={options} images={content.data.images} note={note} />
+  return <Sheets built={outcome.built} options={options} images={content.data.images} note={note} />
 }

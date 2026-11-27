@@ -54,10 +54,11 @@ describe('printCards.css', () => {
     expect(css).toMatch(/\.print-doc\.print-a5\s*\{\s*width: 148mm;/)
   })
 
-  it('keeps a phase and a hook whole, and hides the text alternative of the diagram', () => {
+  it('keeps a phase, a hook and a table row whole, and hides the text alternative of the diagram', () => {
     expect(css).toMatch(
       /\.print-phase,\s*\.print-cards \.print-doc \.print-hook\s*\{\s*break-inside: avoid;/,
     )
+    expect(css).toMatch(/\.print-doc tr\s*\{\s*break-inside: avoid;/)
     expect(css).toMatch(/\.print-diagram figure details\s*\{\s*display: none;/)
   })
 })

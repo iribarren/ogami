@@ -3,6 +3,7 @@ import { FlowDiagramView } from '@/shared/flowDiagram'
 import type { DiagramPage } from './diagramPages'
 import type { FlowSheet } from './flowSheet'
 import type { Paper } from './layout'
+import type { OracleTableSheet } from './tablesSheet'
 
 const pageClass = (paper: Paper) => `print-doc print-${paper}`
 
@@ -53,4 +54,35 @@ export function FlowDiagramPages({ pages, paper }: { pages: DiagramPage[]; paper
       </div>
     </section>
   ))
+}
+
+/** The oracle tables of the flow to roll on: a table may run over pages, a row never does. */
+export function TablesSheet({ tables, paper }: { tables: OracleTableSheet[]; paper: Paper }) {
+  if (tables.length === 0) {
+    return null
+  }
+  return (
+    <section className={`${pageClass(paper)} print-tables`} data-sheet="tables">
+      <h1>Oracle tables</h1>
+      {tables.map((table) => (
+        <table key={table.key} data-table={table.key}>
+          <caption>
+            {table.name}: d{table.die}
+            {table.rollAgainAbove !== null && `, roll again above ${String(table.rollAgainAbove)}`}
+          </caption>
+          <tbody>
+            {table.rows.map((row, at) => (
+              <tr key={at}>
+                <th scope="row">{row.range}</th>
+                <td>
+                  {row.text}
+                  {row.effects.length > 0 && <em> ({row.effects.join('; ')})</em>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ))}
+    </section>
+  )
 }

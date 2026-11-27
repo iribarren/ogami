@@ -59,7 +59,7 @@ Shippable: slices 1 and 2 add code nothing imports outside its tests and story; 
 | T1 | 1 | ADR 0051 (D1, D2, D3) and its row in `docs/adr/README.md` | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `0a4dc33b` |
 | T2 | 1 | `FlowDiagram` shape, release-content adapter (D2–D7), `phaseDiagram` (D8), `describeFlowDiagram` (D9), with Vitest on Cold Berth, The Long Carry, Ironsworn and hand-made fixtures | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `19d614d8` |
 | T2b | 2 | Slice 1 review fixes R3-001–R3-004 | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T3 | 2 | Layout: phases stacked in order, dagre inside each phase, phase and self arrows, exit stub, end marker; deterministic positions | | [ ] | |
+| T3 | 2 | Layout: phases stacked in order, dagre inside each phase, phase and self arrows, exit stub, end marker; deterministic positions | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T4 | 2 | `FlowDiagramView` SVG renderer (theme tokens, dashed `via` arrows, hook chips) with the text alternative, Storybook story, Vitest | | [ ] | |
 | T5 | 3 | `::flow-diagram{…}` directive, preset data in the manual chapter pages and the Paper edition, print styles | | [ ] | |
 | T6 | 3 | Placements (D10) and a test that every directive in the chapters resolves; `make manual-pdf` checked by hand | | [ ] | |
@@ -82,6 +82,7 @@ Shippable: slices 1 and 2 add code nothing imports outside its tests and story; 
 - 2026-11-27: T1 done: ADR 0051 and its index row.
 - 2026-11-27: T2 done: `shared/flowDiagram` (shape, adapter, phase cut, text alternative); 48 Vitest tests, RED then GREEN; `nextPhase` targets also carry the phase name so a one-phase cut can name its exit stub.
 - 2026-11-27: T2b done: R3-001, R3-003, R3-004 fixed with tests; R3-002 kept as a throw because the backend rejects oracle selection entries without a Scene Type (`FlowReferences::checkOracleSelections`), now commented.
+- 2026-11-27: T3 done: `layoutFlowDiagram` (dagre 3.1.4 inside each phase, own routing for hook, self, exit and phase arrows); 12 Vitest tests, RED (module missing) then GREEN.
 
 ## Reviews
 

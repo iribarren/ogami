@@ -28,8 +28,9 @@ describe('the manual content', () => {
     'keeps the app out of the common text of %s',
     (slug) => {
       const common = splitEditionBlocks(sources[slug] ?? '')
-        .filter((segment) => segment.edition === 'common')
-        .map((segment) => segment.text)
+        .flatMap((segment) =>
+          segment.edition === 'common' && segment.kind === 'markdown' ? [segment.text] : [],
+        )
         .join('\n')
 
       expect(common).not.toMatch(/\b(Ogami|Studio|app)\b/i)
@@ -41,8 +42,9 @@ describe('the manual content', () => {
     (slug) => {
       // The Paper edition renders this text without a router, which an internal link needs.
       const common = splitEditionBlocks(sources[slug] ?? '')
-        .filter((segment) => segment.edition === 'common')
-        .map((segment) => segment.text)
+        .flatMap((segment) =>
+          segment.edition === 'common' && segment.kind === 'markdown' ? [segment.text] : [],
+        )
         .join('\n')
 
       expect(common).not.toContain('](/')
@@ -128,8 +130,9 @@ describe('the manual content', () => {
     }
     const textOf = (slug: string, edition: 'common' | 'in-ogami') =>
       splitEditionBlocks(sources[slug] ?? '')
-        .filter((segment) => segment.edition === edition)
-        .map((segment) => segment.text)
+        .flatMap((segment) =>
+          segment.edition === edition && segment.kind === 'markdown' ? [segment.text] : [],
+        )
         .join('\n')
 
     it('links all three in the Full edition of how-to-use', () => {

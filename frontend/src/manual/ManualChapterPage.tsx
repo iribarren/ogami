@@ -1,7 +1,9 @@
 import { Link } from '@tanstack/react-router'
+import { Fragment } from 'react'
 
 import { findChapter, neighbours } from './chapters'
 import { ManualContents } from './ManualContents'
+import { ManualFlowDiagram } from './ManualFlowDiagram'
 import { Markdown } from './Markdown'
 import { pageSegments } from './pages'
 
@@ -18,9 +20,15 @@ export function ManualChapterPage({ slug }: { slug: string }) {
     <div className="grid gap-8 lg:grid-cols-[14rem_minmax(0,1fr)]">
       <ManualContents label="Manual contents" />
       <article className="max-w-3xl min-w-0 space-y-8">
-        {segments.map((segment, at) =>
-          segment.edition === 'common' ? (
-            <Markdown key={at}>{segment.text}</Markdown>
+        {segments.map((segment, at) => {
+          const run =
+            segment.kind === 'markdown' ? (
+              <Markdown>{segment.text}</Markdown>
+            ) : (
+              <ManualFlowDiagram flow={segment.flow} phase={segment.phase} />
+            )
+          return segment.edition === 'common' ? (
+            <Fragment key={at}>{run}</Fragment>
           ) : (
             <aside
               key={at}
@@ -28,10 +36,10 @@ export function ManualChapterPage({ slug }: { slug: string }) {
               className="space-y-2 rounded-xl border-l-4 border-info bg-well p-4"
             >
               <p className="text-xs font-semibold tracking-wide uppercase">In Ogami</p>
-              <Markdown>{segment.text}</Markdown>
+              {run}
             </aside>
-          ),
-        )}
+          )
+        })}
         <nav
           aria-label="Chapter navigation"
           className="flex flex-wrap justify-between gap-4 border-t pt-4"

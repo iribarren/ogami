@@ -44,24 +44,49 @@ describe('the Paper edition', () => {
       { slug: 'b', title: 'B', part: 'One', editions: 'full' },
     ]
     const book = paperBook(list, (slug) => [
-      { edition: 'common', text: `Common ${slug}` },
-      { edition: 'in-ogami', text: `Screen ${slug}` },
+      { edition: 'common', kind: 'markdown', text: `Common ${slug}` },
+      { edition: 'in-ogami', kind: 'markdown', text: `Screen ${slug}` },
     ])
 
     expect(book.parts).toEqual([
-      { name: 'One', chapters: [{ slug: 'a', title: 'A', markdown: 'Common a' }] },
+      {
+        name: 'One',
+        chapters: [{ slug: 'a', title: 'A', blocks: [{ kind: 'markdown', text: 'Common a' }] }],
+      },
+    ])
+  })
+
+  it('keeps the diagrams of the common text in order and leaves out those in an In Ogami block', () => {
+    const list: Chapter[] = [{ slug: 'a', title: 'A', part: 'One', editions: 'both' }]
+    const book = paperBook(list, () => [
+      { edition: 'common', kind: 'markdown', text: 'Before.' },
+      { edition: 'common', kind: 'flow-diagram', flow: 'cold-berth' },
+      { edition: 'in-ogami', kind: 'flow-diagram', flow: 'the-long-carry' },
+      { edition: 'common', kind: 'markdown', text: 'Middle.' },
+      { edition: 'common', kind: 'flow-diagram', flow: 'the-long-carry', phase: 'the-road' },
+    ])
+
+    expect(book.parts[0]?.chapters[0]?.blocks).toEqual([
+      { kind: 'markdown', text: 'Before.' },
+      { kind: 'flow-diagram', flow: 'cold-berth' },
+      { kind: 'markdown', text: 'Middle.' },
+      { kind: 'flow-diagram', flow: 'the-long-carry', phase: 'the-road' },
     ])
   })
 
   it('throws on a chapter with nothing common, never printing an empty page', () => {
     const list: Chapter[] = [{ slug: 'a', title: 'A', part: 'One', editions: 'both' }]
 
-    expect(() => paperBook(list, () => [{ edition: 'in-ogami', text: 'Screen' }])).toThrow(/"a"/)
+    expect(() =>
+      paperBook(list, () => [{ edition: 'in-ogami', kind: 'markdown', text: 'Screen' }]),
+    ).toThrow(/"a"/)
   })
 
   it('has no app wording in any chapter', () => {
     const text = paperBook().parts.flatMap((part) =>
-      part.chapters.map((chapter) => chapter.markdown),
+      part.chapters.flatMap((chapter) =>
+        chapter.blocks.flatMap((block) => (block.kind === 'markdown' ? [block.text] : [])),
+      ),
     )
 
     for (const markdown of text) {

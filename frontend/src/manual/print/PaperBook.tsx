@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 
+import { ManualFlowDiagram } from '../ManualFlowDiagram'
 import { Markdown } from '../Markdown'
 import { paperBook } from './paperEdition'
 
@@ -35,7 +36,13 @@ export function PaperBook({ book }: { book: ReturnType<typeof paperBook> }) {
           </section>
           {part.chapters.map((chapter) => (
             <article key={chapter.slug} className="paper-page">
-              <Markdown>{chapter.markdown}</Markdown>
+              {chapter.blocks.map((block, at) =>
+                block.kind === 'markdown' ? (
+                  <Markdown key={at}>{block.text}</Markdown>
+                ) : (
+                  <ManualFlowDiagram key={at} flow={block.flow} phase={block.phase} />
+                ),
+              )}
             </article>
           ))}
         </Fragment>

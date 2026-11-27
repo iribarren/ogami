@@ -85,6 +85,37 @@ body {
   break-before: page;
 }
 
+/* Flow diagrams: FlowDiagramView colours its drawing with the app's theme variables, which this
+   entry does not load. Black on white, one diagram to a page, and no text alternative: the
+   chapter prose already says it. */
+.paper {
+  --background: #fff;
+  --foreground: #000;
+  --card: #fff;
+  --border: #000;
+  --muted-foreground: #444;
+  --primary: #000;
+  --info: #000;
+}
+
+.paper figure {
+  margin: 1em 0;
+  break-inside: avoid;
+}
+
+.paper figure svg {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 200mm;
+  height: auto;
+  margin: 0 auto;
+}
+
+.paper figure details {
+  display: none;
+}
+
 .paper-contents,
 .paper h3 {
   margin-top: 1.2em;

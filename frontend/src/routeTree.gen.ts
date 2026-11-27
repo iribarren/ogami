@@ -28,6 +28,7 @@ import { Route as StudioGameSystemsKeyFlowsFlowRouteImport } from './routes/stud
 import { Route as StudioGameSystemsKeyLikelihoodOraclesOracleRouteImport } from './routes/studio.game-systems.$key_.likelihood-oracles.$oracle'
 import { Route as StudioGameSystemsKeyOracleTablesTableRouteImport } from './routes/studio.game-systems.$key_.oracle-tables.$table'
 import { Route as StudioGameSystemsKeySceneTypesSceneTypeRouteImport } from './routes/studio.game-systems.$key_.scene-types.$sceneType'
+import { Route as StudioGameSystemsKeyReleasesVersionPrintRouteImport } from './routes/studio.game-systems.$key_.releases.$version.print'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -128,6 +129,12 @@ const StudioGameSystemsKeySceneTypesSceneTypeRoute =
     path: '/game-systems/$key/scene-types/$sceneType',
     getParentRoute: () => StudioRoute,
   } as any)
+const StudioGameSystemsKeyReleasesVersionPrintRoute =
+  StudioGameSystemsKeyReleasesVersionPrintRouteImport.update({
+    id: '/game-systems/$key_/releases/$version/print',
+    path: '/game-systems/$key/releases/$version/print',
+    getParentRoute: () => StudioRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/studio/game-systems/$key/likelihood-oracles/$oracle': typeof StudioGameSystemsKeyLikelihoodOraclesOracleRoute
   '/studio/game-systems/$key/oracle-tables/$table': typeof StudioGameSystemsKeyOracleTablesTableRoute
   '/studio/game-systems/$key/scene-types/$sceneType': typeof StudioGameSystemsKeySceneTypesSceneTypeRoute
+  '/studio/game-systems/$key/releases/$version/print': typeof StudioGameSystemsKeyReleasesVersionPrintRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -168,6 +176,7 @@ export interface FileRoutesByTo {
   '/studio/game-systems/$key/likelihood-oracles/$oracle': typeof StudioGameSystemsKeyLikelihoodOraclesOracleRoute
   '/studio/game-systems/$key/oracle-tables/$table': typeof StudioGameSystemsKeyOracleTablesTableRoute
   '/studio/game-systems/$key/scene-types/$sceneType': typeof StudioGameSystemsKeySceneTypesSceneTypeRoute
+  '/studio/game-systems/$key/releases/$version/print': typeof StudioGameSystemsKeyReleasesVersionPrintRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -190,6 +199,7 @@ export interface FileRoutesById {
   '/studio/game-systems/$key_/likelihood-oracles/$oracle': typeof StudioGameSystemsKeyLikelihoodOraclesOracleRoute
   '/studio/game-systems/$key_/oracle-tables/$table': typeof StudioGameSystemsKeyOracleTablesTableRoute
   '/studio/game-systems/$key_/scene-types/$sceneType': typeof StudioGameSystemsKeySceneTypesSceneTypeRoute
+  '/studio/game-systems/$key_/releases/$version/print': typeof StudioGameSystemsKeyReleasesVersionPrintRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -213,6 +223,7 @@ export interface FileRouteTypes {
     | '/studio/game-systems/$key/likelihood-oracles/$oracle'
     | '/studio/game-systems/$key/oracle-tables/$table'
     | '/studio/game-systems/$key/scene-types/$sceneType'
+    | '/studio/game-systems/$key/releases/$version/print'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/studio/game-systems/$key/likelihood-oracles/$oracle'
     | '/studio/game-systems/$key/oracle-tables/$table'
     | '/studio/game-systems/$key/scene-types/$sceneType'
+    | '/studio/game-systems/$key/releases/$version/print'
   id:
     | '__root__'
     | '/'
@@ -253,6 +265,7 @@ export interface FileRouteTypes {
     | '/studio/game-systems/$key_/likelihood-oracles/$oracle'
     | '/studio/game-systems/$key_/oracle-tables/$table'
     | '/studio/game-systems/$key_/scene-types/$sceneType'
+    | '/studio/game-systems/$key_/releases/$version/print'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -403,6 +416,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioGameSystemsKeySceneTypesSceneTypeRouteImport
       parentRoute: typeof StudioRoute
     }
+    '/studio/game-systems/$key_/releases/$version/print': {
+      id: '/studio/game-systems/$key_/releases/$version/print'
+      path: '/game-systems/$key/releases/$version/print'
+      fullPath: '/studio/game-systems/$key/releases/$version/print'
+      preLoaderRoute: typeof StudioGameSystemsKeyReleasesVersionPrintRouteImport
+      parentRoute: typeof StudioRoute
+    }
   }
 }
 
@@ -426,6 +446,7 @@ interface StudioRouteChildren {
   StudioGameSystemsKeyLikelihoodOraclesOracleRoute: typeof StudioGameSystemsKeyLikelihoodOraclesOracleRoute
   StudioGameSystemsKeyOracleTablesTableRoute: typeof StudioGameSystemsKeyOracleTablesTableRoute
   StudioGameSystemsKeySceneTypesSceneTypeRoute: typeof StudioGameSystemsKeySceneTypesSceneTypeRoute
+  StudioGameSystemsKeyReleasesVersionPrintRoute: typeof StudioGameSystemsKeyReleasesVersionPrintRoute
 }
 
 const StudioRouteChildren: StudioRouteChildren = {
@@ -439,6 +460,8 @@ const StudioRouteChildren: StudioRouteChildren = {
     StudioGameSystemsKeyOracleTablesTableRoute,
   StudioGameSystemsKeySceneTypesSceneTypeRoute:
     StudioGameSystemsKeySceneTypesSceneTypeRoute,
+  StudioGameSystemsKeyReleasesVersionPrintRoute:
+    StudioGameSystemsKeyReleasesVersionPrintRoute,
 }
 
 const StudioRouteWithChildren =

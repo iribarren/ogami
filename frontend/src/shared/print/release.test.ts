@@ -143,7 +143,14 @@ describe('readRelease', () => {
       ])
     })
 
-    it('reads a likelihood oracle without an exceptional percent', () => {
+    it('reads an exceptional percent of 0', () => {
+    const raw = miniRelease()
+    Object.assign(raw.oracles.likelihood[0] ?? {}, { exceptionalPercent: 0 })
+
+    expect(readRelease(raw).likelihoodOracles[0]?.exceptionalPercent).toBe(0)
+  })
+
+  it('reads a likelihood oracle without an exceptional percent', () => {
       const raw = miniRelease()
       Object.assign(raw.oracles.likelihood[0] ?? {}, { exceptionalPercent: undefined })
 
@@ -243,6 +250,16 @@ describe('readRelease', () => {
         'an exceptional percent that is not a number',
         (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { exceptionalPercent: 'x' }),
         /exceptionalPercent: expected a number/,
+      ],
+      [
+        'an exceptional percent below 0',
+        (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { exceptionalPercent: -1 }),
+        /exceptionalPercent: expected a whole number from 0 to 100\./,
+      ],
+      [
+        'an exceptional percent above 100',
+        (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { exceptionalPercent: 101 }),
+        /exceptionalPercent: expected a whole number from 0 to 100\./,
       ],
       [
         'a tracker start that is not a number',

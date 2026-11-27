@@ -63,6 +63,15 @@ describe('buildChecksReference', () => {
     ])
   })
 
+  it('prints no exceptional sentence for an exceptional percent of 0', () => {
+    const { oracles } = buildChecksReference(
+      release((raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { exceptionalPercent: 0 })),
+      'mini',
+    )
+
+    expect(oracles[0]?.exceptional).toBeUndefined()
+  })
+
   it('words a level that is never or always yes', () => {
     const { oracles } = buildChecksReference(
       release((raw) => {

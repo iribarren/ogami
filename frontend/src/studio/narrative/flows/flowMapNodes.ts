@@ -11,7 +11,14 @@ import type { FlowAnswer } from './flowError'
 import type { FlowNode } from './flowNode'
 
 /** What activating a node of the Map opens: a panel of the editor, or a Scene Type's own page. */
-export type MapTarget = { type: 'node'; node: FlowNode } | { type: 'sceneType'; sceneType: string }
+export type MapTarget =
+  | { type: 'node'; node: FlowNode }
+  | {
+      type: 'sceneType'
+      sceneType: string
+      /** A transition to add on that page, as the search params it takes (D31). */
+      pending?: { step: string; carrier: string; effect: string }
+    }
 
 /**
  * What the node `id` of the Map is, given the key each phase has on it (`mapPhaseKeys`). Null when

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, Clapperboard } from 'lucide-react'
 
@@ -7,15 +7,26 @@ import { StudioError } from '../../useGameSystems'
 import { useGameSystemNarrative, type NarrativeItem } from '../useGameSystemNarrative'
 import { SceneTypeEditor } from './SceneTypeEditor'
 import { sceneTypeToDraft, type SceneTypeDraft } from './sceneTypeDraft'
+import { parseStep, pendingOf } from './sceneTypeParams'
 
 /** `/studio/game-systems/$key/scene-types/$sceneType`: edits one Scene Type of a draft. */
 export function SceneTypeEditorPage({
   gameSystemKey,
   sceneType,
+  step,
+  carrier,
+  effect,
 }: {
   gameSystemKey: string
   sceneType: string
+  /** `<part>.<index>`: the step to show (validated by the route). */
+  step?: string | undefined
+  /** With `step` and `effect`: the part of the step that gets the transition. */
+  carrier?: string | undefined
+  /** `nextScene:<key>`, `switchSceneType:<key>` or `endPhase`: the transition to add. */
+  effect?: string | undefined
 }) {
+  const pending = useMemo(() => pendingOf({ step, carrier, effect }), [step, carrier, effect])
   const narrative = useGameSystemNarrative(gameSystemKey)
   const [opened, setOpened] = useState<{
     key: string
@@ -101,6 +112,8 @@ export function SceneTypeEditorPage({
           original={open.item.key}
           initial={open.draft}
           version={open.version}
+          step={parseStep(step)}
+          pending={pending}
           savedAt={renamed?.key === sceneType ? renamed.at : null}
           onRenamed={(key, at) => {
             setRenamed({ key, at })

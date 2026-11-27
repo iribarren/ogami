@@ -2,13 +2,17 @@ import { step } from '@/shared/flowDiagram/testSupport'
 
 import { newEffect } from '../steps/effectDraft'
 import { stepsToDrafts } from '../steps/stepDraft'
+import { sceneTypeToDraft } from '../sceneTypes/sceneTypeDraft'
+import { carrierParam } from '../sceneTypes/sceneTypeParams'
 import { flowToDraft, type PhaseDraft } from './flowDraft'
 import {
   addEffect,
+  addEffectToStep,
   carriersOf,
   describeEffect,
   hookSteps,
   sceneEffect,
+  sceneTypeSteps,
   stepLabel,
 } from './flowMapCarriers'
 import { isRefusal } from './flowMapEdits'
@@ -104,6 +108,70 @@ describe('addEffect', () => {
   })
 })
 
+describe('addEffectToStep', () => {
+  const [a] = stepsToDrafts([step('a')])
+  const [kept] = stepsToDrafts([{ kind: 'mystery' }])
+  if (a === undefined || kept === undefined) {
+    throw new Error('Expected two steps.')
+  }
+
+  it('returns the step with the effect appended, and leaves the one it was given alone', () => {
+    const result = addEffectToStep(a, 0, 'step', next('x'), names)
+
+    expect(result).toMatchObject({ step: { effects: [{ kind: 'nextScene', sceneType: 'x' }] } })
+    expect(a).toMatchObject({ effects: [] })
+  })
+
+  it('refuses a part the step lacks, a step kept as stored, an effect it has and a full list', () => {
+    const [twin, full] = stepsToDrafts([
+      step('t', { effects: [{ kind: 'nextScene', sceneType: 'x' }] }),
+      step('f', { effects: Array.from({ length: 10 }, () => ({ kind: 'endPhase' })) }),
+    ])
+    if (twin === undefined || full === undefined) {
+      throw new Error('Expected two steps.')
+    }
+
+    expect(addEffectToStep(a, 0, 'band:0', next('x'), names)).toEqual({
+      refused: 'Step "a" has no such part.',
+    })
+    expect(addEffectToStep(kept, 2, 'step', next('x'), names, ' of Play')).toEqual({
+      refused: 'Step "Step 3" of Play cannot be edited here: open its panel.',
+    })
+    expect(addEffectToStep(twin, 0, 'step', next('x'), names)).toEqual({
+      refused: 'Step "t" already has this effect: next scene "X".',
+    })
+    expect(addEffectToStep(full, 0, 'step', next('y'), names)).toEqual({
+      refused: 'The step itself of step "f" has 10 effects, the most it may.',
+    })
+  })
+})
+
+describe('sceneTypeSteps', () => {
+  it('lists the steps of the three lists in page order, named by list and place', () => {
+    const draft = sceneTypeToDraft({
+      key: 's',
+      name: 'S',
+      purpose: 'p',
+      oracles: [],
+      setup: [step('arrive')],
+      play: [step('ask'), { kind: 'mystery' }],
+      closing: [step('end')],
+    })
+    if (draft === null) {
+      throw new Error('Expected a readable Scene Type.')
+    }
+
+    expect(sceneTypeSteps(draft).map(({ part, index, label }) => ({ part, index, label }))).toEqual(
+      [
+        { part: 'setup', index: 0, label: 'Setup · 1 "arrive"' },
+        { part: 'play', index: 0, label: 'Play · 1 "ask"' },
+        { part: 'play', index: 1, label: 'Play · 2 "Step 2"' },
+        { part: 'closing', index: 0, label: 'Closing · 1 "end"' },
+      ],
+    )
+  })
+})
+
 describe('describeEffect and stepLabel', () => {
   it('say what an effect does and what a step is called', () => {
     expect(describeEffect(newEffect('endPhase'), names)).toBe('end the phase')
@@ -160,6 +228,12 @@ describe('carriersOf', () => {
     step === undefined ? [] : carriersOf(step).map(({ label }) => label)
   const ids = (step: typeof roll) =>
     step === undefined ? [] : carriersOf(step).map(({ id }) => id)
+
+  it('builds only ids the Scene Type page takes as a carrier param', () => {
+    const built = [roll, choice, oracle, pick, table, check, prompt].flatMap(ids)
+    expect(built).toContain('oracle:exceptionalYes')
+    expect(built.filter((id) => carrierParam(id) !== id)).toEqual([])
+  })
 
   it('names the step itself and each band, option and outcome by what the author wrote', () => {
     expect(labels(roll)).toEqual([

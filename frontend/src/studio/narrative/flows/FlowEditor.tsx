@@ -82,7 +82,10 @@ export function FlowEditor({
   // Why a reload did not replace the draft; the old version is kept then, so a save still conflicts.
   const [reloadNote, setReloadNote] = useState<string | null>(null)
   // What the Map's last edit said, when that edit took the person to a panel.
-  const [mapNote, setMapNote] = useState<string | null>(null)
+  // It is shown while the draft and the node are the ones it was made for: the next edit or pick ends it.
+  const [mapNote, setMapNote] = useState<{ say: string; draft: FlowDraft; path: string } | null>(
+    null,
+  )
   // The draft as it was last loaded or saved: the form is unsaved while it differs.
   const [baseline, setBaseline] = useState(() => JSON.stringify(initial))
   const [savedAt, setSavedAt] = useState<Date | null>(initialSavedAt)
@@ -172,6 +175,7 @@ export function FlowEditor({
     void navigate({
       to: '/studio/game-systems/$key/scene-types/$sceneType',
       params: { key: gameSystemKey, sceneType: target.sceneType },
+      search: target.pending ?? {},
     })
   }
 
@@ -327,9 +331,14 @@ export function FlowEditor({
 
   /** An edit of the Map: the draft changes as the outline's buttons change it, and the answers and the selection follow a phase that moved. */
   function editFromMap({ phases: next, move, select: show, say }: MapEdit) {
-    changePhases(next, move ? moveItem(aligned, move.from, move.to - move.from) : aligned)
+    const edited = { ...draft, phases: next }
+    setDraft(edited)
+    setAnswer({
+      ...answer,
+      phases: move ? moveItem(aligned, move.from, move.to - move.from) : aligned,
+    })
     // An edit that leaves the Map shows its panel; the Map's own live region goes with the Map.
-    setMapNote(show === undefined ? null : say)
+    setMapNote(show === undefined ? null : { say, draft: edited, path: nodePath(show) })
     if (show !== undefined) {
       select(show)
     }
@@ -533,9 +542,9 @@ export function FlowEditor({
             </>
           )}
         </EditorPane>
-        {mapNote !== null && view !== 'map' && (
+        {mapNote?.draft === draft && mapNote.path === path && view !== 'map' && (
           <p role="status" className="text-sm">
-            {mapNote}
+            {mapNote.say}
           </p>
         )}
         {answer.page !== null && <Alert>{answer.page}</Alert>}

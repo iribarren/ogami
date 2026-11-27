@@ -279,7 +279,9 @@ function copiesOf(entry: ReleaseTable['entries'][number], where: string): number
   const weight = entry.weight ?? 1
   return Number.isInteger(weight) && weight >= 1
     ? weight
-    : fail(`${where}: the entry "${entry.text}" has a weight of ${String(weight)}, below 1.`)
+    : fail(
+        `${where}: the entry "${entry.text}" has a weight of ${String(weight)}, expected a whole number of at least 1.`,
+      )
 }
 
 function deck(release: Release, key: string, options: BuildOptions): Deck {

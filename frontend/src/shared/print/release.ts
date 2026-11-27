@@ -257,8 +257,8 @@ function readEntry(o: Rec, at: string): TableEntry {
   if (min !== undefined && max !== undefined && min > max) {
     fail(at, '"min" is above "max".')
   }
-  const weight = o.weight === undefined ? undefined : asInt(o.weight, `${at}.weight`)
-  if (weight !== undefined && weight < 1) {
+  const weight = o.weight === undefined ? undefined : asNum(o.weight, `${at}.weight`)
+  if (weight !== undefined && (!Number.isInteger(weight) || weight < 1)) {
     fail(`${at}.weight`, 'expected a whole number of at least 1.')
   }
   return {

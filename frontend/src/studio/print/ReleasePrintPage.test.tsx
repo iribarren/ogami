@@ -174,6 +174,46 @@ describe('the release print page', () => {
       expect(cards()).toEqual([])
     })
 
+    it.each([
+      [
+        'no cardImages',
+        { gameSystemKey: 'mini', content: miniRelease() },
+        /no list of pinned card images/,
+      ],
+      [
+        'cardImages that is not a list',
+        { content: miniRelease(), cardImages: 'none' },
+        /no list of pinned card images/,
+      ],
+      ['a pin that is not an object', { content: miniRelease(), cardImages: [null] }, /slot/],
+      [
+        'a pin of an unknown slot',
+        { content: miniRelease(), cardImages: [{ slot: 'logo', sha256: FRONT }] },
+        /slot this page does not print/,
+      ],
+      [
+        'a pin without a hash',
+        { content: miniRelease(), cardImages: [{ slot: 'cardFront' }] },
+        /cardFront image with a malformed hash/,
+      ],
+      ['no content', { cardImages: [] }, /Release file: expected an object/],
+      [
+        'a content that is a list',
+        { content: [], cardImages: [] },
+        /Release file: expected an object/,
+      ],
+      [
+        'a content that is a string',
+        { content: 'x', cardImages: [] },
+        /Release file: expected an object/,
+      ],
+    ])('shows the alert, and no cards, for %s', async (_name, body, problem) => {
+      renderPage(() => Response.json(body))
+
+      expect(await alert()).toMatch(problem)
+      expect(cards()).toEqual([])
+    })
+
     it('says a version that is not a number, without asking the API', async () => {
       const { fakeApi } = renderPage(content(), { flow: 'mini' }, 'latest')
 

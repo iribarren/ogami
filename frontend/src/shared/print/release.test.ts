@@ -130,7 +130,7 @@ describe('readRelease', () => {
     [
       'a weight that is not whole',
       (raw) => Object.assign(raw.oracles.tables[0]?.entries[0] ?? {}, { weight: 1.5 }),
-      /tables\[0\]\.entries\[0\]\.weight/,
+      /tables\[0\]\.entries\[0\]\.weight: expected a whole number of at least 1\./,
     ],
     [
       'a weight of zero',

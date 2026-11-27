@@ -15,8 +15,24 @@ describe('parsePrintSearch', () => {
     })
     // The router parses the query string as JSON: a boolean, a number and a list arrive typed.
     expect(
-      parsePrintSearch({ flow: 7, paper: 'a5', bleed: true, decks: ['luck', 'deck'] }),
-    ).toEqual({ flow: '7', paper: 'a5', bleed: 'true', decks: ['luck', 'deck'] })
+      parsePrintSearch({ flow: 'mini', paper: 'a5', bleed: true, decks: ['luck', 'deck'] }),
+    ).toEqual({ flow: 'mini', paper: 'a5', bleed: 'true', decks: ['luck', 'deck'] })
+  })
+
+  it.each([
+    ['1e3', 1000],
+    ['1.0', 1],
+    ['007', 7],
+  ])('refuses the key %s, which the router reads as the number %s', (_typed, parsed) => {
+    const search = parsePrintSearch({ flow: parsed, decks: ['luck', parsed] })
+
+    // Kept as read, so that the router validating its own output changes nothing.
+    expect(parsePrintSearch(search as Record<string, unknown>)).toEqual(search)
+    const resolved = resolvePrintOptions(search, release)
+    expect(resolved.ok ? [] : resolved.problems).toEqual([
+      `The flow option in the address was read as ${String(parsed)}, not as text: write the key in double quotes (flow=%22key%22).`,
+      `The decks option in the address was read as ${String(parsed)}, not as text: write the key in double quotes (decks=%22key%22).`,
+    ])
   })
 
   it('reads one deck table given as a single value, and keeps a value of another shape as text', () => {

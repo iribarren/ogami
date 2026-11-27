@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { Package, RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 
@@ -114,6 +115,7 @@ export function ReleasesTab({
           {releases.data.map((release) => (
             <ReleaseRow
               key={release.version}
+              gameSystemKey={gameSystemKey}
               release={release}
               selected={release.version === selected}
               onSelect={() => {
@@ -139,10 +141,12 @@ export function ReleasesTab({
 }
 
 function ReleaseRow({
+  gameSystemKey,
   release,
   selected,
   onSelect,
 }: {
+  gameSystemKey: string
   release: ReleaseSummary
   selected: boolean
   onSelect: () => void
@@ -171,15 +175,26 @@ function ReleaseRow({
           </p>
         )}
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        aria-pressed={selected}
-        aria-label={`View version ${String(release.version)}`}
-        onClick={onSelect}
-      >
-        View
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          aria-pressed={selected}
+          aria-label={`View version ${String(release.version)}`}
+          onClick={onSelect}
+        >
+          View
+        </Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link
+            to="/studio/game-systems/$key/releases/$version/print"
+            params={{ key: gameSystemKey, version: String(release.version) }}
+            aria-label={`Print version ${String(release.version)}`}
+          >
+            Print
+          </Link>
+        </Button>
+      </div>
     </li>
   )
 }

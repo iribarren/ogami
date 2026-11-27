@@ -1,4 +1,5 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { miniRelease } from '@/shared/print/testRelease'
 import { renderAppAt, signedInAs } from '@/test/renderApp'
@@ -48,6 +49,47 @@ describe('the release print route', () => {
     renderAppAt(`${path}?flow=mini&paper=a3`, handlers)
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/Unknown paper "a3"/)
+  })
+
+  it('writes a chosen option into the address, replacing the entry instead of adding one', async () => {
+    const user = userEvent.setup()
+    const { router } = renderAppAt(path, handlers)
+
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Flow' }), 'mini')
+    await user.click(await screen.findByRole('radio', { name: 'A5' }))
+
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ flow: 'mini', paper: 'a5' })
+    })
+    expect(router.history.length).toBe(1)
+    await screen.findByText(/print on A5/)
+    expect(document.querySelector('[data-card]')).not.toBeNull()
+  })
+
+  it('keeps a chosen key that looks like a number as text through the address', async () => {
+    const user = userEvent.setup()
+    const raw = miniRelease()
+    Object.assign(raw.flows[0] ?? {}, { key: '1e3' })
+    const { router } = renderAppAt(path, {
+      ...handlers,
+      [CONTENT]: () =>
+        Response.json({
+          gameSystemKey: 'mini',
+          version: 3,
+          publishedAt: '2026-11-27T10:00:00+00:00',
+          content: raw,
+          cardImages: [],
+        }),
+    })
+
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Flow' }), '1e3')
+
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ flow: '1e3' })
+    })
+    expect(router.state.location.searchStr).toBe('?flow=%221e3%22')
+    expect(await screen.findByText(/print on A4/)).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('sends someone who is not a game manager away, without reading the release', async () => {

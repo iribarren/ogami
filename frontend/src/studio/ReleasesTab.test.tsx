@@ -47,6 +47,20 @@ describe('the releases tab', () => {
     expect(items[1]).toHaveTextContent('Rebalanced the oracles.')
   })
 
+  it('links each release to its print page, with no options', async () => {
+    await openReleases()
+
+    const region = await screen.findByRole('region', { name: 'Releases' })
+    expect(within(region).getByRole('link', { name: 'Print version 2' })).toHaveAttribute(
+      'href',
+      '/studio/game-systems/noir-detective/releases/2/print',
+    )
+    expect(within(region).getByRole('link', { name: 'Print version 3' })).toHaveAttribute(
+      'href',
+      '/studio/game-systems/noir-detective/releases/3/print',
+    )
+  })
+
   it('shows the library sources of a release by pack, and nothing when it has none', async () => {
     await openReleases()
 

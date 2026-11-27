@@ -19,6 +19,7 @@ import { buildTablesSheet, type OracleTableSheet } from '@/shared/print/tablesSh
 import { buildTrackerSheet, type TrackerSheetEntry } from '@/shared/print/trackerSheet'
 
 import { resolvePrintOptions, type PrintOptions, type PrintSearch } from './printOptions'
+import { PrintOptionsForm } from './PrintOptionsForm'
 import { useReleaseContent, type PinnedImages } from './useReleaseContent'
 
 /** A release version in the address: a positive whole number. */
@@ -67,20 +68,17 @@ function Sheets({
   built,
   options,
   images,
-  note,
 }: {
   built: Built
   options: PrintOptions
   images: PinnedImages
-  note: string
 }) {
   const { cards, flowSheet, diagram, tables, checks, trackers, log } = built
   const layout = pageLayout(options.paper, options.bleed)
   const text = { bleed: options.bleed, image: images.cardFront }
   const back = { bleed: options.bleed, image: images.cardBack }
   return (
-    <PrintCards>
-      <p className="print-note mb-4 text-sm text-muted-foreground">{note}</p>
+    <>
       <DuplexSheets
         layout={layout}
         items={cards.sceneCards}
@@ -104,7 +102,20 @@ function Sheets({
       <ChecksReferenceSheet reference={checks} paper={options.paper} />
       <TrackersSheet trackers={trackers} paper={options.paper} />
       <CampaignLogSheet log={log} paper={options.paper} />
-    </PrintCards>
+    </>
+  )
+}
+
+/** The Scene Types that continue on "(cont.)" cards, for the screen only. */
+function OverflowNote({ continued }: { continued: Cards['continued'] }) {
+  if (continued.length === 0) {
+    return null
+  }
+  return (
+    <p className="print-note mb-4 text-sm text-muted-foreground">
+      These Scene Types continue on &quot;(cont.)&quot; cards:{' '}
+      {continued.map((card) => `${card.name} (${String(card.cards)} cards)`).join(', ')}.
+    </p>
   )
 }
 
@@ -117,10 +128,13 @@ export function ReleasePrintPage({
   gameSystemKey,
   version,
   search,
+  onSearchChange,
 }: {
   gameSystemKey: string
   version: string
   search: PrintSearch
+  /** Replaces the options of the address: the form's way of choosing. */
+  onSearchChange: (search: PrintSearch) => void
 }) {
   const validVersion = VERSION.test(version)
   const content = useReleaseContent(gameSystemKey, validVersion ? Number(version) : 0, validVersion)
@@ -174,10 +188,34 @@ export function ReleasePrintPage({
   if (outcome === undefined) {
     return null
   }
+  const { release } = content.data
+  const form = (
+    <PrintOptionsForm
+      release={release}
+      search={search}
+      canPrint={outcome.ok}
+      onChange={onSearchChange}
+      onPrint={() => {
+        window.print()
+      }}
+    />
+  )
   if (!outcome.ok) {
-    return <Problems problems={outcome.problems} flows={outcome.flows} />
+    return (
+      <PrintCards>
+        <Problems problems={outcome.problems} flows={outcome.flows} />
+        {form}
+      </PrintCards>
+    )
   }
-  const { options } = outcome
-  const note = `${content.data.release.systemName}, release ${version}: print on ${options.paper.toUpperCase()}${options.bleed ? ' with bleed' : ''} from the browser, with margins set to none and background graphics on.`
-  return <Sheets built={outcome.built} options={options} images={content.data.images} note={note} />
+  const { options, built } = outcome
+  const note = `${release.systemName}, release ${version}: print on ${options.paper.toUpperCase()}${options.bleed ? ' with bleed' : ''} from the browser, with margins set to none and background graphics on.`
+  return (
+    <PrintCards>
+      {form}
+      <p className="print-note mb-4 text-sm text-muted-foreground">{note}</p>
+      <OverflowNote continued={built.cards.continued} />
+      <Sheets built={built} options={options} images={content.data.images} />
+    </PrintCards>
+  )
 }

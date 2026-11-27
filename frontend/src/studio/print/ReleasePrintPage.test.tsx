@@ -1,4 +1,5 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { miniRelease, sceneType, step } from '@/shared/print/testRelease'
 import type { FakeHandler } from '@/test/fakeApi'
@@ -32,10 +33,17 @@ const content =
     })
 
 function renderPage(handler: FakeHandler, search: PrintSearch = { flow: 'mini' }, version = '3') {
-  return renderWithApi(
-    <ReleasePrintPage gameSystemKey="mini" version={version} search={search} />,
+  const onSearchChange = vi.fn<(search: PrintSearch) => void>()
+  const { fakeApi } = renderWithApi(
+    <ReleasePrintPage
+      gameSystemKey="mini"
+      version={version}
+      search={search}
+      onSearchChange={onSearchChange}
+    />,
     { [CONTENT]: handler },
   )
+  return { fakeApi, onSearchChange }
 }
 
 const cards = () => [...document.querySelectorAll<HTMLElement>('[data-card]')]
@@ -318,7 +326,7 @@ describe('the release print page', () => {
       renderPage(content(), {})
 
       expect(await alert()).toMatch(/Choose a flow/)
-      expect(screen.getByText(/Mini/)).toBeInTheDocument()
+      expect(screen.getByText('The flows of this release:')).toBeInTheDocument()
       expect(cards()).toEqual([])
     })
 
@@ -385,5 +393,145 @@ describe('the release print page', () => {
         expect(cards()).toEqual([])
       })
     })
+  })
+})
+
+describe('the print options form', () => {
+  const form = async () =>
+    within(await screen.findByRole('form', { name: 'Print options' }))
+
+  it('lists the flows, the papers and the extra decks of the chosen flow, and says which decks always print', async () => {
+    renderPage(content(), { flow: 'mini' })
+
+    const options = await form()
+    expect(options.getByRole('combobox', { name: 'Flow' })).toHaveValue('mini')
+    expect(options.getByRole('option', { name: 'Choose a flow' })).toHaveValue('')
+    expect(options.getByRole('radio', { name: 'A4' })).toBeChecked()
+    expect(options.getByRole('radio', { name: 'A5' })).not.toBeChecked()
+    expect(options.getByRole('checkbox', { name: 'Bleed and crop marks' })).not.toBeChecked()
+    // The likelihood oracle is not a table, and "The deck" is already the flow's own.
+    expect(options.getByRole('checkbox', { name: 'Luck' })).not.toBeChecked()
+    expect(options.queryByRole('checkbox', { name: 'The deck' })).toBeNull()
+    expect(options.getByText('Always printed: The deck')).toBeInTheDocument()
+    expect(options.getAllByRole('checkbox')).toHaveLength(2)
+  })
+
+  it('shows the form and no sheets, with nothing chosen, an unknown flow or an unknown deck', async () => {
+    renderPage(content(), {})
+    expect(await form()).toBeDefined()
+    expect(screen.getByRole('alert')).toHaveTextContent('Choose a flow to print.')
+    expect(screen.getByRole('combobox', { name: 'Flow' })).toHaveValue('')
+    expect(screen.queryByRole('checkbox', { name: 'Luck' })).toBeNull()
+    expect(cards()).toEqual([])
+  })
+
+  it.each([
+    [{ flow: 'other' }, /no flow "other"/],
+    [{ flow: 'mini', decks: ['nope'] }, /no oracle table "nope"/],
+  ])('shows the problems above the form for %j', async (search, problem) => {
+    renderPage(content(), search)
+
+    expect(await form()).toBeDefined()
+    expect(screen.getByRole('alert')).toHaveTextContent(problem)
+    expect(cards()).toEqual([])
+  })
+
+  it('replaces the options of the address with the chosen flow, paper, bleed and deck', async () => {
+    const user = userEvent.setup()
+    const { onSearchChange } = renderPage(content(), { flow: 'mini' })
+    const options = await form()
+
+    await user.click(options.getByRole('radio', { name: 'A5' }))
+    expect(onSearchChange).toHaveBeenLastCalledWith({
+      flow: 'mini',
+      paper: 'a5',
+      bleed: undefined,
+      decks: undefined,
+    })
+    await user.click(options.getByRole('checkbox', { name: 'Bleed and crop marks' }))
+    expect(onSearchChange).toHaveBeenLastCalledWith({
+      flow: 'mini',
+      paper: undefined,
+      bleed: 'true',
+      decks: undefined,
+    })
+    await user.click(options.getByRole('checkbox', { name: 'Luck' }))
+    expect(onSearchChange).toHaveBeenLastCalledWith({
+      flow: 'mini',
+      paper: undefined,
+      bleed: undefined,
+      decks: ['luck'],
+    })
+  })
+
+  it('writes the flow chosen from the list, and keeps no deck the flow does not offer', async () => {
+    const user = userEvent.setup()
+    const raw = miniRelease()
+    raw.flows.push({ ...structuredClone(raw.flows[0] ?? raw.flows[0]), key: 'other', name: 'Other' } as never)
+    raw.flows[1]?.oracles.splice(0, 2)
+    const { onSearchChange } = renderPage(content(raw), { flow: 'mini', decks: ['luck'] })
+
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Flow' }), 'other')
+
+    expect(onSearchChange).toHaveBeenLastCalledWith({
+      flow: 'other',
+      paper: undefined,
+      bleed: undefined,
+      decks: undefined,
+    })
+  })
+
+  it('never writes a value the resolver would refuse: an unknown paper or bleed is replaced', async () => {
+    const user = userEvent.setup()
+    const { onSearchChange } = renderPage(content(), { flow: 'mini', paper: 'a3', bleed: 'maybe' })
+
+    await user.click(await screen.findByRole('radio', { name: 'A5' }))
+
+    expect(onSearchChange).toHaveBeenLastCalledWith({
+      flow: 'mini',
+      paper: 'a5',
+      bleed: undefined,
+      decks: undefined,
+    })
+  })
+
+  it('disables Print while the options do not resolve', async () => {
+    renderPage(content(), {})
+
+    expect(await screen.findByRole('button', { name: 'Print' })).toBeDisabled()
+  })
+
+  it('opens the browser print dialog from Print once the options resolve', async () => {
+    const user = userEvent.setup()
+    const print = vi.spyOn(window, 'print').mockImplementation(() => undefined)
+    renderPage(content(), { flow: 'mini' })
+
+    await user.click(await screen.findByRole('button', { name: 'Print' }))
+
+    expect(print).toHaveBeenCalledTimes(1)
+    print.mockRestore()
+  })
+
+  it('lists the Scene Types that continue on "(cont.)" cards, and says nothing when none does', async () => {
+    const lines = Array.from({ length: 12 }, (_, at) => ({
+      key: `s${String(at)}`,
+      kind: 'prompt',
+      title: `Step ${String(at)}`,
+      prompt: 'Say something long enough to take a couple of lines on a poker card back, please.',
+    }))
+    const raw = miniRelease()
+    raw.sceneTypes = [sceneType('scene', lines)]
+    renderPage(content(raw))
+
+    expect(await screen.findByText(/These Scene Types continue on "\(cont\.\)" cards/)).toHaveTextContent(
+      /: Scene scene \(2 cards\)\.$/,
+    )
+  })
+
+  it('has no overflow note when no card continues', async () => {
+    renderPage(content())
+
+    await screen.findByText(/release 3: print on A4/)
+    expect(screen.queryByText(/continue on/)).toBeNull()
   })
 })

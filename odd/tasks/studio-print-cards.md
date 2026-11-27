@@ -1,7 +1,7 @@
 # Feature: studio-print-cards
 
 - **Locator:** `odd/tasks/studio-print-cards.md` · Engram topic `odd/studio-print-cards/tasks`
-- **Issue:** [#427](https://github.com/iribarren/ogami/issues/427) · **Branch:** `feat/studio-print-cards-7-print-pass` · **Status:** in progress (slice 7)
+- **Issue:** [#427](https://github.com/iribarren/ogami/issues/427) · **Branch:** `feat/studio-print-cards-7-print-pass` · **Status:** done (PRs #428–#434)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B36 in [`docs/roadmap.md`](../../docs/roadmap.md); builds on B34 `flow-diagram` ([ADR 0051](../../docs/adr/0051-flow-diagram-layout-and-rendering.md)); B38 `play-tabletop` will reuse its card rendering and images
@@ -140,10 +140,10 @@ Shippable:
 | T6 | 4 | Poker card sheets: plain, framed front (safe area) and image back (D23), mirrored duplex, bleed + crop marks option (D11), paper size A4/A5 as named `@page` sizes; the print route under Studio, not linked yet | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `37e916f0`, `2014a32e`, `2ab2fb01`, `6239db84` |
 | T7 | 5 | Flow sheet (description, introduction, phases, selection, hooks) with the diagram, one per phase when too tall; oracle tables sheet | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `7b119d76`, `f062d865` |
 | T8 | 6 | Trackers and clocks sheet, checks reference (checks, likelihood oracles), campaign log (Fact slots, Tags) (D2) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `e9740a89`, `c88116f5` |
-| T9 | 7 | Print options (flow, paper, bleed, deck tables) and the overflow list; a Print button per release on the Releases tab | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T10 | 7 | Playwright print pass (overflow check on `[data-card]`, images pinned), Studio manual chapter on printing, glossary "Deck", roadmap `Done:` line | delegated writer (Sonnet): slice of 2+ non-trivial files (writer part: Playwright pass and glossary; the manual chapter and roadmap line are the parent's) | [x] | |
-| T11 | 7 | Print pass fixes: no trailing page, white page background in print, phase diagrams no larger than the whole diagram's scale | delegated writer (Sonnet): 2+ non-trivial files | [x] | |
-| T12 | 7 | Slice 7 review suggestions: an oracle table a flow lists twice is offered and written once; the manual says what happens to a wrong value in the address | inline (parent): two small files and a test | [x] | |
+| T9 | 7 | Print options (flow, paper, bleed, deck tables) and the overflow list; a Print button per release on the Releases tab | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `9247194d`, `9c79225a` |
+| T10 | 7 | Playwright print pass (overflow check on `[data-card]`, images pinned), Studio manual chapter on printing, glossary "Deck", roadmap `Done:` line | delegated writer (Sonnet): slice of 2+ non-trivial files (writer part: Playwright pass and glossary; the manual chapter and roadmap line are the parent's) | [x] | `77ccc5de`, `6bd22973` |
+| T11 | 7 | Print pass fixes: no trailing page, white page background in print, phase diagrams no larger than the whole diagram's scale | delegated writer (Sonnet): 2+ non-trivial files | [x] | `384a6a9f` |
+| T12 | 7 | Slice 7 review suggestions: an oracle table a flow lists twice is offered and written once; the manual says what happens to a wrong value in the address | inline (parent): two small files and a test | [x] | `090a240e` |
 
 ## Acceptance criteria
 
@@ -191,6 +191,7 @@ Shippable:
 - 2026-11-27: Print pass (headless Chromium `page.pdf`, the Chrome extension was not connected): cards, frame and back images, mirrored backs, bleed crop marks and the log's ruled lines look right on A4 and A5; three defects fixed in T11.
 - 2026-11-27: T11 done (slice 7, commit 5). Trailing Letter page: the development tools (`tsqd-parent-container`, router devtools) mount as siblings after the app shell, outside any named page, so Chromium adds a page in its default size; hidden in print with `body:has(.print-cards) [data-app-shell] ~ *` (the shell got a `data-app-shell` attribute). Page background: `html`, `body` and the shell are white in print while a print view is on the page. `diagramPages` caps a phase page at the whole diagram's scale (RED: a small phase was scaled to the page width). Tests: `diagramPages.test.ts`, `printCards.test.ts`, and `studio-print.spec.ts` checks every PDF `MediaBox` is A4 (595x842 pt) or A5 (420x595 pt); `make e2e ARGS=studio-print` passes.
 - 2026-11-27: T12 done (slice 7 review suggestions, fixed on the branch before merge). `PrintOptionsForm` offers each extra deck once and reads the address's decks once, so a table the flow lists twice gives one checkbox and one `decks` entry (RED observed: two checkboxes, then GREEN); `printing-a-release.md` now says a wrong value is listed above the options, nothing prints, and the next change writes an address with only the values the page can print.
+- 2026-11-27: Feature done. Seven slices, PRs #428–#434; every review finding and print pass defect is fixed, none is left for a follow-up issue. The `Done:` line is in `docs/roadmap.md`.
 
 ## Reviews
 
@@ -202,7 +203,8 @@ Shippable:
 | 4 | C1 `review-37ede93fd2f4d02b` (slice 3 fixes and T6 shared faces and sheets, `37e916f0`–`2ab2fb01`); C2 `review-23e8a8e3ff5a62b4` (Studio print page, `6239db84`) | Both approved (size exception D24) | Three suggestions, fixed in slice 5: R3-noninteger-weight-message (`cards.ts:282`, a weight of 1.5 is refused as "below 1" and the test matches only the prefix), R3-001 (`printOptions.ts:23-25`, the router JSON-parses the query, so deck keys like `1e3` or `1.0` arrive as numbers `1000` or `1`), R3-002 (`ReleasePrintPage.test.tsx:157-160`, no test that a 200 with missing or malformed `cardImages` or `content` shows the alert) | [#431](https://github.com/iribarren/ogami/pull/431) |
 | 5 | `review-e1c04aca7147d95f` (slice 4 fixes and T7, `8b4e0557`–`f062d865`) | Approved | Two warnings, fixed in slice 6: R3-ranged-table-unchecked (`tablesSheet.ts:40-48`, a ranged table is not checked for gaps, overlaps, order or a minimum below 1), R3-manual-refusal-wording-changed (`manual/print/flowCards.ts:208`, the manual's refusals now say "release" and throw `UnwordableEffect`; the messages are not pinned) | [#432](https://github.com/iribarren/ogami/pull/432) |
 | 6 | `review-2042fdf33c4454db` (slice 5 fixes and T8, `45818323`–`c88116f5`) | Approved | Two findings, fixed in slice 7: R3-exceptional-percent-unbounded (`release.ts:389-392`, a likelihood oracle's exceptional percent is not range-checked to 0–100), R3-fractional-level-threshold (`trackerSheet.ts:54-64`, a counter level's fractional `upTo` is not refused) | [#433](https://github.com/iribarren/ogami/pull/433) |
+| 7 | `review-5d1eee3ffe729eb3` (slice 6 fixes, T9, T10, manual chapter and T11, `c8b36a60`–`384a6a9f`); T12 (`090a240e`) declined by the user | Approved | Two suggestions, fixed in T12 on the same branch: R3-extra-decks-not-deduplicated (`PrintOptionsForm.tsx:18`, a table the flow lists twice gave two checkboxes and could write a deck twice), R3-manual-says-never-replaced-silently (`printing-a-release.md:42`, the form drops address values it cannot print once a control changes). Print pass findings fixed in T11. Nothing left open | [#434](https://github.com/iribarren/ogami/pull/434) |
 
 ## Next step
 
-Slice 7 (slice 6 fixes, T9, T10): delegated writer on `feat/studio-print-cards-7-print-pass`, then the manual chapter (doc-writer, doc-editor) and the Chrome pass (page padding with `box-decoration-break`, diagram scale, page breaks, 8 pt back text, log page fill, clocks). Last slice: closing doc commit on the same PR.
+None. The user merges PR #434, which closes #427.

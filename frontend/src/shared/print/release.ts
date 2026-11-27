@@ -5,6 +5,8 @@
  * fail, never print a wrong card. What printing does not need is not read.
  */
 
+import { PHASE_HOOKS, type PhaseHook } from '@/shared/flowDiagram/flowDiagram'
+
 export interface ReleaseTracker {
   key: string
   name: string
@@ -78,12 +80,34 @@ export interface ReleaseTable {
   entries: TableEntry[]
 }
 
+/** How a phase picks the next Scene Type: from a list, or by rolling a table. */
+export type PhaseSelection =
+  { rule: 'sequence' | 'player'; sceneTypes: string[] } | { rule: 'oracle'; table: string }
+
+/** A hook of a phase with the steps it runs; hooks without steps are not read. */
+export interface PhaseHookSteps {
+  hook: PhaseHook
+  steps: ReleaseStep[]
+}
+
+export interface ReleasePhase {
+  key: string
+  name: string
+  mode: 'once' | 'loop'
+  description?: string
+  selection: PhaseSelection
+  /** The hooks that have steps, in `PHASE_HOOKS` order. */
+  hooks: PhaseHookSteps[]
+}
+
 export interface ReleaseFlow {
   key: string
   name: string
   description?: string
+  introduction?: string
   oracles: string[]
   trackers: string[]
+  phases: ReleasePhase[]
   /** The tables of the phases that pick the next Scene Type with an `oracle` selection, in order. */
   selectionTables: string[]
 }
@@ -296,24 +320,48 @@ function readTracker(o: Rec, at: string): ReleaseTracker {
   }
 }
 
+function readSelection(o: Rec, at: string): PhaseSelection {
+  const rule = str(o, 'rule', at)
+  if (rule === 'sequence' || rule === 'player') {
+    return { rule, sceneTypes: keys(o, 'sceneTypes', at) }
+  }
+  if (rule === 'oracle') {
+    return { rule, table: str(o, 'table', at) }
+  }
+  return fail(`${at}.rule`, `unknown selection rule "${rule}".`)
+}
+
+function readPhase(o: Rec, at: string): ReleasePhase {
+  const mode = str(o, 'mode', at)
+  if (mode !== 'once' && mode !== 'loop') {
+    return fail(`${at}.mode`, `unknown mode "${mode}": expected once or loop.`)
+  }
+  return {
+    key: str(o, 'key', at),
+    name: str(o, 'name', at),
+    mode,
+    description: optStr(o, 'description', at),
+    selection: readSelection(asRec(o.selection, `${at}.selection`), `${at}.selection`),
+    hooks: PHASE_HOOKS.flatMap((hook) => {
+      const steps = each(o, hook, at, readStep, true)
+      return steps.length > 0 ? [{ hook, steps }] : []
+    }),
+  }
+}
+
 function readFlow(o: Rec, at: string): ReleaseFlow {
-  const selectionTables = each(
-    o,
-    'phases',
-    at,
-    (phase, here) => {
-      const selection =
-        phase.selection === undefined ? undefined : asRec(phase.selection, `${here}.selection`)
-      return selection?.rule === 'oracle' ? str(selection, 'table', `${here}.selection`) : undefined
-    },
-    true,
-  ).filter((table): table is string => table !== undefined)
+  const phases = each(o, 'phases', at, readPhase, true)
+  const selectionTables = phases.flatMap(({ selection }) =>
+    selection.rule === 'oracle' ? [selection.table] : [],
+  )
   return {
     key: str(o, 'key', at),
     name: str(o, 'name', at),
     description: optStr(o, 'description', at),
+    introduction: optStr(o, 'introduction', at),
     oracles: keys(o, 'oracles', at),
     trackers: keys(o, 'trackers', at),
+    phases,
     selectionTables: [...new Set(selectionTables)],
   }
 }

@@ -138,7 +138,7 @@ describe('the decks', () => {
       { kind: 'entry', text: 'One', starts: 'Scene scene' },
       { kind: 'entry', text: 'One', starts: 'Scene scene' },
       { kind: 'entry', text: 'One', starts: 'Scene scene' },
-      { kind: 'entry', text: 'Two', starts: null },
+      { kind: 'entry', text: 'Two', starts: 'Scene scene' },
     ])
   })
 

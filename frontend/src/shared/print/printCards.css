@@ -149,6 +149,119 @@
   text-align: center;
 }
 
+/* The flow sheet and its diagram: pages of text, not a grid. A section is as wide as its paper and
+   as tall as its text; `box-decoration-break: clone` repeats the padding on each page it spans,
+   since the named pages have no margin. The diagram paints with the theme tokens, which the print
+   view does not load: black on white. */
+.print-cards .print-doc {
+  --background: #fff;
+  --foreground: #000;
+  --card: #fff;
+  --border: #000;
+  --muted: #eee;
+  --accent: #e6e6e6;
+  --muted-foreground: #444;
+  --primary: #000;
+  --info: #000;
+  --destructive: #000;
+
+  box-sizing: border-box;
+  margin: 0 auto 8mm;
+  padding: 14mm;
+  background: #fff;
+  color: #000;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 10pt;
+  line-height: 1.3;
+  box-shadow: 0 0 2mm rgb(0 0 0 / 30%);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  break-after: page;
+}
+
+.print-cards .print-doc.print-a4 {
+  width: 210mm;
+}
+
+.print-cards .print-doc.print-a5 {
+  width: 148mm;
+}
+
+.print-cards .print-doc h1 {
+  margin: 0 0 3mm;
+  font-size: 20pt;
+}
+
+.print-cards .print-doc h2 {
+  margin: 5mm 0 1.5mm;
+  font-size: 13pt;
+}
+
+.print-cards .print-doc h3 {
+  margin: 2mm 0 0.5mm;
+  font-size: 9pt;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.print-cards .print-doc p {
+  margin: 0 0 1.5mm;
+}
+
+.print-cards .print-doc .print-lead {
+  font-style: italic;
+}
+
+.print-cards .print-doc .print-introduction {
+  white-space: pre-line;
+}
+
+.print-cards .print-doc .print-mode {
+  font-size: 9pt;
+  font-weight: 400;
+}
+
+.print-cards .print-doc .print-phase,
+.print-cards .print-doc .print-hook {
+  break-inside: avoid;
+}
+
+.print-cards .print-doc ul {
+  margin: 0;
+  padding-left: 5mm;
+}
+
+.print-cards .print-doc li {
+  margin-bottom: 0.7mm;
+}
+
+.print-cards .print-diagram {
+  break-inside: avoid;
+}
+
+.print-cards .print-diagram .print-figure {
+  margin: 0 auto;
+}
+
+.print-cards .print-diagram figure {
+  margin: 0;
+}
+
+.print-cards .print-diagram svg {
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: auto;
+}
+
+.print-cards .print-diagram figure details {
+  display: none;
+}
+
+.print-cards .print-doc:last-child {
+  break-after: auto;
+}
+
 /* The page: only the cards print. The shell's header and the padding of its main area are
    dropped while a print view is on the page, so any other page prints as before. */
 @media print {
@@ -161,7 +274,8 @@
     padding: 0;
   }
 
-  .print-cards .print-sheet {
+  .print-cards .print-sheet,
+  .print-cards .print-doc {
     margin: 0;
     box-shadow: none;
   }

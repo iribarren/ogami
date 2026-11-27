@@ -13,6 +13,8 @@ export interface PinnedImages {
 
 export interface ReleaseContent {
   release: Release
+  /** The content as the API gave it, for what reads it whole (the flow diagram). */
+  content: unknown
   images: PinnedImages
 }
 
@@ -63,7 +65,7 @@ export function useReleaseContent(key: string, version: number, enabled = true) 
         }
         images[slot] = `/api/studio/game-systems/${encodeURIComponent(key)}/images/${pin.sha256}`
       }
-      return { release: readRelease(data.content), images }
+      return { release: readRelease(data.content), content: data.content, images }
     },
     // A missing release, a reader error or a refusal will not change by asking again.
     retry: false,

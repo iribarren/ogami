@@ -185,4 +185,96 @@ describe('readRelease', () => {
 
     expect(() => readRelease(raw)).toThrow(/setup\[0\]\.outcomes\[0\]\.effects\[0\]\.op/)
   })
+
+  describe('the phases of a flow', () => {
+    const withHooks = () => {
+      const raw = miniRelease()
+      const phase = raw.flows[0]?.phases[0] as Record<string, unknown>
+      // Given out of order and with one empty: they are read in PHASE_HOOKS order, empty ones left out.
+      phase.worldTurn = [step('turn', 'prompt', { prompt: 'The world turns.' })]
+      phase.sessionOpening = [step('open', 'prompt')]
+      phase.sceneClosing = []
+      phase.description = 'Draw and play.'
+      Object.assign(raw.flows[0] ?? {}, { introduction: 'You carry a saint.' })
+      return raw
+    }
+
+    it('reads the introduction, and each phase with its selection and its non-empty hooks', () => {
+      const flow = readRelease(withHooks()).flows[0]
+
+      expect(flow?.introduction).toBe('You carry a saint.')
+      expect(flow?.phases.map((phase) => [phase.key, phase.name, phase.mode])).toEqual([
+        ['road', 'Road', 'loop'],
+        ['end', 'End', 'once'],
+      ])
+      expect(flow?.phases[0]).toMatchObject({
+        description: 'Draw and play.',
+        selection: { rule: 'oracle', table: 'deck' },
+      })
+      expect(flow?.phases[0]?.hooks.map(({ hook, steps }) => [hook, steps[0]?.key])).toEqual([
+        ['sessionOpening', 'open'],
+        ['worldTurn', 'turn'],
+      ])
+      expect(flow?.phases[1]?.selection).toEqual({ rule: 'sequence', sceneTypes: ['scene'] })
+      expect(flow?.phases[1]?.hooks).toEqual([])
+    })
+
+    it('reads a player selection as a list of Scene Types', () => {
+      const raw = miniRelease()
+      Object.assign(raw.flows[0]?.phases[1] ?? {}, {
+        selection: { rule: 'player', sceneTypes: ['scene'] },
+      })
+
+      expect(readRelease(raw).flows[0]?.phases[1]?.selection).toEqual({
+        rule: 'player',
+        sceneTypes: ['scene'],
+      })
+    })
+
+    it.each([
+      [
+        'an unknown selection rule',
+        (raw: ReturnType<typeof withHooks>) =>
+          Object.assign(raw.flows[0]?.phases[1]?.selection ?? {}, { rule: 'dice' }),
+        /flows\[0\]\.phases\[1\]\.selection\.rule: unknown selection rule "dice"/,
+      ],
+      [
+        'an unknown mode',
+        (raw: ReturnType<typeof withHooks>) =>
+          Object.assign(raw.flows[0]?.phases[0] ?? {}, { mode: 'forever' }),
+        /flows\[0\]\.phases\[0\]\.mode: unknown mode "forever"/,
+      ],
+      [
+        'a phase without a selection',
+        (raw: ReturnType<typeof withHooks>) =>
+          Object.assign(raw.flows[0]?.phases[0] ?? {}, { selection: undefined }),
+        /phases\[0\]\.selection: expected an object/,
+      ],
+      [
+        'a sequence without Scene Types',
+        (raw: ReturnType<typeof withHooks>) =>
+          Object.assign(raw.flows[0]?.phases[1]?.selection ?? {}, { sceneTypes: undefined }),
+        /phases\[1\]\.selection\.sceneTypes: expected a list/,
+      ],
+      [
+        'a hook that is not a list',
+        (raw: ReturnType<typeof withHooks>) =>
+          Object.assign(raw.flows[0]?.phases[0] ?? {}, { worldTurn: 'x' }),
+        /phases\[0\]\.worldTurn: expected a list/,
+      ],
+      [
+        'a hook step without a title',
+        (raw: ReturnType<typeof withHooks>) =>
+          Object.assign(raw.flows[0]?.phases[0] ?? {}, {
+            sessionOpening: [{ key: 'a', kind: 'prompt' }],
+          }),
+        /phases\[0\]\.sessionOpening\[0\]\.title/,
+      ],
+    ])('throws on %s, naming where', (_name, break_, message) => {
+      const raw = withHooks()
+      break_(raw)
+
+      expect(() => readRelease(raw)).toThrow(message)
+    })
+  })
 })

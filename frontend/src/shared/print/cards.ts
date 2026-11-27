@@ -96,18 +96,26 @@ const fail = (message: string): never => {
   throw new Error(message)
 }
 
-/** `{step:key}` is the title of that step of the Scene Type, `{fact:slot}` the label of the Fact slot. */
-function resolvePlaceholders(
+const stepsOf = (sceneType: ReleaseSceneType): ReleaseStep[] => [
+  ...sceneType.setup,
+  ...sceneType.play,
+  ...sceneType.closing,
+]
+
+/**
+ * `{step:key}` is the title of that step among `steps` (the Scene Type's, or the hook's), and
+ * `{fact:slot}` the label of the Fact slot.
+ */
+export function resolvePlaceholders(
   text: string,
   release: Release,
-  sceneType: ReleaseSceneType,
+  steps: readonly ReleaseStep[],
   where: string,
 ): string {
-  const steps = [...sceneType.setup, ...sceneType.play, ...sceneType.closing]
   return text
     .replace(/\{step:([^}]*)\}/g, (_match, key: string) => {
       const step = steps.find((candidate) => candidate.key === key)
-      return step?.title ?? fail(`${where}: {step:${key}} is not a step of the Scene Type.`)
+      return step?.title ?? fail(`${where}: {step:${key}} is not a step of the same list.`)
     })
     .replace(/\{fact:([^}]*)\}/g, (_match, key: string) => {
       const slot = release.factSlots.find((candidate) => candidate.key === key)
@@ -146,7 +154,7 @@ function bandsText(release: Release, outcomes: StepOutcome[], where: string): st
 }
 
 /** The line a step prints when nothing overrides it: what its title and prompt say, and a check's bands. */
-function generatedLine(release: Release, step: ReleaseStep, where: string): string {
+export function generatedLine(release: Release, step: ReleaseStep, where: string): string {
   const title = sentence(step.title)
   switch (step.kind) {
     case 'check':
@@ -173,7 +181,8 @@ function stepLine(
     return null
   }
   const line =
-    override ?? resolvePlaceholders(generatedLine(release, step, id), release, sceneType, id)
+    override ??
+    resolvePlaceholders(generatedLine(release, step, id), release, stepsOf(sceneType), id)
   return (options.text ?? identity)(line, id)
 }
 
@@ -238,7 +247,7 @@ function sceneCards(
     const front = {
       purpose,
       tips: text(
-        resolvePlaceholders(tips, release, sceneType, `${sceneType.key} tips`),
+        resolvePlaceholders(tips, release, stepsOf(sceneType), `${sceneType.key} tips`),
         `${sceneType.key} tips`,
       ),
     }

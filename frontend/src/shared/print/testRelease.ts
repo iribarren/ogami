@@ -28,11 +28,44 @@ export function miniRelease(
     gameSystem: { name: 'Mini', credits: { license: 'CC BY-SA 4.0' } },
     trackers: [
       { key: 'doom', name: 'Doom', hint: 'Near.', kind: 'clock', segments: 6 },
-      { key: 'nerve', name: 'Nerve', hint: 'Held.', kind: 'counter', min: 0, max: 5 },
+      {
+        key: 'nerve',
+        name: 'Nerve',
+        hint: 'Held.',
+        kind: 'counter',
+        min: 0,
+        max: 5,
+        initial: 2,
+        levels: [{ upTo: 1, label: 'Shaken' }, { label: 'Steady' }],
+      },
     ],
-    factSlots: [{ key: 'sin', label: 'The Sin' }],
+    factSlots: [{ key: 'sin', label: 'The Sin', hint: 'What was done.' }],
+    tags: [{ key: 'ally', label: 'Ally', hint: 'Someone on your side.' }],
+    checks: [
+      {
+        key: 'risk',
+        label: 'Risk roll',
+        hint: 'Roll a d6: high is good.',
+        dice: '1d6',
+        bands: [
+          { key: 'wrong', label: 'Goes wrong', upTo: 2 },
+          { key: 'done', label: 'Done' },
+        ],
+      },
+    ],
     oracles: {
-      likelihood: [{ key: 'yes-no' }],
+      likelihood: [
+        {
+          key: 'yes-no',
+          name: 'Yes/no question',
+          sides: 100,
+          levels: [
+            { key: 'unlikely', label: 'Unlikely', target: 30 },
+            { key: 'likely', label: 'Likely', target: 70 },
+          ],
+          exceptionalPercent: 10,
+        },
+      ],
       tables: [
         {
           key: 'deck',

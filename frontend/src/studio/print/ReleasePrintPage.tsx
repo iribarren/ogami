@@ -5,10 +5,18 @@ import { flowDiagramFromReleaseContent } from '@/shared/flowDiagram'
 import { buildCards, CARD_CAPACITY, type Cards } from '@/shared/print/cards'
 import { diagramPages, type DiagramPage } from '@/shared/print/diagramPages'
 import { FlowDiagramPages, FlowSheetText, TablesSheet } from '@/shared/print/FlowSheet'
+import { buildCampaignLog, type CampaignLog } from '@/shared/print/campaignLog'
+import { buildChecksReference, type ChecksReference } from '@/shared/print/checksReference'
 import { buildFlowSheet, type FlowSheet } from '@/shared/print/flowSheet'
 import { pageLayout } from '@/shared/print/layout'
 import { DuplexSheets, PrintCards } from '@/shared/print/PokerSheets'
+import {
+  CampaignLogSheet,
+  ChecksReferenceSheet,
+  TrackersSheet,
+} from '@/shared/print/ReferenceSheets'
 import { buildTablesSheet, type OracleTableSheet } from '@/shared/print/tablesSheet'
+import { buildTrackerSheet, type TrackerSheetEntry } from '@/shared/print/trackerSheet'
 
 import { resolvePrintOptions, type PrintOptions, type PrintSearch } from './printOptions'
 import { useReleaseContent, type PinnedImages } from './useReleaseContent'
@@ -44,12 +52,15 @@ function Problems({
   )
 }
 
-/** Everything one flow prints: the cards, then the flow sheet, its diagram and its oracle tables. */
+/** Everything one flow prints, in page order: the cards, the flow sheet and its diagram, the tables, the references and the log. */
 interface Built {
   cards: Cards
   flowSheet: FlowSheet
   diagram: DiagramPage[]
   tables: OracleTableSheet[]
+  checks: ChecksReference
+  trackers: TrackerSheetEntry[]
+  log: CampaignLog
 }
 
 function Sheets({
@@ -63,7 +74,7 @@ function Sheets({
   images: PinnedImages
   note: string
 }) {
-  const { cards, flowSheet, diagram, tables } = built
+  const { cards, flowSheet, diagram, tables, checks, trackers, log } = built
   const layout = pageLayout(options.paper, options.bleed)
   const text = { bleed: options.bleed, image: images.cardFront }
   const back = { bleed: options.bleed, image: images.cardBack }
@@ -90,12 +101,15 @@ function Sheets({
       <FlowSheetText sheet={flowSheet} paper={options.paper} />
       <FlowDiagramPages pages={diagram} paper={options.paper} />
       <TablesSheet tables={tables} paper={options.paper} />
+      <ChecksReferenceSheet reference={checks} paper={options.paper} />
+      <TrackersSheet trackers={trackers} paper={options.paper} />
+      <CampaignLogSheet log={log} paper={options.paper} />
     </PrintCards>
   )
 }
 
 /**
- * The cards, flow sheet, diagram and oracle tables of one flow of a published release, ready for the browser's print dialog. Everything
+ * The cards, flow sheet, diagram, oracle tables, checks reference, trackers and campaign log of one flow of a published release, ready for the browser's print dialog. Everything
  * that can go wrong (an unknown release, content the reader refuses, a bad option, a flow a
  * builder cannot build) is a message on the page, never a blank sheet or a crash.
  */
@@ -131,7 +145,14 @@ export function ReleasePrintPage({
         options.paper,
       )
       const tables = buildTablesSheet(content.data.release, options.flow)
-      return { ok: true as const, options, built: { cards, flowSheet, diagram, tables } }
+      const checks = buildChecksReference(content.data.release, options.flow)
+      const trackers = buildTrackerSheet(content.data.release, options.flow)
+      const log = buildCampaignLog(content.data.release)
+      return {
+        ok: true as const,
+        options,
+        built: { cards, flowSheet, diagram, tables, checks, trackers, log },
+      }
     } catch (error) {
       return {
         ok: false as const,

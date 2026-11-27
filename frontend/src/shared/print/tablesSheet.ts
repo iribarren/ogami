@@ -24,6 +24,34 @@ const rangeText = (min: number, max: number) =>
   min === max ? String(min) : `${String(min)}-${String(max)}`
 
 /**
+ * A ranged table numbers a die with no holes: it starts at 1, lists its entries in ascending order
+ * and each entry starts right after the one before it ends. Anything else prints a table that
+ * cannot be rolled, so it throws.
+ */
+function checkRanges(entries: readonly TableEntry[]) {
+  let expected = 1
+  entries.forEach((entry, index) => {
+    const min = entry.min ?? 0
+    const max = entry.max ?? 0
+    if (index === 0 && min !== 1) {
+      throw new Error(`the first entry starts at ${String(min)}: the first number is 1.`)
+    }
+    const previous = entries[index - 1]
+    if (index > 0 && min !== expected) {
+      const pair = `entries ${rangeText(previous?.min ?? 0, previous?.max ?? 0)} and ${rangeText(min, max)}`
+      throw new Error(
+        min > expected
+          ? `${pair} leave a gap: the next number is ${String(expected)}.`
+          : min <= (previous?.min ?? 0)
+            ? `${pair} are not in ascending order.`
+            : `${pair} overlap: the next number is ${String(expected)}.`,
+      )
+    }
+    expected = max + 1
+  })
+}
+
+/**
  * The numbers of each entry, and the die. A table is either ranged (every entry has its `min` and
  * `max`: the die is the one that covers the highest number) or weighted (the numbers follow from
  * the weights, an unweighted entry counting 1); a mix has no numbering and is refused.
@@ -38,6 +66,7 @@ function numbering(table: ReleaseTable): {
   }
   const ranged = (entry: TableEntry) => entry.min !== undefined && entry.max !== undefined
   if (table.entries.every(ranged)) {
+    checkRanges(table.entries)
     const highest = Math.max(...table.entries.map((entry) => entry.max ?? 0))
     const { die, rollAgainAbove } = tableRanges([highest])
     return {

@@ -70,6 +70,71 @@ describe('buildTablesSheet', () => {
     expect(table).toMatchObject({ die: 6, rollAgainAbove: null })
   })
 
+  it.each([
+    [
+      'a gap',
+      [
+        [1, 2],
+        [4, 6],
+      ],
+      /entries 1-2 and 4-6 leave a gap/,
+    ],
+    [
+      'an overlap',
+      [
+        [1, 3],
+        [3, 6],
+      ],
+      /entries 1-3 and 3-6 overlap/,
+    ],
+    [
+      'entries out of order',
+      [
+        [1, 3],
+        [4, 9],
+        [2, 3],
+      ],
+      /entries 4-9 and 2-3 are not in ascending order/,
+    ],
+    [
+      'a first number below 1',
+      [
+        [0, 2],
+        [3, 6],
+      ],
+      /starts at 0: the first number is 1/,
+    ],
+  ])('refuses a ranged table with %s, naming the table', (_name, ranges, message) => {
+    const change = (raw: Raw) => {
+      ranges.forEach(([min, max], at) => {
+        luck(raw).entries[at] ??= { text: `Extra ${String(at)}` }
+        Object.assign(luck(raw).entries[at] ?? {}, { min, max })
+      })
+    }
+
+    expect(() => buildTablesSheet(release(change), 'mini')).toThrow(
+      new RegExp(`The table "luck" cannot be printed: .*${message.source}`),
+    )
+  })
+
+  it('does not read a ranged entry whose start is above its end, so it never reaches the sheet', () => {
+    expect(() =>
+      release((raw) => Object.assign(luck(raw).entries[0] ?? {}, { min: 5, max: 4 })),
+    ).toThrow(/"min" is above "max"/)
+  })
+
+  it('prints a valid ranged table that covers its numbers one after the other', () => {
+    const [table] = buildTablesSheet(
+      release((raw) => {
+        Object.assign(luck(raw).entries[0] ?? {}, { min: 1, max: 2 })
+        Object.assign(luck(raw).entries[1] ?? {}, { min: 3, max: 6 })
+      }),
+      'mini',
+    )
+
+    expect(table?.rows.map((row) => row.range)).toEqual(['1-2', '3-6'])
+  })
+
   it('words the effects of an entry, and leaves out the ones with no wording', () => {
     const [table] = buildTablesSheet(
       release((raw) => {

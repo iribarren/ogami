@@ -17,7 +17,7 @@ describe('readRelease', () => {
       ['doom', 'clock', 6],
       ['nerve', 'counter', 5],
     ])
-    expect(release.factSlots).toEqual([{ key: 'sin', label: 'The Sin' }])
+    expect(release.factSlots).toEqual([{ key: 'sin', label: 'The Sin', hint: 'What was done.' }])
     expect(release.likelihoods).toEqual(['yes-no'])
     expect(release.tables[0]?.entries[0]).toMatchObject({
       text: 'One',
@@ -97,6 +97,174 @@ describe('readRelease', () => {
         ],
       },
     ])
+  })
+
+  describe('what the checks reference, the trackers sheet and the campaign log print', () => {
+    it('reads the checks with their hint, dice and band labels in order', () => {
+      expect(readRelease(miniRelease()).checks).toEqual([
+        {
+          key: 'risk',
+          label: 'Risk roll',
+          hint: 'Roll a d6: high is good.',
+          dice: '1d6',
+          bands: [
+            { key: 'wrong', label: 'Goes wrong' },
+            { key: 'done', label: 'Done' },
+          ],
+        },
+      ])
+    })
+
+    it('reads a check without dice, and a release without checks, as having none', () => {
+      const raw = miniRelease()
+      Object.assign(raw.checks[0] ?? {}, { dice: undefined, pool: { count: 2, sides: 6 } })
+      const bare = miniRelease()
+      Object.assign(bare, { checks: undefined })
+
+      expect(readRelease(raw).checks[0]?.dice).toBeUndefined()
+      expect(readRelease(bare).checks).toEqual([])
+    })
+
+    it('reads the likelihood oracles in full, and keeps their keys as `likelihoods`', () => {
+      const release = readRelease(miniRelease())
+
+      expect(release.likelihoods).toEqual(['yes-no'])
+      expect(release.likelihoodOracles).toEqual([
+        {
+          key: 'yes-no',
+          name: 'Yes/no question',
+          sides: 100,
+          levels: [
+            { key: 'unlikely', label: 'Unlikely', target: 30 },
+            { key: 'likely', label: 'Likely', target: 70 },
+          ],
+          exceptionalPercent: 10,
+        },
+      ])
+    })
+
+    it('reads a likelihood oracle without an exceptional percent', () => {
+      const raw = miniRelease()
+      Object.assign(raw.oracles.likelihood[0] ?? {}, { exceptionalPercent: undefined })
+
+      expect(readRelease(raw).likelihoodOracles[0]?.exceptionalPercent).toBeUndefined()
+    })
+
+    it('reads the starting value of a tracker, and the hint of a Fact slot and a Tag', () => {
+      const release = readRelease(miniRelease())
+
+      expect(release.trackers.map((tracker) => [tracker.key, tracker.initial])).toEqual([
+        ['doom', undefined],
+        ['nerve', 2],
+      ])
+      expect(release.trackers[1]).toMatchObject({ size: 5, min: 0 })
+      expect(release.factSlots[0]?.hint).toBe('What was done.')
+      expect(release.tags).toEqual([{ key: 'ally', label: 'Ally', hint: 'Someone on your side.' }])
+    })
+
+    it('reads a Fact slot and a Tag without a hint', () => {
+      const raw = miniRelease()
+      Object.assign(raw.factSlots[0] ?? {}, { hint: undefined })
+      Object.assign(raw.tags[0] ?? {}, { hint: undefined })
+      const release = readRelease(raw)
+
+      expect(release.factSlots[0]?.hint).toBeUndefined()
+      expect(release.tags[0]?.hint).toBeUndefined()
+    })
+
+    it('reads a schema version 1 preset, which has no trackers, checks of its own or tags', () => {
+      const raw = JSON.parse(readFileSync(resolve(presets, 'free-journal.json'), 'utf8')) as object
+
+      expect(readRelease(raw)).toMatchObject({ trackers: [], tags: [], factSlots: [] })
+    })
+
+    it.each<[string, (raw: ReturnType<typeof miniRelease>) => void, RegExp]>([
+      [
+        'a check without a label',
+        (raw) => Object.assign(raw.checks[0] ?? {}, { label: '' }),
+        /checks\[0\]\.label/,
+      ],
+      [
+        'a check without a hint',
+        (raw) => Object.assign(raw.checks[0] ?? {}, { hint: undefined }),
+        /checks\[0\]\.hint/,
+      ],
+      [
+        'a check whose dice are not text',
+        (raw) => Object.assign(raw.checks[0] ?? {}, { dice: 6 }),
+        /checks\[0\]\.dice/,
+      ],
+      [
+        'a check without bands',
+        (raw) => Object.assign(raw.checks[0] ?? {}, { bands: undefined }),
+        /checks\[0\]\.bands: expected a list/,
+      ],
+      [
+        'a band without a label',
+        (raw) => Object.assign(raw.checks[0]?.bands[1] ?? {}, { label: undefined }),
+        /bands\[1\]\.label/,
+      ],
+      [
+        'checks that are not a list',
+        (raw) => Object.assign(raw, { checks: {} }),
+        /file\.checks: expected a list/,
+      ],
+      [
+        'a likelihood oracle without a name',
+        (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { name: undefined }),
+        /likelihood\[0\]\.name/,
+      ],
+      [
+        'a likelihood oracle without sides',
+        (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { sides: 'x' }),
+        /likelihood\[0\]\.sides: expected a number/,
+      ],
+      [
+        'a likelihood oracle with a fractional die',
+        (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { sides: 10.5 }),
+        /likelihood\[0\]\.sides: expected a whole number/,
+      ],
+      [
+        'a likelihood oracle without levels',
+        (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { levels: undefined }),
+        /likelihood\[0\]\.levels: expected a list/,
+      ],
+      [
+        'a level without a target',
+        (raw) => Object.assign(raw.oracles.likelihood[0]?.levels[1] ?? {}, { target: '70' }),
+        /levels\[1\]\.target/,
+      ],
+      [
+        'a level with a target above the die',
+        (raw) => Object.assign(raw.oracles.likelihood[0]?.levels[1] ?? {}, { target: 101 }),
+        /levels\[1\]\.target: expected a whole number from 0 to 100/,
+      ],
+      [
+        'an exceptional percent that is not a number',
+        (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { exceptionalPercent: 'x' }),
+        /exceptionalPercent: expected a number/,
+      ],
+      [
+        'a tracker start that is not a number',
+        (raw) => Object.assign(raw.trackers[1] ?? {}, { initial: 'x' }),
+        /trackers\[1\]\.initial: expected a number/,
+      ],
+      [
+        'a Fact slot hint that is empty',
+        (raw) => Object.assign(raw.factSlots[0] ?? {}, { hint: '' }),
+        /factSlots\[0\]\.hint/,
+      ],
+      [
+        'a Tag hint that is not text',
+        (raw) => Object.assign(raw.tags[0] ?? {}, { hint: 4 }),
+        /tags\[0\]\.hint/,
+      ],
+    ])('throws on %s, naming where', (_name, break_, message) => {
+      const raw = miniRelease()
+      break_(raw)
+
+      expect(() => readRelease(raw)).toThrow(message)
+    })
   })
 
   it('keeps a step kind it does not know, for the card to degrade', () => {

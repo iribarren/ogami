@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
+import { UnwordableEffect } from '@/shared/print/wording'
+
 import { buildFlowCards } from './flowCards'
 import type { PaperFlow } from './paperFlow'
 import { coldBerthPaper } from './cold-berth.paper'
@@ -27,7 +29,14 @@ function mini(steps: object[] = [step('ask', 'prompt', { prompt: 'Say something.
     trackers: [{ key: 'doom', name: 'Doom', hint: 'Near.', kind: 'clock', segments: 6 }],
     factSlots: [{ key: 'sin', label: 'The Sin' }],
     oracles: {
-      likelihood: [{ key: 'yes-no' }],
+      likelihood: [
+        {
+          key: 'yes-no',
+          name: 'Yes/no',
+          sides: 100,
+          levels: [{ key: 'even', label: 'Even odds', target: 50 }],
+        },
+      ],
       tables: [
         { key: 'deck', name: 'Deck', entries: [{ text: 'One', weight: 2, sceneType: 'scene' }] },
         { key: 'luck', name: 'Luck', entries: [{ text: 'Good' }, { text: 'Bad' }] },
@@ -340,6 +349,41 @@ describe('the effects printed beside a table row', () => {
   ])('throws on %s, naming the table', (_name, effect, message) => {
     expect(() => buildFlowCards(withEffects([effect]), paper())).toThrow(message)
     expect(() => buildFlowCards(withEffects([effect]), paper())).toThrow(/luck/)
+  })
+})
+
+describe('the refusals of the paper edition, as the shared wording words them', () => {
+  // Pinned in full (decision D29): the manual keeps these messages and the UnwordableEffect class.
+  it.each([
+    [
+      'an effect kind with no wording',
+      { kind: 'rollTable', table: 'deck' },
+      'luck: a rollTable effect has no paper wording.',
+    ],
+    [
+      'a tracker effect that is not an add',
+      { ...doomUp, op: 'set' },
+      'luck: a set effect on "doom" has no paper wording.',
+    ],
+    [
+      'a tracker the release lacks',
+      { ...doomUp, tracker: 'gone' },
+      'luck: a add effect on "gone" has no paper wording.',
+    ],
+  ])('refuses %s with an UnwordableEffect saying so', (_name, effect, message) => {
+    const attempt = () => buildFlowCards(withEffects([effect]), paper())
+
+    expect(attempt).toThrow(UnwordableEffect)
+    expect(attempt).toThrow(new RegExp(`^${message.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`))
+  })
+
+  it('refuses a next scene the release lacks, naming the table, the Scene Type and the release', () => {
+    const attempt = () =>
+      buildFlowCards(withEffects([{ kind: 'nextScene', sceneType: 'gone' }]), paper())
+
+    expect(attempt).toThrow(Error)
+    expect(attempt).not.toThrow(UnwordableEffect)
+    expect(attempt).toThrow(/^luck names the Scene Type "gone", which the release does not have\.$/)
   })
 })
 

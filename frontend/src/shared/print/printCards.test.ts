@@ -61,4 +61,13 @@ describe('printCards.css', () => {
     expect(css).toMatch(/\.print-doc tr\s*\{\s*break-inside: avoid;/)
     expect(css).toMatch(/\.print-diagram figure details\s*\{\s*display: none;/)
   })
+
+  it('keeps a check, a tracker and a log field whole, and fills the page of the campaign log', () => {
+    expect(css).toMatch(
+      /\.print-check,\s*\.print-cards \.print-doc \.print-tracker,\s*\.print-cards \.print-doc \.print-entry-field\s*\{\s*break-inside: avoid;/,
+    )
+    expect(css).toMatch(/\.print-doc\.print-log\.print-a4\s*\{\s*min-height: 296mm;/)
+    expect(css).toMatch(/\.print-doc\.print-log\.print-a5\s*\{\s*min-height: 209mm;/)
+    expect(css).toMatch(/\.print-ruled\s*\{\s*flex: 1;/)
+  })
 })

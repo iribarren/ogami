@@ -287,6 +287,100 @@
   white-space: nowrap;
 }
 
+/* The checks reference, the trackers and clocks, and the campaign log: black on white, drawn with
+   borders so no background graphics are needed. A check, a tracker and a field are kept whole. */
+.print-cards .print-doc .print-check,
+.print-cards .print-doc .print-tracker,
+.print-cards .print-doc .print-entry-field {
+  break-inside: avoid;
+}
+
+.print-cards .print-doc .print-bands {
+  font-style: italic;
+}
+
+.print-cards .print-doc tfoot td {
+  border-style: dashed;
+  font-style: italic;
+}
+
+.print-cards .print-doc .print-clock {
+  display: block;
+  width: 32mm;
+  height: 32mm;
+  margin: 1mm 0;
+}
+
+.print-cards .print-doc .print-boxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2mm;
+  margin: 1mm 0;
+  padding: 0;
+  list-style: none;
+}
+
+.print-cards .print-doc .print-boxes li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 9mm;
+  margin: 0;
+  font-size: 8pt;
+  text-align: center;
+}
+
+.print-cards .print-doc .print-box {
+  display: inline-block;
+  width: 7mm;
+  height: 7mm;
+  border: 0.3mm solid #000;
+}
+
+.print-cards .print-doc .print-box-wide {
+  width: 24mm;
+  vertical-align: middle;
+}
+
+.print-cards .print-doc .print-start .print-box {
+  border-width: 0.8mm;
+}
+
+.print-cards .print-doc .print-box-label {
+  font-weight: 700;
+}
+
+.print-cards .print-doc .print-hint {
+  font-size: 9pt;
+  font-style: italic;
+}
+
+.print-cards .print-doc .print-line {
+  height: 7mm;
+  border-bottom: 0.2mm solid #000;
+}
+
+/* The log fills what is left of its page with ruled lines: the section is one page tall at least
+   and its last block grows. */
+.print-cards .print-doc.print-log {
+  display: flex;
+  flex-direction: column;
+}
+
+.print-cards .print-doc.print-log.print-a4 {
+  min-height: 296mm;
+}
+
+.print-cards .print-doc.print-log.print-a5 {
+  min-height: 209mm;
+}
+
+.print-cards .print-doc .print-ruled {
+  flex: 1;
+  min-height: 30mm;
+  background: repeating-linear-gradient(to bottom, transparent 0 6.8mm, #000 6.8mm 7mm);
+}
+
 .print-cards .print-doc:last-child {
   break-after: auto;
 }

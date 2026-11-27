@@ -24,7 +24,10 @@ describe('buildChecksReference', () => {
           label: 'Second roll',
           hint: 'Count the sixes.',
           dice: undefined,
-          bands: [{ key: 'miss', label: 'Miss', upTo: 0 }, { key: 'hit', label: 'Hit' }],
+          bands: [
+            { key: 'miss', label: 'Miss', upTo: 0 },
+            { key: 'hit', label: 'Hit' },
+          ],
         } as never)
       }),
       'mini',
@@ -54,7 +57,8 @@ describe('buildChecksReference', () => {
           { label: 'Unlikely', answer: 'Yes on 30 or less' },
           { label: 'Likely', answer: 'Yes on 70 or less' },
         ],
-        exceptional: 'An exceptional answer on the most extreme 10% of the yes rolls and of the no rolls.',
+        exceptional:
+          'An exceptional answer on the most extreme 10% of the yes rolls and of the no rolls.',
       },
     ])
   })
@@ -77,8 +81,16 @@ describe('buildChecksReference', () => {
   it('takes only the likelihood oracles of the flow, in flow order', () => {
     const { oracles } = buildChecksReference(
       release((raw) => {
-        raw.oracles.likelihood.unshift({ ...(raw.oracles.likelihood[0] ?? {}), key: 'other', name: 'Other' } as never)
-        raw.oracles.likelihood.push({ ...(raw.oracles.likelihood[1] ?? {}), key: 'third', name: 'Third' } as never)
+        raw.oracles.likelihood.unshift({
+          ...(raw.oracles.likelihood[0] ?? {}),
+          key: 'other',
+          name: 'Other',
+        } as never)
+        raw.oracles.likelihood.push({
+          ...(raw.oracles.likelihood[1] ?? {}),
+          key: 'third',
+          name: 'Third',
+        } as never)
         raw.flows[0]?.oracles.splice(0, 2, 'third', 'yes-no')
       }),
       'mini',

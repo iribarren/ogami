@@ -179,22 +179,86 @@ describe('readRelease', () => {
     })
 
     it.each<[string, (raw: ReturnType<typeof miniRelease>) => void, RegExp]>([
-      ['a check without a label', (raw) => Object.assign(raw.checks[0] ?? {}, { label: '' }), /checks\[0\]\.label/],
-      ['a check without a hint', (raw) => Object.assign(raw.checks[0] ?? {}, { hint: undefined }), /checks\[0\]\.hint/],
-      ['a check whose dice are not text', (raw) => Object.assign(raw.checks[0] ?? {}, { dice: 6 }), /checks\[0\]\.dice/],
-      ['a check without bands', (raw) => Object.assign(raw.checks[0] ?? {}, { bands: undefined }), /checks\[0\]\.bands: expected a list/],
-      ['a band without a label', (raw) => Object.assign(raw.checks[0]?.bands[1] ?? {}, { label: undefined }), /bands\[1\]\.label/],
-      ['checks that are not a list', (raw) => Object.assign(raw, { checks: {} }), /file\.checks: expected a list/],
-      ['a likelihood oracle without a name', (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { name: undefined }), /likelihood\[0\]\.name/],
-      ['a likelihood oracle without sides', (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { sides: 'x' }), /likelihood\[0\]\.sides: expected a number/],
-      ['a likelihood oracle with a fractional die', (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { sides: 10.5 }), /likelihood\[0\]\.sides: expected a whole number/],
-      ['a likelihood oracle without levels', (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { levels: undefined }), /likelihood\[0\]\.levels: expected a list/],
-      ['a level without a target', (raw) => Object.assign(raw.oracles.likelihood[0]?.levels[1] ?? {}, { target: '70' }), /levels\[1\]\.target/],
-      ['a level with a target above the die', (raw) => Object.assign(raw.oracles.likelihood[0]?.levels[1] ?? {}, { target: 101 }), /levels\[1\]\.target: expected a whole number from 0 to 100/],
-      ['an exceptional percent that is not a number', (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { exceptionalPercent: 'x' }), /exceptionalPercent: expected a number/],
-      ['a tracker start that is not a number', (raw) => Object.assign(raw.trackers[1] ?? {}, { initial: 'x' }), /trackers\[1\]\.initial: expected a number/],
-      ['a Fact slot hint that is empty', (raw) => Object.assign(raw.factSlots[0] ?? {}, { hint: '' }), /factSlots\[0\]\.hint/],
-      ['a Tag hint that is not text', (raw) => Object.assign(raw.tags[0] ?? {}, { hint: 4 }), /tags\[0\]\.hint/],
+      [
+        'a check without a label',
+        (raw) => Object.assign(raw.checks[0] ?? {}, { label: '' }),
+        /checks\[0\]\.label/,
+      ],
+      [
+        'a check without a hint',
+        (raw) => Object.assign(raw.checks[0] ?? {}, { hint: undefined }),
+        /checks\[0\]\.hint/,
+      ],
+      [
+        'a check whose dice are not text',
+        (raw) => Object.assign(raw.checks[0] ?? {}, { dice: 6 }),
+        /checks\[0\]\.dice/,
+      ],
+      [
+        'a check without bands',
+        (raw) => Object.assign(raw.checks[0] ?? {}, { bands: undefined }),
+        /checks\[0\]\.bands: expected a list/,
+      ],
+      [
+        'a band without a label',
+        (raw) => Object.assign(raw.checks[0]?.bands[1] ?? {}, { label: undefined }),
+        /bands\[1\]\.label/,
+      ],
+      [
+        'checks that are not a list',
+        (raw) => Object.assign(raw, { checks: {} }),
+        /file\.checks: expected a list/,
+      ],
+      [
+        'a likelihood oracle without a name',
+        (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { name: undefined }),
+        /likelihood\[0\]\.name/,
+      ],
+      [
+        'a likelihood oracle without sides',
+        (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { sides: 'x' }),
+        /likelihood\[0\]\.sides: expected a number/,
+      ],
+      [
+        'a likelihood oracle with a fractional die',
+        (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { sides: 10.5 }),
+        /likelihood\[0\]\.sides: expected a whole number/,
+      ],
+      [
+        'a likelihood oracle without levels',
+        (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { levels: undefined }),
+        /likelihood\[0\]\.levels: expected a list/,
+      ],
+      [
+        'a level without a target',
+        (raw) => Object.assign(raw.oracles.likelihood[0]?.levels[1] ?? {}, { target: '70' }),
+        /levels\[1\]\.target/,
+      ],
+      [
+        'a level with a target above the die',
+        (raw) => Object.assign(raw.oracles.likelihood[0]?.levels[1] ?? {}, { target: 101 }),
+        /levels\[1\]\.target: expected a whole number from 0 to 100/,
+      ],
+      [
+        'an exceptional percent that is not a number',
+        (raw) => Object.assign(raw.oracles.likelihood[0] ?? {}, { exceptionalPercent: 'x' }),
+        /exceptionalPercent: expected a number/,
+      ],
+      [
+        'a tracker start that is not a number',
+        (raw) => Object.assign(raw.trackers[1] ?? {}, { initial: 'x' }),
+        /trackers\[1\]\.initial: expected a number/,
+      ],
+      [
+        'a Fact slot hint that is empty',
+        (raw) => Object.assign(raw.factSlots[0] ?? {}, { hint: '' }),
+        /factSlots\[0\]\.hint/,
+      ],
+      [
+        'a Tag hint that is not text',
+        (raw) => Object.assign(raw.tags[0] ?? {}, { hint: 4 }),
+        /tags\[0\]\.hint/,
+      ],
     ])('throws on %s, naming where', (_name, break_, message) => {
       const raw = miniRelease()
       break_(raw)

@@ -64,7 +64,7 @@ describe('the release print page', () => {
     expect(document.querySelectorAll('.print-sheet')).toHaveLength(4)
   })
 
-  it('prints the flow sheet, then the diagram, then the oracle tables, after the card sheets', async () => {
+  it('prints the flow sheet, the diagram, the oracle tables, the references and the log, after the card sheets', async () => {
     const raw = miniRelease()
     Object.assign(raw.flows[0]?.phases[0] ?? {}, {
       description: 'Draw and play.',
@@ -76,7 +76,18 @@ describe('the release print page', () => {
     const pages = [...document.querySelectorAll('.print-sheet, .print-doc')].map(
       (page) => page.getAttribute('data-sheet') ?? 'cards',
     )
-    expect(pages).toEqual(['cards', 'cards', 'cards', 'cards', 'flow', 'diagram', 'tables'])
+    expect(pages).toEqual([
+      'cards',
+      'cards',
+      'cards',
+      'cards',
+      'flow',
+      'diagram',
+      'tables',
+      'checks',
+      'trackers',
+      'log',
+    ])
     const flow = document.querySelector('[data-sheet="flow"]')
     expect(flow).toHaveClass('print-doc', 'print-a5')
     expect(flow?.textContent).toMatch(/Draw and play\./)
@@ -99,6 +110,34 @@ describe('the release print page', () => {
     await screen.findByText(/release 3/)
     expect(document.querySelector('[data-sheet="flow"]')).not.toBeNull()
     expect(document.querySelector('[data-sheet="tables"]')).toBeNull()
+  })
+
+  it('prints the checks reference, the trackers of the flow and the campaign log from the release', async () => {
+    renderPage(content())
+
+    await screen.findByText(/release 3/)
+    expect(document.querySelector('[data-check="risk"]')?.textContent).toMatch(/Risk roll \(1d6\)/)
+    expect(document.querySelector('[data-oracle="yes-no"]')?.textContent).toMatch(
+      /Yes on 30 or less/,
+    )
+    expect(document.querySelector('[data-tracker="doom"] svg')).not.toBeNull()
+    expect(document.querySelector('[data-tracker="nerve"]')).toBeNull()
+    expect(document.querySelector('[data-slot="sin"]')).not.toBeNull()
+    expect(document.querySelector('[data-tag="ally"]')).not.toBeNull()
+  })
+
+  it('prints no checks reference and no trackers sheet when there is nothing for them, and still the log', async () => {
+    const raw = miniRelease()
+    raw.checks.length = 0
+    raw.flows[0]?.oracles.splice(0, 1)
+    raw.flows[0]?.trackers.splice(0, 1)
+    Object.assign(raw, { factSlots: [], tags: [] })
+    renderPage(content(raw))
+
+    await screen.findByText(/release 3/)
+    expect(document.querySelector('[data-sheet="checks"]')).toBeNull()
+    expect(document.querySelector('[data-sheet="trackers"]')).toBeNull()
+    expect(document.querySelector('[data-sheet="log"] .print-ruled')).not.toBeNull()
   })
 
   it('reads only the content of the release, never the draft', async () => {
@@ -189,6 +228,23 @@ describe('the release print page', () => {
       renderPage(content(raw))
 
       expect(await alert()).toMatch(/sceneTypes\[0\]\.name/)
+    })
+
+    it('says a Tracker of the flow that the release lacks, and prints no sheet', async () => {
+      const raw = miniRelease()
+      raw.flows[0]?.trackers.push('gone')
+      renderPage(content(raw))
+
+      expect(await alert()).toMatch(/uses the Tracker "gone", which the release does not have/)
+      expect(document.querySelector('[data-sheet]')).toBeNull()
+    })
+
+    it('says a check or a likelihood oracle the reader refuses', async () => {
+      const raw = miniRelease()
+      Object.assign(raw.checks[0] ?? {}, { hint: undefined })
+      renderPage(content(raw))
+
+      expect(await alert()).toMatch(/checks\[0\]\.hint/)
     })
 
     it('says a request that failed, and an answer that is not content', async () => {

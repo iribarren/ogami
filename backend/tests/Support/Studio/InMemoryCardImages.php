@@ -50,6 +50,10 @@ final class InMemoryCardImages implements ImageStore, CardImagePins
         unset($this->blobs[$sha256]);
     }
 
+    public function lock(GameSystemId $gameSystem): void
+    {
+    }
+
     public function of(GameSystemId $gameSystem): array
     {
         $pins = [];

@@ -19,6 +19,7 @@ use App\Studio\Application\RemoveCardImageHandler;
 use App\Studio\Application\StoredImage;
 use App\Studio\Application\UploadCardImage;
 use App\Studio\Application\UploadCardImageHandler;
+use App\Studio\Application\UploadedCardImage;
 use App\Studio\Domain\GameSystem\GameSystem;
 use App\Studio\Domain\GameSystem\GameSystemId;
 use App\Studio\Domain\GameSystem\GameSystemNotFound;
@@ -66,6 +67,40 @@ final class CardImageHandlersTest extends TestCase
         self::assertSame(CardImageSlot::CardBack, $pins[0]->slot);
         self::assertSame(hash('sha256', 'one'), $pins[0]->image->sha256);
         self::assertSame('one', $this->read('ann', 'mine', hash('sha256', 'one'))->bytes);
+    }
+
+    #[Test]
+    public function anUploadLeavesTheStoredImageInItsReceiptWithoutReadingThePinsAgain(): void
+    {
+        $receipt = new UploadedCardImage();
+
+        $this->upload('ann', 'mine', CardImageSlot::CardBack, 'one', $receipt);
+        $this->remove('ann', 'mine', CardImageSlot::CardBack);
+
+        self::assertSame(hash('sha256', 'one'), $receipt->image()->sha256);
+        self::assertSame([], $this->list('ann', 'mine'), 'The receipt does not depend on the pins.');
+    }
+
+    #[Test]
+    public function aReceiptOfAnUnhandledUploadThrows(): void
+    {
+        $this->expectException(\LogicException::class);
+
+        new UploadedCardImage()->image();
+    }
+
+    #[Test]
+    public function aRefusedUploadLeavesNothingInTheReceipt(): void
+    {
+        $receipt = new UploadedCardImage();
+
+        try {
+            $this->upload('ann', 'mine', CardImageSlot::CardBack, 'refuse', $receipt);
+            self::fail('The upload should be refused.');
+        } catch (ImageRefused) {
+            $this->expectException(\LogicException::class);
+            $receipt->image();
+        }
     }
 
     #[Test]
@@ -190,7 +225,7 @@ final class CardImageHandlersTest extends TestCase
         self::assertSame([hash('sha256', 'shared')], $this->store->hashes());
     }
 
-    private function upload(string $owner, string $key, CardImageSlot $slot, string $upload): void
+    private function upload(string $owner, string $key, CardImageSlot $slot, string $upload, ?UploadedCardImage $receipt = null): void
     {
         $normalizer = new class implements ImageNormalizer {
             public function normalize(string $upload): StoredImage
@@ -203,7 +238,7 @@ final class CardImageHandlersTest extends TestCase
             }
         };
 
-        new UploadCardImageHandler($this->owned, $normalizer, $this->images)(new UploadCardImage($owner, $key, $slot, $upload));
+        new UploadCardImageHandler($this->owned, $normalizer, $this->images)(new UploadCardImage($owner, $key, $slot, $upload, $receipt ?? new UploadedCardImage()));
     }
 
     private function remove(string $owner, string $key, CardImageSlot $slot): void

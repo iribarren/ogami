@@ -24,6 +24,7 @@ final readonly class CardImages
      */
     public function replace(GameSystemId $gameSystem, CardImageSlot $slot, StoredImage $image): void
     {
+        $this->pins->lock($gameSystem);
         $this->store->put($image);
         $previous = $this->pins->pin($gameSystem, $slot, $image->image->sha256);
         $this->releaseIfChanged($previous, $image->image->sha256);
@@ -31,6 +32,7 @@ final readonly class CardImages
 
     public function remove(GameSystemId $gameSystem, CardImageSlot $slot): void
     {
+        $this->pins->lock($gameSystem);
         $this->releaseIfChanged($this->pins->unpin($gameSystem, $slot), null);
     }
 

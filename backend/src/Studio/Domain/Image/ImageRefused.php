@@ -21,6 +21,7 @@ final class ImageRefused extends \DomainException
         $recommended = \sprintf('The recommended size is %d × %d px (69 × 94 mm at 300 dpi: a 63 × 88 mm card plus 3 mm bleed).', CardImage::RECOMMENDED_WIDTH, CardImage::RECOMMENDED_HEIGHT);
 
         return new self($reason, match ($reason) {
+            ImageRefusalReason::MissingFile => 'Send the image as a multipart/form-data file field named "image".',
             ImageRefusalReason::UnsupportedFormat => 'Only PNG and JPEG images are accepted.',
             ImageRefusalReason::Unreadable => 'The file is not a readable PNG or JPEG image.',
             ImageRefusalReason::TooLarge => \sprintf('The image is larger than %d MB.', CardImage::MAX_UPLOAD_BYTES / 1024 / 1024),

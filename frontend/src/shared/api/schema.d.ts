@@ -4753,7 +4753,7 @@ export interface components {
              * @description A stable code for the refusal.
              * @enum {string}
              */
-            reason: "unsupported_format" | "unreadable" | "too_large" | "too_few_pixels" | "too_many_pixels" | "wrong_aspect_ratio";
+            reason: "missing_file" | "unsupported_format" | "unreadable" | "too_large" | "too_few_pixels" | "too_many_pixels" | "wrong_aspect_ratio";
         };
         /** @description The pool rolls count (plus the situational modifier, 1 to 100) dice of `sides` sides; each die showing at least `successAt` is a success, and the total is the number of successes. */
         GameSystemCheckPool: {

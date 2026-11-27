@@ -17802,6 +17802,7 @@
                         "description": "A stable code for the refusal.",
                         "type": "string",
                         "enum": [
+                            "missing_file",
                             "unsupported_format",
                             "unreadable",
                             "too_large",

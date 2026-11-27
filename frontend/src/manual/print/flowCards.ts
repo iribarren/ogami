@@ -1,4 +1,9 @@
-import { buildCards, type DeckEntryCard, type SceneCard } from '@/shared/print/cards'
+import {
+  buildCards,
+  MAX_DECK_CARDS,
+  type DeckEntryCard,
+  type SceneCard,
+} from '@/shared/print/cards'
 import {
   type EntryEffect,
   type Release,
@@ -166,8 +171,13 @@ function deckCards(
     }
   }
   const printed = decks.find((candidate) => candidate.key === table.key)
-  if (printed === undefined || printed.perEntry) {
-    throw new Error(`The deck table "${table.key}" is too big to print one copy per weight.`)
+  if (printed === undefined) {
+    throw new Error(`The deck table "${table.key}" was not built as a deck.`)
+  }
+  if (printed.perEntry) {
+    throw new Error(
+      `The deck table "${table.key}" has more than ${String(MAX_DECK_CARDS)} copies at one per weight, so it would print one card per entry with its range. A paper deck is one card per copy: shrink the table's weights.`,
+    )
   }
   const cards: DeckCard[] = printed.cards.map(({ kind, text, starts }) => ({ kind, text, starts }))
   const finale = preset.sceneTypes.find((st) => st.key === deck.finale.sceneType)

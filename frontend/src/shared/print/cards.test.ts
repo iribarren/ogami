@@ -142,6 +142,19 @@ describe('the decks', () => {
     ])
   })
 
+  it.each([0, -1, 1.5])('refuses an entry with a weight of %s, as the reader does', (weight) => {
+    const release = readRelease(miniRelease())
+    const entry = release.tables[0]?.entries[0]
+    if (entry === undefined) {
+      throw new Error('The mini release has an entry.')
+    }
+    entry.weight = weight
+
+    expect(() => buildCards(release, { flow: 'mini' })).toThrow(
+      /deck: the entry "One" has a weight/,
+    )
+  })
+
   it('adds any other table the caller ticks, once', () => {
     const { decks } = build(miniRelease(), { deckTables: ['luck', 'deck'] })
 

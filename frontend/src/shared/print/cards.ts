@@ -268,11 +268,19 @@ function entryRanges(table: ReleaseTable): string[] {
   })
 }
 
-/** Copies of an entry: its range width on a ranged table, its weight (1 if none) on a weighted one. */
-const copiesOf = (entry: ReleaseTable['entries'][number]) =>
-  entry.min !== undefined && entry.max !== undefined
-    ? entry.max - entry.min + 1
-    : (entry.weight ?? 1)
+/**
+ * Copies of an entry: its range width on a ranged table, its weight (1 if none) on a weighted one.
+ * A weight below 1 would print no card for the entry: the reader refuses it, and so does this.
+ */
+function copiesOf(entry: ReleaseTable['entries'][number], where: string): number {
+  if (entry.min !== undefined && entry.max !== undefined) {
+    return entry.max - entry.min + 1
+  }
+  const weight = entry.weight ?? 1
+  return Number.isInteger(weight) && weight >= 1
+    ? weight
+    : fail(`${where}: the entry "${entry.text}" has a weight of ${String(weight)}, below 1.`)
+}
 
 function deck(release: Release, key: string, options: BuildOptions): Deck {
   const table = release.tables.find((candidate) => candidate.key === key)
@@ -289,7 +297,7 @@ function deck(release: Release, key: string, options: BuildOptions): Deck {
       fail(`${key} names the Scene Type "${entry.sceneType}", which the release does not have.`)
     )
   }
-  const copies = table.entries.reduce((sum, entry) => sum + copiesOf(entry), 0)
+  const copies = table.entries.reduce((sum, entry) => sum + copiesOf(entry, key), 0)
   const perEntry = copies > MAX_DECK_CARDS
   const ranges = entryRanges(table)
   const cards = table.entries.flatMap((entry, index): DeckEntryCard[] => {
@@ -300,7 +308,7 @@ function deck(release: Release, key: string, options: BuildOptions): Deck {
     }
     return perEntry
       ? [{ ...card, range: ranges[index] ?? '' }]
-      : Array.from({ length: copiesOf(entry) }, () => ({ ...card }))
+      : Array.from({ length: copiesOf(entry, key) }, () => ({ ...card }))
   })
   return { key, name: table.name, cards, perEntry }
 }

@@ -1,7 +1,7 @@
 # Feature: studio-flow-map
 
 - **Locator:** `odd/tasks/studio-flow-map.md` · Engram topic `odd/studio-flow-map/tasks`
-- **Issue:** [#421](https://github.com/iribarren/ogami/issues/421) · **Branch:** `feat/studio-flow-map-4-arrows` · **Status:** in progress
+- **Issue:** [#421](https://github.com/iribarren/ogami/issues/421) · **Branch:** `feat/studio-flow-map-5-scene-types` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B35 in [`docs/roadmap.md`](../../docs/roadmap.md); builds on B34 `flow-diagram` ([ADR 0051](../../docs/adr/0051-flow-diagram-layout-and-rendering.md))
@@ -61,6 +61,10 @@ Out of scope: new flow rules, phase jumps or branches between phases, saved node
 | D27 | An effect is added by `addEffect(phases, at, carrier, effect)` in `flowMapCarriers.ts`: all or nothing, refusing a hook with no step, a step kept as stored, an unknown part, a part that has the same effect (same kind and Scene Type) and a part with `MAX_EFFECTS` effects. T6 alone added it to the first step itself; T7 replaced that with the dialog | Writer |
 | D28 | Carriers are string ids (`step`, `band:N`, `option:N`, `oracle:<answer>`, `pick:<outcome>`, `branch:N`, `otherwise`, `check:N`) built by `partsOf(step)`, which pairs each with its effects and a writer; `carriersOf` and `CarrierPicker` read only a `StepDraft[]`, so slice 5 can reuse them for Scene Type steps. A step kept as stored has none and is listed disabled | Writer |
 | D29 | The dialog (`TransitionDialog`) is mounted per request, so its choices start afresh; a refusal on confirm (already there, full list) shows inside it and keeps it open; cancel says "No transition added." A hook with no step, or only steps kept as stored, refuses before the dialog opens (`hookSteps`). A confirmed edit carries `select` (`MapEdit`): the editor shows the panel of that step and says the edit in a status line there, since the Map's own live region leaves with the Map | Writer |
+| D30 | A Scene Type source (an arrow from its port, or "Add transition" in the action bar of a focused Scene Type node) opens the same `TransitionDialog` over that Scene Type's steps, read from the stored Scene Type (`sceneTypeToDraft`) and named by part and position (`Play · 2 "…"`); only parts and effects the Scene Type editor's own effect menu offers there. A Scene Type the editor cannot read, or with no step that carries effects, refuses before the dialog ("add a step on its page first"). The D23 target rules hold | Parent |
+| D31 | Confirm changes nothing in the flow draft: it goes to the Scene Type page with search `step=<part>.<index>`, `carrier=<carrier id>`, `effect=nextScene:<key>` / `switchSceneType:<key>` / `endPhase` (the flow page's unsaved-changes guard asks first; staying changes nothing) | Parent |
+| D32 | The Scene Type page validates those params (a malformed or unknown value is an explicit undefined). `step` alone scrolls to and marks that step. With a pending effect the form opens with it added as an unsaved edit (dirty, guarded, kept by Save), a status line says what was added where, and the URL is replaced without `carrier` / `effect` so a reload or Back never adds it twice. One that cannot apply (unknown step or part, already there, full list, unknown target) shows an alert with the reason and leaves the form as stored | Parent |
+| D33 | One all-or-nothing `addEffectToStep(step, carrier, effect)` with the D27 refusals serves hook steps (`addEffect` delegates to it) and Scene Type steps | Parent |
 
 ## Slice plan
 
@@ -83,9 +87,9 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 | T3 | 1 | `FlowDiagramView` interaction props (selected id, issues, `onActivate`, focusable nodes with labels), Map tab (`view=map`, D3), save errors on nodes (D5), keyboard open (D6 part) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `41678f85` |
 | T4 | 2 | Drag engine on the SVG; drag a phase to reorder; toggle a phase's self-arrow for `mode`; keyboard menu equivalents | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `7e8f270d` |
 | T5 | 3 | Scene Type palette; drag into or out of a `sequence` / `player` selection, drop position in a sequence; `oracle` refusal (D7, D8) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `e56f58ac` |
-| T6 | 4 | Arrow gesture between nodes with the refusals (D7) and a keyboard "Add transition" path | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T7 | 4 | Carrier picker (step, then the step itself or a band, option or outcome) and the hook-source effect in the flow draft, opening the hook step panel (D2) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T8 | 5 | Scene Type source: Scene Type page search params for the step and the pending effect, added as an unsaved edit (D2) | | [ ] | |
+| T6 | 4 | Arrow gesture between nodes with the refusals (D7) and a keyboard "Add transition" path | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `ae4c6bc2` |
+| T7 | 4 | Carrier picker (step, then the step itself or a band, option or outcome) and the hook-source effect in the flow draft, opening the hook step panel (D2) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `e98b437c` |
+| T8 | 5 | Scene Type source: Scene Type page search params for the step and the pending effect, added as an unsaved edit (D2, D30-D33) | | [ ] | |
 | T9 | 5 | Playwright pass on the Map, the Studio manual's flow editor chapter, roadmap `Done:` line | | [ ] | |
 
 ## Acceptance criteria
@@ -119,6 +123,8 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 - 2026-11-27 T6: ports and rubber band (`useDiagramDrag` `arrow` kind, `FlowDiagramView` `arrows`), `arrowTarget` (D23) in `flowMapArrows.ts`, `addEffect` in `flowMapCarriers.ts` (the first step of the hook, the step itself); T6 added the transition to the first step itself. Vitest: 6 arrow-rule tests, 5 `addEffect` tests, 3 port/engine tests, 6 Map arrow tests. No RED observed: code and tests were written together (jsdom has no layout, so the tests stub the CTM).
 - 2026-11-27 T7: `TransitionDialog` and the generic `CarrierPicker`, `partsOf`/`carriersOf`/`hookSteps` (bands, options, oracle and pick outcomes, table branches, check outcomes), "Add transition" in the action bar of a focused hook chip with a "To" select, `MapEdit.select` and a status line in the editor. Vitest: 4 carrier tests, 5 dialog and bar tests in `FlowEditorMap`. No RED observed: code and tests were written together.
 - 2026-11-27: Slice 4 would come out at ~1,815 changed lines (commits 1-2 ~1,005, T7 ~810), over the 1,700 stop line; the writer stopped with T7 staged and verified (`make verify` green), uncommitted, for the parent to decide: commit as is, or move the 'Add transition' action bar path to slice 5.
+- 2026-11-27: The user kept slice 4 as one slice (size exception, ~1,750 lines); T7 committed as is.
+- 2026-11-27 slice 4 review fixes (delegated writer, Sonnet): `confirmTransition` refuses inside the dialog while a save is on its way and when the phase at the captured index is no longer the one named (its map key is captured at open); the editor's "Added …" status line ends on the next draft edit or node pick (it is keyed to the draft and the node it was made for). RED observed: 3 new tests failed, then passed.
 
 ## Reviews
 
@@ -128,7 +134,8 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 | 1 (T3) | `review-b9ffe761da3cf9e6` | approved | R3-sequence-selection-issue-target (a selection message is lost when every Scene Type of a sequence dangles, repeated when one is listed twice, `flowMapNodes.ts:90`); R3-scene-owner-ambiguity (phase keys with colons make the Scene Type node id ambiguous, `flowMapNodes.ts:42`). Fixed in slice 2 | [#422](https://github.com/iribarren/ogami/pull/422) |
 | 2 (fixes, T4) | `review-543bc240f9732c99` | approved | R3-stale-click-swallow (a drag that ends without a click leaves the swallow flag set, so the next click on any node is ignored, `diagramDrag.ts:136-148`). Fixed in slice 3 | [#423](https://github.com/iribarren/ogami/pull/423) |
 | 3 (fix, T5) | `review-dca88735c757be3a` | approved | R3-add-picker-state-carries-across-phases (`MapActionBar.tsx:40`, the Add select keeps its value when the bar moves to another phase); R3-swallow-reset-listener-unmount (`diagramDrag.ts:144-150`, the capture listener survives unmount); R3-ctm-stub-not-restored (`FlowEditorMap.test.tsx:417-422`); R3-test-title-overclaims (`FlowEditorMap.test.tsx:521`). Fixed in slice 4 (`R3-*` all four) | [#424](https://github.com/iribarren/ogami/pull/424) |
+| 4 (fixes, T6–T7) | `review-86e4a7aef2f996c1` | approved | R3-001 (`FlowMap.tsx:181-194`, `confirmTransition` applies the effect at the phase index and hook captured when the dialog opened, without re-checking `locked` or that the phase is still the one named; untested); R3-002 (`FlowEditor.tsx:332`, the "Added …" status line stays visible across later panel edits; untested). Fixed in slice 5 | [#425](https://github.com/iribarren/ogami/pull/425) |
 
 ## Next step
 
-Slice 4 on `feat/studio-flow-map-4-arrows`: slice 3 review fixes, T6 (D22, D23), T7 (D24), native review, PR. Then slice 5 (T8, T9).
+Slice 5 on `feat/studio-flow-map-5-scene-types`: slice 4 review fixes (R3-001, R3-002), T8 (D30-D33), T9 (Playwright, manual), native review, PR, then the closing doc commit on the same PR.

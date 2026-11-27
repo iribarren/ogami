@@ -83,8 +83,13 @@ export function FlowMap({
   const [focused, setFocused] = useState<string | null>(null)
   // What the last edit did, or why it was refused: one live region for every gesture.
   const [said, setSaid] = useState('')
-  // The transition being placed: where it starts, and where it goes (null: the dialog asks).
-  const [placing, setPlacing] = useState<{ from: ArrowFrom; to: ArrowTo | null } | null>(null)
+  // The transition being placed: where it starts, where it goes (null: the dialog asks), and the key
+  // the phase had on the map when the dialog opened, so a confirm can tell it is still that phase.
+  const [placing, setPlacing] = useState<{
+    from: ArrowFrom
+    to: ArrowTo | null
+    phaseKey: string
+  } | null>(null)
   const phaseOf = (key: string) => map.phaseKeys.indexOf(key)
   // The GameSystem's Scene Types by name, for the palette, the action bar and what the Map says.
   const scenes = useMemo<PaletteScene[]>(
@@ -175,7 +180,7 @@ export function FlowMap({
       setSaid(steps.refused)
       return
     }
-    setPlacing({ from, to })
+    setPlacing({ from, to, phaseKey: map.phaseKeys[from.phase] ?? '' })
   }
   /** What the dialog confirmed: the effect on its step and part, then the panel of that step. Returns why it was refused. */
   function confirmTransition(step: number, carrier: string, effect: EditedEffect): string | null {
@@ -183,6 +188,12 @@ export function FlowMap({
       return null
     }
     const { phase, hook } = placing.from
+    if (locked) {
+      return 'A save is on its way: add the transition once it is done.'
+    }
+    if (map.phaseKeys[phase] !== placing.phaseKey) {
+      return 'The phase changed; draw the arrow again.'
+    }
     const result = addEffect(draft.phases, { phase, hook, step }, carrier, effect, nameOf)
     if (isRefusal(result)) {
       return result.refused

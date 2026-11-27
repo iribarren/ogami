@@ -791,6 +791,32 @@ describe('arrows on the Map', () => {
     )
   })
 
+  it('ends the note of an added transition on the next edit and on picking another node', async () => {
+    const { user } = await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: withOpening(),
+    })
+    const place = async () => {
+      arrow(await map(), 'hook:setup:phaseOpening', centreOf(await map(), 'scene:setup:ambush'))
+      await user.click(dialog().getByRole('button', { name: 'Add transition' }))
+    }
+
+    await place()
+    expect(screen.getByRole('status')).toHaveTextContent('Added next scene "Ambush"')
+    await user.type(screen.getByLabelText('Title'), ' again')
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'Map' }))
+    arrow(await map(), 'hook:setup:phaseOpening', phaseCorner(await map(), 'job'))
+    await user.click(dialog().getByRole('button', { name: 'Add transition' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Added end the phase')
+    await user.click(
+      within(screen.getByRole('navigation', { name: 'Flow outline' })).getByRole('button', {
+        name: /^2\. /,
+      }),
+    )
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
   it('ends a phase by an arrow to the next phase with no kind to pick, and refuses the same effect twice', async () => {
     const { user } = await openEditor('heist?view=map', {
       [`GET ${base}/narrative`]: withOpening(),

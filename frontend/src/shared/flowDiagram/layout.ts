@@ -44,6 +44,7 @@ const RANK_SEP = 64
 const EDGE_LABEL_HEIGHT = 14
 const LANE_GAP = 6
 const GUTTER_STEP = 4
+const GUTTER_LABEL_GAP = 6
 const LOOP_BASE = 14
 const LOOP_STEP = 8
 
@@ -104,7 +105,7 @@ export interface LayoutEdge {
   /** The path, first point at the source, last at the target (where the arrow head goes). */
   points: LayoutPoint[]
   /** The table a transition comes through, with where to write it. */
-  label?: { text: string; x: number; y: number }
+  label?: { text: string; x: number; y: number; anchor?: 'end' }
   /** Edges that come through a table are dashed. */
   dashed: boolean
 }
@@ -571,6 +572,8 @@ function placePhase(item: Measured, width: number, top: number): Placed {
     headerBottom + LANE_GAP * (hookEdges.indexOf(entry) + 1)
   const exitLane = (entry: Resolved): number =>
     innerBottom + LANE_GAP * (exitEdges.indexOf(entry) + 1)
+  // Hook edges from the same hook through the same table are one group, labelled once.
+  const labelled = new Set<string>()
   for (const entry of item.resolved) {
     if (entry.route === 'dagre') {
       continue
@@ -625,11 +628,28 @@ function placePhase(item: Measured, width: number, top: number): Placed {
     }
     const via = entry.transition.via
     const path = withoutRepeats(points)
+    let label: LayoutEdge['label']
+    if (via !== null && entry.transition.from.type === 'hook') {
+      // The first edge of the group is the leftmost gutter. The text ends left of it, on the lane
+      // under the header, so it stays inside the phase box.
+      const group = `${entry.transition.from.hook}|${via.key}`
+      if (!labelled.has(group)) {
+        labelled.add(group)
+        label = {
+          text: via.name,
+          x: gutterX(width, hookEdges.length, hookEdges.indexOf(entry)) - GUTTER_LABEL_GAP,
+          y: hookLane(entry),
+          anchor: 'end',
+        }
+      }
+    } else if (via !== null) {
+      label = { text: via.name, ...labelSpot(path) }
+    }
     edges.push({
       id: `transition:${String(entry.index)}`,
       kind: entry.transition.kind,
       points: path,
-      ...(via === null ? {} : { label: { text: via.name, ...labelSpot(path) } }),
+      ...(label === undefined ? {} : { label }),
       dashed: via !== null,
     })
   }

@@ -36,8 +36,11 @@ describe('FlowDiagramView', () => {
     expect(next).toHaveLength(4)
     for (const edge of next) {
       expect(edge.querySelector('polyline')?.getAttribute('stroke-dasharray')).toBe('5 4')
-      expect(edge.textContent).toBe('Ship trouble')
     }
+    // One label for the four edges of the same hook and table.
+    expect([...next].map((edge) => edge.textContent).filter((text) => text !== '')).toEqual([
+      'Ship trouble',
+    ])
     const end = container.querySelector('[data-kind="endPhase"] polyline')
     expect(end?.getAttribute('stroke-dasharray')).toBeNull()
   })

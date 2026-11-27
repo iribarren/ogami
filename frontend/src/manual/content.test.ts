@@ -1,5 +1,6 @@
 import { chapters } from './chapters'
 import { splitEditionBlocks } from './editionBlocks'
+import { manualFlowDiagram } from './flowDiagrams'
 import { pageSources } from './pages'
 
 describe('the manual content', () => {
@@ -167,4 +168,40 @@ describe('the manual content', () => {
       expect(sources[slug]).not.toMatch(/^## On paper$/m)
     },
   )
+
+  describe('flow diagrams', () => {
+    const placements = chapters.flatMap((chapter) =>
+      splitEditionBlocks(sources[chapter.slug] ?? '').flatMap((segment) =>
+        segment.kind === 'flow-diagram'
+          ? [
+              {
+                slug: chapter.slug,
+                edition: segment.edition,
+                flow: segment.flow,
+                phase: segment.phase,
+              },
+            ]
+          : [],
+      ),
+    )
+
+    it('resolves every directive of every chapter against the manual presets', () => {
+      for (const { flow, phase } of placements) {
+        expect(() => manualFlowDiagram(flow, phase)).not.toThrow()
+      }
+    })
+
+    it('places the seven diagrams of the flow chapters, all in the common text', () => {
+      expect(placements.map(({ slug, flow, phase }) => [slug, flow, phase])).toEqual([
+        ['the-arc', 'the-long-carry', undefined],
+        ['the-arc', 'cold-berth', undefined],
+        ['choosing-the-next-scene', 'the-long-carry', 'session-zero'],
+        ['choosing-the-next-scene', 'cold-berth', 'the-ship'],
+        ['choosing-the-next-scene', 'the-long-carry', 'the-road'],
+        ['flow-the-long-carry', 'the-long-carry', undefined],
+        ['flow-cold-berth', 'cold-berth', undefined],
+      ])
+      expect(placements.every(({ edition }) => edition === 'common')).toBe(true)
+    })
+  })
 })

@@ -70,6 +70,8 @@ To end a loop, put a `condition` step in the Phase's **Scene closing**, with a b
 | **The Shrine Gate** | once | The arrival                                                 |
 | **Epilogue**        | once | One of three endings                                        |
 
+::flow-diagram{flow="the-long-carry"}
+
 **Session Zero** has three scenes, played in order, and each one makes something **The Road** will use, first the bearers and what they carry, then the saint and where the shrine stands, and last the vow. When it ends, the notebook holds two or three bearers, a place and three sentences.
 
 **The Road** is the loop. Each round a scene from the road deck is played, and then Winter is read. Winter has ten boxes, and up to the fifth **The Road** goes on. From the sixth to the ninth a d6 is rolled, and a 5 or a 6 puts the gate in sight, which ends the Phase. At the tenth box the first snow ends it without a roll. The World turn adds one to Winter every round, so the clock sets a limit on how many rounds **The Road** can last.
@@ -93,6 +95,8 @@ Before that round, the World turn had rolled Road Risks, and the table gave _Smo
 | **The Ship**     | loop | A job and a compartment each round, then the world turns |
 | **Reveal**       | once | The Truths are opened                                    |
 | **Epilogue**     | once | Who gets out                                             |
+
+::flow-diagram{flow="cold-berth"}
 
 **Session Zero** has three scenes. The crew scene makes two or three crew cards, and the ship scene names the compartments (the Wake Bay, the Drive Spine, the Cold Hold, as many as you like) and the others on the manifest. These are the places and the people that **The Ship** Phase picks from later, which is why a Ship round never finds the ship empty. The third scene asks what you fear is aboard, who you think let it on and why you think you were woken. On paper you also write the real answers on a page and seal it, and Chapter 9 explains how.
 

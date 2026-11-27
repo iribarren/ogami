@@ -19,6 +19,8 @@ The ending is chosen by the two numbers that keep score. **Winter** is a clock o
 | **The Shrine Gate** | once   | `sequence` | The arrival                                                                 |
 | **Epilogue**        | once   | `sequence` | The ending, chosen by Winter and Burden                                     |
 
+::flow-diagram{flow="the-long-carry"}
+
 ### The Road
 
 Shuffle the road deck, and seed the Shrine Gate card into its bottom five cards. Then play each round in this order.

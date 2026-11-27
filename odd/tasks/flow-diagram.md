@@ -66,7 +66,7 @@ Shippable: slices 1 and 2 add code nothing imports outside its tests and story; 
 | T4 | 2 | `FlowDiagramView` SVG renderer (theme tokens, dashed `via` arrows, hook chips) with the text alternative, Storybook story, Vitest | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `52b9b189` |
 | T4b | 3 | Slice 2 review fixes R3-001–R3-004 | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T5 | 3 | `::flow-diagram{…}` directive, preset data in the manual chapter pages and the Paper edition, print styles | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T6 | 3 | Placements (D10) and a test that every directive in the chapters resolves; `make manual-pdf` checked by hand | | [ ] | |
+| T6 | 3 | Placements (D10) and a test that every directive in the chapters resolves; `make manual-pdf` checked by hand | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 
 ## Acceptance criteria
 
@@ -91,6 +91,7 @@ Shippable: slices 1 and 2 add code nothing imports outside its tests and story; 
 - 2026-11-27: T3 amended: `phaseDiagram` records `continuesTo`, so a cut of a non-last phase always ends in an exit stub naming the next phase, with or without an `endPhase` transition; "End of flow" only for the last phase.
 - 2026-11-27: T4b done: hook gutters step inward inside a width reserved per phase (R3-001, bounds test on Cold Berth, The Long Carry and Ironsworn, RED then GREEN); text-alternative keys carry the index (R3-002); `testSupport.test.ts` chdirs to `os.tmpdir()` (R3-003); nested `table: null` read as absent (R3-004, D14), RED then GREEN.
 - 2026-11-27: T5 done: `Segment` is a union and the splitter parses `::flow-diagram{flow="…" phase="…"}` (unknown or malformed `::` lines throw with their line); `manualFlowDiagram` resolves flows against the two manual presets; `ManualFlowDiagram` renders in the chapter page and the Paper edition (`PaperChapter.blocks`); `print.css` themes the diagram black on white and hides the text alternative; splitter tests RED (19 failing) then GREEN, the rest written with the code (no meaningful RED for glue).
+- 2026-11-27: T6 done: seven directives placed (D10), no new prose; phase keys `session-zero`, `the-ship`, `the-road` match their sequence, player and oracle rules; a content test resolves every directive and pins the seven placements; `make manual-pdf` ran and printed the Paper edition and both card sheets (visual check by the parent).
 
 ## Reviews
 

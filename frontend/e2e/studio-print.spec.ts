@@ -33,6 +33,18 @@ const overflowing = (page: Page) =>
       .map((card) => card.getAttribute('data-card')),
   )
 
+/** The page sizes (MediaBox, in points) of the PDF the browser prints with the page's own sizes. */
+const pdfPageSizes = async (page: Page) => {
+  const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true })
+  return [...pdf.toString('latin1').matchAll(/\/MediaBox\s*\[([^\]]+)\]/g)].map((match) =>
+    match[1]
+      .trim()
+      .split(/\s+/)
+      .slice(2)
+      .map((value) => Math.round(Number(value))),
+  )
+}
+
 /** The image URLs the cards print on, as the page asks for them. */
 const cardImages = (page: Page) =>
   page.evaluate(() => [
@@ -105,6 +117,10 @@ test('a game manager prints a published release with its pinned card images', as
   // The Scene Type cards print on the frame, the deck backs on the back image.
   expect((await cardImages(page)).sort()).toEqual([back, front].sort())
   expect(await imagesLoad(page, [front, back])).toEqual([815, 815])
+  // Every printed page is an A4 page: nothing after the last sheet adds a page of the default size.
+  expect(new Set((await pdfPageSizes(page)).map((size) => size.join('x')))).toEqual(
+    new Set(['595x842']),
+  )
 
   // A5 with bleed: the form is a screen control, so switch the media for the choice.
   await page.emulateMedia({ media: 'screen' })
@@ -114,6 +130,10 @@ test('a game manager prints a published release with its pinned card images', as
   await page.emulateMedia({ media: 'print' })
   expect(await overflowing(page)).toEqual([])
   expect((await cardImages(page)).sort()).toEqual([back, front].sort())
+  // The same on A5 with bleed.
+  expect(new Set((await pdfPageSizes(page)).map((size) => size.join('x')))).toEqual(
+    new Set(['420x595']),
+  )
 
   // Replacing the frame on the draft does not change what version 1 prints.
   await page.emulateMedia({ media: 'screen' })

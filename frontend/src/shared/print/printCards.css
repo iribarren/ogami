@@ -386,8 +386,21 @@
 }
 
 /* The page: only the cards print. The shell's header and the padding of its main area are
-   dropped while a print view is on the page, so any other page prints as before. */
+   dropped while a print view is on the page, so any other page prints as before. So are the
+   development tools mounted after the shell: they have no page of their own, so they would add
+   a trailing page in the browser's default size. The theme's page color and texture go too: they
+   would print under every sheet shorter than its page. */
 @media print {
+  html:has(.print-cards),
+  body:has(.print-cards),
+  body:has(.print-cards) [data-app-shell] {
+    background: #fff;
+  }
+
+  body:has(.print-cards) [data-app-shell] ~ * {
+    display: none;
+  }
+
   body:has(.print-cards) [data-app-chrome] {
     display: none;
   }

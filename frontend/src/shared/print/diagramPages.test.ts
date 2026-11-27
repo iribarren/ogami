@@ -61,6 +61,27 @@ describe('diagramPages', () => {
     },
   )
 
+  it.each(['a4', 'a5'] as const)(
+    'never draws a phase larger than the whole diagram would be on %s',
+    (paper) => {
+      // A tall diagram whose last phase is a small one: cut out, it is narrower than the whole.
+      const small = phase('small', { selection: { rule: 'sequence', sceneTypes: ['a'] } })
+      const tall = flowDiagramFromReleaseContent(
+        release({ sceneTypes: scenes, phases: [...phases(12), small] }),
+        'f',
+      )
+      const layout = layoutFlowDiagram(tall)
+      const wholeScale = printableArea(paper).width / (layout.width * MM)
+
+      const pages = diagramPages(tall, paper)
+      expect(pages).toHaveLength(13)
+      for (const page of pages) {
+        const cut = layoutFlowDiagram(page.diagram)
+        expect(page.width / (cut.width * MM)).toBeLessThanOrEqual(wholeScale + 1e-9)
+      }
+    },
+  )
+
   it('pages the diagram of every flow of every preset, each page within the printable area', () => {
     const dir = new URL('../../../../backend/presets/', `file://${import.meta.dirname}/`)
     const names = readdirSync(dir).filter((file) => file.endsWith('.json'))

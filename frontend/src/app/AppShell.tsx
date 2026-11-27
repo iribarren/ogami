@@ -31,7 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-svh flex-col bg-background text-foreground">
+    <div className="flex min-h-svh flex-col bg-background text-foreground" data-app-shell>
       <header className="border-b" data-app-chrome>
         <div
           className={`mx-auto flex min-h-(--header-height) ${containerWidth} flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2`}

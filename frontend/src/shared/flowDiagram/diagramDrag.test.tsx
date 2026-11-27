@@ -68,13 +68,15 @@ describe('clientToSvg', () => {
 function Harness({
   onDrop,
   onActivate,
+  arrows = true,
 }: {
   onDrop: (drop: DiagramDrop) => void
   onActivate: () => void
+  arrows?: boolean
 }) {
   const canDrag = (id: string) => id === box?.id
   const drag = useDiagramDrag({ layout: useMemo(() => layout, []), canDrag, onDrop })
-  return <FlowDiagramView diagram={ship} onActivate={onActivate} drag={drag} />
+  return <FlowDiagramView diagram={ship} onActivate={onActivate} drag={drag} arrows={arrows} />
 }
 
 const press = { pointerId: 1, isPrimary: true, button: 0 }
@@ -204,5 +206,88 @@ describe('useDiagramDrag', () => {
     fireEvent.pointerUp(node, { ...press, clientX: 400 })
 
     expect(onDrop).not.toHaveBeenCalled()
+  })
+})
+
+/** jsdom has no layout: the drawing's matrix is the identity. */
+function stubMatrix(container: HTMLElement) {
+  const svg = container.querySelector('svg')
+  if (svg === null) {
+    throw new Error('Expected the drawing.')
+  }
+  svg.getScreenCTM = () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }) as DOMMatrix
+}
+
+describe('arrows from ports', () => {
+  const other = layout.nodes.filter(({ kind }) => kind === 'sceneType')[1]
+  if (other === undefined) {
+    throw new Error('Expected a second Scene Type.')
+  }
+  const port = (container: HTMLElement) => {
+    const found = container.querySelector(`[data-port-id="${scene.id}"]`)
+    if (found === null) {
+      throw new Error('Expected a port.')
+    }
+    return found
+  }
+
+  it('draws a port on each Scene Type and hook chip only while the drawing has arrows, out of reach of assistive technology', () => {
+    const { container, unmount } = render(<Harness onDrop={vi.fn()} onActivate={vi.fn()} />)
+
+    expect(container.querySelectorAll('[data-port-id]').length).toBeGreaterThan(0)
+    expect(port(container)).toHaveAttribute('aria-hidden', 'true')
+    expect(port(container)).not.toHaveAttribute('tabindex')
+    expect(
+      [...container.querySelectorAll('[data-port-id]')].every((found) =>
+        /^(scene|table|hook):/.test(found.getAttribute('data-port-id') ?? ''),
+      ),
+    ).toBe(true)
+    unmount()
+
+    const plain = render(<Harness onDrop={vi.fn()} onActivate={vi.fn()} arrows={false} />)
+    expect(plain.container.querySelector('[data-port-id]')).toBeNull()
+  })
+
+  it('draws a rubber band to the pointer and drops an arrow on what is under it', () => {
+    const onDrop = vi.fn()
+    const { container } = render(<Harness onDrop={onDrop} onActivate={vi.fn()} />)
+    stubMatrix(container)
+
+    fireEvent.pointerDown(port(container), { ...press, ...centre(scene.rect) })
+    expect(container.querySelector('[data-arrow-line]')).toBeNull()
+    fireEvent.pointerMove(port(container), { ...press, ...centre(other.rect) })
+    const line = container.querySelector('[data-arrow-line]')
+    expect(line).not.toBeNull()
+    expect(Number(line?.getAttribute('x2'))).toBe(centre(other.rect).clientX)
+    expect(container.querySelector('[data-drag-ghost]')).toBeNull()
+    fireEvent.pointerUp(port(container), { ...press, ...centre(other.rect) })
+
+    expect(onDrop).toHaveBeenCalledTimes(1)
+    expect(onDrop.mock.calls[0]?.[0]).toMatchObject({
+      sourceId: scene.id,
+      kind: 'arrow',
+      hit: { id: other.id, kind: 'node' },
+    })
+    expect(container.querySelector('[data-arrow-line]')).toBeNull()
+  })
+
+  it('cancels on Escape, and a press on a port that goes nowhere opens nothing', () => {
+    const onDrop = vi.fn()
+    const onActivate = vi.fn()
+    const { container } = render(<Harness onDrop={onDrop} onActivate={onActivate} />)
+    stubMatrix(container)
+
+    fireEvent.pointerDown(port(container), { ...press, ...centre(scene.rect) })
+    fireEvent.pointerMove(port(container), { ...press, ...centre(other.rect) })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    fireEvent.pointerUp(port(container), { ...press, ...centre(other.rect) })
+    expect(onDrop).not.toHaveBeenCalled()
+    expect(container.querySelector('[data-arrow-line]')).toBeNull()
+
+    fireEvent.pointerDown(port(container), { ...press, ...centre(scene.rect) })
+    fireEvent.pointerUp(port(container), { ...press, ...centre(scene.rect) })
+    fireEvent.click(port(container))
+    expect(onDrop).not.toHaveBeenCalled()
+    expect(onActivate).not.toHaveBeenCalled()
   })
 })

@@ -59,9 +59,13 @@ export function clientToSvg(matrix: ScreenMatrix, x: number, y: number): LayoutP
   }
 }
 
+/** What a drag does: `move` carries its source to where it is let go; `arrow` draws a line from a port to a target. */
+export type DragKind = 'move' | 'arrow'
+
 /** Where a drag was let go. `hit` is null on bare canvas. */
 export interface DiagramDrop {
   sourceId: string
+  kind: DragKind
   hit: DiagramHit | null
   point: LayoutPoint
 }
@@ -69,6 +73,7 @@ export interface DiagramDrop {
 /** A drag in progress, for the drawing to show. */
 export interface DragState {
   sourceId: string
+  kind: DragKind
   /** What the ghost says when the source is not part of the drawing (a palette item). */
   label: string
   point: LayoutPoint
@@ -79,6 +84,7 @@ export interface DragState {
 
 interface Pending {
   sourceId: string
+  kind: DragKind
   label: string
   pointerId: number
   clientX: number
@@ -92,8 +98,11 @@ export interface DiagramDrag {
   svgRef: RefObject<SVGSVGElement | null>
   state: DragState | null
   canDrag: (id: string) => boolean
-  /** The pointer handlers that make an element the drag source `sourceId`. */
-  bind: (sourceId: string, label?: string) => DragHandlers
+  /**
+   * The pointer handlers that make an element the drag source `sourceId`. An `arrow` source is a port
+   * on a node: its events stay with it, so the node's own drag (a move) never starts from a port.
+   */
+  bind: (sourceId: string, label?: string, kind?: DragKind) => DragHandlers
   /** True once after a drag ended: the click the browser sends then is not an activation. */
   consumeClick: () => boolean
 }
@@ -185,15 +194,19 @@ export function useDiagramDrag({
     }
   }, [dragging, stop])
 
-  const bind = (sourceId: string, label = sourceId): DragHandlers => ({
+  const bind = (sourceId: string, label = sourceId, kind: DragKind = 'move'): DragHandlers => ({
     style: { touchAction: 'none' },
     onPointerDown: (event) => {
+      if (kind === 'arrow') {
+        event.stopPropagation()
+      }
       if (event.button !== 0 || !event.isPrimary) {
         return
       }
       clicked.current = false
       pending.current = {
         sourceId,
+        kind,
         label,
         pointerId: event.pointerId,
         clientX: event.clientX,
@@ -204,6 +217,9 @@ export function useDiagramDrag({
       }
     },
     onPointerMove: (event) => {
+      if (kind === 'arrow') {
+        event.stopPropagation()
+      }
       const current = pending.current
       if (current?.pointerId !== event.pointerId) {
         return
@@ -224,6 +240,7 @@ export function useDiagramDrag({
       if (point !== null) {
         setState({
           sourceId: current.sourceId,
+          kind: current.kind,
           label: current.label,
           grab: current.grab,
           point,
@@ -232,6 +249,9 @@ export function useDiagramDrag({
       }
     },
     onPointerUp: (event) => {
+      if (kind === 'arrow') {
+        event.stopPropagation()
+      }
       const current = pending.current
       if (current?.pointerId !== event.pointerId || !current.active) {
         pending.current = null
@@ -240,7 +260,12 @@ export function useDiagramDrag({
       const point = toSvg(event)
       stop()
       if (point !== null && layout !== null) {
-        onDrop({ sourceId: current.sourceId, hit: hitTestDiagram(layout, point), point })
+        onDrop({
+          sourceId: current.sourceId,
+          kind: current.kind,
+          hit: hitTestDiagram(layout, point),
+          point,
+        })
       }
     },
     onPointerCancel: () => {

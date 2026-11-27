@@ -13,6 +13,9 @@ import { useGameSystemOracles } from '../../oracles/useGameSystemOracles'
 import type { GameSystemNarrative } from '../useGameSystemNarrative'
 import type { FlowDraft } from './flowDraft'
 import type { FlowAnswer } from './flowError'
+import { newEffect } from '../steps/effectDraft'
+import { arrowTarget } from './flowMapArrows'
+import { addEffect, sceneEffect } from './flowMapCarriers'
 import { flowDiagramFromDraft, mergeIssues } from './flowMapDiagram'
 import {
   addSceneType,
@@ -115,7 +118,11 @@ export function FlowMap({
       !locked &&
       (sceneSource(id) !== null ||
         (id.startsWith('phase:') && phaseOf(id.slice('phase:'.length)) >= 0)),
-    onDrop: ({ sourceId, hit, point }: DiagramDrop) => {
+    onDrop: ({ sourceId, kind, hit, point }: DiagramDrop) => {
+      if (kind === 'arrow') {
+        drawArrow(sourceId, hit)
+        return
+      }
       const to = hit?.phase == null ? -1 : phaseOf(hit.phase)
       const source = sceneSource(sourceId)
       if (source !== null) {
@@ -138,6 +145,29 @@ export function FlowMap({
       )
     },
   })
+  /** An arrow dropped on `hit`: the transition it stands for, added to the first step of its hook, or why not. */
+  function drawArrow(sourceId: string, hit: DiagramDrop['hit']) {
+    if (locked) {
+      return
+    }
+    const arrow = arrowTarget({
+      sourceId,
+      hit,
+      phases: draft.phases,
+      phaseKeys: map.phaseKeys,
+      diagram: map.diagram,
+      names: nameOf,
+    })
+    if (isRefusal(arrow)) {
+      setSaid(arrow.refused)
+      return
+    }
+    const effect =
+      arrow.to.type === 'endPhase'
+        ? newEffect('endPhase')
+        : sceneEffect('nextScene', arrow.to.sceneType)
+    apply(addEffect(draft.phases, { ...arrow.from, step: 0 }, 'step', effect, nameOf))
+  }
   /** Moves the action bar to where an edit left a Scene Type: its new phase, or its old phase once it left every one. */
   function followScene({ sceneType, from }: SceneSource, to: number) {
     if (from === null) {
@@ -194,7 +224,8 @@ export function FlowMap({
         The flow as it is in this form, saved or not. Pick a phase, a selection or a hook to edit
         it; a Scene Type opens its own page. Drag a phase to reorder it, or press its mode to switch
         it. Drag a Scene Type from the palette into a phase to add it, between two to place it, or
-        out of every phase to remove it from the selection.
+        out of every phase to remove it from the selection. Drag from the dot on a hook to a Scene
+        Type or the next phase to add a transition.
       </p>
       <div className="flex flex-col gap-3 lg:flex-row">
         <ScenePalette sceneTypes={scenes} drag={drag} locked={locked} />
@@ -207,6 +238,7 @@ export function FlowMap({
             onFocusNode={setFocused}
             labels={labels}
             drag={drag}
+            arrows={!locked}
           />
         </div>
       </div>

@@ -1146,6 +1146,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/studio/game-systems/{key}/card-images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the card images of one of my GameSystem drafts */
+        get: operations["listCardImages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/card-images/{slot}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put an image in a slot, replacing the one there */
+        put: operations["uploadCardImage"];
+        post?: never;
+        /** Empty a card image slot */
+        delete: operations["removeCardImage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/studio/game-systems/{key}/images/{sha256}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the bytes of an image one of my GameSystem drafts uses */
+        get: operations["readCardImage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/studio/game-systems/{key}/checks": {
         parameters: {
             query?: never;
@@ -4676,6 +4728,32 @@ export interface components {
              * @enum {string}
              */
             database: "ok" | "down";
+        };
+        CardImageResponse: {
+            /**
+             * @description Where the image is used on a printed card.
+             * @enum {string}
+             */
+            slot: "cardBack" | "cardFront";
+            /** @description The hash of the stored bytes, 64 hexadecimal digits. */
+            sha256: string;
+            /** @enum {string} */
+            mediaType: "image/png" | "image/jpeg";
+            /** @description In pixels. */
+            width: number;
+            /** @description In pixels. */
+            height: number;
+            /** @description Where to read the image bytes. */
+            url: string;
+        };
+        CardImageRefusedResponse: {
+            /** @description A human-readable message stating the limit and the recommended size. */
+            error: string;
+            /**
+             * @description A stable code for the refusal.
+             * @enum {string}
+             */
+            reason: "unsupported_format" | "unreadable" | "too_large" | "too_few_pixels" | "too_many_pixels" | "wrong_aspect_ratio";
         };
         /** @description The pool rolls count (plus the situational modifier, 1 to 100) dice of `sides` sides; each die showing at least `successAt` is a success, and the total is the number of successes. */
         GameSystemCheckPool: {
@@ -11399,6 +11477,232 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    listCardImages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The images in use, by slot; none when the GameSystem has never had any. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardImageResponse"][];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    uploadCardImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slot: "cardBack" | "cardFront";
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description A PNG or JPEG of at most 5 MB, 408 × 555 to 1630 × 2220 px, in the proportions 69:94 (recommended 815 × 1110 px).
+                     */
+                    image: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The image now in the slot. The draft's version does not change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardImageResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or the slot is not cardBack or cardFront. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The request is larger than the server accepts (8 MB). */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description There is no "image" file, or the image is refused (the reason says why); nothing was stored. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardImageRefusedResponse"];
+                };
+            };
+        };
+    };
+    removeCardImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slot: "cardBack" | "cardFront";
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The slot is empty, whether or not it held an image. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or the slot is not cardBack or cardFront. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readCardImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+                sha256: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The image, with its stored content type. The URL holds the hash, so it is cached for good. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                    "image/jpeg": string;
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a game manager. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user has no GameSystem with this key, or it does not use an image with this hash. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

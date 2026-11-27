@@ -156,6 +156,25 @@ describe('useDiagramDrag', () => {
     expect(container.querySelector('[data-drag-ghost]')).toBeNull()
   })
 
+  it('swallows only the click of its own gesture: a drag that ends without one leaves the next click alone', () => {
+    const { source, onDrop, onActivate } = setup()
+    const [node] = screen.getAllByRole('button', { name: /^Scene Type: / })
+    if (node === undefined) {
+      throw new Error('Expected a Scene Type node.')
+    }
+
+    fireEvent.pointerDown(source, { ...press, ...centre(box.rect) })
+    fireEvent.pointerMove(source, { ...press, ...centre(scene.rect) })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onDrop).not.toHaveBeenCalled()
+
+    // A fresh press and click on a node that cannot be dragged: nothing is left to swallow.
+    fireEvent.pointerDown(node, { ...press, ...centre(scene.rect) })
+    fireEvent.pointerUp(node, { ...press, ...centre(scene.rect) })
+    fireEvent.click(node)
+    expect(onActivate).toHaveBeenCalledTimes(1)
+  })
+
   it('ignores a press with another button, and a press on a node that cannot be dragged', () => {
     const { source, onDrop } = setup()
 

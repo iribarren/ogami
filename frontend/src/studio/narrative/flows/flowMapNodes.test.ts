@@ -1,9 +1,15 @@
-import { sceneType, table } from '@/shared/flowDiagram/testSupport'
+import { sceneType, step, table } from '@/shared/flowDiagram/testSupport'
 
 import { flowToDraft, type FlowDraft } from './flowDraft'
 import { noAnswer, type FlowAnswer } from './flowError'
 import { flowDiagramFromDraft } from './flowMapDiagram'
-import { answerIssues, mapTarget, selectedMapId } from './flowMapNodes'
+import {
+  answerIssues,
+  insertionIndex,
+  mapTarget,
+  selectedMapId,
+  selectedScene,
+} from './flowMapNodes'
 
 const draftOf = (phases: Record<string, unknown>[]): FlowDraft => {
   const draft = flowToDraft({
@@ -198,5 +204,63 @@ describe('answerIssues', () => {
 
     expect(answerIssues(draft, keys, answer)).toEqual({})
     expect(answerIssues(draft, keys, noAnswer)).toEqual({})
+  })
+})
+
+describe('selectedScene', () => {
+  it('names the phase and selection of a Scene Type node the selection lists', () => {
+    expect(selectedScene('scene:one:b', draft, keys, diagram)).toEqual({
+      phase: 0,
+      sceneType: 'b',
+      selection: { rule: 'sequence', sceneTypes: ['a', 'b'], extra: {} },
+    })
+    expect(selectedScene('scene:two:a', draft, keys, diagram)?.selection.rule).toBe('player')
+  })
+
+  it('is null for an oracle phase, an id no phase owns and a Scene Type only a transition reaches', () => {
+    // Scene Type a's play step sends the flow to b, which phase `one` does not list.
+    const reached = draftOf([phase('one', { rule: 'sequence', sceneTypes: ['a'] })])
+    const reaching = flowDiagramFromDraft(
+      reached,
+      [
+        {
+          definition: sceneType('a', {
+            play: [step('s', { effects: [{ kind: 'nextScene', sceneType: 'b' }] })],
+          }),
+        },
+        { definition: sceneType('b') },
+      ],
+      [],
+    )
+
+    expect(selectedScene('scene:three:a', draft, keys, diagram)).toBeNull()
+    expect(selectedScene('scene:one:zzz', draft, keys, diagram)).toBeNull()
+    expect(selectedScene('scene:one:b', reached, ['one'], reaching.diagram)).toBeNull()
+  })
+})
+
+describe('insertionIndex', () => {
+  const layout = mapOf(draft).layout
+  const rectOf = (id: string) => layout?.nodes.find((node) => node.id === id)?.rect
+  const a = rectOf('scene:one:a')
+  const b = rectOf('scene:one:b')
+
+  it('is the first listed Scene Type whose centre lies past the point, else null for the end', () => {
+    if (layout === null || a === undefined || b === undefined) {
+      throw new Error('Expected a layout with both nodes.')
+    }
+    const at = (x: number) => insertionIndex(layout, 'one', ['a', 'b'], { x, y: a.y })
+
+    expect(at(a.x - 1)).toBe(0)
+    expect(at(a.x + a.width / 2 + 1)).toBe(1)
+    expect(at(b.x + b.width / 2 + 1)).toBeNull()
+  })
+
+  it('passes over a listed key the drawing has no node for', () => {
+    if (layout === null || b === undefined) {
+      throw new Error('Expected a layout.')
+    }
+
+    expect(insertionIndex(layout, 'one', ['ghost', 'b'], { x: b.x, y: b.y })).toBe(1)
   })
 })

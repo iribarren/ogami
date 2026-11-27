@@ -1,7 +1,7 @@
 # Feature: studio-flow-map
 
 - **Locator:** `odd/tasks/studio-flow-map.md` · Engram topic `odd/studio-flow-map/tasks`
-- **Issue:** [#421](https://github.com/iribarren/ogami/issues/421) · **Branch:** `feat/studio-flow-map-2-drag` · **Status:** in progress
+- **Issue:** [#421](https://github.com/iribarren/ogami/issues/421) · **Branch:** `feat/studio-flow-map-3-palette` · **Status:** in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B35 in [`docs/roadmap.md`](../../docs/roadmap.md); builds on B34 `flow-diagram` ([ADR 0051](../../docs/adr/0051-flow-diagram-layout-and-rendering.md))
@@ -49,17 +49,22 @@ Out of scope: new flow rules, phase jumps or branches between phases, saved node
 | D15 | The drag engine is `useDiagramDrag` in `shared/flowDiagram` (with the pure `hitTestDiagram` and `clientToSvg`): the pointer is captured on the first move past the threshold, not at the press, since a captured press would retarget the click of a chip; a click that follows a drag is swallowed. `FlowDiagramView` takes `drag`, `labels` (accessible names by id) and `onFocusNode`; the drag source may sit outside the drawing (the palette) | Writer |
 | D16 | A phase is dragged by its box (its title lets presses through; the chips never start a drag). The mode chip is a button whenever the drawing is interactive (kind `mode`), named by the host (`Mode of "Setup": once. Switch to loop`). Dropping a phase on itself, or outside every phase, changes nothing and says so | Writer |
 | D17 | `FlowMapDiagram` also carries `drawn` (ids the drawing has), `layout` and `flowIssues` (what no node can carry, shown as an alert above the Map); `mapTarget` resolves a `scene:` id against the drawing's phases, and is null when two phases could own it | Writer |
+| D18 | The Map refuses adding a Scene Type to a phase whose selection already lists it ("already in phase …"): its node id is one per phase, so a second copy could not be drawn or dragged apart. The outline still edits the lists in full. A phase with no selection gets a `sequence` of the dropped Scene Type, as the outline's new selection does | Parent |
+| D19 | Every phase draft has a selection (a new phase starts as an empty `sequence`, `withRule` never drops it), so "a phase with no selection" does not occur: a drop on an empty sequence just adds. The Map refuses an add into a full list (20 Scene Types, as the outline's Add select is disabled) | Writer |
+| D20 | The duplicate refusal of D18 holds for a `sequence` too, though the outline lets one repeat a Scene Type; a legacy list that repeats one has one node, so Remove takes every copy and a reposition moves the first. A drop position is the first listed Scene Type whose node centre lies right of the pointer (a phase's flow runs left to right), else the end; a `player` list appends and "stays where it is" | Writer |
+| D21 | The action bar follows a Scene Type edit: after Remove or a drop outside every phase it returns to the phase; after a move to another phase it acts on the node in its new phase. The palette is the pointer's path only (`ScenePalette`, no keyboard stop) | Writer |
 
 ## Slice plan
 
 | Slice | Tasks | Forecast (incl. generated) | Branch |
 |---|---|---|---|
-| 1/4 | T1, T2, T3 | ~1,400–1,650 lines: ADR + index ~120, draft adapter ~300 + Vitest ~300, interactive view props ~150 + Vitest ~150, Map tab ~200 + Vitest ~250, feature doc ~150 | `feat/studio-flow-map-1-map` |
-| 2/4 | T4, T5 | ~1,300–1,600 lines: drag engine and phase reorder + mode toggle ~400, palette and selection drag ~350, keyboard menu ~150, Vitest ~600 | `feat/studio-flow-map-2-drag` |
-| 3/4 | T6, T7 | ~1,300–1,600 lines: arrow gesture and refusals ~350, carrier picker dialog (step, band, option, outcome) ~350, hook-source effect in the flow draft ~150, Vitest ~600 | `feat/studio-flow-map-3-arrows` |
-| 4/4 | T8, T9 | ~800–1,100 lines: Scene Type page `step` / pending-effect search params and handoff ~300, Vitest ~350, Playwright ~150, manual chapter ~80, roadmap/doc ~60 | `feat/studio-flow-map-4-scene-types` |
+| 1/5 | T1, T2, T3 | ~1,400–1,650 lines: ADR + index ~120, draft adapter ~300 + Vitest ~300, interactive view props ~150 + Vitest ~150, Map tab ~200 + Vitest ~250, feature doc ~150 | `feat/studio-flow-map-1-map` |
+| 2/5 | slice 1 fixes, T4 | ~1,400 lines (came out): drag engine, phase reorder, mode chip, action bar, Vitest | `feat/studio-flow-map-2-drag` |
+| 3/5 | slice 2 fix, T5 | ~1,000–1,300 lines: drag-swallow fix ~40, palette and selection drag/drop/position ~400, action bar Add / Remove / Move ~150, Vitest ~550, feature doc ~50 | `feat/studio-flow-map-3-palette` |
+| 4/5 | T6, T7 | ~1,300–1,600 lines: arrow gesture and refusals ~350, carrier picker dialog (step, band, option, outcome) ~350, hook-source effect in the flow draft ~150, Vitest ~600 | `feat/studio-flow-map-4-arrows` |
+| 5/5 | T8, T9 | ~800–1,100 lines: Scene Type page `step` / pending-effect search params and handoff ~300, Vitest ~350, Playwright ~150, manual chapter ~80, roadmap/doc ~60 | `feat/studio-flow-map-5-scene-types` |
 
-No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful alone); slices 2–3 add gestures behind it; slice 4 completes Scene Type arrows (until then, an arrow from a Scene Type is refused with the reason "add it on the Scene Type page").
+No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful alone); slices 2–3 add gestures behind it; slice 5 completes Scene Type arrows (until then, an arrow from a Scene Type is refused with the reason "add it on the Scene Type page").
 
 ## Tasks
 
@@ -68,12 +73,12 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 | T1 | 1 | ADR 0052 (D1, D2, D4) and its row in `docs/adr/README.md` | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `e85c8675` |
 | T2 | 1 | `flowDiagramFromDraft` (D4) sharing the release adapter's building, issues per node, Vitest on draft fixtures and on the Cold Berth preset read as a draft | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `48c5b313`, `5ce11931` |
 | T3 | 1 | `FlowDiagramView` interaction props (selected id, issues, `onActivate`, focusable nodes with labels), Map tab (`view=map`, D3), save errors on nodes (D5), keyboard open (D6 part) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `41678f85` |
-| T4 | 2 | Drag engine on the SVG; drag a phase to reorder; toggle a phase's self-arrow for `mode`; keyboard menu equivalents | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T5 | 2 | Scene Type palette; drag into or out of a `sequence` / `player` selection, drop position in a sequence; `oracle` refusal (D7, D8) | | [ ] | |
-| T6 | 3 | Arrow gesture between nodes with the refusals (D7) and a keyboard "Add transition" path | | [ ] | |
-| T7 | 3 | Carrier picker (step, then the step itself or a band, option or outcome) and the hook-source effect in the flow draft, opening the hook step panel (D2) | | [ ] | |
-| T8 | 4 | Scene Type source: Scene Type page search params for the step and the pending effect, added as an unsaved edit (D2) | | [ ] | |
-| T9 | 4 | Playwright pass on the Map, the Studio manual's flow editor chapter, roadmap `Done:` line | | [ ] | |
+| T4 | 2 | Drag engine on the SVG; drag a phase to reorder; toggle a phase's self-arrow for `mode`; keyboard menu equivalents | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `7e8f270d` |
+| T5 | 3 | Scene Type palette; drag into or out of a `sequence` / `player` selection, drop position in a sequence; `oracle` refusal (D7, D8) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
+| T6 | 4 | Arrow gesture between nodes with the refusals (D7) and a keyboard "Add transition" path | | [ ] | |
+| T7 | 4 | Carrier picker (step, then the step itself or a band, option or outcome) and the hook-source effect in the flow draft, opening the hook step panel (D2) | | [ ] | |
+| T8 | 5 | Scene Type source: Scene Type page search params for the step and the pending effect, added as an unsaved edit (D2) | | [ ] | |
+| T9 | 5 | Playwright pass on the Map, the Studio manual's flow editor chapter, roadmap `Done:` line | | [ ] | |
 
 ## Acceptance criteria
 
@@ -86,7 +91,7 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 ## Checks
 
 - Vitest for the draft adapter, view interaction, Map tab and gestures; ESLint, Prettier, tsc via `make verify`.
-- Playwright on the Map in slice 4; a Chrome pass by hand at the end of slices 2–4.
+- Playwright on the Map in slice 5; a Chrome pass by hand at the end of slices 2–5.
 
 ## Progress
 
@@ -99,6 +104,9 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 
 - 2026-11-27 slice 1 review fixes (delegated writer, Sonnet): `flowDiagramFromDraft` now strips every hook when the second build is still refused, so the phases are drawn; issues with no node (catalog lists, flow name) go to `flowIssues`, shown as an alert above the Map, and `drawn` lists the ids the drawing has; `answerIssues` falls back to `phase:<key>` and dedupes Scene Type nodes; `mapTarget`/`sceneOf` resolve `scene:` ids against the drawing instead of key lengths. RED observed for the nodes and orphan tests (7 failures); the second-build test needs a stubbed `flowToItem` (the real one never refuses twice), so it is a mocked test in `flowMapDiagramRefused.test.ts`.
 - 2026-11-27 T4: `useDiagramDrag`/`hitTestDiagram` in `shared/flowDiagram`, `FlowDiagramView` `drag`/`labels`/`onFocusNode`, `flowMapEdits.ts` (`movePhase`, `toggleMode`, `followNode`), `MapActionBar`, live region in `FlowMap`, `editFromMap` in `FlowEditor` (answers and selection follow a moved phase). Vitest: 8 drag tests, 8 edit tests, 8 Map gesture tests; the existing flow editor tests are green unchanged and the view test only counts the new mode button. No RED observed: engine and tests were written together (jsdom has no layout, so the tests stub the CTM).
+- 2026-11-27: Slice 2 came out at ~1,400 lines with the slice 1 fixes and T4; T5 moved to slice 3 and the plan became five slices.
+- 2026-11-27 slice 2 review fix (R3-stale-click-swallow): a drag that ends without a click (Escape, cancel, release off the source) no longer leaves the swallow flag set; the flag is cleared by the next pointerdown anywhere (`diagramDrag.ts`). RED observed: the new Escape-then-click test failed, then passed.
+- 2026-11-27 T5: `ScenePalette`, Scene Type drag (palette to phase, selected node to another phase, out, reposition), `addSceneType`/`removeSceneType`/`placeSceneType`/`sceneDrop` in `flowMapEdits.ts`, `selectedScene`/`insertionIndex` in `flowMapNodes.ts`, "Add Scene Type" / Remove / Move in the action bar (D13, D18-D21). Vitest: 12 edit tests, 4 node tests, 11 Map gesture tests; the other flow editor tests are green unchanged. No RED observed: code and tests were written together (jsdom has no layout, so the tests stub the CTM and read node rects from the SVG).
 
 ## Reviews
 
@@ -106,7 +114,8 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 |---|---|---|---|---|
 | 1 (T1–T2) | `review-cc7b3e3c02a152b7` | approved | R3-second-build-blank (a draft that fails its second build draws no phases and records no issue, `flowMapDiagram.ts:77`); R3-catalog-issue-orphan (catalog and flow-level issues keyed to ids no node has). Fixed in slice 2 | [#422](https://github.com/iribarren/ogami/pull/422) |
 | 1 (T3) | `review-b9ffe761da3cf9e6` | approved | R3-sequence-selection-issue-target (a selection message is lost when every Scene Type of a sequence dangles, repeated when one is listed twice, `flowMapNodes.ts:90`); R3-scene-owner-ambiguity (phase keys with colons make the Scene Type node id ambiguous, `flowMapNodes.ts:42`). Fixed in slice 2 | [#422](https://github.com/iribarren/ogami/pull/422) |
+| 2 (fixes, T4) | `review-543bc240f9732c99` | approved | R3-stale-click-swallow (a drag that ends without a click leaves the swallow flag set, so the next click on any node is ignored, `diagramDrag.ts:136-148`). Fixed in slice 3 | [#423](https://github.com/iribarren/ogami/pull/423) |
 
 ## Next step
 
-Slice 2 on `feat/studio-flow-map-2-drag`: slice 1 review fixes, T4, T5 (D12–D14), native review, PR. If T5 would push the slice past ~1,700 lines it moves to slice 3 and the plan becomes five slices.
+Slice 3 on `feat/studio-flow-map-3-palette`: slice 2 review fix (R3-stale-click-swallow), T5 (D7, D8, D13, D14), native review, PR. Then slice 4 (T6, T7).

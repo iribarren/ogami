@@ -1,6 +1,12 @@
-import type { DiagramActivation, DiagramIssues, FlowDiagram } from '@/shared/flowDiagram'
+import type {
+  DiagramActivation,
+  DiagramIssues,
+  FlowDiagram,
+  FlowDiagramLayout,
+  LayoutPoint,
+} from '@/shared/flowDiagram'
 
-import { phaseHooks, type FlowDraft } from './flowDraft'
+import { phaseHooks, type FlowDraft, type SelectionDraft } from './flowDraft'
 import type { FlowAnswer } from './flowError'
 import type { FlowNode } from './flowNode'
 
@@ -69,6 +75,49 @@ export function sceneOf(
     return holds ? [{ phase, sceneType }] : []
   })
   return owners.length === 1 ? (owners[0] ?? null) : null
+}
+
+/** A Scene Type node that is in its phase's selection, so it can be moved there: its phase, the Scene Type and the selection that lists it. */
+export interface SelectedScene {
+  phase: number
+  sceneType: string
+  selection: Extract<SelectionDraft, { rule: 'sequence' | 'player' }>
+}
+
+/**
+ * The Scene Type node `id` as the draft's selection lists it. Null for a node that only a
+ * transition reaches, for an oracle phase (its table draws the Scene Types) and for an id no phase owns.
+ */
+export function selectedScene(
+  id: string,
+  draft: FlowDraft,
+  phaseKeys: readonly string[],
+  diagram: FlowDiagram,
+): SelectedScene | null {
+  const scene = sceneOf(id, phaseKeys, diagram)
+  const selection = scene === null ? undefined : draft.phases[scene.phase]?.selection
+  if (scene === null || selection === undefined || selection.rule === 'oracle') {
+    return null
+  }
+  return selection.sceneTypes.includes(scene.sceneType) ? { ...scene, selection } : null
+}
+
+/**
+ * Where a Scene Type dropped at `point` goes in a sequence: the index of the first listed Scene Type
+ * whose node lies past the point along the flow, which runs left to right inside a phase box (null:
+ * after every one, so at the end). A listed key the drawing has no node for is passed over.
+ */
+export function insertionIndex(
+  layout: FlowDiagramLayout,
+  phaseKey: string,
+  sceneTypes: readonly string[],
+  point: LayoutPoint,
+): number | null {
+  const at = sceneTypes.findIndex((sceneType) => {
+    const rect = layout.nodes.find(({ id }) => id === `scene:${phaseKey}:${sceneType}`)?.rect
+    return rect !== undefined && rect.x + rect.width / 2 > point.x
+  })
+  return at < 0 ? null : at
 }
 
 /** The id of the diagram node a selected editor node stands for; undefined when it has none (the flow settings, a sequence's selection). */

@@ -1,29 +1,23 @@
+import { buildCards, type DeckEntryCard, type SceneCard } from '@/shared/print/cards'
+import {
+  type EntryEffect,
+  type Release,
+  type ReleaseFlow,
+  type ReleaseTracker,
+  type StepOutcome,
+  readRelease,
+} from '@/shared/print/release'
+import { BAND_LABELS, outcomeToken } from '@/shared/print/wording'
+
 import { BOOK_TITLE } from './paperEdition'
 import type { PaperFlow } from './paperFlow'
-import {
-  type Preset,
-  type PresetEffect,
-  type PresetSceneType,
-  type PresetStep,
-  type PresetTracker,
-  readPreset,
-} from './preset'
 import { tableRanges } from './tableRanges'
 
-export interface BackSection {
-  heading: 'Setup' | 'Play' | 'Closing'
-  lines: string[]
-}
+export type { BackSection, SceneCard } from '@/shared/print/cards'
 
-export interface SceneCard {
-  name: string
-  purpose: string
-  tips: string
-  back: BackSection[]
-}
-
+/** The paper edition's own deck cards: its table's entries, the finale and blank compartments. */
 export type DeckCard =
-  | { kind: 'entry'; text: string; starts: string | null }
+  | Pick<DeckEntryCard, 'kind' | 'text' | 'starts'>
   | { kind: 'finale'; text: string; starts: string; note: string }
   | { kind: 'compartment' }
 
@@ -49,6 +43,9 @@ export interface FlowCards {
   tables: TableSheet[]
 }
 
+/** The step kinds a card can run from the step's own text; every other kind needs paper wording. */
+const PAPER_KINDS = new Set(['prompt', 'choice', 'table', 'pick'])
+
 /** Words that only make sense on a screen. A card that holds one was not given paper wording. */
 const APP_WORDING = [/\b(Ogami|Studio|app)\b/i, /leave it empty/i]
 const PLACEHOLDER = /\{[^}]*\}/
@@ -66,147 +63,6 @@ function guard(text: string, where: string): string {
   return text
 }
 
-/** The title of a step as a sentence, so the text after it reads on: "Laid down in time." */
-const sentence = (title: string) => (/[.?!:]$/.test(title) ? title : `${title}.`)
-const words = (...parts: (string | undefined)[]) => parts.filter((part) => part).join(' ')
-
-/** What a band of a check does: a Tracker change, or a sheet field gained or lost. */
-type OutcomeEffect =
-  | { kind: 'tracker'; tracker: string; op: string; value: number }
-  | { kind: 'sheet'; field: string; op: string; value: number | string }
-
-type Outcomes = { band: string; effects: OutcomeEffect[] }[]
-
-type Rec = Record<string, unknown>
-
-function asRec(value: unknown, at: string): Rec {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new Error(`Preset ${at}: expected an object.`)
-  }
-  return value as Rec
-}
-
-function asList(value: unknown, at: string): unknown[] {
-  if (!Array.isArray(value)) {
-    throw new Error(`Preset ${at}: expected a list.`)
-  }
-  return value as unknown[]
-}
-
-function asStr(value: unknown, at: string): string {
-  if (typeof value !== 'string' || value === '') {
-    throw new Error(`Preset ${at}: expected a non-empty string.`)
-  }
-  return value
-}
-
-function asNum(value: unknown, at: string): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new Error(`Preset ${at}: expected a number.`)
-  }
-  return value
-}
-
-function readOutcomeEffect(raw: unknown, at: string): OutcomeEffect {
-  const o = asRec(raw, at)
-  const kind = asStr(o.kind, `${at}.kind`)
-  if (kind === 'tracker') {
-    return {
-      kind,
-      tracker: asStr(o.tracker, `${at}.tracker`),
-      op: asStr(o.op, `${at}.op`),
-      value: asNum(o.value, `${at}.value`),
-    }
-  }
-  if (kind === 'sheet') {
-    const dice = typeof o.value === 'object' && o.value !== null
-    return {
-      kind,
-      field: asStr(o.field, `${at}.field`),
-      op: asStr(o.op, `${at}.op`),
-      value: dice
-        ? asStr(asRec(o.value, `${at}.value`).dice, `${at}.value.dice`)
-        : asNum(o.value, `${at}.value`),
-    }
-  }
-  throw new Error(`Preset ${at}: a "${kind}" effect in a check outcome has no paper wording.`)
-}
-
-/** The bands of every `check` step of the preset file, by `'sceneTypeKey.stepKey'`. */
-function readOutcomes(raw: unknown): Map<string, Outcomes> {
-  const found = new Map<string, Outcomes>()
-  asList(asRec(raw, 'file').sceneTypes, 'file.sceneTypes').forEach((rawType, t) => {
-    const type = asRec(rawType, `file.sceneTypes[${String(t)}]`)
-    for (const section of ['setup', 'play', 'closing']) {
-      asList(type[section], `file.sceneTypes[${String(t)}].${section}`).forEach((rawStep, s) => {
-        const at = `file.sceneTypes[${String(t)}].${section}[${String(s)}]`
-        const step = asRec(rawStep, at)
-        if (step.kind !== 'check') {
-          return
-        }
-        found.set(
-          `${asStr(type.key, at)}.${asStr(step.key, at)}`,
-          asList(step.outcomes ?? [], `${at}.outcomes`).map((rawOutcome, o) => {
-            const here = `${at}.outcomes[${String(o)}]`
-            const outcome = asRec(rawOutcome, here)
-            return {
-              band: asStr(outcome.band, `${here}.band`),
-              effects: asList(outcome.effects, `${here}.effects`).map((effect, e) =>
-                readOutcomeEffect(effect, `${here}.effects[${String(e)}]`),
-              ),
-            }
-          }),
-        )
-      })
-    }
-  })
-  return found
-}
-
-/** How a card names each band of a check; the wording of a check step must give each of its bands. */
-const BAND_LABELS = new Map([
-  ['failure', 'Failing:'],
-  ['badly', 'Going badly'],
-  ['done', 'Done:'],
-  ['short', 'Short:'],
-  ['wrong', 'Wrong:'],
-])
-
-const capitalised = (word: string) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`
-
-/** "-1d6" is "d6" and "+2d4" is "2d4": the dice a card names, without the sign or a lone 1. */
-function diceText(dice: string, where: string): { gain: boolean; text: string } {
-  const match = /^([+-]?)(\d*)d(\d+)$/.exec(dice)
-  if (match === null) {
-    throw new Error(`${where}: the dice "${dice}" have no paper wording.`)
-  }
-  const count = match[2] === '1' || match[2] === '' ? '' : (match[2] ?? '')
-  return { gain: match[1] !== '-', text: `${count}d${match[3] ?? ''}` }
-}
-
-/** The effect of a band as the tokens a card writes: "Winter +1", "lose d6 Wind", "regain 1 Nerve". */
-function outcomeToken(preset: Preset, effect: OutcomeEffect, where: string): string {
-  if (effect.kind === 'tracker') {
-    const tracker = preset.trackers.find((candidate) => candidate.key === effect.tracker)
-    if (tracker === undefined || effect.op !== 'add') {
-      throw new Error(
-        `${where}: a ${effect.op} effect on "${effect.tracker}" has no paper wording.`,
-      )
-    }
-    return `${tracker.name} ${effect.value < 0 ? '-' : '+'}${String(Math.abs(effect.value))}`
-  }
-  const field = capitalised(effect.field)
-  if (effect.op !== 'add' && effect.op !== 'subtract') {
-    throw new Error(`${where}: a ${effect.op} effect on "${effect.field}" has no paper wording.`)
-  }
-  if (typeof effect.value === 'string') {
-    const { gain, text } = diceText(effect.value, where)
-    return `${gain === (effect.op === 'add') ? 'regain' : 'lose'} ${text} ${field}`
-  }
-  const gain = (effect.op === 'add') === effect.value >= 0
-  return `${gain ? 'regain' : 'lose'} ${String(Math.abs(effect.value))} ${field}`
-}
-
 /** The tokens a stretch of paper wording gives, in the form `outcomeToken` writes them. */
 function wordedTokens(text: string): string[] {
   const tracker = [...text.matchAll(/\b([A-Z][a-z]+) ([+-]\d+)\b/g)].map(
@@ -222,7 +78,12 @@ function wordedTokens(text: string): string[] {
  * The paper wording of a check must give every band of the step with the effects the preset
  * gives it, and no band the step does not have: a band that changes fails the build.
  */
-function checkOutcomes(preset: Preset, outcomes: Outcomes, wording: string, where: string) {
+function checkOutcomes(
+  trackers: readonly ReleaseTracker[],
+  outcomes: StepOutcome[],
+  wording: string,
+  where: string,
+) {
   const marks = [...BAND_LABELS]
     .map(([band, label]) => ({ band, at: wording.indexOf(label) }))
     .filter((mark) => mark.at >= 0)
@@ -241,7 +102,7 @@ function checkOutcomes(preset: Preset, outcomes: Outcomes, wording: string, wher
       throw new Error(`${where}: the paper wording gives "${mark.band}", which the check lacks.`)
     }
     const given = wordedTokens(wording.slice(mark.at, marks[index + 1]?.at))
-    const expected = outcome.effects.map((effect) => outcomeToken(preset, effect, where)).sort()
+    const expected = outcome.effects.map((effect) => outcomeToken(trackers, effect, where)).sort()
     if (given.join('|') !== expected.join('|')) {
       throw new Error(
         `${where}: "${mark.band}" is "${given.join(', ')}" on paper but "${expected.join(', ')}" in the preset.`,
@@ -250,61 +111,8 @@ function checkOutcomes(preset: Preset, outcomes: Outcomes, wording: string, wher
   })
 }
 
-/** The line a step puts on a card: its paper wording, or its own text; `null` for no line. */
-function stepLine(
-  preset: Preset,
-  outcomes: Map<string, Outcomes>,
-  sceneType: PresetSceneType,
-  step: PresetStep,
-  paper: PaperFlow,
-): string | null {
-  const id = `${sceneType.key}.${step.key}`
-  if (Object.hasOwn(paper.steps, id)) {
-    const wording = paper.steps[id] ?? null
-    if (wording !== null && step.kind === 'check') {
-      checkOutcomes(preset, outcomes.get(id) ?? [], wording, id)
-    }
-    return wording === null ? null : guard(wording, id)
-  }
-  switch (step.kind) {
-    case 'prompt':
-      return guard(words(sentence(step.title), step.prompt ?? step.tip), id)
-    case 'choice':
-      return guard(words(sentence(step.title), step.tip, step.options.join(' / ')), id)
-    case 'table':
-    case 'pick':
-      return guard(words(sentence(step.title), step.tip), id)
-    default:
-      throw new Error(`${id}: a ${step.kind} step needs paper wording in the paper file.`)
-  }
-}
-
-function sceneCard(
-  preset: Preset,
-  outcomes: Map<string, Outcomes>,
-  sceneType: PresetSceneType,
-  paper: PaperFlow,
-): SceneCard {
-  const sections = [
-    ['Setup', sceneType.setup],
-    ['Play', sceneType.play],
-    ['Closing', sceneType.closing],
-  ] as const
-  return {
-    name: guard(sceneType.name, sceneType.key),
-    purpose: guard(sceneType.purpose, sceneType.key),
-    tips: guard(paper.tips?.[sceneType.key] ?? sceneType.tips ?? '', `${sceneType.key} tips`),
-    back: sections
-      .map(([heading, steps]) => ({
-        heading,
-        lines: steps.flatMap((step) => stepLine(preset, outcomes, sceneType, step, paper) ?? []),
-      }))
-      .filter((section) => section.lines.length > 0),
-  }
-}
-
 /** Every paper entry must still match a step or Scene Type of the preset. */
-function checkPaperEntries(preset: Preset, paper: PaperFlow) {
+function checkPaperEntries(preset: Release, paper: PaperFlow) {
   const steps = new Set(
     preset.sceneTypes.flatMap((st) =>
       [...st.setup, ...st.play, ...st.closing].map((step) => `${st.key}.${step.key}`),
@@ -325,7 +133,7 @@ function checkPaperEntries(preset: Preset, paper: PaperFlow) {
   }
 }
 
-function sceneName(preset: Preset, key: string, where: string): string {
+function sceneName(preset: Release, key: string, where: string): string {
   const found = preset.sceneTypes.find((st) => st.key === key)
   if (found === undefined) {
     throw new Error(`${where} names the Scene Type "${key}", which the preset does not have.`)
@@ -333,7 +141,11 @@ function sceneName(preset: Preset, key: string, where: string): string {
   return found.name
 }
 
-function deckCards(preset: Preset, paper: PaperFlow): { cards: DeckCard[]; back: string } {
+function deckCards(
+  preset: Release,
+  paper: PaperFlow,
+  decks: ReturnType<typeof buildCards>['decks'],
+): { cards: DeckCard[]; back: string } {
   const deck = paper.deck
   if (deck.kind === 'compartments') {
     return {
@@ -353,13 +165,11 @@ function deckCards(preset: Preset, paper: PaperFlow): { cards: DeckCard[]; back:
       )
     }
   }
-  const cards = table.entries.flatMap((entry) =>
-    Array.from({ length: entry.weight ?? 1 }, (): DeckCard => ({
-      kind: 'entry',
-      text: guard(entry.text, table.key),
-      starts: entry.sceneType === undefined ? null : sceneName(preset, entry.sceneType, table.key),
-    })),
-  )
+  const printed = decks.find((candidate) => candidate.key === table.key)
+  if (printed === undefined || printed.perEntry) {
+    throw new Error(`The deck table "${table.key}" is too big to print one copy per weight.`)
+  }
+  const cards: DeckCard[] = printed.cards.map(({ kind, text, starts }) => ({ kind, text, starts }))
   const finale = preset.sceneTypes.find((st) => st.key === deck.finale.sceneType)
   if (finale === undefined) {
     throw new Error(`The finale Scene Type "${deck.finale.sceneType}" is not in the preset.`)
@@ -373,7 +183,7 @@ function deckCards(preset: Preset, paper: PaperFlow): { cards: DeckCard[]; back:
   return { cards, back: guard(deck.back, 'deck back') }
 }
 
-function effectText(preset: Preset, effect: PresetEffect, where: string): string {
+function effectText(preset: Release, effect: EntryEffect, where: string): string {
   if (effect.kind === 'tracker') {
     const tracker = preset.trackers.find((candidate) => candidate.key === effect.tracker)
     if (tracker === undefined || effect.op !== 'add') {
@@ -393,7 +203,11 @@ function effectText(preset: Preset, effect: PresetEffect, where: string): string
 }
 
 /** The tables of the flow to print: all but the likelihood oracle and the deck. */
-function tableSheets(preset: Preset, oracles: string[], deckKey: string | undefined): TableSheet[] {
+function tableSheets(
+  preset: Release,
+  oracles: string[],
+  deckKey: string | undefined,
+): TableSheet[] {
   return oracles
     .filter((key) => key !== deckKey && !preset.likelihoods.includes(key))
     .map((key) => {
@@ -415,7 +229,10 @@ function tableSheets(preset: Preset, oracles: string[], deckKey: string | undefi
     })
 }
 
-function trackerLine(tracker: PresetTracker): string {
+function trackerLine(tracker: ReleaseTracker): string {
+  if (tracker.hint === undefined) {
+    throw new Error(`The Tracker "${tracker.key}" needs a hint to print on the rules sheet.`)
+  }
   if (tracker.kind === 'clock') {
     return `${tracker.name}: a clock of ${String(tracker.size)} boxes. ${tracker.hint}`
   }
@@ -430,7 +247,7 @@ function trackerLine(tracker: PresetTracker): string {
   return `${tracker.name}: a counter from ${String(tracker.min)} to ${String(tracker.size)}${named}. ${tracker.hint}`
 }
 
-function rulesSheet(preset: Preset, flow: Preset['flows'][number], paper: PaperFlow): RulesSheet {
+function rulesSheet(preset: Release, flow: ReleaseFlow, paper: PaperFlow): RulesSheet {
   for (const key of Object.keys(paper.rules.slots)) {
     if (!preset.factSlots.some((slot) => slot.key === key)) {
       throw new Error(
@@ -460,6 +277,9 @@ function rulesSheet(preset: Preset, flow: Preset['flows'][number], paper: PaperF
   for (const { heading, lines } of sections) {
     lines.forEach((line) => guard(line, `rules sheet, ${heading}`))
   }
+  if (flow.description === undefined || preset.license === undefined) {
+    throw new Error(`The flow "${flow.key}" needs a description and its release a license.`)
+  }
   return {
     title: flow.name,
     question: guard(flow.description, 'flow description'),
@@ -474,18 +294,39 @@ function rulesSheet(preset: Preset, flow: Preset['flows'][number], paper: PaperF
 /**
  * Everything printed for one flow, from its preset and its paper file. Any drift between the two,
  * a screen-only word on a card, or a malformed preset throws instead of printing a wrong card.
+ * The Scene Type cards and the deck come from the shared builder, with the paper wording, tips and
+ * the guard plugged in; a card never splits, since a paper card is as big as its text needs.
  */
 export function buildFlowCards(raw: unknown, paper: PaperFlow): FlowCards {
-  const preset = readPreset(raw)
+  const preset = readRelease(raw)
   const flow = preset.flows.find((candidate) => candidate.key === paper.flow)
   if (flow === undefined) {
     throw new Error(`The preset has no flow "${paper.flow}".`)
   }
   checkPaperEntries(preset, paper)
-  const outcomes = readOutcomes(raw)
-  const deck = deckCards(preset, paper)
+  const built = buildCards(preset, {
+    flow: paper.flow,
+    deckTables: paper.deck.kind === 'table' ? [paper.deck.table] : [],
+    capacity: null,
+    wording: (id, step) => {
+      if (Object.hasOwn(paper.steps, id)) {
+        const wording = paper.steps[id] ?? null
+        if (wording !== null && step.kind === 'check') {
+          checkOutcomes(preset.trackers, step.outcomes, wording, id)
+        }
+        return wording
+      }
+      if (!PAPER_KINDS.has(step.kind)) {
+        throw new Error(`${id}: a ${step.kind} step needs paper wording in the paper file.`)
+      }
+      return undefined
+    },
+    tips: (sceneTypeKey) => paper.tips?.[sceneTypeKey],
+    text: guard,
+  })
+  const deck = deckCards(preset, paper, built.decks)
   return {
-    sceneCards: preset.sceneTypes.map((sceneType) => sceneCard(preset, outcomes, sceneType, paper)),
+    sceneCards: built.sceneCards,
     deck: deck.cards,
     deckBack: deck.back,
     rulesSheet: rulesSheet(preset, flow, paper),

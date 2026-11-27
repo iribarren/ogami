@@ -11,7 +11,14 @@ import {
   type StepDraft,
 } from '../steps/stepDraft'
 import { setHook, type PhaseDraft, type PhaseHook } from './flowDraft'
-import { phaseLabel, type MapRefusal, type MapResult, type SceneNames } from './flowMapEdits'
+import { scenePartNames, type SceneTypeDraft, type ScenePart } from '../sceneTypes/sceneTypeDraft'
+import {
+  isRefusal,
+  phaseLabel,
+  type MapRefusal,
+  type MapResult,
+  type SceneNames,
+} from './flowMapEdits'
 
 /**
  * Where in a hook's steps an effect goes: the step and the part of it that carries the effect.
@@ -215,9 +222,44 @@ const sameEffect = (stored: EffectDraft, added: EditedEffect): boolean =>
     ('sceneType' in stored && 'sceneType' in added && stored.sceneType === added.sceneType))
 
 /**
- * The effect appended to the `carrier` part of the step at `at`, as the step panel's Add effect does.
- * All or nothing: a hook with no step, a step kept as stored, a part the step does not have, an
- * effect the part carries already and a full list each refuse with the reason, and leave the phases alone.
+ * The step with `effect` appended to its `carrier` part, as the step panel's Add effect does; `at`
+ * is the step's place in its list, for the messages, and `within` says where the list is (` of the
+ * hook …`). All or nothing: a step kept as stored, a part the step does not have, an effect the part
+ * carries already and a full list each refuse with the reason.
+ */
+export function addEffectToStep(
+  step: StepDraft,
+  at: number,
+  carrier: string,
+  effect: EditedEffect,
+  names: SceneNames,
+  within = '',
+): { step: StepDraft } | MapRefusal {
+  const part = partsOf(step).find(({ id }) => id === carrier)
+  if (part === undefined) {
+    return {
+      refused:
+        step.kind === 'stored'
+          ? `Step ${stepLabel(step, at)}${within} cannot be edited here: open its panel.`
+          : `Step ${stepLabel(step, at)} has no such part.`,
+    }
+  }
+  if (part.effects.some((stored) => sameEffect(stored, effect))) {
+    return {
+      refused: `Step ${stepLabel(step, at)} already has this effect: ${describeEffect(effect, names)}.`,
+    }
+  }
+  if (part.effects.length >= MAX_EFFECTS) {
+    return {
+      refused: `${part.label} of step ${stepLabel(step, at)} has ${String(MAX_EFFECTS)} effects, the most it may.`,
+    }
+  }
+  return { step: part.write([...part.effects, effect]) }
+}
+
+/**
+ * The effect appended to the `carrier` part of the step at `at` (`addEffectToStep`) in the phases.
+ * All or nothing: a hook with no step and a step that is not there refuse too, and leave the phases alone.
  */
 export function addEffect(
   phases: PhaseDraft[],
@@ -241,33 +283,47 @@ export function addEffect(
           : `The ${hook} has no such step.`,
     }
   }
-  const part = partsOf(step).find(({ id }) => id === carrier)
-  const says = describeEffect(effect, names)
-  if (part === undefined) {
-    return {
-      refused:
-        step.kind === 'stored'
-          ? `Step ${stepLabel(step, at.step)} of the ${hook} cannot be edited here: open its panel.`
-          : `Step ${stepLabel(step, at.step)} has no such part.`,
-    }
+  const added = addEffectToStep(step, at.step, carrier, effect, names, ` of the ${hook}`)
+  if (isRefusal(added)) {
+    return added
   }
-  if (part.effects.some((stored) => sameEffect(stored, effect))) {
-    return { refused: `Step ${stepLabel(step, at.step)} already has this effect: ${says}.` }
-  }
-  if (part.effects.length >= MAX_EFFECTS) {
-    return {
-      refused: `${part.label} of step ${stepLabel(step, at.step)} has ${String(MAX_EFFECTS)} effects, the most it may.`,
-    }
-  }
-  const written = part.write([...part.effects, effect])
   return {
     phases: phases.map((candidate, index) =>
       index === at.phase
-        ? setHook(phase, at.hook, steps.toSpliced(at.step, 1, written))
+        ? setHook(phase, at.hook, steps.toSpliced(at.step, 1, added.step))
         : candidate,
     ),
-    say: `Added ${says} to step ${stepLabel(step, at.step)} of the ${hook}.`,
+    say: `Added ${describeEffect(effect, names)} to step ${stepLabel(step, at.step)} of the ${hook}.`,
   }
+}
+
+/** A step of a Scene Type, as the transition dialog lists it: where it is, and what it is called there. */
+export interface SceneStep {
+  part: ScenePart
+  index: number
+  step: StepDraft
+  /** `Setup · 1 "Arrive"`. */
+  label: string
+}
+
+const PART_TITLES: Record<ScenePart, string> = { setup: 'Setup', play: 'Play', closing: 'Closing' }
+
+/** The title of a Scene Type's step list, as its page shows it. */
+export const partTitle = (part: ScenePart): string => PART_TITLES[part]
+
+/**
+ * Every step of a Scene Type in page order (setup, play, closing), each with its list and place.
+ * The Scene Type page offers transitions in every list: only sheet effects are held back in setup.
+ */
+export function sceneTypeSteps(draft: SceneTypeDraft): SceneStep[] {
+  return scenePartNames.flatMap((part) =>
+    draft.steps[part].map((step, index) => ({
+      part,
+      index,
+      step,
+      label: `${PART_TITLES[part]} · ${String(index + 1)} ${stepLabel(step, index)}`,
+    })),
+  )
 }
 
 /**

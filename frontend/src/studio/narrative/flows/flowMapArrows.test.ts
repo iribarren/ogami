@@ -94,16 +94,37 @@ describe('arrowTarget', () => {
     expect(drop(hook, hitOn('table:three', 'node', 'three'))).toEqual(elsewhere)
   })
 
-  it('refuses a selection table source, a Scene Type source and an unknown source, whatever the target', () => {
+  it('starts an arrow at a Scene Type: to another of its phase, or to the end of its phase', () => {
+    const scene = { phase: 0, sceneType: 'a' }
+
+    expect(drop('scene:one:a', hitOn('scene:one:b', 'node', 'one'))).toEqual({
+      from: scene,
+      to: { type: 'sceneType', sceneType: 'b' },
+    })
+    expect(drop('scene:one:a', hitOn('phase:two', 'phase', 'two'))).toEqual({
+      from: scene,
+      to: { type: 'endPhase' },
+    })
+    expect(drop('scene:one:a', hitOn('scene:two:c', 'node', 'two'))).toEqual({
+      refused: '"C" is in phase "TWO": a transition reaches a Scene Type of its own phase only.',
+    })
+    expect(drop('scene:one:a', hitOn('phase:three', 'phase', 'three'))).toEqual({
+      refused: 'Phases always run in order: a transition ends "ONE" into the next phase only.',
+    })
+  })
+
+  it('refuses a Scene Type source the drawing cannot place, and says so', () => {
+    expect(drop('scene:nowhere:a', hitOn('scene:one:b', 'node', 'one'))).toEqual({
+      refused: 'That Scene Type cannot be told from another: rename the phase keys.',
+    })
+  })
+
+  it('refuses a selection table source and an unknown source, whatever the target', () => {
     const onScene = hitOn('scene:one:b', 'node', 'one')
 
     expect(drop('table:three', onScene)).toEqual({
       refused:
         'Its effects sit on table entries: edit them in the oracle editor, not with an arrow.',
-    })
-    expect(drop('scene:one:a', onScene)).toEqual({
-      refused:
-        'A transition from "A" is added on the Scene Type page: open the Scene Type and add it there.',
     })
     expect(drop('choice:one', onScene)).toEqual({ refused: 'No arrow starts from that node.' })
     expect(drop('hook:nowhere:phaseOpening', onScene)).toEqual({

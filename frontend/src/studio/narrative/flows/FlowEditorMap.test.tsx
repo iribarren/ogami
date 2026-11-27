@@ -917,9 +917,104 @@ describe('arrows on the Map', () => {
     )
     arrow(region, hook, { clientX: -40, clientY: -40 })
     expect(said()).toHaveTextContent('Dropped on nothing: no transition added.')
-    arrow(region, 'scene:setup:ambush', phaseCorner(region, 'job'))
-    expect(said()).toHaveTextContent('is added on the Scene Type page')
     expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
+  })
+
+  describe('from a Scene Type', () => {
+    const scenePage = '/studio/game-systems/my-draft/scene-types/ambush'
+
+    it('asks which step of the Scene Type carries it, and opens its page with the transition added', async () => {
+      const { user, router } = await openEditor('heist?view=map')
+      const region = await map()
+
+      arrow(region, 'scene:job:ambush', centreOf(region, 'scene:job:quiet'))
+      expect(dialog().getByText(/Scene Type "Ambush"/)).toBeInTheDocument()
+      expect(dialog().getByRole('combobox', { name: 'Step' })).toHaveTextContent(
+        'Setup · 1 "Arrive"',
+      )
+      await chooseOption(user, 'Step', 'Play · 2 "React"', dialog())
+      await chooseOption(user, /^Kind of transition to/, 'Switch Scene Type', dialog())
+      await user.click(dialog().getByRole('button', { name: 'Add transition' }))
+
+      expect(await screen.findByRole('form', { name: 'Scene Type' })).toBeInTheDocument()
+      expect(router.state.location.pathname).toBe(scenePage)
+      expect(
+        await screen.findByText(
+          'Added a switch to Scene Type "Quiet" on step 2 of Play. Save to keep it.',
+        ),
+      ).toBeInTheDocument()
+      await vi.waitFor(() => {
+        expect(search(router)).toEqual({ step: 'play.1' })
+      })
+      expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+    })
+
+    it('changes nothing in the flow draft, and not even the page when the person stays', async () => {
+      const { user, router } = await openEditor('heist')
+      await user.type(
+        within(screen.getByRole('form', { name: 'Flow' })).getByLabelText('Name'),
+        ' II',
+      )
+      await user.click(screen.getByRole('tab', { name: 'Map' }))
+      const region = await map()
+
+      arrow(region, 'scene:job:ambush', phaseCorner(region, 'setup'))
+      expect(said()).toHaveTextContent('Phases always run in order')
+      arrow(region, 'scene:job:ambush', centreOf(region, 'scene:job:quiet'))
+      await user.click(dialog().getByRole('button', { name: 'Add transition' }))
+      await user.click(
+        within(await screen.findByRole('dialog', { name: 'Leave without saving?' })).getByRole(
+          'button',
+          { name: 'Stay' },
+        ),
+      )
+
+      expect(router.state.location.pathname).toBe('/studio/game-systems/my-draft/flows/heist')
+      expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+    })
+
+    it('adds a transition from the action bar of a focused Scene Type, asking where it goes', async () => {
+      const { user, router } = await openEditor('heist?view=map')
+      const region = await map()
+      const bar = within(screen.getByRole('group', { name: 'Map actions' }))
+
+      act(() => {
+        // Ambush is in both phases: the first node is the one in Setup.
+        within(region).getAllByRole('button', { name: 'Scene Type: Ambush' })[0]?.focus()
+      })
+      expect(bar.getByText('Scene Type "Ambush" in phase "Setup"')).toBeInTheDocument()
+      await user.click(bar.getByRole('button', { name: 'Add transition' }))
+      expect(dialog().getByRole('combobox', { name: 'To' })).toHaveTextContent('Ambush')
+      await chooseOption(user, 'To', 'End of the phase', dialog())
+      await user.click(dialog().getByRole('button', { name: 'Add transition' }))
+
+      expect(
+        await screen.findByText(
+          'Added a transition that ends the phase on step 1 of Setup. Save to keep it.',
+        ),
+      ).toBeInTheDocument()
+      expect(router.state.location.pathname).toBe(scenePage)
+    })
+
+    it('refuses a Scene Type with no step to carry it, or one the editor cannot read', async () => {
+      await openEditor('heist?view=map', {
+        [`GET ${base}/narrative`]: json(
+          withPhases([
+            { ...heistPhases[0], selection: { rule: 'sequence', sceneTypes: ['quiet', 'odd'] } },
+            heistPhases[1] ?? {},
+          ]),
+        ),
+      })
+      const region = await map()
+
+      arrow(region, 'scene:setup:quiet', phaseCorner(region, 'job'))
+      expect(said()).toHaveTextContent(
+        'Scene Type "Quiet" has no step to carry a transition: add a step on its page first.',
+      )
+      arrow(region, 'scene:setup:odd', phaseCorner(region, 'job'))
+      expect(said()).toHaveTextContent('Scene Type "Odd" has no step to carry a transition')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
   })
 
   it('refuses an arrow that starts at the table of an oracle phase', async () => {

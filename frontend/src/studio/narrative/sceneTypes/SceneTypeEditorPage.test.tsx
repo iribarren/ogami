@@ -1114,3 +1114,143 @@ describe('leaving with unsaved changes', () => {
     expect(list('Closing').queryByRole('group', { name: 'Step 1' })).not.toBeInTheDocument()
   })
 })
+
+describe('the step and the transition the flow Map points at', () => {
+  const asked = (search: string) => `ambush?${search}`
+  const search = (router: { state: { location: { search: unknown } } }) =>
+    router.state.location.search
+  const addsQuiet = 'step=play.1&carrier=step&effect=nextScene:quiet'
+  const unsaved = () => screen.queryByText('Unsaved changes')
+  /** The ambush Scene Type with `play[1]` replaced. */
+  const withPlay = (second: Record<string, unknown>) =>
+    json(withScene({ ...ambush, play: [ambush.play[0], second] }))
+
+  it('marks and shows the step it names, and changes nothing', async () => {
+    const { router } = await openEditor(asked('step=play.1'))
+
+    expect(card('Play', 2).getByLabelText('Title')).toBeVisible()
+    expect(list('Play').getByRole('group', { name: 'Step 2' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
+    expect(list('Play').getByRole('group', { name: 'Step 1' })).not.toHaveAttribute('aria-current')
+    expect(unsaved()).not.toBeInTheDocument()
+    expect(search(router)).toEqual({ step: 'play.1' })
+  })
+
+  it('opens with the transition added as an unsaved edit, says so, and drops it from the URL', async () => {
+    const saved = recorder(() => Response.json(narrativeScenes))
+    const { user, router } = await openEditor(asked(addsQuiet), { [put]: saved.handler })
+
+    expect(
+      await screen.findByText('Added a transition to "Quiet" on step 2 of Play. Save to keep it.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+    expect(list('Play').getByRole('group', { name: 'Step 2' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
+    await waitFor(() => {
+      expect(search(router)).toEqual({ step: 'play.1' })
+    })
+
+    await user.click(save())
+    await waitFor(() => {
+      expect(saved.sent).toHaveLength(1)
+    })
+    expect(saved.sent[0]).toEqual({
+      expectedVersion: 5,
+      item: {
+        ...ambush,
+        play: [
+          ambush.play[0],
+          { ...ambush.play[1], effects: [{ kind: 'nextScene', sceneType: 'quiet' }] },
+        ],
+      },
+    })
+  })
+
+  it('adds a switch and an end of the phase the same way', async () => {
+    await openEditor(asked('step=setup.0&carrier=step&effect=endPhase'))
+    expect(
+      await screen.findByText(
+        'Added a transition that ends the phase on step 1 of Setup. Save to keep it.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('does not add it twice when the page is read again with the same URL', async () => {
+    const { router } = await openEditor(asked(addsQuiet))
+    await waitFor(() => {
+      expect(search(router)).toEqual({ step: 'play.1' })
+    })
+
+    await act(async () => {
+      await router.navigate({ to: '.', search: { step: 'play.1' }, replace: true })
+    })
+
+    expect(screen.getAllByText(/Added a transition to "Quiet"/)).toHaveLength(1)
+  })
+
+  it.each([
+    [
+      'a step the Scene Type does not have',
+      'step=play.9&carrier=step&effect=endPhase',
+      undefined,
+      'Step 10 of Play is not in this Scene Type.',
+    ],
+    [
+      'a part the step does not have',
+      'step=play.1&carrier=band:0&effect=endPhase',
+      undefined,
+      'Step "React" has no such part.',
+    ],
+    [
+      'a Scene Type the draft does not have',
+      'step=play.1&carrier=step&effect=nextScene:ghost',
+      undefined,
+      'The Scene Type "ghost" is not in the draft.',
+    ],
+    [
+      'an effect the part has already',
+      addsQuiet,
+      { ...ambush.play[1], effects: [{ kind: 'nextScene', sceneType: 'quiet' }] },
+      'Step "React" already has this effect: next scene "Quiet".',
+    ],
+    [
+      'a part with the most effects',
+      'step=play.1&carrier=step&effect=nextScene:quiet',
+      { ...ambush.play[1], effects: Array.from({ length: 10 }, () => ({ kind: 'endPhase' })) },
+      'has 10 effects, the most it may.',
+    ],
+  ])('says why it did not add %s, and leaves the form as stored', async (_, query, second, why) => {
+    await openEditor(
+      asked(query),
+      second === undefined ? {} : { [`GET ${base}/narrative`]: withPlay(second) },
+    )
+
+    expect((await pageAlert())?.textContent).toContain(`The transition was not added: `)
+    expect((await pageAlert())?.textContent).toContain(why)
+    expect(unsaved()).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['a carrier and an effect with no step', 'carrier=step&effect=endPhase'],
+    ['a step and an effect with no carrier', 'step=play.1&effect=endPhase'],
+    ['a malformed step', 'step=later.1&carrier=step&effect=endPhase'],
+    ['a malformed effect', 'step=play.1&carrier=step&effect=nextScene:'],
+  ])('refuses %s with a message, adds nothing and keeps the page', async (_, query) => {
+    await openEditor(asked(query))
+
+    expect((await pageAlert())?.textContent).toContain('incomplete or malformed')
+    expect(unsaved()).not.toBeInTheDocument()
+    expect(screen.getByRole('form', { name: 'Scene Type' })).toBeInTheDocument()
+  })
+
+  it('ignores a step that is not well formed, without a message', async () => {
+    const { router } = await openEditor(asked('step=nope'))
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(search(router)).toEqual({})
+  })
+})

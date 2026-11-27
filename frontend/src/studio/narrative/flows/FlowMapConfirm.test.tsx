@@ -43,6 +43,7 @@ const swapped = draftOf([phase('two'), phase('one', opening)])
 
 function renderMap(draft: FlowDraft, locked: boolean) {
   const onEdit = vi.fn()
+  const onOpen = vi.fn()
   const element = (next: FlowDraft, isLocked: boolean) => (
     <FlowMap
       gameSystemKey="my-draft"
@@ -51,13 +52,14 @@ function renderMap(draft: FlowDraft, locked: boolean) {
       answer={noAnswer}
       node={{ kind: 'settings' }}
       locked={isLocked}
-      onOpen={vi.fn()}
+      onOpen={onOpen}
       onEdit={onEdit}
     />
   )
   const view = render(element(draft, locked))
   return {
     onEdit,
+    onOpen,
     change: (next: FlowDraft, isLocked: boolean) => {
       view.rerender(element(next, isLocked))
     },
@@ -107,5 +109,43 @@ describe('confirming a transition on the Map', () => {
     await user.click(dialog.getByRole('button', { name: 'Add transition' }))
 
     expect(onEdit).toHaveBeenCalledTimes(1)
+  })
+
+  it('hands a Scene Type source to its page as the search it takes, and edits nothing here', async () => {
+    const user = userEvent.setup()
+    const { onEdit, onOpen } = renderMap(first, false)
+    act(() => {
+      screen.getAllByRole('button', { name: 'Scene Type: Ambush' })[0]?.focus()
+    })
+    await user.click(screen.getByRole('button', { name: 'Add transition' }))
+    const dialog = within(await screen.findByRole('dialog', { name: 'Add a transition' }))
+    await chooseOption(user, 'To', 'End of the phase', dialog)
+    await chooseOption(user, 'Step', 'Play · 2 "React"', dialog)
+
+    await user.click(dialog.getByRole('button', { name: 'Add transition' }))
+
+    expect(onOpen).toHaveBeenCalledWith({
+      type: 'sceneType',
+      sceneType: 'ambush',
+      pending: { step: 'play.1', carrier: 'step', effect: 'endPhase' },
+    })
+    expect(onEdit).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('refuses a Scene Type source too while a save is on its way', async () => {
+    const user = userEvent.setup()
+    const { onOpen, change } = renderMap(first, false)
+    act(() => {
+      screen.getAllByRole('button', { name: 'Scene Type: Ambush' })[0]?.focus()
+    })
+    await user.click(screen.getByRole('button', { name: 'Add transition' }))
+    const dialog = within(await screen.findByRole('dialog', { name: 'Add a transition' }))
+
+    change(first, true)
+    await user.click(dialog.getByRole('button', { name: 'Add transition' }))
+
+    expect(dialog.getByRole('alert')).toHaveTextContent('A save is on its way')
+    expect(onOpen).not.toHaveBeenCalled()
   })
 })

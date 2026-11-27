@@ -89,7 +89,7 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 | T5 | 3 | Scene Type palette; drag into or out of a `sequence` / `player` selection, drop position in a sequence; `oracle` refusal (D7, D8) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `e56f58ac` |
 | T6 | 4 | Arrow gesture between nodes with the refusals (D7) and a keyboard "Add transition" path | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `ae4c6bc2` |
 | T7 | 4 | Carrier picker (step, then the step itself or a band, option or outcome) and the hook-source effect in the flow draft, opening the hook step panel (D2) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `e98b437c` |
-| T8 | 5 | Scene Type source: Scene Type page search params for the step and the pending effect, added as an unsaved edit (D2, D30-D33) | | [ ] | |
+| T8 | 5 | Scene Type source: Scene Type page search params for the step and the pending effect, added as an unsaved edit (D2, D30-D33) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T9 | 5 | Playwright pass on the Map, the Studio manual's flow editor chapter, roadmap `Done:` line | | [ ] | |
 
 ## Acceptance criteria
@@ -125,6 +125,7 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 - 2026-11-27: Slice 4 would come out at ~1,815 changed lines (commits 1-2 ~1,005, T7 ~810), over the 1,700 stop line; the writer stopped with T7 staged and verified (`make verify` green), uncommitted, for the parent to decide: commit as is, or move the 'Add transition' action bar path to slice 5.
 - 2026-11-27: The user kept slice 4 as one slice (size exception, ~1,750 lines); T7 committed as is.
 - 2026-11-27 slice 4 review fixes (delegated writer, Sonnet): `confirmTransition` refuses inside the dialog while a save is on its way and when the phase at the captured index is no longer the one named (its map key is captured at open); the editor's "Added …" status line ends on the next draft edit or node pick (it is keyed to the draft and the node it was made for). RED observed: 3 new tests failed, then passed.
+- 2026-11-27 T8: Scene Type source (D30-D33). `addEffectToStep` in `flowMapCarriers.ts` (`addEffect` delegates; it takes the step's place and a `within` suffix for the messages), `sceneTypeSteps` (steps of the three lists named `Setup · 1 "…"`), an arrow or the action bar's "Add transition" from a Scene Type opens `TransitionDialog` over the stored Scene Type's steps and navigates with `step`/`carrier`/`effect` (`transitionSearch`); the page validates them (`sceneTypeParams.ts`), opens with the effect added as an unsaved edit (`sceneTypePending.ts`, computed in the editor's `useState` initializer), marks the step, says what was added or why not, and replaces the URL keeping `step`. Vitest: param parsers, `addEffectToStep`, `sceneTypeSteps`, 4 Map tests, 2 confirm tests, arrow rules, 13 page tests. No RED observed for the new behaviour: code and tests were written together; the two old tests that asserted the lifted refusal failed first, as expected.
 
 ## Reviews
 

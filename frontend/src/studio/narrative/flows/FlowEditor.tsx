@@ -175,6 +175,7 @@ export function FlowEditor({
     void navigate({
       to: '/studio/game-systems/$key/scene-types/$sceneType',
       params: { key: gameSystemKey, sceneType: target.sceneType },
+      search: target.pending ?? {},
     })
   }
 

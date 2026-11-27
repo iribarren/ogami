@@ -32,23 +32,27 @@ const firstEditable = (steps: StepDraft[]) =>
   )
 
 /**
- * Where a transition goes in a hook (D24): the step and part that carry it, the kind for a Scene
+ * Where a transition goes in a hook or a Scene Type (D24, D30): the step and part that carry it, the kind for a Scene
  * Type target, and, with no arrow to say it, the destination. It is mounted per request, so every
  * choice starts afresh. `onConfirm` returns why the edit was refused, which the dialog shows and
  * stays open for; null closes it.
  */
 export function TransitionDialog({
-  hookName,
+  source,
   steps,
+  stepLabels,
   to,
   destinations,
   names,
   onConfirm,
   onCancel,
 }: {
-  /** The hook, as the dialog names it: `hook "Phase opening" of phase "Setup"`. */
-  hookName: string
+  /** Where the transition starts, as the dialog names it: `hook "Phase opening" of phase "Setup"`, `Scene Type "Ambush"`. */
+  source: string
+  /** A hook's steps, or a Scene Type's steps of all three lists in page order. */
   steps: StepDraft[]
+  /** What each step is called when its place alone does not say (a Scene Type's lists): `Play · 2 "Ask"`. */
+  stepLabels?: string[]
   /** Where the arrow went; null asks for it (the keyboard path). */
   to: ArrowTo | null
   destinations: Destination[]
@@ -79,9 +83,7 @@ export function TransitionDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add a transition</DialogTitle>
-          <DialogDescription>
-            Choose where in {hookName} the transition is written.
-          </DialogDescription>
+          <DialogDescription>Choose where in {source} the transition is written.</DialogDescription>
         </DialogHeader>
         {to === null && (
           <div className="grid gap-1.5">
@@ -105,6 +107,7 @@ export function TransitionDialog({
         <CarrierPicker
           idPrefix="transition"
           steps={steps}
+          labels={stepLabels}
           step={step}
           part={part}
           onStep={(next) => {

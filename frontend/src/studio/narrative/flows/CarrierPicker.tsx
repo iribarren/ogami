@@ -12,6 +12,7 @@ import { carriersOf, stepName } from './flowMapCarriers'
 export function CarrierPicker({
   idPrefix,
   steps,
+  labels,
   step,
   part,
   onStep,
@@ -20,6 +21,8 @@ export function CarrierPicker({
   /** Keeps the labels of two pickers on a page apart. */
   idPrefix: string
   steps: StepDraft[]
+  /** What each step is called in the list; by default its place and title. */
+  labels?: string[]
   step: number
   part: string
   onStep: (step: number) => void
@@ -39,7 +42,7 @@ export function CarrierPicker({
         >
           {steps.map((candidate, at) => (
             <option key={at} value={String(at)} disabled={carriersOf(candidate).length === 0}>
-              {`${String(at + 1)}. ${stepName(candidate, at)}${carriersOf(candidate).length === 0 ? ' (not editable here)' : ''}`}
+              {`${labels?.[at] ?? `${String(at + 1)}. ${stepName(candidate, at)}`}${carriersOf(candidate).length === 0 ? ' (not editable here)' : ''}`}
             </option>
           ))}
         </Select>

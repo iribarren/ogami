@@ -4,11 +4,8 @@ import type { PhaseDraft, PhaseHook } from './flowDraft'
 import { phaseLabel, type MapRefusal, type SceneNames } from './flowMapEdits'
 import { mapTarget, sceneOf } from './flowMapNodes'
 
-/** What an arrow starts from. Only a hook is drawn from yet: a Scene Type's steps live on its own page. */
-export interface ArrowFrom {
-  phase: number
-  hook: PhaseHook
-}
+/** What an arrow starts from: a hook of a phase, or one of the phase's Scene Types (whose steps live on its own page). */
+export type ArrowFrom = { phase: number; hook: PhaseHook } | { phase: number; sceneType: string }
 
 /** What an arrow ends on: a Scene Type of the phase, or the end of the phase. */
 export type ArrowTo = { type: 'sceneType'; sceneType: string } | { type: 'endPhase' }
@@ -23,7 +20,7 @@ const ORDER = 'Phases always run in order'
 
 /**
  * What an arrow from `sourceId` dropped on `hit` means, or why it is refused. A transition goes from
- * a hook to a Scene Type of the same phase (`nextScene`, `switchSceneType`), or ends the phase by
+ * a hook or a Scene Type to a Scene Type of the same phase (`nextScene`, `switchSceneType`), or ends the phase by
  * going to the next phase's box or, for the last phase, to the end of the flow. Anything else says
  * why not, and the draft stays as it is.
  */
@@ -42,7 +39,7 @@ export function arrowTarget({
   diagram: FlowDiagram
   names: SceneNames
 }): Arrow | MapRefusal {
-  const from = arrowFrom(sourceId, phases, phaseKeys, diagram, names)
+  const from = arrowFrom(sourceId, phases, phaseKeys, diagram)
   if ('refused' in from) {
     return from
   }
@@ -92,13 +89,12 @@ export function arrowTarget({
   }
 }
 
-/** The hook an arrow starts from, or the reason no arrow starts from that node. */
+/** The hook or Scene Type an arrow starts from, or the reason no arrow starts from that node. */
 function arrowFrom(
   sourceId: string,
   phases: readonly PhaseDraft[],
   phaseKeys: readonly string[],
   diagram: FlowDiagram,
-  names: SceneNames,
 ): ArrowFrom | MapRefusal {
   if (sourceId.startsWith('table:')) {
     return {
@@ -108,9 +104,9 @@ function arrowFrom(
   }
   if (sourceId.startsWith('scene:')) {
     const scene = sceneOf(sourceId, phaseKeys, diagram)
-    return {
-      refused: `A transition from "${names(scene?.sceneType ?? sourceId)}" is added on the Scene Type page: open the Scene Type and add it there.`,
-    }
+    return scene === null
+      ? { refused: 'That Scene Type cannot be told from another: rename the phase keys.' }
+      : { phase: scene.phase, sceneType: scene.sceneType }
   }
   const target = mapTarget(sourceId, 'hook', phaseKeys, diagram)
   if (target?.type !== 'node' || target.node.kind !== 'hook') {

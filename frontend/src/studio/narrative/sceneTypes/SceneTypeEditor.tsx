@@ -29,6 +29,8 @@ import {
   type SceneTypeDraft,
 } from './sceneTypeDraft'
 import { noAnswer, sceneTypeAnswer, type SceneTypeAnswer } from './sceneTypeError'
+import { addPendingTransition } from './sceneTypePending'
+import { type PendingTransition, type StepRef } from './sceneTypeParams'
 
 const partTitles = { setup: 'Setup', play: 'Play', closing: 'Closing' }
 
@@ -44,6 +46,8 @@ export function SceneTypeEditor({
   version,
   savedAt: initialSavedAt = null,
   onRenamed,
+  step,
+  pending = null,
 }: {
   gameSystemKey: string
   narrative: GameSystemNarrative
@@ -55,9 +59,32 @@ export function SceneTypeEditor({
   savedAt?: Date | null
   /** Told the new key and when a save renamed the Scene Type, before the editor is opened anew. */
   onRenamed?: (key: string, at: Date) => void
+  /** The step the flow Map pointed at: scrolled to and marked. */
+  step?: StepRef | null
+  /**
+   * A transition the flow Map drew (or why it cannot be read): added once, as an unsaved edit, when
+   * the form opens. Later changes to it are ignored, so a reload of the URL cannot add it twice.
+   */
+  pending?: PendingTransition | { refused: string } | null
 }) {
   const id = useId()
-  const [draft, setDraft] = useState(initial)
+  // Worked out once, from the stored Scene Type (pure, so a StrictMode second render agrees); `baseline` below stays the stored one.
+  const [added, setAdded] = useState(() =>
+    pending === null
+      ? null
+      : 'refused' in pending
+        ? pending
+        : addPendingTransition(
+            initial,
+            pending,
+            (key) => {
+              const found = narrative.sceneTypes.find((item) => item.key === key)
+              return typeof found?.definition.name === 'string' ? found.definition.name : key
+            },
+            (key) => narrative.sceneTypes.some((item) => item.key === key),
+          ),
+  )
+  const [draft, setDraft] = useState(added !== null && 'draft' in added ? added.draft : initial)
   const [readAt, setReadAt] = useState(version)
   const [current, setCurrent] = useState(original)
   // The draft as last saved or loaded, to tell unsaved changes from a saved form; `savedAt` is null until a save.
@@ -80,6 +107,22 @@ export function SceneTypeEditor({
     }
   }, [])
   const dirty = JSON.stringify(draft) !== baseline
+  const asked = pending !== null
+  useEffect(() => {
+    if (!asked) {
+      return
+    }
+    // The URL keeps the step but not the transition: a reload or Back must not add it again. The
+    // form is already dirty, so the guard would ask about this replace; it is not a way out.
+    void navigate({
+      to: '/studio/game-systems/$key/scene-types/$sceneType',
+      params: { key: gameSystemKey, sceneType: original },
+      search:
+        step === null || step === undefined ? {} : { step: `${step.part}.${String(step.index)}` },
+      replace: true,
+      ignoreBlocker: true,
+    }).catch(() => undefined)
+  }, [asked, navigate, gameSystemKey, original, step])
   // Kept while the narrative is the same, so the step cards below can skip renders.
   // The checks say which special results a check step may branch on; until they load, none is offered.
   const checks = useGameSystemChecks(gameSystemKey)
@@ -115,6 +158,7 @@ export function SceneTypeEditor({
     }
     setAnswer(noAnswer)
     setReloadNote(null)
+    setAdded(null)
     const key = String(result.item.key)
     try {
       const saved = await save.mutateAsync({
@@ -194,6 +238,7 @@ export function SceneTypeEditor({
     setSavedAt(null)
     setReloadNote(null)
     setAnswer(noAnswer)
+    setAdded(null)
     setGeneration((count) => count + 1)
   }
 
@@ -292,6 +337,7 @@ export function SceneTypeEditor({
                 steps={draft.steps[part]}
                 context={context}
                 setup={part === 'setup'}
+                current={step?.part === part ? step.index : undefined}
                 errors={answer.lists[part]}
                 onChange={(steps) => {
                   setDraft((now) => ({ ...now, steps: { ...now.steps, [part]: steps } }))
@@ -301,6 +347,14 @@ export function SceneTypeEditor({
           ))}
         </div>
       </section>
+      {added !== null && 'say' in added && (
+        <p role="status" className="text-sm">
+          {added.say}
+        </p>
+      )}
+      {added !== null && 'refused' in added && (
+        <Alert role="alert">{`The transition was not added: ${added.refused}`}</Alert>
+      )}
       {answer.page !== null && <Alert role="alert">{answer.page}</Alert>}
       {reloadNote !== null && <Alert role="alert">{reloadNote}</Alert>}
       <div className="panel">

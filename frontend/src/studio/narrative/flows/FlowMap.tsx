@@ -12,11 +12,13 @@ import {
 
 import { useGameSystemOracles } from '../../oracles/useGameSystemOracles'
 import type { GameSystemNarrative } from '../useGameSystemNarrative'
+import { sceneTypeToDraft } from '../sceneTypes/sceneTypeDraft'
+import { transitionSearch } from '../sceneTypes/sceneTypeParams'
 import type { FlowDraft } from './flowDraft'
 import type { FlowAnswer } from './flowError'
 import type { EditedEffect } from '../steps/effectDraft'
 import { arrowTarget, type ArrowFrom, type ArrowTo } from './flowMapArrows'
-import { addEffect, hookSteps } from './flowMapCarriers'
+import { addEffect, carriersOf, hookSteps, sceneTypeSteps, type SceneStep } from './flowMapCarriers'
 import { TransitionDialog, type Destination } from './TransitionDialog'
 import { flowDiagramFromDraft, mergeIssues } from './flowMapDiagram'
 import {
@@ -42,6 +44,7 @@ import {
   type MapTarget,
 } from './flowMapNodes'
 import type { FlowNode } from './flowNode'
+import type { PhaseHook } from './flowDraft'
 import { ScenePalette, type PaletteScene } from './ScenePalette'
 
 /**
@@ -89,6 +92,8 @@ export function FlowMap({
     from: ArrowFrom
     to: ArrowTo | null
     phaseKey: string
+    /** A Scene Type source: its steps as the stored Scene Type has them. A hook's are the draft's. */
+    sceneSteps: SceneStep[] | null
   } | null>(null)
   const phaseOf = (key: string) => map.phaseKeys.indexOf(key)
   // The GameSystem's Scene Types by name, for the palette, the action bar and what the Map says.
@@ -173,27 +178,58 @@ export function FlowMap({
     }
     placeTransition(arrow.from, arrow.to)
   }
-  /** Opens the dialog that says where the transition of `from` is written, unless the hook cannot carry one. */
+  /** Opens the dialog that says where the transition of `from` is written, unless its hook or Scene Type cannot carry one. */
   function placeTransition(from: ArrowFrom, to: ArrowTo | null) {
+    const phaseKey = map.phaseKeys[from.phase] ?? ''
+    if ('sceneType' in from) {
+      // The Scene Type's steps are the stored ones: its page is where they are edited.
+      const stored = narrative.sceneTypes.find(({ key }) => key === from.sceneType)
+      const read = stored === undefined ? null : sceneTypeToDraft(stored.definition)
+      const sceneSteps = read === null ? [] : sceneTypeSteps(read)
+      if (!sceneSteps.some(({ step }) => carriersOf(step).length > 0)) {
+        setSaid(
+          `Scene Type "${nameOf(from.sceneType)}" has no step to carry a transition: add a step on its page first.`,
+        )
+        return
+      }
+      setPlacing({ from, to, phaseKey, sceneSteps })
+      return
+    }
     const steps = hookSteps(draft.phases, from)
     if (isRefusal(steps)) {
       setSaid(steps.refused)
       return
     }
-    setPlacing({ from, to, phaseKey: map.phaseKeys[from.phase] ?? '' })
+    setPlacing({ from, to, phaseKey, sceneSteps: null })
   }
   /** What the dialog confirmed: the effect on its step and part, then the panel of that step. Returns why it was refused. */
   function confirmTransition(step: number, carrier: string, effect: EditedEffect): string | null {
     if (placing === null) {
       return null
     }
-    const { phase, hook } = placing.from
+    const { from } = placing
     if (locked) {
       return 'A save is on its way: add the transition once it is done.'
     }
-    if (map.phaseKeys[phase] !== placing.phaseKey) {
+    if (map.phaseKeys[from.phase] !== placing.phaseKey) {
       return 'The phase changed; draw the arrow again.'
     }
+    if ('sceneType' in from) {
+      // Nothing in the flow draft changes: the Scene Type page adds it, as an unsaved edit there.
+      const place = placing.sceneSteps?.[step]
+      if (place === undefined) {
+        return 'That step is not in the Scene Type any more; draw the arrow again.'
+      }
+      setPlacing(null)
+      setSaid('')
+      onOpen({
+        type: 'sceneType',
+        sceneType: from.sceneType,
+        pending: transitionSearch(place, carrier, effect),
+      })
+      return null
+    }
+    const { phase, hook } = from
     const result = addEffect(draft.phases, { phase, hook, step }, carrier, effect, nameOf)
     if (isRefusal(result)) {
       return result.refused
@@ -204,7 +240,7 @@ export function FlowMap({
     return null
   }
   /** The hook as the Map names it: its label, and the phase it belongs to. */
-  const hookName = ({ phase, hook }: ArrowFrom) =>
+  const hookName = ({ phase, hook }: { phase: number; hook: PhaseHook }) =>
     `"${HOOK_LABELS[hook]}" of phase ${phaseLabel(draft.phases[phase])}`
   /** Where a transition from the phase at `index` can go: its drawn Scene Types, then where the phase ends. */
   function destinations(index: number): Destination[] {
@@ -335,6 +371,17 @@ export function FlowMap({
               size="sm"
               disabled={locked}
               onClick={() => {
+                placeTransition({ phase: scene.phase, sceneType: scene.sceneType }, null)
+              }}
+            >
+              Add transition
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={locked}
+              onClick={() => {
                 if (apply(removeSceneType(draft.phases, scene.phase, scene.sceneType, nameOf))) {
                   setFocused(`phase:${map.phaseKeys[scene.phase] ?? ''}`)
                 }
@@ -440,8 +487,18 @@ export function FlowMap({
       </p>
       {placing !== null && (
         <TransitionDialog
-          hookName={`hook ${hookName(placing.from)}`}
-          steps={draft.phases[placing.from.phase]?.hooks[placing.from.hook] ?? []}
+          source={
+            'sceneType' in placing.from
+              ? `Scene Type "${nameOf(placing.from.sceneType)}"`
+              : `hook ${hookName(placing.from)}`
+          }
+          steps={
+            placing.sceneSteps?.map(({ step }) => step) ??
+            ('hook' in placing.from
+              ? (draft.phases[placing.from.phase]?.hooks[placing.from.hook] ?? [])
+              : [])
+          }
+          stepLabels={placing.sceneSteps?.map(({ label }) => label)}
           to={placing.to}
           destinations={destinations(placing.from.phase)}
           names={nameOf}

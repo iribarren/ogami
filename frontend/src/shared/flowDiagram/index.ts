@@ -6,6 +6,7 @@ export type {
   DiagramDrop,
   DiagramHit,
   DragHandlers,
+  DragKind,
   DragState,
   ScreenMatrix,
 } from './diagramDrag'

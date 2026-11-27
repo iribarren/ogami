@@ -72,6 +72,12 @@ export interface FlowDiagramViewProps {
   onFocusNode?: (id: string, kind: DiagramActivation) => void
   /** Makes the nodes `drag.canDrag` allows draggable, and draws the ghost and the drop target. */
   drag?: DiagramDrag
+  /**
+   * Draws a port on the right edge of every Scene Type node, hook chip and selection table node:
+   * pressing one and dragging draws an arrow (it needs `drag`). Pointer only, so ports are out of the
+   * tab order and hidden from assistive technology; the host offers the same through its own controls.
+   */
+  arrows?: boolean
 }
 
 /** What the interactive parts of the drawing share. */
@@ -82,6 +88,7 @@ interface Interaction {
   labels: Record<string, string>
   onFocusNode: ((id: string, kind: DiagramActivation) => void) | undefined
   drag: DiagramDrag | undefined
+  arrows: boolean
 }
 
 /** What makes a node of the drawing a button: nothing while the drawing is static. */
@@ -160,8 +167,17 @@ export function FlowDiagramView({
   labels = {},
   onFocusNode,
   drag,
+  arrows = false,
 }: FlowDiagramViewProps) {
-  const interaction: Interaction = { selectedId, issues, onActivate, labels, onFocusNode, drag }
+  const interaction: Interaction = {
+    selectedId,
+    issues,
+    onActivate,
+    labels,
+    onFocusNode,
+    drag,
+    arrows,
+  }
   const layout = layoutFlowDiagram(diagram)
   const description = describeFlowDiagram(diagram)
   const id = useId().replaceAll(':', '')
@@ -214,7 +230,9 @@ export function FlowDiagramView({
         {layout.nodes.map((node) => (
           <NodeShape key={node.id} node={node} interaction={interaction} />
         ))}
-        {drag?.state != null && <DragLayer state={drag.state} layout={layout} />}
+        {drag?.state != null && (
+          <DragLayer state={drag.state} layout={layout} markerId={markerId} />
+        )}
       </svg>
       <details className="mt-2 text-sm">
         <summary className="cursor-pointer">The flow in words</summary>
@@ -356,12 +374,66 @@ function HeaderItem({ item, interaction }: { item: LayoutHeaderItem; interaction
       />
       {text}
       <IssueBadge rect={rect} marked={(interaction.issues[item.id] ?? []).length > 0} />
+      {item.kind === 'hook' && <Port id={item.id} rect={rect} interaction={interaction} />}
     </g>
   )
 }
 
+/** The size of a port: small enough to sit on a chip's edge, big enough to press. */
+const PORT_RADIUS = 5
+
+/** Where an arrow leaves a node: the middle of its right edge. */
+const portOf = (rect: LayoutRect) => ({ x: rect.x + rect.width, y: rect.y + rect.height / 2 })
+
+/** The circle on a node's right edge an arrow is drawn from; only while the drawing has arrows. */
+function Port({
+  id,
+  rect,
+  interaction,
+}: {
+  id: string
+  rect: LayoutRect
+  interaction: Interaction
+}) {
+  const { drag, arrows } = interaction
+  if (!arrows || drag === undefined) {
+    return null
+  }
+  const { style: touch, ...handlers } = drag.bind(id, id, 'arrow')
+  const at = portOf(rect)
+
+  return (
+    <circle
+      data-port-id={id}
+      aria-hidden="true"
+      cx={at.x}
+      cy={at.y}
+      r={PORT_RADIUS}
+      className="cursor-crosshair"
+      strokeWidth={1.5}
+      style={{ ...touch, fill: theme('background'), stroke: theme('primary') }}
+      {...handlers}
+      // A press on a port is not a press on its node: it opens nothing.
+      onClick={(event) => {
+        event.stopPropagation()
+      }}
+    />
+  )
+}
+
 /** The dashed ghost of what is being dragged and the outline of the phase it is over. */
-function DragLayer({ state, layout }: { state: DragState; layout: FlowDiagramLayout }) {
+function DragLayer({
+  state,
+  layout,
+  markerId,
+}: {
+  state: DragState
+  layout: FlowDiagramLayout
+  markerId: (marker: Marker) => string
+}) {
+  if (state.kind === 'arrow') {
+    return <ArrowLayer state={state} layout={layout} markerId={markerId} />
+  }
   const source =
     layout.nodes.find(({ id }) => id === state.sourceId)?.rect ??
     layout.phases.find(({ id }) => id === state.sourceId)?.rect
@@ -416,6 +488,52 @@ function DragLayer({ state, layout }: { state: DragState; layout: FlowDiagramLay
           style={look}
         />
       )}
+    </g>
+  )
+}
+
+/** The rubber band from the port being dragged to the pointer, and the node or phase it is over. */
+function ArrowLayer({
+  state,
+  layout,
+  markerId,
+}: {
+  state: DragState
+  layout: FlowDiagramLayout
+  markerId: (marker: Marker) => string
+}) {
+  const from =
+    layout.nodes.find(({ id }) => id === state.sourceId)?.rect ??
+    layout.phases.flatMap(({ header }) => header).find(({ id }) => id === state.sourceId)?.rect
+  const over = layout.nodes.find(({ id }) => id === state.hit?.id)?.rect
+  const phase = layout.phases.find(({ key }) => key === state.hit?.phase)
+  const start = from === undefined ? state.grab : portOf(from)
+  const look = { fill: 'none', stroke: theme('primary') }
+
+  return (
+    <g aria-hidden="true" pointerEvents="none" data-arrow-from={state.sourceId}>
+      {phase !== undefined && (
+        <rect
+          data-drop-target={phase.id}
+          {...phase.rect}
+          rx={10}
+          strokeWidth={2}
+          strokeDasharray="6 4"
+          style={look}
+        />
+      )}
+      {over !== undefined && <rect {...over} rx={6} strokeWidth={3} style={look} />}
+      <line
+        data-arrow-line
+        x1={start.x}
+        y1={start.y}
+        x2={state.point.x}
+        y2={state.point.y}
+        strokeWidth={2}
+        strokeDasharray="5 4"
+        markerEnd={`url(#${markerId('arrow')})`}
+        style={{ stroke: theme('primary') }}
+      />
     </g>
   )
 }
@@ -490,6 +608,9 @@ function NodeShape({ node, interaction }: { node: LayoutNode; interaction: Inter
         </text>
       )}
       <IssueBadge rect={rect} marked={(interaction.issues[node.id] ?? []).length > 0} />
+      {(node.kind === 'sceneType' || node.kind === 'table') && (
+        <Port id={node.id} rect={rect} interaction={interaction} />
+      )}
     </g>
   )
 }

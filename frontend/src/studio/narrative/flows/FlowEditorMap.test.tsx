@@ -414,11 +414,20 @@ describe('editing on the Map', () => {
 })
 
 describe('Scene Types on the Map', () => {
+  const ctm = Object.getOwnPropertyDescriptor(SVGElement.prototype, 'getScreenCTM')
   beforeAll(() => {
     Object.defineProperty(SVGElement.prototype, 'getScreenCTM', {
       configurable: true,
       value: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
     })
+  })
+  afterAll(() => {
+    // jsdom has none: put back what was there, or remove the stub.
+    if (ctm === undefined) {
+      Reflect.deleteProperty(SVGElement.prototype, 'getScreenCTM')
+    } else {
+      Object.defineProperty(SVGElement.prototype, 'getScreenCTM', ctm)
+    }
   })
 
   const press = { pointerId: 1, isPrimary: true, button: 0 }
@@ -518,7 +527,7 @@ describe('Scene Types on the Map', () => {
     expect(scenesOf(region, 'job')).toContain('scene:job:quiet')
   })
 
-  it('refuses a Scene Type for an oracle phase, one the phase lists already, and a drop on nothing', async () => {
+  it('refuses a Scene Type for an oracle phase, and a drop on nothing', async () => {
     await openEditor('side-job?view=map')
     const region = await map()
 
@@ -655,6 +664,26 @@ describe('Scene Types on the Map', () => {
     expect(JSON.stringify(sent[0])).toContain('"sceneTypes":["ambush"]')
   })
 
+  it('starts the Add Scene Type pick empty on every phase the bar moves to', async () => {
+    const { user } = await openEditor('heist?view=map')
+    const region = await map()
+    const bar = () => within(screen.getByRole('group', { name: 'Map actions' }))
+
+    act(() => {
+      within(region).getByRole('button', { name: 'Phase: Setup' }).focus()
+    })
+    await chooseOption(user, 'Scene Type to add', 'Quiet', bar())
+    expect(bar().getByRole('combobox', { name: 'Scene Type to add' })).toHaveTextContent('Quiet')
+
+    act(() => {
+      within(region).getByRole('button', { name: 'Phase: The job' }).focus()
+    })
+
+    expect(bar().getByRole('combobox', { name: 'Scene Type to add' })).toHaveTextContent(
+      'Pick a Scene Type',
+    )
+  })
+
   it('offers no way to add a Scene Type to an oracle phase from the bar', async () => {
     await openEditor('side-job?view=map')
     const region = await map()
@@ -664,5 +693,243 @@ describe('Scene Types on the Map', () => {
     })
 
     expect(screen.queryByRole('button', { name: 'Add Scene Type' })).not.toBeInTheDocument()
+  })
+})
+
+describe('arrows on the Map', () => {
+  const ctm = Object.getOwnPropertyDescriptor(SVGElement.prototype, 'getScreenCTM')
+  beforeAll(() => {
+    Object.defineProperty(SVGElement.prototype, 'getScreenCTM', {
+      configurable: true,
+      value: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
+    })
+  })
+  afterAll(() => {
+    if (ctm === undefined) {
+      Reflect.deleteProperty(SVGElement.prototype, 'getScreenCTM')
+    } else {
+      Object.defineProperty(SVGElement.prototype, 'getScreenCTM', ctm)
+    }
+  })
+
+  const press = { pointerId: 1, isPrimary: true, button: 0 }
+  const rectOf = (element: Element) => {
+    const rect = element.tagName === 'rect' ? element : element.querySelector('rect')
+    const at = (name: string) => Number(rect?.getAttribute(name))
+    return { x: at('x'), y: at('y'), width: at('width'), height: at('height') }
+  }
+  const inside = (region: HTMLElement, selector: string) => {
+    const found = region.querySelector(selector)
+    if (found === null) {
+      throw new Error(`Expected ${selector}.`)
+    }
+    return found
+  }
+  const centreOf = (region: HTMLElement, id: string) => {
+    const { x, y, width, height } = rectOf(inside(region, `[data-node-id="${id}"]`))
+    return { clientX: x + width / 2, clientY: y + height / 2 }
+  }
+  const phaseCorner = (region: HTMLElement, phase: string) => {
+    const { x, y, width, height } = rectOf(inside(region, `[data-phase-id="phase:${phase}"]`))
+    return { clientX: x + width - 12, clientY: y + height - 12 }
+  }
+  /** Draws an arrow: presses the port of `id`, moves past the threshold, lets go at `to`. */
+  function arrow(region: HTMLElement, id: string, to: { clientX: number; clientY: number }) {
+    const port = inside(region, `[data-port-id="${id}"]`)
+    fireEvent.pointerDown(port, { ...press, clientX: -60, clientY: -60 })
+    fireEvent.pointerMove(port, { ...press, ...to })
+    fireEvent.pointerUp(port, { ...press, ...to })
+  }
+  const said = () => screen.getByRole('status')
+  const opening = {
+    phaseOpening: [
+      { key: 'open', kind: 'prompt', title: 'Open' },
+      {
+        key: 'roll',
+        kind: 'roll',
+        title: 'Roll',
+        dice: '1d6',
+        bands: [{ upTo: 3, label: 'Hard' }, { label: 'rest' }],
+      },
+    ],
+  }
+  const withOpening = () =>
+    json(withPhases([{ ...heistPhases[0], ...opening }, heistPhases[1] ?? {}]))
+
+  const dialog = () => within(screen.getByRole('dialog', { name: 'Add a transition' }))
+
+  it('asks where in the hook the transition goes, writes it there, shows that step and saves it', async () => {
+    const sent: unknown[] = []
+    const { user, router } = await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: withOpening(),
+      [put]: async (request) => {
+        sent.push(await request.clone().json())
+        return Response.json(narrativeFlows)
+      },
+    })
+    const region = await map()
+
+    arrow(region, 'hook:setup:phaseOpening', centreOf(region, 'scene:setup:ambush'))
+    await chooseOption(user, 'Step', '2. Roll', dialog())
+    await chooseOption(user, 'Part', 'Up to 3: Hard', dialog())
+    await chooseOption(user, /^Kind of transition to/, 'Switch Scene Type', dialog())
+    await user.click(dialog().getByRole('button', { name: 'Add transition' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Panel' })).toHaveAttribute('aria-selected', 'true')
+    expect(search(router)).toMatchObject({ node: 'phases.0.hooks.phaseOpening.1' })
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Added switch to Scene Type "Ambush" to step "Roll" of the hook "Phase opening" of phase "Setup".',
+    )
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => {
+      expect(sent).toHaveLength(1)
+    })
+    expect(JSON.stringify(sent[0])).toContain(
+      '"effects":[{"kind":"switchSceneType","sceneType":"ambush"}]',
+    )
+  })
+
+  it('ends a phase by an arrow to the next phase with no kind to pick, and refuses the same effect twice', async () => {
+    const { user } = await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: withOpening(),
+    })
+    const region = await map()
+    arrow(region, 'hook:setup:phaseOpening', phaseCorner(region, 'job'))
+    expect(
+      dialog().queryByRole('combobox', { name: /^Kind of transition/ }),
+    ).not.toBeInTheDocument()
+    await user.click(dialog().getByRole('button', { name: 'Add transition' }))
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Added end the phase to step "Open" of the hook "Phase opening" of phase "Setup".',
+    )
+
+    await user.click(screen.getByRole('tab', { name: 'Map' }))
+    const again = await map()
+    arrow(again, 'hook:setup:phaseOpening', phaseCorner(again, 'job'))
+    await user.click(dialog().getByRole('button', { name: 'Add transition' }))
+    expect(dialog().getByRole('alert')).toHaveTextContent(
+      'Step "Open" already has this effect: end the phase.',
+    )
+    await chooseOption(user, 'Step', '2. Roll', dialog())
+    expect(dialog().queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('changes nothing when the dialog is cancelled, and starts afresh the next time', async () => {
+    const { user } = await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: withOpening(),
+    })
+    const region = await map()
+
+    arrow(region, 'hook:setup:phaseOpening', centreOf(region, 'scene:setup:ambush'))
+    await chooseOption(user, 'Step', '2. Roll', dialog())
+    await user.click(dialog().getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(said()).toHaveTextContent('No transition added.')
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
+    arrow(region, 'hook:setup:phaseOpening', centreOf(region, 'scene:setup:ambush'))
+    expect(dialog().getByRole('combobox', { name: 'Step' })).toHaveTextContent('1. Open')
+  })
+
+  it('adds a transition from the action bar of a focused hook chip, asking where it goes', async () => {
+    const { user, router } = await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: withOpening(),
+    })
+    const region = await map()
+    const bar = within(screen.getByRole('group', { name: 'Map actions' }))
+
+    act(() => {
+      within(region)
+        .getByRole('button', { name: /^Hook: Phase opening/ })
+        .focus()
+    })
+    expect(bar.getByText('Hook "Phase opening" of phase "Setup"')).toBeInTheDocument()
+    await user.click(bar.getByRole('button', { name: 'Add transition' }))
+    const to = dialog().getByRole('combobox', { name: 'To' })
+    expect(to).toHaveTextContent('Ambush')
+    await chooseOption(user, 'To', 'End of the phase', dialog())
+    expect(
+      dialog().queryByRole('combobox', { name: /^Kind of transition/ }),
+    ).not.toBeInTheDocument()
+    await user.click(dialog().getByRole('button', { name: 'Add transition' }))
+
+    expect(search(router)).toMatchObject({ node: 'phases.0.hooks.phaseOpening.0' })
+    expect(screen.getByRole('status')).toHaveTextContent('Added end the phase to step "Open"')
+  })
+
+  it('offers the end of the flow from the last phase', async () => {
+    const { user } = await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: json(
+        withPhases([heistPhases[0] ?? {}, { ...heistPhases[1], ...opening }]),
+      ),
+    })
+    const region = await map()
+
+    act(() => {
+      within(region)
+        .getByRole('button', { name: /^Hook: Phase opening/ })
+        .focus()
+    })
+    await user.click(screen.getByRole('button', { name: 'Add transition' }))
+
+    await chooseOption(user, 'To', 'End of the flow', dialog())
+    expect(dialog().getByRole('combobox', { name: 'To' })).toHaveTextContent('End of the flow')
+  })
+
+  it('refuses an arrow that breaks the rules, and changes nothing', async () => {
+    await openEditor('heist?view=map', { [`GET ${base}/narrative`]: withOpening() })
+    const region = await map()
+    const hook = 'hook:setup:phaseOpening'
+
+    arrow(region, hook, phaseCorner(region, 'setup'))
+    expect(said()).toHaveTextContent('That is phase "Setup" itself')
+    arrow(region, hook, centreOf(region, 'scene:job:quiet'))
+    expect(said()).toHaveTextContent(
+      '"Quiet" is in phase "The job": a transition reaches a Scene Type of its own phase only.',
+    )
+    arrow(region, hook, { clientX: -40, clientY: -40 })
+    expect(said()).toHaveTextContent('Dropped on nothing: no transition added.')
+    arrow(region, 'scene:setup:ambush', phaseCorner(region, 'job'))
+    expect(said()).toHaveTextContent('is added on the Scene Type page')
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
+  })
+
+  it('refuses an arrow that starts at the table of an oracle phase', async () => {
+    await openEditor('side-job?view=map')
+    const region = await map()
+
+    arrow(region, 'table:main', phaseCorner(region, 'main'))
+    expect(said()).toHaveTextContent('Its effects sit on table entries')
+  })
+
+  it('refuses an arrow from a hook whose steps are all kept as stored', async () => {
+    await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: json(
+        withPhases([
+          { ...heistPhases[0], phaseOpening: [{ kind: 'mystery' }] },
+          heistPhases[1] ?? {},
+        ]),
+      ),
+    })
+    const region = await map()
+
+    arrow(region, 'hook:setup:phaseOpening', centreOf(region, 'scene:setup:ambush'))
+
+    expect(said()).toHaveTextContent('can be edited here: open its panel.')
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
+  })
+
+  it('leaves the drag of a node body as it was: a port does not move its node', async () => {
+    await openEditor('heist?view=map')
+    const region = await map()
+    const body = inside(region, '[data-node-id="scene:job:quiet"]')
+
+    fireEvent.pointerDown(body, { ...press, ...centreOf(region, 'scene:job:quiet') })
+    fireEvent.pointerMove(body, { ...press, clientX: -40, clientY: -40 })
+    fireEvent.pointerUp(body, { ...press, clientX: -40, clientY: -40 })
+
+    expect(said()).toHaveTextContent('Removed "Quiet" from phase "The job".')
   })
 })

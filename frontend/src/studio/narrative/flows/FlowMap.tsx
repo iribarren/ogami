@@ -4,6 +4,7 @@ import { Alert } from '@/shared/ui/alert'
 import { Button } from '@/shared/ui/button'
 import {
   FlowDiagramView,
+  HOOK_LABELS,
   useDiagramDrag,
   type DiagramActivation,
   type DiagramDrop,
@@ -13,6 +14,10 @@ import { useGameSystemOracles } from '../../oracles/useGameSystemOracles'
 import type { GameSystemNarrative } from '../useGameSystemNarrative'
 import type { FlowDraft } from './flowDraft'
 import type { FlowAnswer } from './flowError'
+import type { EditedEffect } from '../steps/effectDraft'
+import { arrowTarget, type ArrowFrom, type ArrowTo } from './flowMapArrows'
+import { addEffect, hookSteps } from './flowMapCarriers'
+import { TransitionDialog, type Destination } from './TransitionDialog'
 import { flowDiagramFromDraft, mergeIssues } from './flowMapDiagram'
 import {
   addSceneType,
@@ -78,6 +83,8 @@ export function FlowMap({
   const [focused, setFocused] = useState<string | null>(null)
   // What the last edit did, or why it was refused: one live region for every gesture.
   const [said, setSaid] = useState('')
+  // The transition being placed: where it starts, and where it goes (null: the dialog asks).
+  const [placing, setPlacing] = useState<{ from: ArrowFrom; to: ArrowTo | null } | null>(null)
   const phaseOf = (key: string) => map.phaseKeys.indexOf(key)
   // The GameSystem's Scene Types by name, for the palette, the action bar and what the Map says.
   const scenes = useMemo<PaletteScene[]>(
@@ -115,7 +122,11 @@ export function FlowMap({
       !locked &&
       (sceneSource(id) !== null ||
         (id.startsWith('phase:') && phaseOf(id.slice('phase:'.length)) >= 0)),
-    onDrop: ({ sourceId, hit, point }: DiagramDrop) => {
+    onDrop: ({ sourceId, kind, hit, point }: DiagramDrop) => {
+      if (kind === 'arrow') {
+        drawArrow(sourceId, hit)
+        return
+      }
       const to = hit?.phase == null ? -1 : phaseOf(hit.phase)
       const source = sceneSource(sourceId)
       if (source !== null) {
@@ -138,6 +149,71 @@ export function FlowMap({
       )
     },
   })
+  /** An arrow dropped on `hit`: the transition it stands for, added to the first step of its hook, or why not. */
+  function drawArrow(sourceId: string, hit: DiagramDrop['hit']) {
+    if (locked) {
+      return
+    }
+    const arrow = arrowTarget({
+      sourceId,
+      hit,
+      phases: draft.phases,
+      phaseKeys: map.phaseKeys,
+      diagram: map.diagram,
+      names: nameOf,
+    })
+    if (isRefusal(arrow)) {
+      setSaid(arrow.refused)
+      return
+    }
+    placeTransition(arrow.from, arrow.to)
+  }
+  /** Opens the dialog that says where the transition of `from` is written, unless the hook cannot carry one. */
+  function placeTransition(from: ArrowFrom, to: ArrowTo | null) {
+    const steps = hookSteps(draft.phases, from)
+    if (isRefusal(steps)) {
+      setSaid(steps.refused)
+      return
+    }
+    setPlacing({ from, to })
+  }
+  /** What the dialog confirmed: the effect on its step and part, then the panel of that step. Returns why it was refused. */
+  function confirmTransition(step: number, carrier: string, effect: EditedEffect): string | null {
+    if (placing === null) {
+      return null
+    }
+    const { phase, hook } = placing.from
+    const result = addEffect(draft.phases, { phase, hook, step }, carrier, effect, nameOf)
+    if (isRefusal(result)) {
+      return result.refused
+    }
+    setPlacing(null)
+    setSaid(result.say)
+    onEdit({ ...result, select: { kind: 'step', phase, hook, step } })
+    return null
+  }
+  /** The hook as the Map names it: its label, and the phase it belongs to. */
+  const hookName = ({ phase, hook }: ArrowFrom) =>
+    `"${HOOK_LABELS[hook]}" of phase ${phaseLabel(draft.phases[phase])}`
+  /** Where a transition from the phase at `index` can go: its drawn Scene Types, then where the phase ends. */
+  function destinations(index: number): Destination[] {
+    const key = map.phaseKeys[index]
+    const scenesDrawn = (map.layout?.nodes ?? []).filter(
+      ({ kind, phase }) => kind === 'sceneType' && phase === key,
+    )
+    return [
+      ...scenesDrawn.map(({ id, label }): Destination => ({
+        value: id,
+        label,
+        to: { type: 'sceneType', sceneType: id.slice(`scene:${key ?? ''}:`.length) },
+      })),
+      {
+        value: 'end',
+        label: index === draft.phases.length - 1 ? 'End of the flow' : 'End of the phase',
+        to: { type: 'endPhase' },
+      },
+    ]
+  }
   /** Moves the action bar to where an edit left a Scene Type: its new phase, or its old phase once it left every one. */
   function followScene({ sceneType, from }: SceneSource, to: number) {
     if (from === null) {
@@ -174,6 +250,10 @@ export function FlowMap({
   const at = focus === undefined ? -1 : phaseOf(focus)
   const current = draft.phases[at]
   const scene = focused === null ? null : selectedScene(focused, draft, map.phaseKeys, map.diagram)
+  const hookTarget =
+    focused === null ? null : mapTarget(focused, 'hook', map.phaseKeys, map.diagram)
+  const hookAt =
+    hookTarget?.type === 'node' && hookTarget.node.kind === 'hook' ? hookTarget.node : null
   const sceneAt = scene?.selection.sceneTypes.indexOf(scene.sceneType) ?? -1
 
   return (
@@ -194,7 +274,8 @@ export function FlowMap({
         The flow as it is in this form, saved or not. Pick a phase, a selection or a hook to edit
         it; a Scene Type opens its own page. Drag a phase to reorder it, or press its mode to switch
         it. Drag a Scene Type from the palette into a phase to add it, between two to place it, or
-        out of every phase to remove it from the selection.
+        out of every phase to remove it from the selection. Drag from the dot on a hook to a Scene
+        Type or the next phase to add a transition.
       </p>
       <div className="flex flex-col gap-3 lg:flex-row">
         <ScenePalette sceneTypes={scenes} drag={drag} locked={locked} />
@@ -207,18 +288,34 @@ export function FlowMap({
             onFocusNode={setFocused}
             labels={labels}
             drag={drag}
+            arrows={!locked}
           />
         </div>
       </div>
       <MapActionBar
         title={
-          scene === null
-            ? current === undefined
-              ? null
-              : `Phase ${phaseLabel(current)}`
-            : `Scene Type "${nameOf(scene.sceneType)}" in phase ${phaseLabel(draft.phases[scene.phase])}`
+          scene !== null
+            ? `Scene Type "${nameOf(scene.sceneType)}" in phase ${phaseLabel(draft.phases[scene.phase])}`
+            : hookAt !== null
+              ? `Hook ${hookName(hookAt)}`
+              : current === undefined
+                ? null
+                : `Phase ${phaseLabel(current)}`
         }
       >
+        {hookAt !== null && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={locked}
+            onClick={() => {
+              placeTransition(hookAt, null)
+            }}
+          >
+            Add transition
+          </Button>
+        )}
         {scene !== null && (
           <>
             <Button
@@ -315,6 +412,8 @@ export function FlowMap({
             </Button>
             {current.selection.rule !== 'oracle' && (
               <AddSceneType
+                // A pick belongs to the phase it was made on: another phase starts empty.
+                key={focus}
                 sceneTypes={scenes}
                 disabled={locked}
                 onAdd={(sceneType) => {
@@ -328,6 +427,20 @@ export function FlowMap({
       <p role="status" className="min-h-5 text-sm">
         {said}
       </p>
+      {placing !== null && (
+        <TransitionDialog
+          hookName={`hook ${hookName(placing.from)}`}
+          steps={draft.phases[placing.from.phase]?.hooks[placing.from.hook] ?? []}
+          to={placing.to}
+          destinations={destinations(placing.from.phase)}
+          names={nameOf}
+          onConfirm={confirmTransition}
+          onCancel={() => {
+            setPlacing(null)
+            setSaid('No transition added.')
+          }}
+        />
+      )}
     </div>
   )
 }

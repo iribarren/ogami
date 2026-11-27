@@ -46,7 +46,7 @@ The manual is text and flow diagrams only. Nothing sets each game's mood, and th
 - **D7 Images** are resolved with `import.meta.glob('./images/*.{webp,png,jpg}', { eager: true, query: '?url', import: 'default' })`, so the app and the print build both find them.
 - **D8 Paper PDF:** the spec's MIME map gains webp, png, jpg and svg; it waits for every `<img>` to decode before printing.
 - **D9 Placements** (approved by the user, 2026-11-27): all 24 below, all in common text (never inside `:::in-ogami`), pinned by a content test. File prefixes `hc-`, `dw-`, `house-`.
-- **D10 Credit:** both "This book" sections gain: *"Illustrations generated with ‹image tool› from prompts by ‹author›, released with the book under CC BY-SA 4.0."* ‹author› is the name the "This book" section already credits (no new personal data). The tool's name stays a placeholder until the user chooses (user decision, 2026-11-27).
+- **D10 Credit:** both "This book" sections gain: *"Illustrations generated with ‹image tool›, released with the book under CC BY-SA 4.0."* No author is named (user decision 2026-11-28: no author named). The tool's name stays a placeholder until the user chooses (user decision, 2026-11-27).
 - **D11 One slice.** The forecast fits the budget; if it grows past ~1,700 lines, split before review: slice 2 = T3 (placements) and T4 (credits).
 
 ### Placements (D9)
@@ -94,6 +94,7 @@ Shippable: the placeholders are meant to be visible on `main` until each image l
 | T2 | 1 | `::image` directive (D3), `styles.ts` (D5), image lookup (D7), web figure and placeholder (D4, D6), Paper block and print CSS (D6), PDF spec MIME and image wait (D8), tests | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T3 | 1 | The 24 placements (D9) in the chapters, with a content test pinning slug, file, style and size, all common, styles known, no app words in alt/subject | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T4 | 1 | Credits (D10) in both "This book" sections | delegated writer (Sonnet), with T3 | [x] | |
+| T5 | 1 | Native review findings: placeholder grows to fit its prompt (web and Paper), `ManualPages` test independent of image files, credit wording without an author (D10) | delegated writer (Sonnet): 2+ files | [x] | |
 
 ## Acceptance criteria
 
@@ -116,6 +117,7 @@ Shippable: the placeholders are meant to be visible on `main` until each image l
 - 2026-11-27: T1 done: `docs/art/` README plus house, hard-country and dogwatch guides, each taboo traced to its voice pack line. Docs only, so no RED; checked by reading the guides back against the packs.
 - 2026-11-27: T2 done: `::image` parser, `styles.ts`, glob lookup, `ManualImage` (web and Paper), print CSS, PDF spec. RED observed for the parser (25 failing before the code, 58 passing after); the component, Paper and style tests were written together with their code, so no separate RED was observed for them. `make frontend-fix` run; Vitest on `src/manual` green.
 - 2026-11-28: T3 and T4 done: 24 directives placed in 20 chapters, content pin and credits sentence tested, placeholder shown on a real chapter page. No separate RED: the pin was written with the placements; its one failure on a first run (a "no faces" phrase and "card faces" in two subjects) was fixed in the subjects. `‹author›` stays a placeholder because neither credits chapter names the book's author. Illustration directive after the first opening paragraph, so text wraps the float.
+- 2026-11-28: T5 done: review findings fixed. RED observed: the new placeholder test (no overflow or fixed height) failed before the fix and passed after; the credit pin was changed together with the chapters; the `ManualPages` lookup mock was added without a separate RED (the test passed either way today).
 
 ## Reviews
 

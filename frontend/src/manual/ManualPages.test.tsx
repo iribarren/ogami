@@ -1,9 +1,13 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
 
 import { renderAppAt } from '@/test/renderApp'
 
 import { chapters } from './chapters'
+
+// No illustration file exists for the lookup, so the placeholder shows whatever files are in `images/`.
+vi.mock('./images/lookup', () => ({ imageUrl: () => undefined }))
 
 describe('the manual reader', () => {
   it('lists the chapters by part, in manifest order, for an anonymous visitor', async () => {

@@ -15,7 +15,7 @@ const boxes =
 
 /**
  * An `::image` directive: the illustration when its file is in `images/`, otherwise a placeholder
- * of the same box showing the file name, the alt text and the full prompt for the image tool. An
+ * of the same box (a minimum: it grows to show the whole prompt, never clips) showing the file name, the alt text and the full prompt for the image tool. An
  * unknown style throws, so a broken directive never shows a half page. No caption.
  */
 export function ManualImage({
@@ -36,11 +36,11 @@ export function ManualImage({
   const prompt = imagePrompt(style, subject)
   const url = imageUrl(file)
   return (
-    <figure data-image-size={size} className={cn(boxes, 'clear-both')}>
+    <figure data-image-size={size} className={cn(boxes, 'clear-both flex flex-col')}>
       {url === undefined ? (
         <div
           data-image-placeholder
-          className="h-full min-h-full w-full space-y-1 overflow-auto rounded-md border-2 border-dashed p-3 text-xs"
+          className="w-full flex-1 space-y-1 rounded-md border-2 border-dashed p-3 text-xs"
         >
           <p className="font-semibold">Illustration to come</p>
           <p>{file}</p>

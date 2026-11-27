@@ -6,7 +6,7 @@ The whole book is released under the [Creative Commons Attribution-ShareAlike 4.
 
 Hard Country and Dogwatch are original games written for this book, with their flows The Long Carry and Cold Berth, and like the rest of the book they are released under CC BY-SA 4.0. No rules text from any other game is used.
 
-Illustrations generated with ‹image tool› from prompts by ‹author›, released with the book under CC BY-SA 4.0.
+Illustrations generated with ‹image tool›, released with the book under CC BY-SA 4.0.
 
 ## Design influences
 

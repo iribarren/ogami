@@ -6,7 +6,7 @@ The whole book is released under the [Creative Commons Attribution-ShareAlike 4.
 
 Hard Country and Dogwatch are original games written for this book, and they are released under CC BY-SA 4.0 like the rest of it. No rules text from any other game is used.
 
-Illustrations generated with ‹image tool› from prompts by ‹author›, released with the book under CC BY-SA 4.0.
+Illustrations generated with ‹image tool›, released with the book under CC BY-SA 4.0.
 
 ## Design influences
 

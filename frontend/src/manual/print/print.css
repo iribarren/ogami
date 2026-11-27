@@ -115,8 +115,11 @@ body {
   margin: 0 auto;
 }
 
-/* An illustration (::image): a placeholder of the same box until its file exists. */
+/* An illustration (::image): a placeholder of the same box until its file exists. The box is a
+   minimum: the placeholder grows to show the whole prompt and never clips or scrolls. */
 .paper figure[data-image-size] {
+  display: flex;
+  flex-direction: column;
   margin: 1em 0;
 }
 
@@ -147,7 +150,7 @@ body {
 }
 
 .paper figure[data-image-size] [data-image-placeholder] {
-  min-height: 100%;
+  flex: 1 1 auto;
   padding: 2mm;
   border: 0.4mm dashed #000;
   font-size: 6.5pt;

@@ -51,6 +51,15 @@ describe('ManualImage', () => {
     expect(screen.getByText(imagePrompt('hard-country', props.subject))).toBeVisible()
   })
 
+  it('lets the placeholder grow to fit its prompt, never clipping or scrolling it', () => {
+    const { container } = render(<ManualImage {...props} size="spot" />)
+
+    const placeholder = container.querySelector('[data-image-placeholder]')
+    expect(placeholder).not.toBeNull()
+    expect(placeholder?.className).not.toMatch(/overflow|(^|\s)h-(full|\d|\[)/)
+    expect(placeholder?.getAttribute('style') ?? '').not.toMatch(/height|overflow/)
+  })
+
   it('fails loudly for a style it does not know', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
 

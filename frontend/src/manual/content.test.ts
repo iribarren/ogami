@@ -278,7 +278,7 @@ describe('the manual content', () => {
 
     it('credits the illustrations in both credits chapters, with the same sentence', () => {
       const sentence =
-        'Illustrations generated with ‹image tool› from prompts by ‹author›, released with the book under CC BY-SA 4.0.'
+        'Illustrations generated with ‹image tool›, released with the book under CC BY-SA 4.0.'
 
       expect(sources['credits-and-license']).toContain(sentence)
       expect(sources['credits-and-inspirations']).toContain(sentence)

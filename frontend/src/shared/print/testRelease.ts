@@ -37,7 +37,10 @@ export function miniRelease(
         {
           key: 'deck',
           name: 'The deck',
-          entries: [{ text: 'One', weight: 3, sceneType: 'scene' }, { text: 'Two' }],
+          entries: [
+            { text: 'One', weight: 3, sceneType: 'scene' },
+            { text: 'Two', sceneType: 'scene' },
+          ],
         },
         { key: 'luck', name: 'Luck', entries: [{ text: 'Good' }, { text: 'Bad' }] },
       ],

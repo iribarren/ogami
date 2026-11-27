@@ -35,6 +35,15 @@ describe('the release print route', () => {
     expect(document.querySelector('[data-card]')).toBeNull()
   })
 
+  it('refuses a flow key the router would read as a number, instead of printing another flow', async () => {
+    renderAppAt(`${path}?flow=1e3`, handlers)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /flow option in the address was read as 1000/,
+    )
+    expect(document.querySelector('[data-card]')).toBeNull()
+  })
+
   it('answers an unknown paper with a message', async () => {
     renderAppAt(`${path}?flow=mini&paper=a3`, handlers)
 

@@ -15,6 +15,15 @@ const PAGES = {
   a5: { width: 148, height: 210 },
 } as const satisfies Record<Paper, { width: number; height: number }>
 
+/** The margin of a page of text or of a diagram, in millimetres (the named pages themselves have none). */
+export const DOC_MARGIN = 14
+
+/** What a page of text or a diagram can use: the paper without the margin on each side. */
+export function printableArea(paper: Paper): { width: number; height: number } {
+  const page = PAGES[paper]
+  return { width: page.width - 2 * DOC_MARGIN, height: page.height - 2 * DOC_MARGIN }
+}
+
 /** A poker card: 63 × 88 mm, the trim. */
 const POKER = { width: 63, height: 88 } as const
 /** The bleed printed beyond the trim on each side. */

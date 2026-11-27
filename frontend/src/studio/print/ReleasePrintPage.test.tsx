@@ -1,6 +1,6 @@
 import { screen, waitFor } from '@testing-library/react'
 
-import { miniRelease, sceneType } from '@/shared/print/testRelease'
+import { miniRelease, sceneType, step } from '@/shared/print/testRelease'
 import type { FakeHandler } from '@/test/fakeApi'
 import { renderWithApi } from '@/test/renderWithApi'
 
@@ -62,6 +62,43 @@ describe('the release print page', () => {
       ...[3, 2, 1, 4].map((at) => `The deck ${String(at)}, back`),
     ])
     expect(document.querySelectorAll('.print-sheet')).toHaveLength(4)
+  })
+
+  it('prints the flow sheet, then the diagram, then the oracle tables, after the card sheets', async () => {
+    const raw = miniRelease()
+    Object.assign(raw.flows[0]?.phases[0] ?? {}, {
+      description: 'Draw and play.',
+      worldTurn: [step('turn', 'prompt', { prompt: 'The world turns.' })],
+    })
+    renderPage(content(raw), { flow: 'mini', paper: 'a5' })
+
+    await screen.findByText(/release 3: print on A5/)
+    const pages = [...document.querySelectorAll('.print-sheet, .print-doc')].map(
+      (page) => page.getAttribute('data-sheet') ?? 'cards',
+    )
+    expect(pages).toEqual(['cards', 'cards', 'cards', 'cards', 'flow', 'diagram', 'tables'])
+    const flow = document.querySelector('[data-sheet="flow"]')
+    expect(flow).toHaveClass('print-doc', 'print-a5')
+    expect(flow?.textContent).toMatch(/Draw and play\./)
+    expect(flow?.textContent).toMatch(/Each scene is drawn from The deck\./)
+    expect(flow?.textContent).toMatch(/World turnTitle of turn\. The world turns\./)
+    expect(document.querySelector('[data-sheet="diagram"] svg')).not.toBeNull()
+    const luck = document.querySelector('[data-table="luck"]')
+    expect(luck?.querySelector('caption')?.textContent).toBe('Luck: d4, roll again above 2')
+    expect([...(luck?.querySelectorAll('tr') ?? [])].map((row) => row.textContent)).toEqual([
+      '1Good',
+      '2Bad',
+    ])
+  })
+
+  it('prints no tables sheet for a flow without oracle tables', async () => {
+    const raw = miniRelease()
+    raw.flows[0]?.oracles.splice(0, 2, 'yes-no')
+    renderPage(content(raw))
+
+    await screen.findByText(/release 3/)
+    expect(document.querySelector('[data-sheet="flow"]')).not.toBeNull()
+    expect(document.querySelector('[data-sheet="tables"]')).toBeNull()
   })
 
   it('reads only the content of the release, never the draft', async () => {
@@ -174,6 +211,46 @@ describe('the release print page', () => {
       expect(cards()).toEqual([])
     })
 
+    it.each([
+      [
+        'no cardImages',
+        { gameSystemKey: 'mini', content: miniRelease() },
+        /no list of pinned card images/,
+      ],
+      [
+        'cardImages that is not a list',
+        { content: miniRelease(), cardImages: 'none' },
+        /no list of pinned card images/,
+      ],
+      ['a pin that is not an object', { content: miniRelease(), cardImages: [null] }, /slot/],
+      [
+        'a pin of an unknown slot',
+        { content: miniRelease(), cardImages: [{ slot: 'logo', sha256: FRONT }] },
+        /slot this page does not print/,
+      ],
+      [
+        'a pin without a hash',
+        { content: miniRelease(), cardImages: [{ slot: 'cardFront' }] },
+        /cardFront image with a malformed hash/,
+      ],
+      ['no content', { cardImages: [] }, /Release file: expected an object/],
+      [
+        'a content that is a list',
+        { content: [], cardImages: [] },
+        /Release file: expected an object/,
+      ],
+      [
+        'a content that is a string',
+        { content: 'x', cardImages: [] },
+        /Release file: expected an object/,
+      ],
+    ])('shows the alert, and no cards, for %s', async (_name, body, problem) => {
+      renderPage(() => Response.json(body))
+
+      expect(await alert()).toMatch(problem)
+      expect(cards()).toEqual([])
+    })
+
     it('says a version that is not a number, without asking the API', async () => {
       const { fakeApi } = renderPage(content(), { flow: 'mini' }, 'latest')
 
@@ -205,6 +282,41 @@ describe('the release print page', () => {
 
       expect(await alert()).toMatch(problem)
       expect(cards()).toEqual([])
+    })
+
+    it.each([
+      [
+        'a flow oracle that is no table',
+        (raw: ReturnType<typeof miniRelease>) => raw.flows[0]?.oracles.push('gone'),
+        /The flow's oracle "gone" is neither a table/,
+      ],
+      [
+        'a table over a d100',
+        (raw: ReturnType<typeof miniRelease>) =>
+          Object.assign(raw.oracles.tables[1]?.entries[0] ?? {}, { weight: 100 }),
+        /The table "luck" cannot be printed: .*more than a d100/,
+      ],
+      [
+        'a phase that names a Scene Type the release lacks',
+        (raw: ReturnType<typeof miniRelease>) =>
+          Object.assign(raw.flows[0]?.phases[1]?.selection ?? {}, { sceneTypes: ['gone'] }),
+        /gone/,
+      ],
+      [
+        'a hook step that points at a step that is not there',
+        (raw: ReturnType<typeof miniRelease>) =>
+          Object.assign(raw.flows[0]?.phases[0] ?? {}, {
+            worldTurn: [step('turn', 'prompt', { prompt: 'See {step:gone}.' })],
+          }),
+        /\{step:gone\}/,
+      ],
+    ])('says it, and prints no sheet at all, for %s', async (_name, change, problem) => {
+      const raw = miniRelease()
+      change(raw)
+      renderPage(content(raw))
+
+      expect(await alert()).toMatch(problem)
+      expect(document.querySelector('.print-sheet, .print-doc')).toBeNull()
     })
 
     it('says why the cards of a flow cannot be built', async () => {

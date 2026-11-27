@@ -13,6 +13,8 @@ export interface PinnedImages {
 
 export interface ReleaseContent {
   release: Release
+  /** The content as the API gave it, for what reads it whole (the flow diagram). */
+  content: unknown
   images: PinnedImages
 }
 
@@ -44,14 +46,26 @@ export function useReleaseContent(key: string, version: number, enabled = true) 
         throw studioError(response, error, [], 'Loading the release content')
       }
       const images: PinnedImages = { cardFront: null, cardBack: null }
-      for (const pin of data.cardImages) {
-        if (!SHA256.test(pin.sha256)) {
-          throw new Error(`The release pins the ${pin.slot} image with a malformed hash.`)
-        }
-        images[pin.slot] =
-          `/api/studio/game-systems/${encodeURIComponent(key)}/images/${pin.sha256}`
+      // The typed client does not check what arrives: a body of another shape is refused here.
+      const pins: unknown = (data as { cardImages?: unknown }).cardImages
+      if (!Array.isArray(pins)) {
+        throw new Error('The release content has no list of pinned card images (cardImages).')
       }
-      return { release: readRelease(data.content), images }
+      for (const item of pins as unknown[]) {
+        const pin = (typeof item === 'object' && item !== null ? item : {}) as {
+          slot?: unknown
+          sha256?: unknown
+        }
+        const slot = pin.slot
+        if (slot !== 'cardFront' && slot !== 'cardBack') {
+          throw new Error('The release pins a card image for a slot this page does not print.')
+        }
+        if (typeof pin.sha256 !== 'string' || !SHA256.test(pin.sha256)) {
+          throw new Error(`The release pins the ${slot} image with a malformed hash.`)
+        }
+        images[slot] = `/api/studio/game-systems/${encodeURIComponent(key)}/images/${pin.sha256}`
+      }
+      return { release: readRelease(data.content), content: data.content, images }
     },
     // A missing release, a reader error or a refusal will not change by asking again.
     retry: false,

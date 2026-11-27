@@ -138,7 +138,7 @@ describe('the decks', () => {
       { kind: 'entry', text: 'One', starts: 'Scene scene' },
       { kind: 'entry', text: 'One', starts: 'Scene scene' },
       { kind: 'entry', text: 'One', starts: 'Scene scene' },
-      { kind: 'entry', text: 'Two', starts: null },
+      { kind: 'entry', text: 'Two', starts: 'Scene scene' },
     ])
   })
 
@@ -151,7 +151,9 @@ describe('the decks', () => {
     entry.weight = weight
 
     expect(() => buildCards(release, { flow: 'mini' })).toThrow(
-      /deck: the entry "One" has a weight/,
+      new RegExp(
+        `^deck: the entry "One" has a weight of ${String(weight)}, expected a whole number of at least 1\\.$`,
+      ),
     )
   })
 

@@ -28,7 +28,10 @@ describe('flowDiagramFromDraftContent', () => {
 
   it('skips a Scene Type and a table of a shape it cannot read, and reports where they are needed', () => {
     const content = release({
-      sceneTypes: [{ key: 'a', name: 'A', play: 'not a list' }, 42],
+      sceneTypes: [
+        { key: 'a', name: 'A', play: 'not a list' },
+        42 as unknown as Record<string, unknown>,
+      ],
       tables: [{ key: 't', name: 'T', entries: 'nope' }],
       phases: [
         phase('p', { selection: { rule: 'sequence', sceneTypes: ['a'] } }),

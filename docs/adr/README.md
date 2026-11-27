@@ -55,6 +55,7 @@ Why Ogami is built the way it is. One decision per record, in Nygard format ([AD
 | 0049 | [Challenge dice and burning momentum](0049-challenge-dice-and-burning-momentum.md) | Accepted |
 | 0050 | [One manual, two editions](0050-manual-one-source-two-editions.md) | Accepted |
 | 0051 | [Flow diagram: dagre layout, own SVG renderer](0051-flow-diagram-layout-and-rendering.md) | Accepted |
+| 0052 | [Studio flow map: editing on the diagram](0052-studio-flow-map-editing-on-the-diagram.md) | Accepted |
 
 ## Template
 

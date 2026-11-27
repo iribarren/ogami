@@ -73,6 +73,8 @@ The player could see the river coming because the deck remembers where they have
 
 ## Cold Berth
 
+::image{file="dw-cards-deck.webp" style="dogwatch" size="spot" alt="Five face-down cards fanned on a metal deck, one set aside." subject="Five face-down cards fanned on a bare metal deck plate, a sixth card set apart from them, all backs blank."}
+
 Cold Berth has no deck for its scenes, since its four job cards lie face up and the player picks one, which makes the choice itself the oracle. **The Ship** needs no deck, but its compartments make a small one, with a card for each compartment you named, carrying its name, and when you would rather not pick a place you can shuffle those cards and draw.
 
 There are five compartment cards, for the Galley, the Hold, the Bridge, Cryo and the Corridor. The player picks Investigate, which asks for a place, and wants the place chosen for them.

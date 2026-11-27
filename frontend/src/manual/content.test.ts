@@ -1,6 +1,7 @@
 import { chapters } from './chapters'
 import { splitEditionBlocks } from './editionBlocks'
 import { manualFlowDiagram } from './flowDiagrams'
+import { imageStyleKeys, imagePrompt } from './images/styles'
 import { pageSources } from './pages'
 
 describe('the manual content', () => {
@@ -203,6 +204,84 @@ describe('the manual content', () => {
         ['flow-cold-berth', 'cold-berth', undefined],
       ])
       expect(placements.every(({ edition }) => edition === 'common')).toBe(true)
+    })
+  })
+
+  describe('illustrations', () => {
+    const placements = chapters.flatMap((chapter) =>
+      splitEditionBlocks(sources[chapter.slug] ?? '').flatMap((segment) =>
+        segment.kind === 'image' ? [{ slug: chapter.slug, ...segment }] : [],
+      ),
+    )
+
+    it('places the 24 approved illustrations, in reading order', () => {
+      expect(placements.map(({ slug, file, style, size }) => [slug, file, style, size])).toEqual([
+        ['what-you-need', 'house-kit.webp', 'house', 'half'],
+        ['the-two-games', 'hc-litter-poles.webp', 'hard-country', 'half'],
+        ['the-two-games', 'dw-empty-berth.webp', 'dogwatch', 'half'],
+        ['the-promise', 'hc-wrapped-foot.webp', 'hard-country', 'spot'],
+        ['the-promise', 'dw-vent-grille.webp', 'dogwatch', 'spot'],
+        ['scene-types', 'hc-ford.webp', 'hard-country', 'half'],
+        ['memory', 'hc-dogs-and-shadow.webp', 'hard-country', 'spot'],
+        ['pressure', 'hc-dying-fire.webp', 'hard-country', 'spot'],
+        ['session-rituals', 'hc-byre-night.webp', 'hard-country', 'spot'],
+        ['truths-and-endings', 'dw-sealed-slips.webp', 'dogwatch', 'half'],
+        ['cards-and-print', 'house-deck-seed.webp', 'house', 'spot'],
+        ['likelihood-oracles', 'house-dice-notebook.webp', 'house', 'spot'],
+        ['trackers-and-clocks', 'dw-scrubber-patch.webp', 'dogwatch', 'spot'],
+        ['cards-and-dice', 'dw-cards-deck.webp', 'dogwatch', 'spot'],
+        ['journaling-and-lists', 'house-journal.webp', 'house', 'half'],
+        ['rules-and-story', 'house-dice-notebooks.webp', 'house', 'spot'],
+        ['studio-tour', 'house-workbench.webp', 'house', 'spot'],
+        ['printing-a-release', 'house-card-sheet.webp', 'house', 'half'],
+        ['flow-the-long-carry', 'hc-moor-carry.webp', 'hard-country', 'banner'],
+        ['flow-the-long-carry', 'hc-shrine-gate.webp', 'hard-country', 'spot'],
+        ['flow-cold-berth', 'dw-berth-deck.webp', 'dogwatch', 'banner'],
+        ['flow-cold-berth', 'dw-frosted-hatch.webp', 'dogwatch', 'spot'],
+        ['rules-hard-country', 'hc-kit.webp', 'hard-country', 'half'],
+        ['rules-dogwatch', 'dw-kit.webp', 'dogwatch', 'half'],
+      ])
+    })
+
+    it('keeps every illustration in the common text, so Part I and II keep one In Ogami block', () => {
+      expect(placements.every(({ edition }) => edition === 'common')).toBe(true)
+    })
+
+    it('uses a known style and a file name of its own for each', () => {
+      expect(placements.every(({ style }) => imageStyleKeys.includes(style))).toBe(true)
+      expect(new Set(placements.map(({ file }) => file)).size).toBe(placements.length)
+    })
+
+    it('names the style of a game in the file prefix', () => {
+      const prefixes: Record<string, string> = {
+        'hard-country': 'hc-',
+        dogwatch: 'dw-',
+        house: 'house-',
+      }
+
+      for (const { file, style } of placements) {
+        expect(file.startsWith(prefixes[style] ?? '?')).toBe(true)
+      }
+    })
+
+    it('keeps the app out of every alt text, subject and prompt', () => {
+      for (const { alt, subject, style } of placements) {
+        expect(`${alt}\n${imagePrompt(style, subject)}`).not.toMatch(/\b(Ogami|Studio|app)\b/i)
+      }
+    })
+
+    it('puts no lettering or face into a subject', () => {
+      for (const { subject } of placements) {
+        expect(subject).not.toMatch(/\b(faces?|text|lettering|caption|logo)\b(?!-)/i)
+      }
+    })
+
+    it('credits the illustrations in both credits chapters, with the same sentence', () => {
+      const sentence =
+        'Illustrations generated with ‹image tool›, released with the book under CC BY-SA 4.0.'
+
+      expect(sources['credits-and-license']).toContain(sentence)
+      expect(sources['credits-and-inspirations']).toContain(sentence)
     })
   })
 })

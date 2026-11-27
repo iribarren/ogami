@@ -126,6 +126,7 @@ B34–B38 are the visual features planned on 2026-11-27. Build them next, in the
 | B36 | `studio-print-cards` ([#427](https://github.com/iribarren/ogami/issues/427)) | Studio | B34 | Done in PRs #428–#434. Print a published release's flow as a PDF: poker-size scene and deck cards, and A4 or A5 sheets for the flow description, its diagram and its oracle tables. A card back and a front frame image uploaded to the GameSystem and pinned by each release: the first image storage in the app |
 | B37 | `manual-flavor-images` | Manual | — | Flavor illustrations in the manual: an art style guide per game (Dogwatch, Hard Country) and a neutral house style for the Studio and Play chapters; placements with their prompt and alt text shown until the image lands; images in the web and Paper editions; AI images credited |
 | B38 | `play-tabletop` | Play | B34–B37 | A virtual tabletop view of a campaign: a mat where drawn scene cards are laid, the flow's decks, a dice tray and the journal as a notebook to open. Presentation only, beside the current Play page, which stays untouched. Starts with its own brainstorming session |
+| B39 | `manual-image-credit` ([#437](https://github.com/iribarren/ogami/issues/437)) | Manual | B37 | Name the image generator in the illustration credit once it is chosen: replace `‹image tool›` in both credits chapters and in the content pin. Follow-up of `manual-flavor-images` |
 
 ## Starter prompts
 
@@ -673,6 +674,8 @@ Start feature `manual-flavor-images` (ODD). Flavor illustrations in the manual, 
 
 Out of scope: generating the images (the user does), the Spanish edition (B30).
 ```
+
+Done: `manual-flavor-images`, #435 in one slice (PR #436). Art style guides in `docs/art/` (house, Hard Country, Dogwatch) with prompt preambles; a `::image` directive whose placeholder shows the file name, alt text and full prompt until the image lands, in the web and Paper editions; 24 placements; the illustrations credited (generator name pending, B39).
 
 **B38. play-tabletop**
 

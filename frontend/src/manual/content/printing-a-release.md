@@ -2,6 +2,8 @@
 
 A flow that you play on screen can also be played at a table, in the way a board game comes as a box of cards and sheets, and Studio prints it in that form. This chapter goes through the print page and what it puts on paper. How to design cards that play well, and how to draw from a deck, is the subject of [Cards and Print](/manual/cards-and-print), which this chapter does not repeat.
 
+::image{file="house-card-sheet.webp" style="house" size="half" alt="A printed sheet of cards and a craft knife cutting along its crop marks." subject="A printed sheet of blank card fronts on a cutting mat and a craft knife cutting along the corner crop marks, one hand holding the sheet."}
+
 ## A print is always of a release
 
 Studio prints one flow of a published release, and never the draft. Because a release stays exactly as it was published, the cards you print match a version that campaigns can play, whereas a print of the draft would describe something no campaign has.

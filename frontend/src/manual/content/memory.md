@@ -57,6 +57,8 @@ A step's text can read a slot as `{fact:sin}`, using the key of the slot.
 
 ## The Long Carry
 
+::image{file="hc-dogs-and-shadow.webp" style="hard-country" size="spot" alt="Dogs curving wide round the shadow of a litter on a road." subject="Three dogs curving wide round the long shadow of a litter lying on a muddy road, the bearers out of frame."}
+
 The Long Carry remembers three things in slots, and everything else it lets you keep as you like.
 
 | Slot      | What it holds                             |

@@ -18,6 +18,10 @@ const MIME: Record<string, string | undefined> = {
   '.css': 'text/css',
   '.woff2': 'font/woff2',
   '.woff': 'font/woff',
+  '.webp': 'image/webp',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
 }
 
 async function serveBuild(page: Page) {
@@ -33,7 +37,7 @@ async function serveBuild(page: Page) {
   })
 }
 
-/** Opens a document and waits for the fonts and for the page to say it rendered. */
+/** Opens a document and waits for the fonts, the images and for the page to say it rendered. */
 async function open(page: Page, doc: string) {
   await serveBuild(page)
   await page.goto(`${ORIGIN}/print.html?doc=${doc}`)
@@ -45,6 +49,14 @@ async function open(page: Page, doc: string) {
     )
   }
   await page.evaluate(() => document.fonts.ready)
+  // An illustration that is not decoded yet would print as a blank box; one that failed to load
+  // (a 404, a corrupt file) fails the print instead of leaving a gap.
+  const broken = await page.evaluate(async () => {
+    const images = [...document.images]
+    await Promise.all(images.map((image) => image.decode().catch(() => undefined)))
+    return images.filter((image) => !image.complete || image.naturalWidth === 0).map((i) => i.src)
+  })
+  expect(broken, 'images that did not load').toEqual([])
 }
 
 /** No card or sheet may hold more than its box shows: names every one that does. */

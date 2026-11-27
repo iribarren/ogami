@@ -1,3 +1,5 @@
+import { imageStyleKeys } from './images/styles'
+
 type Edition = 'common' | 'in-ogami'
 
 /** A run of Markdown: shown in every edition, or only where the book is read in Ogami. */
@@ -18,13 +20,31 @@ export interface FlowDiagramSegment {
   phase?: string
 }
 
+export type ImageSize = 'banner' | 'half' | 'spot'
+
+/**
+ * An `::image{…}` directive: one illustration, its file, art style, size, alt text and the subject
+ * of its prompt. The file may not exist yet; the page then shows a placeholder.
+ */
+export interface ImageSegment {
+  edition: Edition
+  kind: 'image'
+  file: string
+  style: string
+  size: ImageSize
+  alt: string
+  subject: string
+}
+
 /** A run of a manual page, in page order. */
-export type Segment = MarkdownSegment | FlowDiagramSegment
+export type Segment = MarkdownSegment | FlowDiagramSegment | ImageSegment
 
 const opening = ':::in-ogami'
 const closing = ':::'
 const directiveName = 'flow-diagram'
 const flowDirective = /^::flow-diagram\{flow="([a-z0-9-]+)"(?: phase="([a-z0-9-]+)")?\}$/
+const imageDirective =
+  /^::image\{file="([a-z0-9-]+\.(?:webp|png|jpg))" style="([a-z0-9-]+)" size="(banner|half|spot)" alt="([^"]*\S[^"]*)" subject="([^"]*\S[^"]*)"\}$/
 
 /**
  * Splits a page into common and `:::in-ogami` segments before it is rendered as Markdown, so the
@@ -34,7 +54,9 @@ const flowDirective = /^::flow-diagram\{flow="([a-z0-9-]+)"(?: phase="([a-z0-9-]
  *
  * A line of its own `::flow-diagram{flow="key"}` (or with ` phase="key"` too) becomes a diagram
  * segment in the edition it sits in; the splitter only parses it, `manualFlowDiagram` resolves it.
- * Any other `::name` line, or a malformed `::flow-diagram` line, throws.
+ * A line of its own `::image{file="…" style="…" size="…" alt="…" subject="…"}` becomes an image
+ * segment, whose style must be a key of `images/styles.ts`. Any other `::name` line, or a malformed
+ * `::flow-diagram` or `::image` line, throws.
  */
 export function splitEditionBlocks(source: string): Segment[] {
   const segments: Segment[] = []
@@ -69,6 +91,23 @@ export function splitEditionBlocks(source: string): Segment[] {
       }
     }
     const marker = line.trimEnd()
+    if (fence === null && /^::image(?![A-Za-z0-9-])/.test(marker)) {
+      const found = imageDirective.exec(marker)
+      if (found === null) {
+        throw new Error(
+          `Line ${String(at)}: malformed directive "${marker}", expected ::image{file="…" style="…" size="banner|half|spot" alt="…" subject="…"}.`,
+        )
+      }
+      const [, file = '', style = '', size = '', alt = '', subject = ''] = found
+      if (!imageStyleKeys.includes(style)) {
+        throw new Error(
+          `Line ${String(at)}: unknown image style "${style}", expected one of: ${imageStyleKeys.join(', ')}.`,
+        )
+      }
+      flush()
+      segments.push({ edition, kind: 'image', file, style, size: size as ImageSize, alt, subject })
+      continue
+    }
     if (fence === null && /^::[A-Za-z]/.test(marker)) {
       const found = flowDirective.exec(marker)
       if (found === null) {

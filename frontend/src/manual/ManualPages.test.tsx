@@ -1,9 +1,13 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
 
 import { renderAppAt } from '@/test/renderApp'
 
 import { chapters } from './chapters'
+
+// No illustration file exists for the lookup, so the placeholder shows whatever files are in `images/`.
+vi.mock('./images/lookup', () => ({ imageUrl: () => undefined }))
 
 describe('the manual reader', () => {
   it('lists the chapters by part, in manifest order, for an anonymous visitor', async () => {
@@ -62,5 +66,13 @@ describe('the manual reader', () => {
     renderAppAt('/manual/no-such-chapter')
 
     expect(await screen.findByText('Page not found')).toBeInTheDocument()
+  })
+
+  it('shows an illustration placeholder with its prompt where a chapter places one', async () => {
+    renderAppAt('/manual/what-you-need')
+
+    expect(await screen.findByText('Illustration to come')).toBeVisible()
+    expect(screen.getByText('house-kit.webp')).toBeVisible()
+    expect(screen.getByText(/^Pen-and-ink line illustration .* A notebook, a pencil/)).toBeVisible()
   })
 })

@@ -38,6 +38,8 @@ Reshuffling suits a world that does not remember, such as a road, whereas discar
 
 ## Seeding a finale
 
+::image{file="house-deck-seed.webp" style="house" size="spot" alt="A squared deck of cards, backs only, with one card slid in near the bottom." subject="A neatly squared deck of cards seen from the side, backs only, one card slid halfway in near the bottom."}
+
 When the deck is a clock, you can place the ending inside it. Before the first draw, take the finale card and shuffle it into the bottom part of the deck only, either the last third or the last five cards. The ending can then turn up late but never early, and because it does not turn up at a time you chose, it feels found.
 
 To make the story the length you want, count the cards and place the finale to match. A deck of fifteen with the finale in the bottom five ends between the eleventh and the fifteenth draw.

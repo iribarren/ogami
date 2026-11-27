@@ -2,6 +2,8 @@
 
 A game master answers a thousand small questions a night. Is the door locked? Does the guard know your face? Is anyone home? Most of the time the story so far already holds the answer, but sometimes it does not, and when you play alone you are the only one in the room.
 
+::image{file="house-dice-notebook.webp" style="house" size="spot" alt="Two dice mid-tumble over an open notebook." subject="Two dice mid-tumble in the air above an open notebook with blank pages."}
+
 If you have ever tossed a coin because you could not settle something yourself, you know the idea already. A **likelihood oracle** lets you ask yourself a yes or no question and leave the answer to a die. It works like the coin, except that before you roll you say how likely you think the answer is, and then you roll once and read what comes up. It is a tool for the moments when you honestly do not know.
 
 ## The procedure

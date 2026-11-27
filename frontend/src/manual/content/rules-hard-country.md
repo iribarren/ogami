@@ -36,6 +36,8 @@ Harm takes Wind first. Once you have no Wind left, each harm is a **Wound** inst
 
 ## Load
 
+::image{file="hc-kit.webp" style="hard-country" size="half" alt="The bearers' kit laid out on a blanket: rope, lantern, staff, waterskin, bandages, knife and sling." subject="The kit laid out on a rough wool blanket: a coil of rope, a lantern, a staff, a waterskin, rolled bandages, a knife and a sling."}
+
 You carry eight slots. Most things take one slot each, heavy things such as the carrying poles and the pole axe take two, and lamp oil takes none.
 
 | Kit            | Cost | Slots |

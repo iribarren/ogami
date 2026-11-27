@@ -2,6 +2,8 @@
 
 _Will you get the saint to the shrine before first snow, and what will it cost?_
 
+::image{file="hc-moor-carry.webp" style="hard-country" size="banner" alt="Bearers seen from behind carrying a litter across a high moor toward a pass under snow clouds." subject="A line of small bearers seen from behind carrying a shrouded litter across a high bare moor toward a distant pass under heavy snow clouds."}
+
 The Long Carry is played on Hard Country, over three to four sessions. This page sets out the whole flow on one spread. Its cards are printed separately.
 
 ## The premise
@@ -70,6 +72,8 @@ Road Risks is rolled in every World turn. Its quiet result is the most common, c
 The Truth is emergent, which means that nobody tells you what the saint did. Instead, each Omen asks what you now believe, and in answer you write the Sin again.
 
 ## The endings
+
+::image{file="hc-shrine-gate.webp" style="hard-country" size="spot" alt="An empty shrine gate in the first snow." subject="An empty plain wooden shrine gate standing alone in the first light snow, no figures."}
 
 The ending is chosen by Winter and Burden rather than by you. You are in time if Winter is 7 or less, and light if Burden is 2 or less.
 

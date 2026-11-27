@@ -74,6 +74,30 @@ describe('the Paper edition', () => {
     ])
   })
 
+  it('keeps the images of the common text in order and leaves out those in an In Ogami block', () => {
+    const list: Chapter[] = [{ slug: 'a', title: 'A', part: 'One', editions: 'both' }]
+    const image = {
+      kind: 'image',
+      file: 'house-dice.webp',
+      style: 'house',
+      size: 'spot',
+      alt: 'Dice.',
+      subject: 'Two dice.',
+    } as const
+    const book = paperBook(list, () => [
+      { edition: 'common', kind: 'markdown', text: 'Before.' },
+      { edition: 'common', ...image },
+      { edition: 'in-ogami', ...image, file: 'house-other.webp' },
+      { edition: 'common', kind: 'markdown', text: 'After.' },
+    ])
+
+    expect(book.parts[0]?.chapters[0]?.blocks).toEqual([
+      { kind: 'markdown', text: 'Before.' },
+      image,
+      { kind: 'markdown', text: 'After.' },
+    ])
+  })
+
   it('throws on a chapter with nothing common, never printing an empty page', () => {
     const list: Chapter[] = [{ slug: 'a', title: 'A', part: 'One', editions: 'both' }]
 

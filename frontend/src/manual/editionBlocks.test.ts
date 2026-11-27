@@ -166,4 +166,86 @@ describe('splitEditionBlocks', () => {
       expect(splitEditionBlocks(':: not a directive\n')).toHaveLength(1)
     })
   })
+
+  describe('the image directive', () => {
+    const attrs =
+      'file="hc-ford.webp" style="hard-country" size="half" alt="A ford." subject="A ford at dusk."'
+    const valid = `::image{${attrs}}`
+
+    it('becomes its own segment between the text around it', () => {
+      expect(splitEditionBlocks(`Before.\n\n${valid}\n\nAfter.\n`)).toEqual([
+        { edition: 'common', kind: 'markdown', text: 'Before.' },
+        {
+          edition: 'common',
+          kind: 'image',
+          file: 'hc-ford.webp',
+          style: 'hard-country',
+          size: 'half',
+          alt: 'A ford.',
+          subject: 'A ford at dusk.',
+        },
+        { edition: 'common', kind: 'markdown', text: 'After.' },
+      ])
+    })
+
+    it('takes the edition it sits in', () => {
+      const [segment] = splitEditionBlocks(`:::in-ogami\n${valid}\n:::\n`)
+
+      expect(segment).toMatchObject({ edition: 'in-ogami', kind: 'image' })
+    })
+
+    it('stays text inside a code fence', () => {
+      const segments = splitEditionBlocks(`\`\`\`\n${valid}\n::image{broken}\n\`\`\`\n`)
+
+      expect(segments).toHaveLength(1)
+      expect(segments[0]).toMatchObject({ kind: 'markdown' })
+    })
+
+    it('tolerates trailing spaces and a CRLF source', () => {
+      expect(splitEditionBlocks(`${valid}  \r\n`)).toHaveLength(1)
+    })
+
+    it.each(['banner', 'half', 'spot'])('accepts the size %s', (size) => {
+      const [segment] = splitEditionBlocks(valid.replace('size="half"', `size="${size}"`))
+
+      expect(segment).toMatchObject({ kind: 'image', size })
+    })
+
+    it.each(['webp', 'png', 'jpg'])('accepts the extension %s', (extension) => {
+      const [segment] = splitEditionBlocks(valid.replace('.webp', `.${extension}`))
+
+      expect(segment).toMatchObject({ kind: 'image', file: `hc-ford.${extension}` })
+    })
+
+    it.each([
+      ['no attributes', '::image'],
+      ['empty braces', '::image{}'],
+      ['a missing subject', '::image{file="a.webp" style="house" size="spot" alt="A."}'],
+      [
+        'attributes in the other order',
+        `::image{style="house" ${attrs.replace(' style="hard-country"', '')}}`,
+      ],
+      ['single quotes', `::image{${attrs.replace(/"/g, "'")}}`],
+      ['an extra attribute', `::image{${attrs} extra="x"}`],
+      ['an unclosed brace', `::image{${attrs}`],
+      ['text after the directive', `${valid} caption`],
+      ['an empty alt', valid.replace('alt="A ford."', 'alt=""')],
+      ['an empty subject', valid.replace('subject="A ford at dusk."', 'subject=""')],
+      ['an unknown size', valid.replace('size="half"', 'size="huge"')],
+      ['an upper-case file name', valid.replace('hc-ford.webp', 'HC-ford.webp')],
+      ['a file name without an extension', valid.replace('hc-ford.webp', 'hc-ford')],
+      ['an unsupported extension', valid.replace('.webp', '.gif')],
+      ['a path in the file name', valid.replace('hc-ford.webp', '../hc-ford.webp')],
+    ])('throws on a malformed directive: %s', (_, line) => {
+      expect(() => splitEditionBlocks(`Text\n${line}\n`)).toThrow(
+        /line 2.*malformed directive.*expected ::image\{file="…" style="…" size="banner\|half\|spot" alt="…" subject="…"\}/i,
+      )
+    })
+
+    it('throws on a style it does not know, naming the known ones', () => {
+      expect(() =>
+        splitEditionBlocks(`Text\n${valid.replace('hard-country', 'no-such-style')}\n`),
+      ).toThrow(/line 2.*unknown image style "no-such-style".*dogwatch.*hard-country.*house/i)
+    })
+  })
 })

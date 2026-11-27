@@ -2,6 +2,8 @@
 
 _What is aboard, who let it on, and why were we woken?_
 
+::image{file="dw-berth-deck.webp" style="dogwatch" size="banner" alt="A long berth deck at half-light with rows of closed berths and one open lid." subject="A long berth deck at half-light seen down its length, rows of closed berths on both sides, a single lid standing open."}
+
 Cold Berth is played on Dogwatch, over two to three sessions. This page sets out the whole flow on one spread. Its cards are printed separately.
 
 ## The premise
@@ -68,6 +70,8 @@ The Truths are sealed. In **Session Zero**, roll each one on its table, write th
 Treason is a fourth table, which you may roll in an Investigate scene when a person is part of it. Some of its results name a suspect, add a Clue or raise Threat, and some change nothing.
 
 ## The endings
+
+::image{file="dw-frosted-hatch.webp" style="dogwatch" size="spot" alt="A closed hatch with a frosted porthole." subject="A closed bolted hatch with a small porthole furred with frost, in dim corridor light."}
 
 Threat at 5 or less counts as contained and anything higher as boiling over, while Clues at 2 or less count as little and anything higher as plenty.
 

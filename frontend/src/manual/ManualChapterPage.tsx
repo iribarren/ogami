@@ -4,6 +4,7 @@ import { Fragment } from 'react'
 import { findChapter, neighbours } from './chapters'
 import { ManualContents } from './ManualContents'
 import { ManualFlowDiagram } from './ManualFlowDiagram'
+import { ManualImage } from './ManualImage'
 import { Markdown } from './Markdown'
 import { pageSegments } from './pages'
 
@@ -19,14 +20,27 @@ export function ManualChapterPage({ slug }: { slug: string }) {
   return (
     <div className="grid gap-8 lg:grid-cols-[14rem_minmax(0,1fr)]">
       <ManualContents label="Manual contents" />
-      <article className="max-w-3xl min-w-0 space-y-8">
+      {/* A heading clears the half and spot illustrations that float beside the text above it. */}
+      <article className="max-w-3xl min-w-0 space-y-8 [&_h2]:clear-both">
         {segments.map((segment, at) => {
-          const run =
-            segment.kind === 'markdown' ? (
-              <Markdown>{segment.text}</Markdown>
-            ) : (
-              <ManualFlowDiagram flow={segment.flow} phase={segment.phase} />
-            )
+          const run = (() => {
+            switch (segment.kind) {
+              case 'markdown':
+                return <Markdown>{segment.text}</Markdown>
+              case 'flow-diagram':
+                return <ManualFlowDiagram flow={segment.flow} phase={segment.phase} />
+              case 'image':
+                return (
+                  <ManualImage
+                    file={segment.file}
+                    style={segment.style}
+                    size={segment.size}
+                    alt={segment.alt}
+                    subject={segment.subject}
+                  />
+                )
+            }
+          })()
           return segment.edition === 'common' ? (
             <Fragment key={at}>{run}</Fragment>
           ) : (

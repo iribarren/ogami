@@ -29,7 +29,14 @@ function mini(steps: object[] = [step('ask', 'prompt', { prompt: 'Say something.
     trackers: [{ key: 'doom', name: 'Doom', hint: 'Near.', kind: 'clock', segments: 6 }],
     factSlots: [{ key: 'sin', label: 'The Sin' }],
     oracles: {
-      likelihood: [{ key: 'yes-no' }],
+      likelihood: [
+        {
+          key: 'yes-no',
+          name: 'Yes/no',
+          sides: 100,
+          levels: [{ key: 'even', label: 'Even odds', target: 50 }],
+        },
+      ],
       tables: [
         { key: 'deck', name: 'Deck', entries: [{ text: 'One', weight: 2, sceneType: 'scene' }] },
         { key: 'luck', name: 'Luck', entries: [{ text: 'Good' }, { text: 'Bad' }] },

@@ -16,6 +16,8 @@ export interface ReleaseTracker {
   size: number
   /** The lowest value: 0 for a clock. */
   min: number
+  /** The value a counter starts at, when the release says. */
+  initial?: number
   levels: { upTo?: number; label: string }[]
 }
 
@@ -112,13 +114,43 @@ export interface ReleaseFlow {
   selectionTables: string[]
 }
 
+/** A check as a reference page words it: what it is, how to roll it and what its bands are called. */
+export interface ReleaseCheck {
+  key: string
+  label: string
+  hint: string
+  /** The dice as written ("1d6", "d%"); a pool check has none. */
+  dice?: string
+  /** The bands in order; their thresholds and formulas are not read. */
+  bands: { key: string; label: string }[]
+}
+
+/** An oracle answered with a likelihood: it says yes on a roll at or under the level's target. */
+export interface ReleaseLikelihoodOracle {
+  key: string
+  name: string
+  sides: number
+  levels: { key: string; label: string; target: number }[]
+  exceptionalPercent?: number
+}
+
+/** A Fact slot or a Tag: what the campaign log asks to write down. */
+export interface ReleaseLogEntry {
+  key: string
+  label: string
+  hint?: string
+}
+
 export interface Release {
   systemName: string
   license?: string
   trackers: ReleaseTracker[]
-  factSlots: { key: string; label: string }[]
-  tags: { key: string; label: string }[]
+  factSlots: ReleaseLogEntry[]
+  tags: ReleaseLogEntry[]
+  checks: ReleaseCheck[]
+  /** The keys of `likelihoodOracles`. */
   likelihoods: string[]
+  likelihoodOracles: ReleaseLikelihoodOracle[]
   tables: ReleaseTable[]
   sceneTypes: ReleaseSceneType[]
   flows: ReleaseFlow[]
@@ -162,6 +194,10 @@ const num = (o: Rec, key: string, at: string) => asNum(o[key], `${at}.${key}`)
 
 function optStr(o: Rec, key: string, at: string): string | undefined {
   return o[key] === undefined || o[key] === null ? undefined : str(o, key, at)
+}
+
+function optNum(o: Rec, key: string, at: string): number | undefined {
+  return o[key] === undefined || o[key] === null ? undefined : num(o, key, at)
 }
 
 /** A list of objects, each read with its path; an absent optional list is empty. */
@@ -307,6 +343,7 @@ function readTracker(o: Rec, at: string): ReleaseTracker {
     kind,
     size: num(o, kind === 'clock' ? 'segments' : 'max', at),
     min: kind === 'clock' ? 0 : num(o, 'min', at),
+    initial: optNum(o, 'initial', at),
     levels: each(
       o,
       'levels',
@@ -318,6 +355,46 @@ function readTracker(o: Rec, at: string): ReleaseTracker {
       true,
     ),
   }
+}
+
+function readCheck(o: Rec, at: string): ReleaseCheck {
+  return {
+    key: str(o, 'key', at),
+    label: str(o, 'label', at),
+    hint: str(o, 'hint', at),
+    dice: optStr(o, 'dice', at),
+    bands: each(o, 'bands', at, (band, here) => ({
+      key: str(band, 'key', here),
+      label: str(band, 'label', here),
+    })),
+  }
+}
+
+function readLikelihoodOracle(o: Rec, at: string): ReleaseLikelihoodOracle {
+  const sides = asInt(o.sides, `${at}.sides`)
+  if (sides < 2) {
+    fail(`${at}.sides`, 'expected a whole number of at least 2.')
+  }
+  return {
+    key: str(o, 'key', at),
+    name: str(o, 'name', at),
+    sides,
+    levels: each(o, 'levels', at, (level, here) => {
+      const target = asInt(level.target, `${here}.target`)
+      if (target < 0 || target > sides) {
+        fail(`${here}.target`, `expected a whole number from 0 to ${String(sides)}.`)
+      }
+      return { key: str(level, 'key', here), label: str(level, 'label', here), target }
+    }),
+    exceptionalPercent:
+      o.exceptionalPercent === undefined || o.exceptionalPercent === null
+        ? undefined
+        : asInt(o.exceptionalPercent, `${at}.exceptionalPercent`),
+  }
+}
+
+function readLogEntry(o: Rec, at: string): ReleaseLogEntry {
+  return { key: str(o, 'key', at), label: str(o, 'label', at), hint: optStr(o, 'hint', at) }
 }
 
 function readSelection(o: Rec, at: string): PhaseSelection {
@@ -375,27 +452,18 @@ export function readRelease(raw: unknown): Release {
   const root = asRec(raw, 'file')
   const system = asRec(root.gameSystem, 'gameSystem')
   const oracles = asRec(root.oracles, 'oracles')
+  const likelihoodOracles = each(oracles, 'likelihood', 'oracles', readLikelihoodOracle)
   const credits =
     system.credits === undefined ? undefined : asRec(system.credits, 'gameSystem.credits')
   return {
     systemName: str(system, 'name', 'gameSystem'),
     license: credits === undefined ? undefined : optStr(credits, 'license', 'gameSystem.credits'),
     trackers: each(root, 'trackers', 'file', readTracker, true),
-    factSlots: each(
-      root,
-      'factSlots',
-      'file',
-      (slot, at) => ({ key: str(slot, 'key', at), label: str(slot, 'label', at) }),
-      true,
-    ),
-    tags: each(
-      root,
-      'tags',
-      'file',
-      (tag, at) => ({ key: str(tag, 'key', at), label: str(tag, 'label', at) }),
-      true,
-    ),
-    likelihoods: each(oracles, 'likelihood', 'oracles', (item, at) => str(item, 'key', at)),
+    factSlots: each(root, 'factSlots', 'file', readLogEntry, true),
+    tags: each(root, 'tags', 'file', readLogEntry, true),
+    checks: each(root, 'checks', 'file', readCheck, true),
+    likelihoods: likelihoodOracles.map((oracle) => oracle.key),
+    likelihoodOracles,
     tables: each(oracles, 'tables', 'oracles', (table, at) => ({
       key: str(table, 'key', at),
       name: str(table, 'name', at),

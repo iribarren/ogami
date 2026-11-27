@@ -484,6 +484,30 @@ describe('the print options form', () => {
     })
   })
 
+  it('offers a table the flow lists twice once, and writes it once', async () => {
+    const user = userEvent.setup()
+    const raw = miniRelease()
+    raw.flows[0]?.oracles.push('luck')
+    const { onSearchChange } = renderPage(content(raw), { flow: 'mini', decks: ['luck', 'luck'] })
+    const options = await form()
+
+    expect(options.getAllByRole('checkbox', { name: 'Luck' })).toHaveLength(1)
+    await user.click(options.getByRole('checkbox', { name: 'Bleed and crop marks' }))
+    expect(onSearchChange).toHaveBeenLastCalledWith({
+      flow: 'mini',
+      paper: undefined,
+      bleed: 'true',
+      decks: ['luck'],
+    })
+    await user.click(options.getByRole('checkbox', { name: 'Luck' }))
+    expect(onSearchChange).toHaveBeenLastCalledWith({
+      flow: 'mini',
+      paper: undefined,
+      bleed: undefined,
+      decks: undefined,
+    })
+  })
+
   it('never writes a value the resolver would refuse: an unknown paper or bleed is replaced', async () => {
     const user = userEvent.setup()
     const { onSearchChange } = renderPage(content(), { flow: 'mini', paper: 'a3', bleed: 'maybe' })

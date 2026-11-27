@@ -15,7 +15,8 @@ function deckCandidates(release: Release, flowKey: unknown) {
   const own = [...new Set(flow.selectionTables)]
   return {
     own: own.flatMap(find),
-    extra: flow.oracles.filter((key) => !own.includes(key)).flatMap(find),
+    // A flow may list a table twice: it is offered once, as the decks print each table once.
+    extra: [...new Set(flow.oracles)].filter((key) => !own.includes(key)).flatMap(find),
   }
 }
 
@@ -28,9 +29,13 @@ function shown(search: PrintSearch, release: Release) {
   const flow = typeof search.flow === 'string' ? search.flow : ''
   const paper = search.paper !== undefined && isPaper(search.paper) ? search.paper : 'a4'
   const extra = deckCandidates(release, flow).extra.map((table) => table.key)
-  const decks = (search.decks ?? []).filter(
-    (deck): deck is string => typeof deck === 'string' && extra.includes(deck),
-  )
+  const decks = [
+    ...new Set(
+      (search.decks ?? []).filter(
+        (deck): deck is string => typeof deck === 'string' && extra.includes(deck),
+      ),
+    ),
+  ]
   return { flow, paper, bleed: search.bleed === 'true', decks }
 }
 

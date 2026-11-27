@@ -39,7 +39,7 @@ The options sit at the top of the print page, where they stay on the screen and 
 
 The tables that an `oracle` selection of the flow draws from are always printed as decks, and **Extra decks** lets you add any other table of the flow to them.
 
-The options live in the page address, so a link you copy prints the same thing for whoever opens it. When a value in the address is wrong, the page lists it as a problem and never replaces it silently.
+The options live in the page address, so a link you copy prints the same thing for whoever opens it. When a value in the address is wrong, the page lists it as a problem above the options and prints nothing, and the next option you change writes an address that keeps only the values the page can print.
 
 Once the options are set, the **Print** button opens the browser's print dialog.
 

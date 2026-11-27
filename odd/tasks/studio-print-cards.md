@@ -143,6 +143,7 @@ Shippable:
 | T9 | 7 | Print options (flow, paper, bleed, deck tables) and the overflow list; a Print button per release on the Releases tab | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T10 | 7 | Playwright print pass (overflow check on `[data-card]`, images pinned), Studio manual chapter on printing, glossary "Deck", roadmap `Done:` line | delegated writer (Sonnet): slice of 2+ non-trivial files (writer part: Playwright pass and glossary; the manual chapter and roadmap line are the parent's) | [x] | |
 | T11 | 7 | Print pass fixes: no trailing page, white page background in print, phase diagrams no larger than the whole diagram's scale | delegated writer (Sonnet): 2+ non-trivial files | [x] | |
+| T12 | 7 | Slice 7 review suggestions: an oracle table a flow lists twice is offered and written once; the manual says what happens to a wrong value in the address | inline (parent): two small files and a test | [x] | |
 
 ## Acceptance criteria
 
@@ -189,6 +190,7 @@ Shippable:
 - 2026-11-27: T10 manual chapter: `printing-a-release.md` in Part IV after `releases-restore-themes` (full edition), drafted by doc-writer, revised after doc-editor (bleed on each edge, what the page note names, likelihood oracles lower case), commit `6bd22973`; `content.test.ts` lists six Part IV pages.
 - 2026-11-27: Print pass (headless Chromium `page.pdf`, the Chrome extension was not connected): cards, frame and back images, mirrored backs, bleed crop marks and the log's ruled lines look right on A4 and A5; three defects fixed in T11.
 - 2026-11-27: T11 done (slice 7, commit 5). Trailing Letter page: the development tools (`tsqd-parent-container`, router devtools) mount as siblings after the app shell, outside any named page, so Chromium adds a page in its default size; hidden in print with `body:has(.print-cards) [data-app-shell] ~ *` (the shell got a `data-app-shell` attribute). Page background: `html`, `body` and the shell are white in print while a print view is on the page. `diagramPages` caps a phase page at the whole diagram's scale (RED: a small phase was scaled to the page width). Tests: `diagramPages.test.ts`, `printCards.test.ts`, and `studio-print.spec.ts` checks every PDF `MediaBox` is A4 (595x842 pt) or A5 (420x595 pt); `make e2e ARGS=studio-print` passes.
+- 2026-11-27: T12 done (slice 7 review suggestions, fixed on the branch before merge). `PrintOptionsForm` offers each extra deck once and reads the address's decks once, so a table the flow lists twice gives one checkbox and one `decks` entry (RED observed: two checkboxes, then GREEN); `printing-a-release.md` now says a wrong value is listed above the options, nothing prints, and the next change writes an address with only the values the page can print.
 
 ## Reviews
 

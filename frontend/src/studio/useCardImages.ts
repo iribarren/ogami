@@ -72,7 +72,15 @@ export function useUploadCardImage(key: string, slot: CardImageSlot) {
       if (data !== undefined) {
         return data
       }
-      if (response.status === 422 && 'reason' in error) {
+      // The type says a refusal has a body, but a proxy or a crash can answer a 422 with an empty
+      // or text one: only an object has a reason to read.
+      const body: unknown = error
+      if (
+        response.status === 422 &&
+        typeof body === 'object' &&
+        body !== null &&
+        'reason' in error
+      ) {
         // Looked up by any string: the API may name a reason this build does not know.
         const known: Partial<Record<string, string>> = refusalMessages
         throw new StudioError(known[error.reason] ?? error.error, 422, error.reason)

@@ -23,6 +23,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -354,15 +355,29 @@ final class DbalImageStoreTest extends KernelTestCase
         $other = $this->image(TestImages::jpeg());
         $first = GameSystemId::fromString(self::FIRST_ID);
         $images = new CardImages($this->store, $this->store, $this->store);
-        $images->replace($first, CardImageSlot::CardBack, $back);
+        // The state is built without `put` or `replace`, which take image locks of their own in
+        // this same transaction and would make the assertions below pass whatever the restore does.
+        $this->insertWithoutLocking($back);
+        $this->insertWithoutLocking($other);
         $release = $this->publishRelease(self::RELEASE_ID, 'first');
         $this->store->pinAll($release, ['cardBack' => $back->image->sha256]);
-        $images->replace($first, CardImageSlot::CardBack, $other);
+        $this->store->pin($first, CardImageSlot::CardBack, $other->image->sha256);
+        self::assertTrue($this->otherRequestGets(DbalImageStore::imageLockKey($back->image->sha256)), 'Nothing holds the image the release pins before the restore.');
+        self::assertTrue($this->otherRequestGets(DbalImageStore::imageLockKey($other->image->sha256)), 'Nothing holds the image the draft holds before the restore.');
 
         $images->restoreDraftFrom($first, $release);
 
-        self::assertFalse($this->otherRequestGets(DbalImageStore::imageLockKey($back->image->sha256)));
+        self::assertFalse($this->otherRequestGets(DbalImageStore::imageLockKey($back->image->sha256)), 'The image the draft brings back is locked.');
         self::assertFalse($this->otherRequestGets(DbalImageStore::imageLockKey($other->image->sha256)), 'The image the draft drops is locked before it is released.');
+    }
+
+    private function insertWithoutLocking(StoredImage $image): void
+    {
+        $this->connection->executeStatement(
+            'INSERT INTO studio_image (sha256, media_type, width, height, byte_size, data, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+            [$image->image->sha256, $image->image->mediaType, $image->image->width, $image->image->height, $image->image->byteSize, $image->bytes],
+            [4 => ParameterType::INTEGER, 5 => ParameterType::LARGE_OBJECT],
+        );
     }
 
     private function publishRelease(string $id, string $key): ReleaseId

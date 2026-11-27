@@ -1,7 +1,7 @@
 # Feature: studio-print-cards
 
 - **Locator:** `odd/tasks/studio-print-cards.md` · Engram topic `odd/studio-print-cards/tasks`
-- **Issue:** [#427](https://github.com/iribarren/ogami/issues/427) · **Branch:** `feat/studio-print-cards-3-upload-and-cards` · **Status:** in progress (slice 3)
+- **Issue:** [#427](https://github.com/iribarren/ogami/issues/427) · **Branch:** `feat/studio-print-cards-4-card-sheets` · **Status:** in progress (slice 4)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B36 in [`docs/roadmap.md`](../../docs/roadmap.md); builds on B34 `flow-diagram` ([ADR 0051](../../docs/adr/0051-flow-diagram-layout-and-rendering.md)); B38 `play-tabletop` will reuse its card rendering and images
@@ -95,6 +95,8 @@ Out of scope: a user-defined visual style (fonts, colours, a Studio-made theme),
 | D19 | Restoring a release into the draft also restores its image pins: the draft's slots become the release's (a slot the release had empty is emptied), and images nobody pins any more are released | Parent (proposed) |
 | D20 | Slice 1 showed backend slices run about twice their forecast, so the plan is re-cut to six slices: the upload UI (T4) moves to slice 3 with T5, and the later tasks shift by one | Parent (2026-11-27) |
 | D21 | Slice 3 keeps T5 at ~2,480 changed lines (size exception, label `size:exception`); reviewed as three candidates: slice 2 fixes + T4, T5a shared reader/builder, T5b manual move | User (2026-11-27) |
+| D22 | Frontend work ran about 1.6× its forecast in slice 3, so the plan is re-cut to seven slices: slice 4 is the slice 3 fixes and T6, which now also takes the A4/A5 named pages (the card layout already depends on the paper); T7 is slice 5, T8 slice 6, T9 and T10 slice 7 | Parent (2026-11-27) |
+| D23 | Where the images go: the front frame (`cardFront`) sits behind every face that prints text (a Scene Type card's front and back, a "(cont.)" card, a deck card's front), with the text in the 5 mm safe area; the back image (`cardBack`) is the back of every deck card. Without a pinned image the face prints plain | Parent (proposed) |
 
 ## Slice plan
 
@@ -103,16 +105,17 @@ Out of scope: a user-defined visual style (fonts, colours, a Studio-made theme),
 | 1/6 | T1, T2 | ~1,400–1,650 lines: ADR 0053 + index ~90, `gd` in Dockerfile ~5, image domain + port + Doctrine `bytea` adapter + migration ~350, GD validation/re-encode ~150, upload/read/remove endpoints ~250, PHPUnit/Behat ~450, OpenAPI + `schema.d.ts` ~250, feature doc ~150 | `feat/studio-print-cards-1-image-store` |
 | 2/6 | slice 1 fixes, T3 | ~1,300–1,600 lines: four slice 1 warnings fixed with tests ~250, release pins table + publish pin + `no_changes` + restore + pinned-image read ~350, release content endpoint ~200, tests ~500, OpenAPI + `schema.d.ts` ~300 | `feat/studio-print-cards-2-pin-and-content` |
 | 3/6 | slice 2 fixes, T4, T5 | ~1,400–1,700 lines: Studio "Card images" upload UI with preview and requirements ~250 + Vitest ~200, typed release reader ~250, shared card builder (generated wording D8, decks D9, continuation D10) ~400, manual moved onto it ~150, Vitest ~400 | `feat/studio-print-cards-3-upload-and-cards` |
-| 4/6 | slice 3 fixes, T6, T7 | ~1,200–1,500 lines: poker card sheets with frame/back images and bleed option ~250, A4/A5 named pages ~80, flow sheet with diagram ~200, oracle tables sheet ~120, Vitest ~500 | `feat/studio-print-cards-4-sheets` |
-| 5/6 | slice 4 fixes, T8, T9 | ~1,300–1,600 lines: trackers and clocks ~200, checks reference ~200, campaign log ~100, print options (paper, bleed, deck tables) ~300, a Print button on the Releases tab ~80, Vitest ~550 | `feat/studio-print-cards-5-printables` |
-| 6/6 | slice 5 fixes, T10 | ~400–600 lines: Playwright ~200, manual chapter ~100, glossary "Deck" + roadmap ~40 | `feat/studio-print-cards-6-print-pass` |
+| 4/7 | slice 3 fixes, T6 | ~1,300–1,600 lines: eight slice 3 warnings fixed with tests ~300, card faces and poker sheets with frame/back images, mirrored duplex, bleed + crop marks, A4/A5 named pages ~450, print route + release content hook ~150, Vitest ~550, feature doc ~60 | `feat/studio-print-cards-4-card-sheets` |
+| 5/7 | slice 4 fixes, T7 | ~1,100–1,400 lines: flow sheet with diagram, one per phase when too tall ~300, oracle tables sheet ~150, Vitest ~500 | `feat/studio-print-cards-5-flow-sheets` |
+| 6/7 | slice 5 fixes, T8 | ~1,200–1,500 lines: trackers and clocks ~200, checks reference ~200, campaign log ~100, Vitest ~550 | `feat/studio-print-cards-6-printables` |
+| 7/7 | slice 6 fixes, T9, T10 | ~1,200–1,500 lines: print options (flow, paper, bleed, deck tables) and the overflow list ~300, a Print button on the Releases tab ~80, Vitest ~300, Playwright ~200, manual chapter ~100, glossary "Deck" + roadmap ~40 | `feat/studio-print-cards-7-print-pass` |
 
 Shippable:
 - Slice 1 adds owner-only image endpoints with no UI.
 - Slice 2 adds the release pins and the content read, with no UI.
 - Slice 3 adds the upload UI (images upload and preview, and nothing prints them yet) and the card builder.
-- Slices 3–4 build the print views behind an unlinked route.
-- Slice 5 links them from the Releases tab; slice 6 adds the Playwright pass and the manual chapter.
+- Slices 4–6 build the print views behind an unlinked route.
+- Slice 7 links them from the Releases tab and adds the Playwright pass and the manual chapter.
 
 ## Tasks
 
@@ -121,13 +124,13 @@ Shippable:
 | T1 | 1 | ADR 0053 (D4–D7) and its row in `docs/adr/README.md`; `gd` added to the PHP image and the upload limits raised (PHP `upload_max_filesize`/`post_max_size`) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `c619e7fe` |
 | T2 | 1 | Studio image store: `CardImage` domain (slot, sha256, media type, width, height, bytes), `ImageStore` port, Doctrine `bytea` adapter + migration, the draft's image pins on `studio_gamesystem`, GD validation and re-encoding (D6), endpoints `PUT/DELETE /api/studio/game-systems/{key}/card-images/{slot}` (multipart) and `GET /api/studio/game-systems/{key}/images/{sha256}` (D7), `make api` | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `f79ac285`, `ae2fba90` |
 | T3 | 2 | Release pins images at publish (D5, D18): pins table, `no_changes` counts pins, pinned images stay readable after the draft replaces them, unreferenced blobs removed on replace; restore re-pins the draft (D19); release content endpoint (D13); `make api` | delegated writer | [x] | `920abce7`, `2252b951` |
-| T4 | 3 | Studio "Card images" section on the GameSystem page: upload, replace and remove both slots, preview, requirements text (D6), errors | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T5 | 3 | Typed release reader for print (narrow, throw-first, like `readPreset`), shared card builder with generated wording (D8), decks (D9), continuation cards (D10); manual moved onto it (D12), its tests unchanged | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T6 | 4 | Poker card sheets: plain, framed front (safe area) and image back, mirrored duplex, bleed + crop marks option (D11); the print route under Studio, not linked yet | delegated writer | [ ] | |
-| T7 | 4 | Paper size A4/A5 as named `@page` sizes; flow sheet (description, introduction, phases, selection, hooks) with the diagram, one per phase when too tall; oracle tables sheet | delegated writer | [ ] | |
-| T8 | 5 | Trackers and clocks sheet, checks reference (checks, likelihood oracles), campaign log (Fact slots, Tags) (D2) | delegated writer | [ ] | |
-| T9 | 5 | Print options (flow, paper, bleed, deck tables) and the overflow list; a Print button per release on the Releases tab | delegated writer | [ ] | |
-| T10 | 6 | Playwright print pass (overflow check on `[data-card]`, images pinned), Studio manual chapter on printing, glossary "Deck", roadmap `Done:` line | delegated writer (+ doc-writer) | [ ] | |
+| T4 | 3 | Studio "Card images" section on the GameSystem page: upload, replace and remove both slots, preview, requirements text (D6), errors | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `f7744612` |
+| T5 | 3 | Typed release reader for print (narrow, throw-first, like `readPreset`), shared card builder with generated wording (D8), decks (D9), continuation cards (D10); manual moved onto it (D12), its tests unchanged | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `5e5b89fc`, `675f254a` |
+| T6 | 4 | Poker card sheets: plain, framed front (safe area) and image back (D23), mirrored duplex, bleed + crop marks option (D11), paper size A4/A5 as named `@page` sizes; the print route under Studio, not linked yet | delegated writer (Sonnet): slice of 2+ non-trivial files | [ ] | |
+| T7 | 5 | Flow sheet (description, introduction, phases, selection, hooks) with the diagram, one per phase when too tall; oracle tables sheet | delegated writer | [ ] | |
+| T8 | 6 | Trackers and clocks sheet, checks reference (checks, likelihood oracles), campaign log (Fact slots, Tags) (D2) | delegated writer | [ ] | |
+| T9 | 7 | Print options (flow, paper, bleed, deck tables) and the overflow list; a Print button per release on the Releases tab | delegated writer | [ ] | |
+| T10 | 7 | Playwright print pass (overflow check on `[data-card]`, images pinned), Studio manual chapter on printing, glossary "Deck", roadmap `Done:` line | delegated writer (+ doc-writer) | [ ] | |
 
 ## Acceptance criteria
 
@@ -145,7 +148,7 @@ Shippable:
 - Behat where the Studio features already cover publishing.
 - Vitest for the reader, builder, sheets and print views; ESLint, Prettier, tsc via `make verify`.
 - `make qa test` in slice 1, because it changes the Dockerfile.
-- Playwright print pass in slice 6; a Chrome pass by hand at the end of slices 3–6, with a real duplex test print if possible.
+- Playwright print pass in slice 7; a Chrome pass by hand at the end of slices 4–7, with a real duplex test print if possible.
 
 ## Progress
 
@@ -160,6 +163,7 @@ Shippable:
 - 2026-11-27: R3-image-lock-deadlock fixed (slice 3, own commit): `ImageStore::lockImages()` takes the hash locks sorted, each once; `CardImages` replace, remove, discard and restore lock the GameSystem first, then every image they touch (the new one, the ones the slots hold now, a release's target) in that one call, so no hash lock is taken out of order. Tests written with the code: sorted order, every hash held, the restore locks what it drops and what it brings, and one `lockImages` call per command in the unit test.
 - 2026-11-27: T5a: `shared/print/` holds the typed release reader (`readRelease`: narrow, throw-first with the JSON path, schema v1 and optional parts read as empty or absent, unknown steps and effects kept as `other`), the wording helpers moved from the manual (`BAND_LABELS`, `diceText`, `outcomeToken`), and `buildCards` (generated wording D8 with `{step:}`/`{fact:}` placeholders, decks D9 with weight and range copies and a per-entry fallback over 54, continuation D10 by a pure line estimate, `CARD_CAPACITY`, hooks for wording, tips and a text transform). 42 Vitest tests written with the code; every backend preset reads. The manual still uses its own reader until T5b.
 - 2026-11-27: T5b done. `buildFlowCards` reads with `readRelease` and builds its Scene Type cards and deck with `buildCards` (paper wording and the `checkOutcomes` drift check as the `wording` hook, tips override, `guard` as the text transform, `capacity: null` so paper cards never split); `preset.ts` and the duplicated reader, outcomes and wording code are deleted. `flowCards.test.ts`, `CardSheets.test.tsx`, `PrintApp.test.tsx` and `paperEdition.test.ts` pass unchanged (`src/manual`: 100 tests). The manual keeps its own finale card, tables sheet and rules sheet, which Studio prints later (T7, T8).
+- 2026-11-27: Slice 3 review warnings fixed (slice 4, commits 1 and 2), each with a test: the restore-lock test builds its state without `put`/`replace` (they take image locks in the same transaction) and checks both locks are free before the restore and held after; a 422 whose body is not an object answers the generic message; the reader and the builder refuse an entry weight below 1; preset tests resolve their path from the file; a paper deck over 54 copies says so and names the table; tests pin the guard on name, purpose, tips and lines after substitution, the hint, description and license checks, and the manual's Scene Type card list. The deck message and the weight checks are new behaviour (RED seen for the 422 body); the others pin existing behaviour and were written after the code.
 
 ## Reviews
 
@@ -167,7 +171,8 @@ Shippable:
 |---|---|---|---|---|
 | 1 | T1 declined by the user; T2 core `review-ad4db4d3bd414073`; T2 HTTP `review-ba1b5380446595c7` | T2 core and HTTP approved | Four warnings, fixed in slice 2: R3-empty-slot-race (`DbalImageStore.php:93-98`, two first uploads to an empty slot orphan a blob), R3-release-fk-race (`DbalImageStore.php:45-51`, `removeIfUnreferenced` against a concurrent same-bytes re-upload breaks the pin's foreign key), R3-missing-file-422-contract (controller `:86-87`, the missing-file 422 has no `reason`), R3-upload-reread-race (controller `:92-106`, the response re-reads the pins and can 500) | [#428](https://github.com/iribarren/ogami/pull/428) |
 | 2 | `review-689ddf4911f82f81` (commits `920abce7`, `2252b951`) | Approved | Two warnings, fixed in slice 3: R3-image-lock-deadlock (`DbalImageStore.php:76-77`, per-hash advisory locks taken in different orders by two GameSystems swapping images, and by `restoreDraftFrom`, can deadlock), R3-vacuous-same-key-assertion (`GameSystemReleaseCardImagesApiTest.php:108-110`, bob's create is not asserted to succeed) | [#429](https://github.com/iribarren/ogami/pull/429) |
+| 3 | C1 `review-b9e1651c32611726` (slice 2 fixes and T4, `d7876b47`–`ea474996`); C2 `review-f569a91e3ca266ca` (T5a, `5e5b89fc`); C3 `review-f6bb11931ed6b217` (T5b, `675f254a`) | All three approved (size exception D21) | Eight warnings, fixed in slice 4: R3-vacuous-restore-lock-test (`DbalImageStoreTest.php:357-365`), R3-refusal-in-operator-on-undefined (`useCardImages.ts:75-79`, `in` on a non-object error body throws), R3-entry-weight-not-positive (`release.ts:262`, a weight below 1 is read), R3-preset-test-cwd-dependent (`release.test.ts:7`, preset path depends on the working directory), R3-deck-perentry-throw (`flowCards.ts:168-171`, a manual deck over 54 cards now throws with an unclear message), R3-guard-hook-unproved (`flowCards.ts:325`, no test that `guard` sees name, purpose, tips and generated lines after placeholder substitution), R3-new-validation-untested (`flowCards.ts:233-235`, `:280-282`, missing hint/description/license checks untested), R3-scenecards-scope (`flowCards.ts:329`, the manual's Scene Type card list is not pinned) | [#430](https://github.com/iribarren/ogami/pull/430) |
 
 ## Next step
 
-Slice 3 (slice 2 fixes, T4, T5): delegated writer on `feat/studio-print-cards-3-upload-and-cards`.
+Slice 4 (slice 3 fixes, T6): delegated writer on `feat/studio-print-cards-4-card-sheets`.

@@ -93,13 +93,28 @@ export interface FlowDiagram {
   continuesTo?: { key: string; name: string } | null
 }
 
+/**
+ * What is wrong with a node, by the id the layout gives it (`phase:<key>`, `scene:<phase>:<sceneType>`,
+ * `choice:<phase>`, `table:<phase>`, `hook:<phase>:<hook>`): one message per problem, in reading order.
+ */
+export type DiagramIssues = Record<string, string[]>
+
+/** A diagram built from content still being written, with what could not be drawn from it. */
+export interface LenientFlowDiagram {
+  diagram: FlowDiagram
+  issues: DiagramIssues
+}
+
 /** Content a diagram cannot be built from. The message starts with the path of the offending value. */
 export class FlowDiagramError extends Error {
   readonly path: string
+  /** The message without its path: what is wrong, for a node's issue list. */
+  readonly problem: string
 
   constructor(path: string, problem: string) {
     super(`${path}: ${problem}`)
     this.name = 'FlowDiagramError'
     this.path = path
+    this.problem = problem
   }
 }

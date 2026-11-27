@@ -3,7 +3,7 @@ export type { FlowDiagramDescription, PhaseDescription } from './describeFlowDia
 export { DIAGRAM_TOKENS } from './diagramTokens'
 export { FlowDiagramView } from './FlowDiagramView'
 export type { FlowDiagramViewProps } from './FlowDiagramView'
-export { flowDiagramFromReleaseContent } from './fromReleaseContent'
+export { flowDiagramFromDraftContent, flowDiagramFromReleaseContent } from './fromReleaseContent'
 export { layoutFlowDiagram } from './layout'
 export type {
   FlowDiagramLayout,
@@ -19,12 +19,14 @@ export type {
 export { FlowDiagramError, PHASE_HOOKS } from './flowDiagram'
 export type {
   DiagramHook,
+  DiagramIssues,
   DiagramPhase,
   DiagramSceneType,
   DiagramSelection,
   DiagramTable,
   DiagramTransition,
   FlowDiagram,
+  LenientFlowDiagram,
   PhaseHook,
   TransitionKind,
   TransitionSource,

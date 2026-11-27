@@ -40,6 +40,7 @@ Out of scope: new flow rules, phase jumps or branches between phases, saved node
 | D6 | Every gesture has a keyboard path on the focused node (roving focus over nodes, Enter opens the panel, a node menu for move earlier/later, mode, add to or remove from a phase, add a transition); the outline remains the full accessible editor | Parent |
 | D7 | Refusals, each with a short reason in a live region: an arrow to a phase that is not the next one or back ("phases always run in order"); a `nextScene` / `switchSceneType` arrow to a Scene Type in another phase; dropping a Scene Type on an `oracle` phase (edit the table instead); an arrow from an `oracle` table node (its effects sit on table entries, edited in the oracle editor) | Parent |
 | D8 | A Scene Type palette beside the map lists the GameSystem's Scene Types to drag into a phase; dropping between chained `sequence` nodes sets its position; dragging a selected node out of its phase removes it from the selection (it stays drawn if a transition still reaches it) | Parent |
+| D9 | Lenient builder: `FlowDiagramError` gains `problem` (message without path); unknown references say "is not in the draft". Issues sit on layout node ids: a dangling Scene Type in a `player` selection on `choice:<phase>`, in a `sequence` on `phase:<phase>`, a dangling effect target or table on the node the effect is drawn from, an unknown selection table on `table:<phase>` (still drawn, named by its key). Hook steps `flowToItem` refuses are drawn as a chip of blank steps with the refusal on `hook:<phase>:<hook>`. Phases with no or repeated keys get unique map keys (`mapPhaseKeys`) | Writer |
 
 ## Slice plan
 
@@ -56,8 +57,8 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 
 | ID | Slice | Task | Route | Done | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | ADR 0052 (D1, D2, D4) and its row in `docs/adr/README.md` | delegated writer (Sonnet): slice of 2+ non-trivial files | [ ] | |
-| T2 | 1 | `flowDiagramFromDraft` (D4) sharing the release adapter's building, issues per node, Vitest on draft fixtures and on the Cold Berth preset read as a draft | delegated writer (Sonnet): slice of 2+ non-trivial files | [ ] | |
+| T1 | 1 | ADR 0052 (D1, D2, D4) and its row in `docs/adr/README.md` | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
+| T2 | 1 | `flowDiagramFromDraft` (D4) sharing the release adapter's building, issues per node, Vitest on draft fixtures and on the Cold Berth preset read as a draft | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T3 | 1 | `FlowDiagramView` interaction props (selected id, issues, `onActivate`, focusable nodes with labels), Map tab (`view=map`, D3), save errors on nodes (D5), keyboard open (D6 part) | delegated writer (Sonnet): slice of 2+ non-trivial files | [ ] | |
 | T4 | 2 | Drag engine on the SVG; drag a phase to reorder; toggle a phase's self-arrow for `mode`; keyboard menu equivalents | | [ ] | |
 | T5 | 2 | Scene Type palette; drag into or out of a `sequence` / `player` selection, drop position in a sequence; `oracle` refusal (D7, D8) | | [ ] | |
@@ -82,6 +83,8 @@ No API change is forecast. Shippable: slice 1 adds a read-only Map tab (useful a
 ## Progress
 
 - 2026-11-27: Feature doc created; four slices, nine tasks; D1 and D2 decided by the user.
+- 2026-11-27 T1: ADR 0052 (D1, D2, D4) and its index row; doc-only, structural readback.
+- 2026-11-27 T2: `flowDiagramFromDraft` in `studio/narrative/flows/flowMapDiagram.ts` on a lenient mode of the release builder (`flowDiagramFromDraftContent`); 16 new Vitest tests, the release adapter's 40 unchanged and green. No RED observed: the refactor and its tests were written together and the existing strict tests served as the regression net.
 
 ## Reviews
 

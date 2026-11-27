@@ -190,7 +190,7 @@ function walkPhase(
         const via = from.type === 'selectionTable' ? null : toTable(table)
         emit(readObject(effect, effectPath), effectPath, from, via)
       })
-      if (typeof entry.table === 'string') {
+      if (entry.table !== undefined) {
         rollTable(readKnown(catalog.tables, entry.table, `${entryPath}.table`, 'table'), from, seen)
       }
     })
@@ -269,6 +269,8 @@ function readSelection(catalog: Catalog, selection: Json, path: string): Diagram
   }
   if (rule === 'oracle') {
     const table = readKnown(catalog.tables, selection.table, `${path}.table`, 'table')
+    // The backend requires every entry of an oracle selection table to name a Scene Type
+    // (FlowReferences::checkOracleSelections), so an entry without one is malformed content.
     const sceneTypes = new Map<string, DiagramSceneType>()
     readList(table.body.entries, `${table.path}.entries`).forEach((item, index) => {
       const entryPath = `${table.path}.entries[${String(index)}]`

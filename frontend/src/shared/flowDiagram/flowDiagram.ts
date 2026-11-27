@@ -85,6 +85,12 @@ export interface FlowDiagram {
   name: string
   phases: DiagramPhase[]
   transitions: DiagramTransition[]
+  /**
+   * Set by `phaseDiagram` on a cut of a phase that is not the last: the phase the flow continues to,
+   * which the drawing shows as an exit stub whether or not an `endPhase` transition says so. Absent
+   * on a whole flow; null on a cut of the last phase, which ends the flow.
+   */
+  continuesTo?: { key: string; name: string } | null
 }
 
 /** Content a diagram cannot be built from. The message starts with the path of the offending value. */

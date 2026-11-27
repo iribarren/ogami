@@ -6,6 +6,8 @@ As the book goes on, we build a flow one piece at a time, a chapter for each pie
 
 ## The Long Carry, on Hard Country
 
+::image{file="hc-litter-poles.webp" style="hard-country" size="half" alt="Two bearers seen from behind, litter poles and ropes on their shoulders, a shrouded shape between them." subject="Two small figures seen from behind on a frosty track, litter poles and ropes on their shoulders, a shrouded shape on the litter between them."}
+
 _Will you get the saint to the shrine before first snow, and what will it cost?_
 
 Hard Country is a rules-light fantasy game about hard travel, where a body gives out before a story does, and in The Long Carry you play a small group of bearers carrying a saint's body across hard country. A character has three traits, Back, Feet and Head, and a pool of Wind that harm wears down first. The Long Carry is played over three to four sittings, which the book calls sessions.
@@ -15,6 +17,8 @@ The story has four parts. It opens with **Session Zero**, where you set out who 
 The saint's story has a Truth, a secret at its heart, and here the Truth is emergent, so you write what the saint's sin was as the omens pile up.
 
 ## Cold Berth, on Dogwatch
+
+::image{file="dw-empty-berth.webp" style="dogwatch" size="half" alt="One open, empty berth in half-light with its bedding folded too neatly." subject="One open, empty berth in a dim berth deck, the bedding folded far too neatly, a single utility light kept at half."}
 
 _What is aboard, who let it on, and why were we woken?_
 

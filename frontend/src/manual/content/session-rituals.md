@@ -32,6 +32,8 @@ At the other end of the session, **stop between scenes**, because a scene left h
 
 ## What the two flows do
 
+::image{file="hc-byre-night.webp" style="hard-country" size="spot" alt="A litter against a byre wall at night, lit by one lantern, with a watcher seen from behind." subject="A shrouded shape on a litter propped against a byre wall at night, one lantern beside it, a small watcher seen from behind."}
+
 Neither flow has a session opening, a session closing, a phase hook or a scene opening. Both are written as one long run that you stop when you decide to, and of the seven hooks they use only two. One is the scene closing, which reads the clock, and the other is the World turn.
 
 That is a choice, and not the only good one, made because sessions are short and a reminder you do not need is a step you resent. If your own flow runs for many sessions, or its clocks are easy to forget, add a ritual.

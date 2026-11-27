@@ -57,6 +57,8 @@ A Scene Type belongs to the GameSystem, not to a flow. Several flows can use the
 
 ## The Long Carry
 
+::image{file="hc-ford.webp" style="hard-country" size="half" alt="A tea-brown river at a ford, a frayed rope on a willow and a single boot on the far bank." subject="A fast tea-brown river under a low grey sky, a frayed rope hanging from a bare willow on this bank, and one boot left on the far bank."}
+
 **The Road** is built from five Scene Types, **Camp**, **Ford**, **Stranger**, **Ruin** and **Omen**, one for each thing the carry can meet, and their purposes read as a list of different jobs.
 
 | Scene Type | Purpose                                                              |

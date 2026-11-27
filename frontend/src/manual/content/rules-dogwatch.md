@@ -36,6 +36,8 @@ Harm takes Nerve first. When you have no Nerve left, each harm is an **Injury**,
 
 ## Kit
 
+::image{file="dw-kit.webp" style="dogwatch" size="half" alt="The crew's kit laid out on a deck plate: multitool, cutting torch, patch kit, pry bar, handlight, tether and flare." subject="The kit laid out on a worn deck plate: a multitool, a cutting torch, a patch kit, a pry bar, a handlight, a coiled tether and a flare."}
+
 You carry six slots. Most things take one slot each, a bulky piece of kit such as the cutting torch takes two, and ration bars take none.
 
 | Tools         | Cost | Slots |

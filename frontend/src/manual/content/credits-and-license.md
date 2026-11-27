@@ -6,6 +6,8 @@ The whole book is released under the [Creative Commons Attribution-ShareAlike 4.
 
 Hard Country and Dogwatch are original games written for this book, and they are released under CC BY-SA 4.0 like the rest of it. No rules text from any other game is used.
 
+Illustrations generated with ‹image tool› from prompts by ‹author›, released with the book under CC BY-SA 4.0.
+
 ## Design influences
 
 Cairn, by Yochai Gal, and 24XX, by Jason Tocci, shaped the design of rules-light games like these two. They are influences only, meaning that no text from either game is used in this book.

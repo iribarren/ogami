@@ -6,6 +6,8 @@ Two things make up for it. **Lists** keep the cast, on pages you turn to the way
 
 ## The journal
 
+::image{file="house-journal.webp" style="house" size="half" alt="An open notebook with faint pencil lines, one of them struck through." subject="An open notebook with a few faint pencil lines of handwriting too small to read, one line struck through, a pencil beside it."}
+
 The journal is a log of what happened, kept in order. It does not have to be good writing, since its job is to let you pick up the game after a month and know where you are.
 
 For each scene write:

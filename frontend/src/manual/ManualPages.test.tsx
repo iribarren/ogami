@@ -63,4 +63,12 @@ describe('the manual reader', () => {
 
     expect(await screen.findByText('Page not found')).toBeInTheDocument()
   })
+
+  it('shows an illustration placeholder with its prompt where a chapter places one', async () => {
+    renderAppAt('/manual/what-you-need')
+
+    expect(await screen.findByText('Illustration to come')).toBeVisible()
+    expect(screen.getByText('house-kit.webp')).toBeVisible()
+    expect(screen.getByText(/^Pen-and-ink line illustration .* A notebook, a pencil/)).toBeVisible()
+  })
 })

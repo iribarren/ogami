@@ -2,6 +2,8 @@
 
 Studio is where GameSystems are authored. This page takes you through its screens in the order you meet them, and then through each section of a GameSystem in the order the rail lists them. Since the chapters of Parts I to III say how to design each piece, this one says where the piece lives.
 
+::image{file="house-workbench.webp" style="house" size="spot" alt="A workbench with index cards being laid out and a pen." subject="A workbench with index cards being laid out in rows, a pen beside them, a hand placing one blank card."}
+
 ## The Studio home
 
 Studio opens on a list headed **Your GameSystems**, with one card for each, and a **New GameSystem** button that starts either a blank draft or a copy of a published release under a new key, picked from a list of every published GameSystem, the presets included. Below the list is the **Library**, which holds the packs of reusable items that more than one GameSystem can share, and it has a **New pack** button of its own. A **Manual** link sits in the header, and the same link is in the header of every GameSystem.

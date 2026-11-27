@@ -66,6 +66,8 @@ In Play, the **Trackers** panel shows each Tracker as filled and empty boxes, wi
 
 ## The Long Carry
 
+::image{file="hc-dying-fire.webp" style="hard-country" size="spot" alt="Frost-stiff ropes and poles beside a dying fire at dusk." subject="Frost-stiff ropes and litter poles on the ground beside a dying fire at dusk, the last tallow-yellow glow on the frost."}
+
 Winter is the road's clock, and the first step of the World turn moves it. That step's prompt, _Winter closes by one. What is different about the light today?_, is a question as well as a tick, because the light changes and you write how.
 
 Then the World turn rolls Road Risks. Of its nine chances three are quiet, one ticks Winter (the hard frost), one adds to Burden (the bad foot) and three send you to a scene (a Stranger, a Ruin or an Omen), while the risen ford does both, with a Ford scene and a tick.

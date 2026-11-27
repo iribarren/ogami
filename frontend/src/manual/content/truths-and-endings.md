@@ -67,6 +67,8 @@ The player reaches the **Epilogue** with Winter at 8 and Burden at 2.
 
 ## Cold Berth
 
+::image{file="dw-sealed-slips.webp" style="dogwatch" size="half" alt="Three sealed blank slips on a steel table under a handlight." subject="Three folded and sealed blank slips lying on a steel table in the pool of light of a single handlight."}
+
 The Truth of Cold Berth is sealed. There are three questions (what is aboard, who let it on and why you were woken), and each has its own table of eight answers. **Session Zero** asks for hunches only, and the **Reveal** opens the Truths.
 
 On paper you roll the three tables in **Session Zero** and seal the results, so that the dice choose the answers and the seal keeps them hidden from you. The hunches you write then are what you compare them with.

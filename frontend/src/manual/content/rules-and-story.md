@@ -2,6 +2,8 @@
 
 Parts I and II taught the story side of a game, which is a flow, its Scenes and the tools you roll at the table. This part turns to the other half, the **rules**, and to the way they sit beside the story in Studio. If you have ever owned a rulebook and an adventure written for it, you already know the shape of the split, because the rulebook tells you how a roll works and the adventure tells you where the road goes.
 
+::image{file="house-dice-notebooks.webp" style="house" size="spot" alt="One set of dice beside several closed notebooks." subject="One set of dice beside a short stack of several closed notebooks on a table."}
+
 A **GameSystem** is the whole thing you author, with its sheet, Checks, Gear, oracles, Trackers, Scene Types and flows, and a **NarrativeFlow** is one guided way to play it. Studio keeps the two apart on purpose, and most of the design mistakes in a first GameSystem come from letting one leak into the other, so that a rule ends up written into a story or a story into a rule.
 
 ## What belongs where

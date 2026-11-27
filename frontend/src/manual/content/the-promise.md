@@ -51,6 +51,8 @@ In Studio, open **Flows** in the GameSystem's left rail and choose **New flow**.
 
 ## The Long Carry
 
+::image{file="hc-wrapped-foot.webp" style="hard-country" size="spot" alt="A rag-wrapped foot on frosty ground." subject="A rag-wrapped foot in a worn boot on frosty ground, a few frozen ruts around it."}
+
 **The premise.** _Will you get the saint to the shrine before first snow, and what will it cost?_ The question asks about a deadline and a price at once, so every scene is either a step toward the shrine or a payment made on the way there.
 
 **The tone.** Weary, devout, unfair, and not heroic, because nobody in this flow carries the saint through a storm and wins. Its tables are full of small things going wrong, such as a stiff frost or a bad foot, and hold few things going well.
@@ -70,6 +72,8 @@ A road scene has just ended, and the player rolls Road Risks.
 The table did not say whose foot it was, so the name was the player's to choose, and the scene that came out of the roll belongs to both of them.
 
 ## Cold Berth
+
+::image{file="dw-vent-grille.webp" style="dogwatch" size="spot" alt="A vent grille in a dim corridor wall." subject="A vent grille set low in a bolted corridor wall in dim light, frost at its edges."}
 
 **The premise.** _What is aboard, who let it on, and why were we woken?_ This is a question about a mystery, and its price is paid in time, because the longer you search, the closer the ship gets to showing you.
 

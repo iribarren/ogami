@@ -66,6 +66,8 @@ One more, and the bearers are Heavy. The name changes before the number gets fri
 
 ## Cold Berth
 
+::image{file="dw-scrubber-patch.webp" style="dogwatch" size="spot" alt="Gloved hands patching a scrubber by handlight." subject="Two gloved hands patching an open scrubber housing with a strip of sealant by the light of a handlight."}
+
 Threat is a clock of eight, and Clues a counter from 0 to 8 with the stretches Blind, Hints, A shape and The whole picture.
 
 Threat fills for good, since once it is full the closing check ends **The Ship**. It can also fall, but only through a Repair. Clues only climbs, and it is read at the end, in the **Epilogue**, together with Threat, to choose how the crew gets out.

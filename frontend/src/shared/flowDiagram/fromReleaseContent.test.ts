@@ -425,6 +425,20 @@ describe('malformed content', () => {
     expect(build(content)).toThrow(/phases\[0\]\.worldTurn\[0\]\.table.*"ghost"/)
   })
 
+  it('rejects a nested table reference that is not a table key', () => {
+    const content = release({
+      sceneTypes: [sceneType('a')],
+      tables: [table('t', [{ text: 'again', table: 7 }])],
+      phases: [
+        phase('p', {
+          selection: { rule: 'sequence', sceneTypes: ['a'] },
+          worldTurn: [step('r', { kind: 'table', table: 't' })],
+        }),
+      ],
+    })
+    expect(build(content)).toThrow(/oracles\.tables\[0\]\.entries\[0\]\.table/)
+  })
+
   it('rejects a step list or step that is not what the contract says', () => {
     expect(build(valid({ worldTurn: 'steps' }))).toThrow(/phases\[0\]\.worldTurn/)
     expect(build(valid({ worldTurn: ['step'] }))).toThrow(/phases\[0\]\.worldTurn\[0\]/)

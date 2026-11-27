@@ -89,6 +89,19 @@ describe('describeFlowDiagram', () => {
     ])
   })
 
+  it('keeps the case of a Scene Type that rolls the table of a via transition', () => {
+    const content = release({
+      sceneTypes: [
+        sceneType('a', { play: [step('r', { kind: 'table', table: 't' })] }),
+        sceneType('b'),
+      ],
+      tables: [table('t', [{ text: 'go', effects: [{ kind: 'nextScene', sceneType: 'b' }] }])],
+      phases: [phase('p', { selection: { rule: 'sequence', sceneTypes: ['a'] } })],
+    })
+    const { transitions } = describeFlowDiagram(flowDiagramFromReleaseContent(content, 'f'))
+    expect(transitions).toEqual(['T (A, P) → next scene: B'])
+  })
+
   it('is deterministic', () => {
     expect(describeFlowDiagram(coldBerth)).toEqual(describeFlowDiagram(coldBerth))
   })

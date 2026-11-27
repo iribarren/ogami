@@ -1,9 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-/** A preset file as PHP publishes it, read from backend/presets/ (the node container mounts it). */
+/** A preset file as PHP publishes it, read from backend/presets/ (the node container mounts it), whatever the working directory. */
 export function loadPreset(name: string): unknown {
-  return JSON.parse(readFileSync(resolve(process.cwd(), `../backend/presets/${name}.json`), 'utf8'))
+  // import.meta.dirname, not new URL(…, import.meta.url): Vite would treat the URL as an asset.
+  const file = resolve(import.meta.dirname, `../../../../backend/presets/${name}.json`)
+
+  return JSON.parse(readFileSync(file, 'utf8'))
 }
 
 type Json = Record<string, unknown>

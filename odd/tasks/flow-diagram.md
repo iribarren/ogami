@@ -1,7 +1,7 @@
 # Feature: flow-diagram
 
 - **Locator:** `odd/tasks/flow-diagram.md` · Engram topic `odd/flow-diagram/tasks`
-- **Issue:** [#417](https://github.com/iribarren/ogami/issues/417) · **Branch:** `feat/flow-diagram-1-model` · **Status:** slice 1 in progress
+- **Issue:** [#417](https://github.com/iribarren/ogami/issues/417) · **Branch:** `feat/flow-diagram-2-render` · **Status:** slice 2 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B34 in [`docs/roadmap.md`](../../docs/roadmap.md); base of B35 `studio-flow-map`, B36 `studio-print-cards`, B38 `play-tabletop`
@@ -39,7 +39,7 @@ Out of scope: editing (B35), saved positions, phase jumps or branches between ph
 | D7 | Malformed content fails closed: the adapter throws a `FlowDiagramError` naming the path (unknown flow key, phase without `mode`, unknown selection rule, an effect pointing to an unknown Scene Type or table). Unknown effect kinds that are not transitions are ignored | Parent |
 | D8 | `phaseDiagram(diagram, phaseKey)` cuts one phase out for the manual's one-phase placements; its `endPhase` and next-phase arrows end in an exit stub naming the next phase | Parent |
 | D9 | Text alternative: `describeFlowDiagram(diagram)` builds a structured list (phases in order with mode and hooks, their Scene Types, every transition with its source, kind, target and table); slice 2 renders it beside the SVG | Parent |
-| D10 | Manual placements, approved 2026-11-27: `flow-cold-berth` and `flow-the-long-carry` under "The Phases" (whole flow); `the-arc` in "The Long Carry" and "Cold Berth" (whole flow); `choosing-the-next-scene` rule sections (Sequence → Long Carry `session-zero`, Player → Cold Berth `the-ship`, Oracle → Long Carry `the-road`) and its example sections (Long Carry `the-road`, Cold Berth `the-ship`). All outside `:::in-ogami`, so they print. The example-section diagrams repeat the rule-section ones in the same chapter: confirm with the user before slice 3 | User (2026-11-27) |
+| D10 | Manual placements, approved 2026-11-27: `flow-cold-berth` and `flow-the-long-carry` under "The Phases" (whole flow); `the-arc` in "The Long Carry" and "Cold Berth" (whole flow); `choosing-the-next-scene` rule sections (Sequence → Long Carry `session-zero`, Player → Cold Berth `the-ship`, Oracle → Long Carry `the-road`) only; its example sections get none (user, 2026-11-27: they would repeat the rule-section diagrams). All outside `:::in-ogami`, so they print | User (2026-11-27) |
 | D11 | Directive syntax (slice 3): one line `::flow-diagram{flow="cold-berth"}` or `::flow-diagram{flow="cold-berth" phase="the-ship"}`, handled by the `editionBlocks.ts` splitter; an unknown flow or phase fails the manual tests | Parent |
 
 ## Slice plan
@@ -47,7 +47,7 @@ Out of scope: editing (B35), saved positions, phase jumps or branches between ph
 | Slice | Tasks | Forecast (incl. generated) | Branch |
 |---|---|---|---|
 | 1/3 | T1, T2 | ~1,000–1,300 lines: ADR + index ~130, shape, adapter, phase cut and text alternative ~450, Vitest ~550, feature doc ~150 | `feat/flow-diagram-1-model` |
-| 2/3 | T3, T4 | ~1,200–1,500 lines: `@dagrejs/dagre` + lockfile ~40, layout ~350, SVG renderer + text alternative ~450, Storybook story ~80, Vitest ~450 | `feat/flow-diagram-2-render` |
+| 2/3 | T2b, T3, T4 | ~1,200–1,500 lines: `@dagrejs/dagre` + lockfile ~40, layout ~350, SVG renderer + text alternative ~450, Storybook story ~80, Vitest ~450 | `feat/flow-diagram-2-render` |
 | 3/3 | T5, T6 | ~700–1,000 lines: directive in the splitter and renderer ~150, preset loading in the manual ~60, print styles ~60, chapter placements ~40, manual tests ~250, roadmap/doc ~60 | `feat/flow-diagram-3-manual` |
 
 Shippable: slices 1 and 2 add code nothing imports outside its tests and story; slice 3 puts the diagrams in the manual.
@@ -56,8 +56,9 @@ Shippable: slices 1 and 2 add code nothing imports outside its tests and story; 
 
 | ID | Slice | Task | Route | Done | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | ADR 0051 (D1, D2, D3) and its row in `docs/adr/README.md` | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T2 | 1 | `FlowDiagram` shape, release-content adapter (D2–D7), `phaseDiagram` (D8), `describeFlowDiagram` (D9), with Vitest on Cold Berth, The Long Carry, Ironsworn and hand-made fixtures | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
+| T1 | 1 | ADR 0051 (D1, D2, D3) and its row in `docs/adr/README.md` | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `0a4dc33b` |
+| T2 | 1 | `FlowDiagram` shape, release-content adapter (D2–D7), `phaseDiagram` (D8), `describeFlowDiagram` (D9), with Vitest on Cold Berth, The Long Carry, Ironsworn and hand-made fixtures | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `19d614d8` |
+| T2b | 2 | Slice 1 review fixes R3-001–R3-004 | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T3 | 2 | Layout: phases stacked in order, dagre inside each phase, phase and self arrows, exit stub, end marker; deterministic positions | | [ ] | |
 | T4 | 2 | `FlowDiagramView` SVG renderer (theme tokens, dashed `via` arrows, hook chips) with the text alternative, Storybook story, Vitest | | [ ] | |
 | T5 | 3 | `::flow-diagram{…}` directive, preset data in the manual chapter pages and the Paper edition, print styles | | [ ] | |
@@ -80,12 +81,14 @@ Shippable: slices 1 and 2 add code nothing imports outside its tests and story; 
 - 2026-11-27: Feature doc created; three slices, six tasks; placements and library approved.
 - 2026-11-27: T1 done: ADR 0051 and its index row.
 - 2026-11-27: T2 done: `shared/flowDiagram` (shape, adapter, phase cut, text alternative); 48 Vitest tests, RED then GREEN; `nextPhase` targets also carry the phase name so a one-phase cut can name its exit stub.
+- 2026-11-27: T2b done: R3-001, R3-003, R3-004 fixed with tests; R3-002 kept as a throw because the backend rejects oracle selection entries without a Scene Type (`FlowReferences::checkOracleSelections`), now commented.
 
 ## Reviews
 
 | Slice | Lineage | Outcome | Findings | PR |
 |---|---|---|---|---|
+| 1 | review-6645489f33876474 | approved, acknowledged | R3-001 `testSupport.ts` reads presets from `process.cwd()`, use `import.meta.url`; R3-002 oracle-selection entries without `sceneType` throw, check the backend validation and relax if it accepts them; R3-003 a non-string nested `table` reference must throw `FlowDiagramError`; R3-004 `describeFlowDiagram` lower-cases Scene Type origins of `via` transitions, only hook labels should be. All fixed in slice 2 (T2b) | [#418](https://github.com/iribarren/ogami/pull/418) |
 
 ## Next step
 
-Slice 1: T1 and T2 by a Sonnet writer on `feat/flow-diagram-1-model`.
+Slice 2: T2b, T3 and T4 by a Sonnet writer on `feat/flow-diagram-2-render`.

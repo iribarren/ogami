@@ -65,21 +65,32 @@ function describeTransition(diagram: FlowDiagram, transition: DiagramTransition)
   )
   const phaseName = phase?.name ?? transition.phase
 
-  const origin = ((): string => {
+  const origin = ((): { name: string; inSentence: string } => {
     switch (transition.from.type) {
-      case 'hook':
-        return HOOK_LABELS[transition.from.hook]
-      case 'sceneType':
-        return sceneTypes.get(transition.from.sceneType) ?? transition.from.sceneType
-      case 'selectionTable':
-        return phase?.selection.rule === 'oracle' ? phase.selection.table.name : 'Selection table'
+      case 'hook': {
+        const label = HOOK_LABELS[transition.from.hook]
+
+        // A hook label is a common noun phrase, so it lowers inside the parentheses.
+        return { name: label, inSentence: lowerFirst(label) }
+      }
+      case 'sceneType': {
+        const name = sceneTypes.get(transition.from.sceneType) ?? transition.from.sceneType
+
+        return { name, inSentence: name }
+      }
+      case 'selectionTable': {
+        const name =
+          phase?.selection.rule === 'oracle' ? phase.selection.table.name : 'Selection table'
+
+        return { name, inSentence: name }
+      }
     }
   })()
   // A table's entry reads as the table, placed by the hook or Scene Type that rolls it.
   const source =
     transition.via === null
-      ? `${origin} (${phaseName})`
-      : `${transition.via.name} (${origin.toLowerCase() === origin ? origin : lowerFirst(origin)}, ${phaseName})`
+      ? `${origin.name} (${phaseName})`
+      : `${transition.via.name} (${origin.inSentence}, ${phaseName})`
 
   return `${source} → ${describeTarget(transition, sceneTypes)}`
 }

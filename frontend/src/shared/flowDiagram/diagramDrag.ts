@@ -139,6 +139,15 @@ export function useDiagramDrag({
     setState(null)
     if (current?.active) {
       clicked.current = true
+      // The click belongs to this gesture: a drag that ends with none (Escape, a cancelled pointer,
+      // a release off the source) must not swallow the click of the next press, on any node.
+      window.addEventListener(
+        'pointerdown',
+        () => {
+          clicked.current = false
+        },
+        { capture: true, once: true },
+      )
       try {
         current.element.releasePointerCapture(current.pointerId)
       } catch {

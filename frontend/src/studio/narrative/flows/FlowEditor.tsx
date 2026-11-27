@@ -34,6 +34,7 @@ import {
 import { answerNode, hookLabels, nodePath, nodeTrail, resolveNode, type FlowNode } from './flowNode'
 import { EditorPane, EditorTabs } from './EditorTabs'
 import { FlowMap } from './FlowMap'
+import { followNode, type MapEdit } from './flowMapEdits'
 import type { MapTarget } from './flowMapNodes'
 import { FlowOutline } from './FlowOutline'
 import { FlowSettings } from './FlowSettings'
@@ -321,6 +322,17 @@ export function FlowEditor({
     setAnswer({ ...answer, phases: answers })
   }
 
+  /** An edit of the Map: the draft changes as the outline's buttons change it, and the answers and the selection follow a phase that moved. */
+  function editFromMap({ phases: next, move }: MapEdit) {
+    changePhases(next, move ? moveItem(aligned, move.from, move.to - move.from) : aligned)
+    if (move !== undefined) {
+      const followed = followNode(node, move)
+      if (nodePath(followed) !== nodePath(node)) {
+        select(followed, true, true)
+      }
+    }
+  }
+
   /** The panel of the selected node: its icon, title, actions and form. */
   function panel(): { icon: ReactNode; title: string; actions?: ReactNode; body: ReactNode } {
     const [title = ''] = nodeTrail(draft, node).slice(-1)
@@ -480,7 +492,9 @@ export function FlowEditor({
                   narrative={narrative}
                   answer={answer}
                   node={node}
+                  locked={locked}
                   onOpen={openFromMap}
+                  onEdit={editFromMap}
                 />
               </div>
             </section>

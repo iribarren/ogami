@@ -132,8 +132,8 @@ describe('FlowDiagramView, interactive', () => {
     const interactive = layout.nodes.filter(({ kind }) => !['end', 'exitStub'].includes(kind))
 
     const buttons = screen.getAllByRole('button')
-    // The phase box, one per node that is not a marker, one per hook chip.
-    expect(buttons).toHaveLength(1 + interactive.length + (ship.phases[0]?.hooks.length ?? 0))
+    // The phase box, its mode chip, one per node that is not a marker, one per hook chip.
+    expect(buttons).toHaveLength(2 + interactive.length + (ship.phases[0]?.hooks.length ?? 0))
     expect(screen.getByRole('button', { name: 'Phase: The Ship' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Hook: Scene closing, 2 steps' })).toBeInTheDocument()
     expect(

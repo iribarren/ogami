@@ -1,5 +1,7 @@
 import {
   flowDiagramFromDraftContent,
+  layoutFlowDiagram,
+  type FlowDiagramLayout,
   type DiagramIssues,
   type FlowDiagram,
 } from '@/shared/flowDiagram'
@@ -10,8 +12,14 @@ import type { StoredItem } from '../useGameSystemNarrative'
 /** What the Map draws and says: the diagram, what could not be drawn, and the key each phase has on it. */
 export interface FlowMapDiagram {
   diagram: FlowDiagram
-  /** By node id; the same ids as `FlowDiagramView`'s `issues`. */
+  /** By node id; the same ids as `FlowDiagramView`'s `issues`, and every id is one the drawing has. */
   issues: DiagramIssues
+  /** What is wrong with the flow as a whole, or with no node of it: the Map says it as text above the drawing. */
+  flowIssues: string[]
+  /** The ids of the phase boxes, nodes and header items the drawing has. */
+  drawn: ReadonlySet<string>
+  /** Where the drawing puts them; null when it cannot be laid out. */
+  layout: FlowDiagramLayout | null
   /** The key of each phase of the draft, by position, as its node ids spell it (`mapPhaseKeys`). */
   phaseKeys: string[]
 }
@@ -57,6 +65,7 @@ export function flowDiagramFromDraft(
 
   // Hooks whose steps refuse a save are built blank, so that the rest of the flow still gives an item.
   const unbuilt: { phase: number; hook: (typeof phaseHooks)[number]; steps: number }[] = []
+  const flowIssues: string[] = []
   const first = flowToItem(draft)
   let buildable = draft
   if ('errors' in first) {
@@ -74,8 +83,18 @@ export function flowDiagramFromDraft(
       ),
     }
   }
-  const second = flowToItem(buildable)
+  let second = flowToItem(buildable)
+  if ('errors' in second) {
+    // Still refused: every hook goes blank, so the phases are drawn whatever the steps say.
+    const stripped = stripHooks(draft)
+    buildable = stripped.draft
+    unbuilt.splice(0, unbuilt.length, ...stripped.unbuilt)
+    second = flowToItem(buildable)
+  }
   const item = 'item' in second ? second.item : {}
+  if (!('item' in second)) {
+    flowIssues.push('The flow cannot be drawn from this form yet.')
+  }
   const phases = (Array.isArray(item.phases) ? item.phases : []) as StoredItem[]
 
   const issues: DiagramIssues = {}
@@ -108,11 +127,67 @@ export function flowDiagramFromDraft(
     ],
   }
   const built = flowDiagramFromDraftContent(content, flowKey)
-  return {
-    diagram: built.diagram,
-    issues: mergeIssues(built.issues, issues),
-    phaseKeys,
+  const layout = layoutOf(built.diagram)
+  const drawn = drawnIds(built.diagram, layout)
+  const placed: DiagramIssues = {}
+  for (const [id, messages] of Object.entries(mergeIssues(built.issues, issues))) {
+    if (drawn.has(id)) {
+      placed[id] = messages
+    } else {
+      flowIssues.push(...messages.map((message) => orphanMessage(id, message)))
+    }
   }
+  return { diagram: built.diagram, issues: placed, flowIssues, drawn, layout, phaseKeys }
+}
+
+/** Every hook of every phase built blank, with what each held, for a draft whose hooks could not be built one by one. */
+function stripHooks(draft: FlowDraft) {
+  const unbuilt: { phase: number; hook: (typeof phaseHooks)[number]; steps: number }[] = []
+  const stripped = {
+    ...draft,
+    phases: draft.phases.map((phase, position) =>
+      phaseHooks.reduce((now, hook) => {
+        const steps = phase.hooks[hook]?.length ?? 0
+        if (steps > 0) {
+          unbuilt.push({ phase: position, hook, steps })
+        }
+        return setHook(now, hook, [])
+      }, phase),
+    ),
+  }
+  return { draft: stripped, unbuilt }
+}
+
+/** The drawing's positions, or null when a transition cannot be placed. */
+function layoutOf(diagram: FlowDiagram): FlowDiagramLayout | null {
+  try {
+    return layoutFlowDiagram(diagram)
+  } catch {
+    return null
+  }
+}
+
+/** The ids the drawing gives its phase boxes, nodes and header items; only the phase boxes when it cannot be laid out. */
+function drawnIds(diagram: FlowDiagram, layout: FlowDiagramLayout | null): Set<string> {
+  if (layout === null) {
+    return new Set(diagram.phases.map(({ key }) => `phase:${key}`))
+  }
+  return new Set([
+    ...layout.nodes.map(({ id }) => id),
+    ...layout.phases.flatMap(({ id, header }) => [id, ...header.map((item) => item.id)]),
+  ])
+}
+
+/** A message about something no node stands for (a list of the catalog, the flow's name), with what it is about. */
+function orphanMessage(id: string, message: string): string {
+  const said = message.endsWith('.') ? message : `${message}.`
+  if (id === 'sceneTypes') {
+    return `A Scene Type of the narrative cannot be read: ${said}`
+  }
+  if (id === 'oracles.tables') {
+    return `An oracle table cannot be read: ${said}`
+  }
+  return id.startsWith('flow:') ? `The flow: ${said}` : `${id}: ${said}`
 }
 
 /** The issues of every map, per node and without repeating a message. */

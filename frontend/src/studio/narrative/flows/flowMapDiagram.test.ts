@@ -210,6 +210,36 @@ describe('flowDiagramFromDraft', () => {
   })
 })
 
+describe('flowDiagramFromDraft issues without a node', () => {
+  it('moves a catalog issue to the flow-level list and keeps every issue id on a drawn node', () => {
+    const draft = draftOf([phaseOf('one', { selection: { rule: 'sequence', sceneTypes: ['a'] } })])
+    const broken = [{ definition: sceneType('a') }, { definition: { name: 'No key' } }]
+    const tables = [{ definition: 'not a table' }]
+
+    const { issues, flowIssues, drawn } = flowDiagramFromDraft(draft, broken, tables)
+
+    expect(Object.keys(issues).filter((id) => !drawn.has(id))).toEqual([])
+    expect(flowIssues).toEqual([
+      'A Scene Type of the narrative cannot be read: must be a non-empty string.',
+      'An oracle table cannot be read: must be an object.',
+    ])
+  })
+
+  it('keeps every issue of a draft with dangling references on a drawn id', () => {
+    const draft = draftOf([
+      phaseOf('one', { selection: { rule: 'sequence', sceneTypes: ['gone'] } }),
+      phaseOf('two', { selection: { rule: 'oracle', table: 'gone' } }),
+    ])
+
+    const { issues, drawn } = flowDiagramFromDraft(draft, [], [])
+
+    expect(Object.keys(issues).length).toBeGreaterThan(0)
+    expect(Object.keys(issues).filter((id) => !drawn.has(id))).toEqual([])
+    expect(drawn.has('phase:one')).toBe(true)
+    expect(drawn.has('table:two')).toBe(true)
+  })
+})
+
 describe('mergeIssues', () => {
   it('joins the messages of a node without repeating one', () => {
     expect(mergeIssues({ a: ['x'], b: ['y'] }, { a: ['x', 'z'] }, {})).toEqual({

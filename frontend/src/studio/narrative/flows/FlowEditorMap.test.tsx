@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { FakeHandler } from '@/test/fakeApi'
@@ -240,5 +240,174 @@ describe('the Map tab of the flow editor', () => {
         name: 'Phase: Setup. Issues: Pick at least one Scene Type.',
       }),
     ).toBeInTheDocument()
+  })
+})
+
+describe('editing on the Map', () => {
+  beforeAll(() => {
+    // jsdom has no layout: the drawing's matrix is the identity, so client points are drawing points.
+    Object.defineProperty(SVGElement.prototype, 'getScreenCTM', {
+      configurable: true,
+      value: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
+    })
+  })
+
+  const press = { pointerId: 1, isPrimary: true, button: 0 }
+  const rectOf = (element: Element) => {
+    const rect = element.tagName === 'rect' ? element : element.querySelector('rect')
+    const at = (name: string) => Number(rect?.getAttribute(name))
+    return { x: at('x'), y: at('y'), width: at('width'), height: at('height') }
+  }
+  const centreOf = (element: Element) => {
+    const { x, y, width, height } = rectOf(element)
+    return { clientX: x + width / 2, clientY: y + height / 2 }
+  }
+  /** A drag of `source` that lets go at `to`, or on the middle of `onto`. */
+  function drag(source: Element, onto: Element | { clientX: number; clientY: number }) {
+    const to = onto instanceof Element ? centreOf(onto) : onto
+    fireEvent.pointerDown(source, { ...press, ...centreOf(source) })
+    fireEvent.pointerMove(source, { ...press, ...to })
+    fireEvent.pointerUp(source, { ...press, ...to })
+  }
+  const order = (region: HTMLElement) =>
+    [...region.querySelectorAll('[data-phase-id]')].map((phase) =>
+      phase.getAttribute('data-phase-id'),
+    )
+  const said = () => screen.getByRole('status')
+
+  it('reorders phases by dragging one onto another, as the outline does', async () => {
+    await openEditor('heist?view=map')
+    const region = await map()
+    const inside = within(region)
+
+    drag(
+      inside.getByRole('button', { name: 'Phase: Setup' }),
+      inside.getByRole('button', { name: 'Phase: The job' }),
+    )
+
+    expect(order(region)).toEqual(['phase:job', 'phase:setup'])
+    expect(said()).toHaveTextContent('Moved phase "Setup" after "The job".')
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('navigation', { name: 'Flow outline' })).getByRole('button', {
+        name: /^1\. The job/,
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('opens nothing when a drag ends on a button, and still opens on a plain click', async () => {
+    const { user, router } = await openEditor('heist?view=map')
+    const inside = within(await map())
+
+    drag(
+      inside.getByRole('button', { name: 'Phase: Setup' }),
+      inside.getByRole('button', { name: 'Phase: The job' }),
+    )
+    fireEvent.click(inside.getByRole('button', { name: 'Phase: Setup' }))
+    expect(search(router)).toEqual({ view: 'map' })
+
+    await user.click(inside.getByRole('button', { name: 'Phase: The job' }))
+    expect(search(router)).toEqual({ node: 'phases.0' })
+  })
+
+  it('says why a drop outside every phase changes nothing', async () => {
+    await openEditor('heist?view=map')
+    const region = await map()
+    const inside = within(region)
+
+    drag(inside.getByRole('button', { name: 'Phase: Setup' }), { clientX: -40, clientY: -40 })
+
+    expect(order(region)).toEqual(['phase:setup', 'phase:job'])
+    expect(said()).toHaveTextContent('Dropped outside every phase: "Setup" stays.')
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
+  })
+
+  it('cancels a drag on Escape', async () => {
+    await openEditor('heist?view=map')
+    const region = await map()
+    const inside = within(region)
+    const setup = inside.getByRole('button', { name: 'Phase: Setup' })
+    const to = centreOf(inside.getByRole('button', { name: 'Phase: The job' }))
+
+    fireEvent.pointerDown(setup, { ...press, ...centreOf(setup) })
+    fireEvent.pointerMove(setup, { ...press, ...to })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    fireEvent.pointerUp(setup, { ...press, ...to })
+
+    expect(order(region)).toEqual(['phase:setup', 'phase:job'])
+    expect(said()).toHaveTextContent('')
+  })
+
+  it('switches a phase between once and loop from its mode chip, without opening it', async () => {
+    const { user, router } = await openEditor('heist?view=map')
+    const inside = within(await map())
+
+    await user.click(inside.getByRole('button', { name: 'Mode of "Setup": once. Switch to loop' }))
+
+    expect(
+      inside.getByRole('button', { name: 'Mode of "Setup": loop. Switch to once' }),
+    ).toBeVisible()
+    expect(said()).toHaveTextContent('Phase "Setup" now loops.')
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
+    expect(search(router)).toEqual({ view: 'map' })
+  })
+
+  it('moves and switches the phase last focused with the action bar, and the selection follows', async () => {
+    const { user, router } = await openEditor('heist?view=map&node=phases.0')
+    const region = await map()
+    const inside = within(region)
+    const bar = within(screen.getByRole('group', { name: 'Map actions' }))
+    expect(bar.getByText(/Pick a phase/)).toBeInTheDocument()
+
+    act(() => {
+      inside.getByRole('button', { name: 'Phase: Setup' }).focus()
+    })
+    expect(bar.getByText('Phase "Setup"')).toBeInTheDocument()
+    expect(bar.getByRole('button', { name: 'Move earlier' })).toBeDisabled()
+
+    await user.click(bar.getByRole('button', { name: 'Move later' }))
+    expect(order(region)).toEqual(['phase:job', 'phase:setup'])
+    expect(said()).toHaveTextContent('Moved phase "Setup" after "The job".')
+    expect(bar.getByRole('button', { name: 'Move later' })).toBeDisabled()
+    expect(search(router)).toEqual({ view: 'map', node: 'phases.1' })
+
+    await user.click(bar.getByRole('button', { name: 'Switch to loop' }))
+    expect(said()).toHaveTextContent('Phase "Setup" now loops.')
+  })
+
+  it('keeps the save errors on the phase that moved', async () => {
+    const { user } = await openEditor('heist?view=map', {
+      [put]: json({ error: 'flows[0].phases[1].key: duplicate phase key "setup"' }, 422),
+    })
+    const inside = within(await map())
+
+    drag(
+      inside.getByRole('button', { name: 'Phase: Setup' }),
+      inside.getByRole('button', { name: 'Phase: The job' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    // After the move "The job" is the first phase: the refusal is about the phase at index 1, Setup.
+    expect(
+      await within(await map()).findByRole('button', {
+        name: 'Phase: Setup. Issues: duplicate phase key "setup"',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('says above the map what no node can carry', async () => {
+    const sceneTypes = [
+      ...narrativeFlows.sceneTypes,
+      { key: 'x', definition: { name: 'No key' }, usedBy: [] },
+    ]
+    await openEditor('heist?view=map', {
+      [`GET ${base}/narrative`]: json({ ...narrativeFlows, sceneTypes }),
+    })
+
+    expect(
+      await within(await map()).findByText(
+        'A Scene Type of the narrative cannot be read: must be a non-empty string.',
+      ),
+    ).toBeVisible()
   })
 })

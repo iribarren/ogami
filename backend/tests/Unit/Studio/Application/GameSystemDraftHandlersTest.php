@@ -33,6 +33,7 @@ use App\Studio\Domain\GameSystem\InvalidGameSystemMetadata;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Domain\Release\ReleaseId;
 use App\Tests\Support\Studio\FixedClock;
+use App\Tests\Support\Studio\InMemoryCardImages;
 use App\Tests\Support\Studio\InMemoryGameSystemReleaseRepository;
 use App\Tests\Support\Studio\InMemoryGameSystemRepository;
 use App\Tests\Support\Studio\ReleaseArrays;
@@ -213,7 +214,7 @@ final class GameSystemDraftHandlersTest extends TestCase
         $attempts = [
             fn (): GameSystemView => $this->get('bob', 'private-one'),
             fn () => $this->edit('bob', 'private-one', 'Mine now', null, null, null),
-            fn () => (new DiscardGameSystemHandler($this->owned(), $this->gameSystems, $this->releases))(new DiscardGameSystem('bob', 'private-one')),
+            fn () => (new DiscardGameSystemHandler($this->owned(), $this->gameSystems, $this->releases, InMemoryCardImages::service()))(new DiscardGameSystem('bob', 'private-one')),
             fn (): GameSystemValidation => (new ValidateGameSystemDraftHandler($this->owned()))(new ValidateGameSystemDraft('bob', 'private-one')),
             fn (): GameSystemView => $this->get('ann', 'unknown'),
         ];
@@ -352,7 +353,7 @@ final class GameSystemDraftHandlersTest extends TestCase
 
     private function discard(string $owner, string $key): void
     {
-        (new DiscardGameSystemHandler($this->owned(), $this->gameSystems, $this->releases))(new DiscardGameSystem($owner, $key));
+        (new DiscardGameSystemHandler($this->owned(), $this->gameSystems, $this->releases, InMemoryCardImages::service()))(new DiscardGameSystem($owner, $key));
     }
 
     private function get(string $owner, string $key): GameSystemView

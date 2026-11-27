@@ -79,6 +79,7 @@ use App\Studio\Domain\Release\ReleaseContent;
 use App\Studio\Domain\Release\ReleaseId;
 use App\Tests\Support\Randomness\ScriptedRandomNumberGenerator;
 use App\Tests\Support\Studio\FixedClock;
+use App\Tests\Support\Studio\InMemoryCardImages;
 use App\Tests\Support\Studio\InMemoryGameSystemReleaseRepository;
 use App\Tests\Support\Studio\InMemoryGameSystemRepository;
 use App\Tests\Support\Studio\ReleaseArrays;
@@ -297,7 +298,7 @@ final class StudioContext implements Context
     #[When('/^(?P<user>\w+) discards the GameSystem "(?P<key>[^"]+)"$/')]
     public function discards(string $user, string $key): void
     {
-        $this->attempt(fn () => (new DiscardGameSystemHandler($this->owned, $this->drafts, $this->releases))(new DiscardGameSystem($user, $key)));
+        $this->attempt(fn () => (new DiscardGameSystemHandler($this->owned, $this->drafts, $this->releases, InMemoryCardImages::service()))(new DiscardGameSystem($user, $key)));
     }
 
     #[Given('/^(?P<user>\w+) published the GameSystem "(?P<key>[^"]+)"(?: with the notes "(?P<notes>[^"]+)")?$/')]

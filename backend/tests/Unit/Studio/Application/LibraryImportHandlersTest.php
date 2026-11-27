@@ -50,6 +50,7 @@ use App\Studio\Domain\Release\GameSystemDraftUnchanged;
 use App\Studio\Domain\Release\InvalidReleaseContent;
 use App\Studio\Domain\Release\ReleaseContent;
 use App\Tests\Support\Studio\FixedClock;
+use App\Tests\Support\Studio\InMemoryCardImages;
 use App\Tests\Support\Studio\InMemoryGameSystemReleaseRepository;
 use App\Tests\Support\Studio\InMemoryGameSystemRepository;
 use App\Tests\Support\Studio\ReleaseArrays;
@@ -295,7 +296,7 @@ final class LibraryImportHandlersTest extends TestCase
     public function aDeletedPackLeavesItsImportsRemovedWithNoPack(): void
     {
         $this->import('bob', 'my-game', 1, 'generic', [['section' => 'tags', 'key' => 'social']]);
-        (new DiscardGameSystemHandler($this->owned(), $this->gameSystems, $this->releases))(new DiscardGameSystem('ann', 'generic'));
+        (new DiscardGameSystemHandler($this->owned(), $this->gameSystems, $this->releases, InMemoryCardImages::service()))(new DiscardGameSystem('ann', 'generic'));
 
         $views = $this->imports('bob', 'my-game');
 
@@ -337,7 +338,7 @@ final class LibraryImportHandlersTest extends TestCase
             self::assertStringContainsString('"generic"', $removed->getMessage());
         }
 
-        (new DiscardGameSystemHandler($this->owned(), $this->gameSystems, $this->releases))(new DiscardGameSystem('ann', 'generic'));
+        (new DiscardGameSystemHandler($this->owned(), $this->gameSystems, $this->releases, InMemoryCardImages::service()))(new DiscardGameSystem('ann', 'generic'));
 
         $this->expectException(LibraryItemRemoved::class);
         try {

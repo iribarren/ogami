@@ -1,7 +1,7 @@
 # Feature: studio-print-cards
 
 - **Locator:** `odd/tasks/studio-print-cards.md` · Engram topic `odd/studio-print-cards/tasks`
-- **Issue:** [#427](https://github.com/iribarren/ogami/issues/427) · **Branch:** `feat/studio-print-cards-1-image-store` · **Status:** in progress (slice 1)
+- **Issue:** [#427](https://github.com/iribarren/ogami/issues/427) · **Branch:** `feat/studio-print-cards-1-image-store` · **Status:** in progress (slice 1, size exception)
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B36 in [`docs/roadmap.md`](../../docs/roadmap.md); builds on B34 `flow-diagram` ([ADR 0051](../../docs/adr/0051-flow-diagram-layout-and-rendering.md)); B38 `play-tabletop` will reuse its card rendering and images
@@ -87,6 +87,10 @@ Out of scope: a user-defined visual style (fonts, colours, a Studio-made theme),
 | D11 | Layout: the paper size (A4 or A5) applies to the whole print. Poker cards are butted on shared cut lines, 3×3 on A4 and 2×2 on A5, with backs mirrored on the long edge. A "bleed + crop marks" option prints 69×94 mm cards, 2×3 on A4 and 2×2 on A5 | Parent (proposed, not objected) |
 | D12 | The manual moves onto the shared builder with its paper overrides; its PDFs stay as they are (Scene Type cards stay A6) | Parent (proposed, not objected) |
 | D13 | Studio gets a full-content read of one release: `GET /api/studio/game-systems/{key}/releases/{version}/content`, owner-only, returning the content as published plus its image pins. Printing reads only this | Parent |
+| D14 | Pins live in their own table (`studio_card_image_pin`) beside the blob table (`studio_image`), both plain DBAL tables excluded from the ORM by a `schema_filter` in `doctrine.yaml`; the draft row and its version are untouched | Writer |
+| D15 | Discarding a GameSystem unpins its images and releases unreferenced blobs explicitly (`DiscardGameSystemHandler` takes `CardImages`); the DB cascade alone would leave blobs and in-memory fakes behind | Writer |
+| D16 | A refused upload answers 422 `{error, reason}` with the stable reason code; a multipart `PUT` works because Symfony parses PUT bodies with `request_parse_body()` | Writer |
+| D17 | Slice 1 keeps T2 whole at ~3,130 changed lines (size exception, label `size:exception`); reviewed as three candidates: T1, T2 core (domain, store, normalizer, migration), T2 HTTP (controller, API tests, generated spec and types) | User (2026-11-27) |
 
 ## Slice plan
 
@@ -108,8 +112,8 @@ Shippable:
 
 | ID | Slice | Task | Route | Done | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | ADR 0053 (D4–D7) and its row in `docs/adr/README.md`; `gd` added to the PHP image and the upload limits raised (PHP `upload_max_filesize`/`post_max_size`) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
-| T2 | 1 | Studio image store: `CardImage` domain (slot, sha256, media type, width, height, bytes), `ImageStore` port, Doctrine `bytea` adapter + migration, the draft's image pins on `studio_gamesystem`, GD validation and re-encoding (D6), endpoints `PUT/DELETE /api/studio/game-systems/{key}/card-images/{slot}` (multipart) and `GET /api/studio/game-systems/{key}/images/{sha256}` (D7), `make api` | delegated writer (Sonnet): slice of 2+ non-trivial files | [ ] | |
+| T1 | 1 | ADR 0053 (D4–D7) and its row in `docs/adr/README.md`; `gd` added to the PHP image and the upload limits raised (PHP `upload_max_filesize`/`post_max_size`) | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | `c619e7fe` |
+| T2 | 1 | Studio image store: `CardImage` domain (slot, sha256, media type, width, height, bytes), `ImageStore` port, Doctrine `bytea` adapter + migration, the draft's image pins on `studio_gamesystem`, GD validation and re-encoding (D6), endpoints `PUT/DELETE /api/studio/game-systems/{key}/card-images/{slot}` (multipart) and `GET /api/studio/game-systems/{key}/images/{sha256}` (D7), `make api` | delegated writer (Sonnet): slice of 2+ non-trivial files | [x] | |
 | T3 | 2 | Release pins images at publish (D5): side column, `no_changes` counts pins, pinned images stay readable after the draft replaces them, unreferenced blobs removed on replace; release content endpoint (D13); `make api` | delegated writer | [ ] | |
 | T4 | 2 | Studio "Card images" section on the GameSystem page: upload, replace and remove both slots, preview, requirements text (D6), errors | delegated writer | [ ] | |
 | T5 | 3 | Typed release reader for print (narrow, throw-first, like `readPreset`), shared card builder with generated wording (D8), decks (D9), continuation cards (D10); manual moved onto it (D12), its tests unchanged | delegated writer | [ ] | |
@@ -141,6 +145,8 @@ Shippable:
 
 - 2026-11-27: Feature doc created; five slices, ten tasks. D1 from the prompt; D2–D5 decided by the user; D6–D13 proposed and not objected to. Issue #427.
 - 2026-11-27: T1 done. ADR 0053 and its index row, `gd` in the PHP image and `upload_max_filesize` 5M / `post_max_size` 8M. Docs and config only, so no RED. Observed after `make build up`: `gd_info()` reports PNG and JPEG support, and `ini_get` returns 5M and 8M.
+- 2026-11-27: T2 done. Image domain (`CardImage`, `CardImageSlot`, `ImageRefused` reasons), ports `ImageStore`/`CardImagePins`/`ImageNormalizer`, `DbalImageStore` and migration `Version20261127100000`, `GdImageNormalizer` (type and pixels checked before decoding, PNG alpha kept, JPEG q92), list/upload/remove/read handlers and `GameSystemCardImageController`, `make api`. 23 API tests plus unit and integration tests. No clean RED: tests were written with the code; the observed failures (a bad test PNG, the discard cascade) were fixed. `make verify` (full run) green except one PHPStan error in the new API test, fixed and `make backend-qa` clean.
+- 2026-11-27: Slice 1 came out at ~3,130 changed lines (T2 ~2,940: backend 991, tests 1,218, generated 693); the user kept it as one slice (D17).
 
 ## Reviews
 

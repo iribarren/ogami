@@ -17,6 +17,7 @@ final readonly class DiscardGameSystemHandler implements CommandHandler
         private OwnedGameSystems $owned,
         private GameSystemRepository $gameSystems,
         private GameSystemReleaseRepository $releases,
+        private CardImages $images,
     ) {
     }
 
@@ -31,6 +32,7 @@ final readonly class DiscardGameSystemHandler implements CommandHandler
             throw GameSystemHasReleases::withKey($command->key);
         }
 
+        $this->images->discard($gameSystem->id());
         $this->gameSystems->remove($gameSystem);
     }
 }

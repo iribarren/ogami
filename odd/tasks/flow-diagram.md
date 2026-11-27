@@ -84,6 +84,7 @@ Shippable: slices 1 and 2 add code nothing imports outside its tests and story; 
 - 2026-11-27: T2b done: R3-001, R3-003, R3-004 fixed with tests; R3-002 kept as a throw because the backend rejects oracle selection entries without a Scene Type (`FlowReferences::checkOracleSelections`), now commented.
 - 2026-11-27: T3 done: `layoutFlowDiagram` (dagre 3.1.4 inside each phase, own routing for hook, self, exit and phase arrows); 12 Vitest tests, RED (module missing) then GREEN.
 - 2026-11-27: T4 done: `FlowDiagramView` (inline SVG on theme variables, text alternative in a `<details>` linked by `aria-describedby`), four Storybook stories on the real presets; 7 Vitest tests, RED (component missing) then GREEN.
+- 2026-11-27: T3 amended: `phaseDiagram` records `continuesTo`, so a cut of a non-last phase always ends in an exit stub naming the next phase, with or without an `endPhase` transition; "End of flow" only for the last phase.
 
 ## Reviews
 

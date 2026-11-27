@@ -28,6 +28,12 @@ describe('phaseDiagram', () => {
     expect(diagram.phases).toHaveLength(5)
   })
 
+  it('records the phase a cut continues to, and none for the last phase or a whole flow', () => {
+    expect(phaseDiagram(diagram, 'wake').continuesTo).toEqual({ key: 'the-ship', name: 'The Ship' })
+    expect(phaseDiagram(diagram, 'epilogue').continuesTo).toBeNull()
+    expect(diagram.continuesTo).toBeUndefined()
+  })
+
   it('throws for an unknown phase', () => {
     expect(() => phaseDiagram(diagram, 'nope')).toThrow(FlowDiagramError)
     expect(() => phaseDiagram(diagram, 'nope')).toThrow(

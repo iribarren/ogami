@@ -119,6 +119,9 @@ export function FlowDiagramView({ diagram, className }: FlowDiagramViewProps) {
               </li>
             ))}
           </ol>
+          {description.continuesTo !== null && (
+            <p>The flow continues to: {description.continuesTo}.</p>
+          )}
           {description.transitions.length > 0 && (
             <>
               <p className="font-medium">Transitions</p>

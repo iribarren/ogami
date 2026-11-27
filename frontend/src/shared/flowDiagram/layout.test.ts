@@ -196,6 +196,20 @@ describe('layoutFlowDiagram', () => {
     expect(stub?.rect.y).toBeGreaterThan(box.y + box.height)
   })
 
+  it('ends a cut of a non-last phase without an endPhase transition in an exit stub too', () => {
+    const layout = layoutFlowDiagram(phaseDiagram(coldBerth, 'wake'))
+    expect(layout.nodes.filter((node) => node.kind === 'end')).toEqual([])
+    const stub = layout.nodes.find((node) => node.kind === 'exitStub')
+    expect(stub?.id).toBe('exit:the-ship')
+    expect(stub?.label).toBe('The Ship')
+  })
+
+  it('closes a cut of the last phase with the end marker', () => {
+    const layout = layoutFlowDiagram(phaseDiagram(coldBerth, 'epilogue'))
+    expect(layout.nodes.map((node) => node.kind)).toContain('end')
+    expect(layout.nodes.map((node) => node.kind)).not.toContain('exitStub')
+  })
+
   it('fails closed on a transition it cannot place', () => {
     const broken: FlowDiagram = {
       ...coldBerth,

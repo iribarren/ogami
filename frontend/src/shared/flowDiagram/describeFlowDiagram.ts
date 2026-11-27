@@ -18,6 +18,8 @@ export interface FlowDiagramDescription {
   title: string
   phases: PhaseDescription[]
   transitions: string[]
+  /** The name of the phase a one-phase cut continues to; null for a whole flow or the last phase. */
+  continuesTo: string | null
 }
 
 export function describeFlowDiagram(diagram: FlowDiagram): FlowDiagramDescription {
@@ -25,6 +27,7 @@ export function describeFlowDiagram(diagram: FlowDiagram): FlowDiagramDescriptio
     title: diagram.name,
     phases: diagram.phases.map(describePhase),
     transitions: diagram.transitions.map((transition) => describeTransition(diagram, transition)),
+    continuesTo: diagram.continuesTo?.name ?? null,
   }
 }
 

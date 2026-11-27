@@ -228,6 +228,9 @@ function endingNode(
     return null
   }
   const outside = new Map<string, string>()
+  if (diagram.continuesTo !== undefined && diagram.continuesTo !== null) {
+    outside.set(diagram.continuesTo.key, diagram.continuesTo.name)
+  }
   diagram.transitions.forEach((transition, index) => {
     const to = transition.to
     if (to.type !== 'nextPhase') {

@@ -102,6 +102,12 @@ describe('describeFlowDiagram', () => {
     expect(transitions).toEqual(['T (A, P) → next scene: B'])
   })
 
+  it('says where a cut of a non-last phase continues', () => {
+    expect(describeFlowDiagram(phaseDiagram(coldBerth, 'wake')).continuesTo).toBe('The Ship')
+    expect(describeFlowDiagram(phaseDiagram(coldBerth, 'epilogue')).continuesTo).toBeNull()
+    expect(describeFlowDiagram(coldBerth).continuesTo).toBeNull()
+  })
+
   it('is deterministic', () => {
     expect(describeFlowDiagram(coldBerth)).toEqual(describeFlowDiagram(coldBerth))
   })

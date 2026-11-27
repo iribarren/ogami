@@ -1,5 +1,8 @@
+import { sceneType, table } from '@/shared/flowDiagram/testSupport'
+
 import { flowToDraft, type FlowDraft } from './flowDraft'
 import { noAnswer, type FlowAnswer } from './flowError'
+import { flowDiagramFromDraft } from './flowMapDiagram'
 import { answerIssues, mapTarget, selectedMapId } from './flowMapNodes'
 
 const draftOf = (phases: Record<string, unknown>[]): FlowDraft => {
@@ -31,6 +34,9 @@ const draft = draftOf([
   phase('empty', { rule: 'sequence', sceneTypes: [] }),
 ])
 const keys = ['one', 'two', 'three', 'empty']
+const catalog = ['a', 'b', 'b:c', 'c'].map((key) => ({ definition: sceneType(key) }))
+const mapOf = (of: FlowDraft) => flowDiagramFromDraft(of, catalog, [{ definition: table('t', []) }])
+const { diagram } = mapOf(draft)
 
 describe('mapTarget', () => {
   it.each([
@@ -44,26 +50,47 @@ describe('mapTarget', () => {
     ],
     ['scene:two:a', 'sceneType', { type: 'sceneType', sceneType: 'a' }],
   ] as const)('reads %s', (id, kind, target) => {
-    expect(mapTarget(id, kind, keys)).toEqual(target)
+    expect(mapTarget(id, kind, keys, diagram)).toEqual(target)
   })
 
-  it('reads ids of a phase whose key has colons, the longest key first', () => {
-    const odd = ['a', 'a:b']
-    expect(mapTarget('scene:a:b:c', 'sceneType', odd)).toEqual({
+  it('reads ids of a phase whose key has colons from what the drawing holds', () => {
+    // `a:b:c` could be Scene Type `b:c` of phase `a`, or Scene Type `c` of phase `a:b`.
+    const odd = draftOf([
+      phase('a', { rule: 'sequence', sceneTypes: ['b:c'] }),
+      phase('a:b', { rule: 'sequence', sceneTypes: ['a'] }),
+    ])
+    const { diagram: drawn, phaseKeys } = mapOf(odd)
+
+    expect(mapTarget('scene:a:b:c', 'sceneType', phaseKeys, drawn)).toEqual({
       type: 'sceneType',
-      sceneType: 'c',
+      sceneType: 'b:c',
     })
-    expect(mapTarget('hook:a:b:phaseOpening', 'hook', odd)).toEqual({
+    expect(mapTarget('scene:a:b:a', 'sceneType', phaseKeys, drawn)).toEqual({
+      type: 'sceneType',
+      sceneType: 'a',
+    })
+    expect(mapTarget('hook:a:b:phaseOpening', 'hook', phaseKeys, drawn)).toEqual({
       type: 'node',
       node: { kind: 'hook', phase: 1, hook: 'phaseOpening' },
     })
   })
 
+  it('is null for a Scene Type id that two phases could own', () => {
+    const odd = draftOf([
+      phase('a', { rule: 'sequence', sceneTypes: ['b:c'] }),
+      phase('a:b', { rule: 'sequence', sceneTypes: ['c'] }),
+    ])
+    const { diagram: drawn, phaseKeys } = mapOf(odd)
+
+    expect(mapTarget('scene:a:b:c', 'sceneType', phaseKeys, drawn)).toBeNull()
+  })
+
   it('is null for an id the draft does not have', () => {
-    expect(mapTarget('phase:gone', 'phase', keys)).toBeNull()
-    expect(mapTarget('hook:one:nope', 'hook', keys)).toBeNull()
-    expect(mapTarget('scene:gone:a', 'sceneType', keys)).toBeNull()
-    expect(mapTarget('choice:gone', 'choice', keys)).toBeNull()
+    expect(mapTarget('phase:gone', 'phase', keys, diagram)).toBeNull()
+    expect(mapTarget('hook:one:nope', 'hook', keys, diagram)).toBeNull()
+    expect(mapTarget('scene:gone:a', 'sceneType', keys, diagram)).toBeNull()
+    expect(mapTarget('scene:one:gone', 'sceneType', keys, diagram)).toBeNull()
+    expect(mapTarget('choice:gone', 'choice', keys, diagram)).toBeNull()
   })
 })
 
@@ -111,6 +138,34 @@ describe('answerIssues', () => {
       'table:three': ['c'],
       'phase:empty': ['d'],
     })
+  })
+
+  it('falls back to the phase box when every Scene Type of a sequence is missing', () => {
+    const gone = draftOf([phase('one', { rule: 'sequence', sceneTypes: ['ghost', 'spook'] })])
+    const map = mapOf(gone)
+
+    const issues = answerIssues(
+      gone,
+      map.phaseKeys,
+      said([{ ...blank, selection: ['x'] }]),
+      map.drawn,
+    )
+
+    expect(issues).toEqual({ 'phase:one': ['x'] })
+  })
+
+  it('keeps a selection message to the Scene Types that are drawn, once each', () => {
+    const partly = draftOf([phase('one', { rule: 'sequence', sceneTypes: ['a', 'ghost', 'a'] })])
+    const map = mapOf(partly)
+
+    const issues = answerIssues(
+      partly,
+      map.phaseKeys,
+      said([{ ...blank, selection: ['x'] }]),
+      map.drawn,
+    )
+
+    expect(issues).toEqual({ 'scene:one:a': ['x'] })
   })
 
   it('puts the step errors of a hook on its chip', () => {

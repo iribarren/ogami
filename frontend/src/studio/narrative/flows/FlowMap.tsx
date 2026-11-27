@@ -43,9 +43,9 @@ export function FlowMap({
   if (oracles.isPending) {
     return <p className="text-muted-foreground">Loading the map…</p>
   }
-  const issues = mergeIssues(map.issues, answerIssues(draft, map.phaseKeys, answer))
+  const issues = mergeIssues(map.issues, answerIssues(draft, map.phaseKeys, answer, map.drawn))
   const open = (id: string, kind: DiagramActivation) => {
-    const target = mapTarget(id, kind, map.phaseKeys)
+    const target = mapTarget(id, kind, map.phaseKeys, map.diagram)
     if (target !== null) {
       onOpen(target)
     }
@@ -55,6 +55,15 @@ export function FlowMap({
     <div className="space-y-3">
       {oracles.isError && (
         <Alert>Couldn’t load the oracle tables, so every table is marked as missing.</Alert>
+      )}
+      {map.flowIssues.length > 0 && (
+        <Alert>
+          <ul className="list-disc pl-5">
+            {map.flowIssues.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+        </Alert>
       )}
       <p className="text-sm text-muted-foreground">
         The flow as it is in this form, saved or not. Pick a phase, a selection or a hook to edit

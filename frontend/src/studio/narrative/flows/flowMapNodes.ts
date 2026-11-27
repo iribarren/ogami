@@ -1,4 +1,4 @@
-import type { DiagramActivation, DiagramIssues } from '@/shared/flowDiagram'
+import type { DiagramActivation, DiagramIssues, FlowDiagram } from '@/shared/flowDiagram'
 
 import { phaseHooks, type FlowDraft } from './flowDraft'
 import type { FlowAnswer } from './flowError'
@@ -17,6 +17,7 @@ export function mapTarget(
   id: string,
   kind: DiagramActivation,
   phaseKeys: readonly string[],
+  diagram: FlowDiagram,
 ): MapTarget | null {
   const phaseAt = (key: string) => phaseKeys.indexOf(key)
   switch (kind) {
@@ -38,15 +39,34 @@ export function mapTarget(
         : { type: 'node', node: { kind: 'hook', phase, hook } }
     }
     case 'sceneType': {
-      // The longest key first: `a:b` must win over `a` for `scene:a:b:c`.
-      const owner = [...phaseKeys]
-        .sort((first, second) => second.length - first.length)
-        .find((key) => id.startsWith(`scene:${key}:`))
-      return owner === undefined
-        ? null
-        : { type: 'sceneType', sceneType: id.slice(`scene:${owner}:`.length) }
+      const scene = sceneOf(id, phaseKeys, diagram)
+      return scene === null ? null : { type: 'sceneType', sceneType: scene.sceneType }
     }
   }
+}
+
+/**
+ * The phase and Scene Type a `scene:<phase>:<sceneType>` id stands for. Keys may hold colons, so the
+ * id is never split: a phase owns it when the id starts with its key and the drawing has that Scene
+ * Type in it. Null when no phase does, or when two do (the id is then ambiguous).
+ */
+export function sceneOf(
+  id: string,
+  phaseKeys: readonly string[],
+  diagram: FlowDiagram,
+): { phase: number; sceneType: string } | null {
+  const owners = phaseKeys.flatMap((key, phase) => {
+    const prefix = `scene:${key}:`
+    const drawn = diagram.phases.find((candidate) => candidate.key === key)
+    const sceneType = id.slice(prefix.length)
+    const holds =
+      id.startsWith(prefix) &&
+      [...(drawn?.selection.sceneTypes ?? []), ...(drawn?.reached ?? [])].some(
+        (candidate) => candidate.key === sceneType,
+      )
+    return holds ? [{ phase, sceneType }] : []
+  })
+  return owners.length === 1 ? (owners[0] ?? null) : null
 }
 
 /** The id of the diagram node a selected editor node stands for; undefined when it has none (the flow settings, a sequence's selection). */
@@ -78,8 +98,16 @@ export function selectedMapId(
   }
 }
 
-/** The nodes a message about the phase's selection sits on: what it draws, or the phase box when it draws none. */
-function selectionNodes(draft: FlowDraft, phase: number, key: string): string[] {
+/**
+ * The nodes a message about the phase's selection sits on: what draws it, or the phase box when
+ * nothing does (a sequence whose Scene Types are all missing). A Scene Type listed twice has one node.
+ */
+function selectionNodes(
+  draft: FlowDraft,
+  phase: number,
+  key: string,
+  drawn: ReadonlySet<string> | undefined,
+): string[] {
   const selection = draft.phases[phase]?.selection
   if (selection?.rule === 'player') {
     return [`choice:${key}`]
@@ -87,10 +115,12 @@ function selectionNodes(draft: FlowDraft, phase: number, key: string): string[] 
   if (selection?.rule === 'oracle') {
     return [`table:${key}`]
   }
-  const sceneTypes = selection?.sceneTypes ?? []
-  return sceneTypes.length === 0
-    ? [`phase:${key}`]
-    : sceneTypes.map((sceneType) => `scene:${key}:${sceneType}`)
+  const nodes = new Set(
+    (selection?.sceneTypes ?? [])
+      .map((sceneType) => `scene:${key}:${sceneType}`)
+      .filter((node) => drawn === undefined || drawn.has(node)),
+  )
+  return nodes.size === 0 ? [`phase:${key}`] : [...nodes]
 }
 
 /**
@@ -102,6 +132,8 @@ export function answerIssues(
   draft: FlowDraft,
   phaseKeys: readonly string[],
   answer: FlowAnswer,
+  /** The ids the drawing has (`FlowMapDiagram.drawn`); without it every Scene Type is taken as drawn. */
+  drawn?: ReadonlySet<string>,
 ): DiagramIssues {
   const issues: DiagramIssues = {}
   const add = (node: string, messages: string[]) => {
@@ -115,7 +147,7 @@ export function answerIssues(
       return
     }
     add(`phase:${key}`, [...Object.values(said.fields), ...said.messages])
-    for (const node of selectionNodes(draft, phase, key)) {
+    for (const node of selectionNodes(draft, phase, key, drawn)) {
       add(node, said.selection)
     }
     for (const hook of phaseHooks) {

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 
 import { cn } from '@/shared/lib/utils'
 
-/** The places at the table's edge. Each is filled by a later slice; for now it says what it will hold. */
+/** The places at the table's edge. A slot nobody fills yet says what it will hold. */
 const TABLE_SLOTS = [
   { id: 'deck', label: 'Deck', place: '@3xl:col-start-1 @3xl:row-start-1' },
   { id: 'dice', label: 'Dice tray', place: '@3xl:col-start-1 @3xl:row-start-2' },
@@ -11,7 +11,15 @@ const TABLE_SLOTS = [
   { id: 'map', label: 'Flow map', place: '@3xl:col-start-3 @3xl:row-start-3' },
 ] as const
 
-function Slot({ label, place }: { label: string; place: string }) {
+function Slot({
+  label,
+  place,
+  children,
+}: {
+  label: string
+  place: string
+  children?: ReactNode
+}) {
   return (
     <section
       aria-label={label}
@@ -22,7 +30,7 @@ function Slot({ label, place }: { label: string; place: string }) {
         place,
       )}
     >
-      {label}
+      {children ?? label}
     </section>
   )
 }
@@ -33,7 +41,13 @@ function Slot({ label, place }: { label: string; place: string }) {
  * and the flow map on the other; narrower, the mat is a strip and the same slots form a dock at the
  * bottom. The slots are one set of elements, only placed differently.
  */
-export function TableLayout({ mat }: { mat: ReactNode }) {
+export function TableLayout({
+  mat,
+  slots = {},
+}: {
+  mat: ReactNode
+  slots?: Partial<Record<(typeof TABLE_SLOTS)[number]['id'], ReactNode>>
+}) {
   return (
     <div className="@container">
       <div className="grid gap-3 @3xl:grid-cols-[11rem_minmax(0,1fr)_11rem] @3xl:grid-rows-[auto_auto_1fr] @3xl:items-stretch">
@@ -44,7 +58,9 @@ export function TableLayout({ mat }: { mat: ReactNode }) {
           className="sticky bottom-0 z-10 -mx-1 grid grid-cols-5 gap-1 bg-background/90 p-1 backdrop-blur @3xl:contents"
         >
           {TABLE_SLOTS.map((slot) => (
-            <Slot key={slot.id} label={slot.label} place={slot.place} />
+            <Slot key={slot.id} label={slot.label} place={slot.place}>
+              {slots[slot.id]}
+            </Slot>
           ))}
         </div>
       </div>

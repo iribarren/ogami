@@ -9,11 +9,13 @@ import {
 } from '@/shared/ui/dialog'
 
 import type { Mat as MatModel, MatCard, MatPile } from './mat'
+import './tableMotion.css'
 
 /**
  * A scene card as it lies on the mat: only what identifies it, its title and Scene Type (D3). The
- * current scene is larger, a hook scene smaller. Reading and playing happen in the scene panel
- * (a later slice), so nothing here is clickable yet.
+ * current scene is larger, a hook scene smaller. Reading and playing happen in the scene panel,
+ * which the current card opens (see `Mat`). A new current scene turns face up, unless the player
+ * prefers reduced motion.
  */
 export function SceneCardView({ card, className }: { card: MatCard; className?: string }) {
   return (
@@ -25,7 +27,7 @@ export function SceneCardView({ card, className }: { card: MatCard; className?: 
       className={cn(
         'flex shrink-0 flex-col justify-between rounded-lg border bg-card p-3 text-card-foreground shadow-sm',
         'aspect-[63/88]',
-        card.current ? 'w-40 ring-2 ring-primary' : card.hook ? 'w-20 p-2 text-xs' : 'w-28 text-sm',
+        card.current ? 'table-flip w-40 ring-2 ring-primary' : card.hook ? 'w-20 p-2 text-xs' : 'w-28 text-sm',
         className,
       )}
     >
@@ -91,8 +93,18 @@ function PileButton({ pile }: { pile: MatPile }) {
  * The mat: this session's scenes in a row in play order, and the earlier sessions as piles at its
  * edge. A horizontal strip when the table is narrow, a wrapping row when it is wide.
  */
-export function Mat({ mat, className }: { mat: MatModel; className?: string }) {
+export function Mat({
+  mat,
+  className,
+  onOpenScene,
+}: {
+  mat: MatModel
+  className?: string
+  /** Opens the scene panel: the current card, or a "Play" card when there is none, is its button. */
+  onOpenScene?: (opener: HTMLElement) => void
+}) {
   const empty = mat.row.length === 0 && mat.piles.length === 0
+  const noCurrent = !mat.row.some(({ current }) => current)
   return (
     <section
       aria-label="Mat"
@@ -113,10 +125,35 @@ export function Mat({ mat, className }: { mat: MatModel; className?: string }) {
         >
           {mat.row.map((card) => (
             <li key={`${String(card.sessionNumber)}-${String(card.number)}`} className="shrink-0">
-              <SceneCardView card={card} />
+              {card.current && onOpenScene !== undefined ? (
+                <button
+                  type="button"
+                  aria-label={`Open scene ${card.title}`}
+                  onClick={(event) => {
+                    onOpenScene(event.currentTarget)
+                  }}
+                  className="rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <SceneCardView card={card} />
+                </button>
+              ) : (
+                <SceneCardView card={card} />
+              )}
             </li>
           ))}
         </ol>
+      )}
+      {noCurrent && onOpenScene !== undefined && (
+        <button
+          type="button"
+          aria-label="Play"
+          onClick={(event) => {
+            onOpenScene(event.currentTarget)
+          }}
+          className="flex aspect-[63/88] w-40 items-center justify-center rounded-lg border-2 border-dashed bg-card/60 font-heading text-lg font-semibold outline-none hover:bg-card focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Play
+        </button>
       )}
       {mat.row.length === 0 && mat.piles.length > 0 && (
         <p className="text-sm text-muted-foreground">No session is under way.</p>

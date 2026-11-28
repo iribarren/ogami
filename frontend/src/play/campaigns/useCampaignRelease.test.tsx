@@ -1,11 +1,14 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { flowDiagramFromReleaseContent } from '@/shared/flowDiagram'
 import { buildCards } from '@/shared/print/cards'
 import { miniRelease } from '@/shared/print/testRelease'
 import { renderWithApi } from '@/test/renderWithApi'
 
+import { lostMineCampaign } from './fixtures'
 import { useCampaignRelease } from './useCampaignRelease'
+import { useUpgradeCampaignRelease } from './useReleaseUpgrade'
 
 const hash = 'a'.repeat(64)
 const path = '/api/campaigns/campaign-1'
@@ -91,5 +94,65 @@ describe('useCampaignRelease', () => {
     })
 
     expect((await screen.findByRole('alert')).textContent).toBe('No campaign.')
+  })
+
+  it('says why a release whose content cannot be read is an error', async () => {
+    renderWithApi(<Probe />, {
+      [`GET ${path}/release`]: () =>
+        Response.json({
+          gameSystemKey: 'mini',
+          version: 3,
+          publishedAt: '2026-11-28T10:00:00+00:00',
+          content: { schemaVersion: 99 },
+          cardImages: [],
+        }),
+    })
+
+    expect((await screen.findByRole('alert')).textContent).not.toBe('')
+    expect(screen.queryByTestId('probe')).not.toBeInTheDocument()
+  })
+
+  it('says why a failed read is an error', async () => {
+    renderWithApi(<Probe />, {
+      [`GET ${path}/release`]: () => Response.json({ error: 'Cannot read.' }, { status: 500 }),
+    })
+
+    expect((await screen.findByRole('alert')).textContent).toContain('Loading the campaign release')
+  })
+
+  it('reads the release again after an upgrade evicted it', async () => {
+    const user = userEvent.setup()
+    let reads = 0
+    function Upgrading() {
+      const upgrade = useUpgradeCampaignRelease('campaign-1')
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              upgrade.mutate({ toVersion: 4, fingerprint: 'f' })
+            }}
+          >
+            Upgrade
+          </button>
+          <Probe />
+        </>
+      )
+    }
+    renderWithApi(<Upgrading />, {
+      [`GET ${path}/release`]: () => {
+        reads += 1
+        return answer()
+      },
+      [`POST ${path}/release-upgrade`]: () => Response.json(lostMineCampaign),
+    })
+
+    await screen.findByTestId('probe')
+    expect(reads).toBe(1)
+    await user.click(screen.getByRole('button', { name: 'Upgrade' }))
+
+    await waitFor(() => {
+      expect(reads).toBe(2)
+    })
   })
 })

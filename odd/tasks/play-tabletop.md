@@ -1,7 +1,7 @@
 # Feature: play-tabletop
 
 - **Locator:** `odd/tasks/play-tabletop.md` · Engram topic `odd/play-tabletop/tasks`
-- **Issue:** [#438](https://github.com/iribarren/ogami/issues/438) · **Branch:** `feat/play-tabletop-2-mat` · **Status:** slice 2 in progress
+- **Issue:** [#438](https://github.com/iribarren/ogami/issues/438) · **Branch:** `feat/play-tabletop-3-scene-dice` · **Status:** slice 3 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B38 in [`docs/roadmap.md`](../../docs/roadmap.md); reuses B34 (`flow-diagram`, [ADR 0051](../../docs/adr/0051-flow-diagram-layout-and-rendering.md)) and B36 (`studio-print-cards`, [ADR 0053](../../docs/adr/0053-card-image-storage.md))
@@ -55,7 +55,7 @@ Approved by the user on 2026-11-28.
   | `oracle` | Clicking the deck "draws": `pick/roll`; the card the table rolled flips face up |
   | forced (`nextScene`) | Only that card slides out of the deck |
 
-- **D5 Playing a scene.** Clicking the current scene card opens the scene panel (D3), which renders `GuidedBody` unchanged: steps, checks, keep or push, choices, shop, "Next". No step logic is duplicated.
+- **D5 Playing a scene.** Clicking the current scene card opens the scene panel (D3), which renders `GuidedBody` unchanged: steps, checks, keep or push, choices, shop, "Next". No step logic is duplicated. Refined at slice 3: the panel renders Play's `FocusPanel` (progress, cast, `GuidedBody`, the scene so far) and `GuidedControls` (end scene, end phase, pause), so the whole flow plays from the table. With no current scene (before a session or between scenes) a "Play" card in the current scene's place opens the same panel.
 - **D6 Dice tray.** `DiceRoller` presets for free rolls, recorded with `useRecordRoll`. The latest roll, a step's check included, shows as 2D `DieShape` dice that tumble with CSS and land on the result the server already returned. Reduced motion skips the tumble.
 - **D7 Notebook.** A notebook on the table opens a full-screen overlay with `Journal` and `NoteComposer`, showing this scene first (D3 sizes).
 - **D8 Oracle book and flow map.** The book opens `OraclePanel` in a side sheet. A small B34 `FlowDiagramView` at the table edge highlights the current phase through `selectedId`.
@@ -86,10 +86,10 @@ Re-planned on 2026-11-28 from three slices to four: T1 with its generated API re
 | ID | Slice | Task | Route | Done | Commit |
 |---|---|---|---|---|---|
 | T1 | 1 | Studio Published Language queries for a release's content and pinned image bytes; Play ports and adapters; `GET /api/campaigns/{id}/release` and `GET /api/campaigns/{id}/card-images/{sha256}` (D11) with unit, integration and API tests; `make api` | delegated writer (Sonnet): 2+ non-trivial files; generated API by the parent (`make api`) | [x] | `f341e237`, `78d9c5fd` |
-| T2 | 2 | ADR 0054 (D12) and the ADR index; Play `useCampaignRelease` hook; on-screen card faces (a `.table-cards` scope in rem at the 63:88 ratio, reusing `CardFaces`) with Storybook stories from a preset | delegated writer (Sonnet) | [x] | |
-| T3 | 2 | `/table` route and table layout (desktop, tablet, phone dock, D10); `matOf(campaign)` pure derivation of rows and piles (D2) with tests; mat rendering with piles that fan out | delegated writer (Sonnet) | [x] | |
-| T4 | 3 | Deck by selection rule (D4) through `useFlowRunCommand`; scene panel rendering `GuidedBody` at the D3 sizes (D5); flip animation | | [ ] | |
-| T5 | 3 | Dice tray (D6): free rolls, latest-roll reveal, reduced motion | | [ ] | |
+| T2 | 2 | ADR 0054 (D12) and the ADR index; Play `useCampaignRelease` hook; on-screen card faces (a `.table-cards` scope in rem at the 63:88 ratio, reusing `CardFaces`) with Storybook stories from a preset | delegated writer (Sonnet) | [x] | `dbd69f3c` |
+| T3 | 2 | `/table` route and table layout (desktop, tablet, phone dock, D10); `matOf(campaign)` pure derivation of rows and piles (D2) with tests; mat rendering with piles that fan out | delegated writer (Sonnet) | [x] | `91cec6ff`, `373cbaa2` |
+| T4 | 3 | Deck by selection rule (D4) through `useFlowRunCommand`; scene panel rendering `GuidedBody` at the D3 sizes (D5); flip animation | delegated writer (Sonnet): 2+ non-trivial files | [ ] | |
+| T5 | 3 | Dice tray (D6): free rolls, latest-roll reveal, reduced motion | delegated writer (Sonnet): 2+ non-trivial files | [ ] | |
 | T6 | 4 | Notebook overlay (D7, D3 sizes), oracle book sheet and flow map (D8) | | [ ] | |
 | T7 | 4 | Theme table tokens (D9); "Table" header button (D1); Playwright spec; Play manual passage "The table"; roadmap Done line | | [ ] | |
 
@@ -116,13 +116,15 @@ Re-planned on 2026-11-28 from three slices to four: T1 with its generated API re
 - 2026-11-28: Slice 1 review findings fixed: the `DoesNotPerformAssertions` contradiction removed (the test now asserts four `CampaignNotFound`); unreadable-release tests added (Studio handler, Play adapter, API 500); a pinned hash with no bytes now raises `PublishedCardImageMissing` / `CardImageUnavailable` (500) while unpinned hashes stay 404. The new tests passed on first run, written after the code: no RED observed.
 - 2026-11-28: T2 done: ADR 0054 and its index line; `useCampaignRelease` (`play/campaigns/`, `staleTime` infinite, key under the campaign key, removed by `useUpgradeCampaignRelease` so an upgrade refetches; returns `release` for `buildCards`, raw `content` for `flowDiagramFromReleaseContent`, image URLs from the API); `.table-cards` scope (`play/table/tableCards.css`, `TableCards`) sizes the print faces in rem through `--card-width`/`--mm`, `printCards.css` untouched; Storybook stories from the hard-country preset. Tests passed on first run, written after the code: no RED observed (hook 5, cards 3; print suites still green).
 - 2026-11-28: T3 done: route `/play/campaigns/$campaignId/table` (`$campaignId_`, unlinked, link back to the Play page), `TablePage` (same campaign query as the Play page plus `useCampaignRelease`, theme applied), `TableLayout` (container queries: mat in the middle with five labelled placeholder slots at the edge from `3xl`, mat as a strip with a bottom dock below), `matOf` in `play/table/mat.ts`, `Mat` with piles that fan out in a dialog (focus returns to the pile, Escape closes, `motion-safe` hover). RED observed for `matOf` (module missing), GREEN after (10 tests); component and page tests (8) written after the code, no RED. A session with no scene makes no pile. No Chrome pass done in this slice's writer run.
+- 2026-11-28: Slice 2 review findings fixed: API test that a pinned image whose bytes are missing answers 500 (`CardImageUnavailable`); `useCampaignRelease` tests that an upgrade evicts the cached release (refetch) and that unreadable or failed content surfaces as a query error. All passed on first run, written after the code: no RED observed.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
 | 1 | `review-00d0ab9f669bdc19` | `f341e237`, `78d9c5fd` | approved, acknowledged. R3 non-blocking, fixed in slice 2: `DoesNotPerformAssertions` contradicting asserts in `GetCampaignReleaseHandlersTest`; unreadable-release 500 path untested; a pinned hash whose bytes are missing answered 404 instead of a distinct error | [#439](https://github.com/iribarren/ogami/pull/439) |
+| 2 | `review-40cbbf2902582240` | `625effbc`, `dbd69f3c`, `91cec6ff`, `373cbaa2` | approved, acknowledged. R3 non-blocking, fixed in slice 3: `CardImageUnavailable` → 500 untested at the HTTP level (`CampaignReleaseController.php:76-77`); no test that a release upgrade evicts the cached release (`useReleaseUpgrade.ts:78-79`); no test that unreadable content surfaces as a query error (`useCampaignRelease.ts:67`) | [#440](https://github.com/iribarren/ogami/pull/440) |
 
 ## Next step
 
-Slice 2: slice 1 review fixes, T2 and T3 on `feat/play-tabletop-2-mat`, then native review and PR. Slice 3: T4 and T5.
+Slice 3: slice 2 review fixes, T4 and T5 on `feat/play-tabletop-3-scene-dice`, then native review and PR. Slice 4: T6 and T7. Chrome pass on desktop and phone still pending (slices 2–4).

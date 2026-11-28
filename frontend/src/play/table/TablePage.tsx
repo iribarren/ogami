@@ -7,6 +7,7 @@ import { CampaignError, useCampaign, type Campaign } from '../campaigns/useCampa
 import { useCampaignRelease, type CampaignRelease } from '../campaigns/useCampaignRelease'
 import { useFlowRunCommand } from '../flow/useFlowRun'
 import { Deck } from './Deck'
+import { DiceTray } from './DiceTray'
 import { Mat } from './Mat'
 import { matOf } from './mat'
 import { ScenePanel } from './ScenePanel'
@@ -94,6 +95,7 @@ function Table({ campaign, release }: { campaign: Campaign; release: CampaignRel
         }
         slots={{
           deck: <Deck campaign={campaign} command={command} backImage={release.images.cardBack} />,
+          dice: <DiceTray campaign={campaign} />,
         }}
       />
       <ScenePanel

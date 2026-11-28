@@ -1,5 +1,5 @@
 /*
- * The table's CSS-only motion: a card turning face up, a card sliding out of the deck. No library
+ * The table's CSS-only motion: a card turning face up, a card sliding out of the deck, dice tumbling onto their result. No library
  * (ADR 0004). Under `prefers-reduced-motion` the cards simply appear.
  */
 
@@ -25,6 +25,20 @@
   }
 }
 
+@keyframes table-tumble {
+  0% {
+    transform: translateY(-1.5rem) rotate(-300deg) scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(0.25rem) rotate(20deg) scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) rotate(0) scale(1);
+  }
+}
+
 .table-flip {
   animation: table-flip 0.5s ease-out both;
 }
@@ -33,9 +47,14 @@
   animation: table-slide 0.4s ease-out both;
 }
 
+.table-tumble {
+  animation: table-tumble 0.7s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .table-flip,
-  .table-slide {
+  .table-slide,
+  .table-tumble {
     animation: none;
   }
 }

@@ -125,7 +125,7 @@ B34–B38 are the visual features planned on 2026-11-27. Build them next, in the
 | B35 | `studio-flow-map` ([#421](https://github.com/iribarren/ogami/issues/421)) | Studio | B34 | Done in PRs #422–#426. A Map tab in the flow editor, beside the outline: edit the flow on the B34 diagram by dragging, within the existing rules (reorder phases, toggle loop, drag Scene Types into a phase's selection, draw an arrow to add a `nextScene`, `switchSceneType` or `endPhase` effect to a chosen step). No new flow rules and no saved positions |
 | B36 | `studio-print-cards` ([#427](https://github.com/iribarren/ogami/issues/427)) | Studio | B34 | Done in PRs #428–#434. Print a published release's flow as a PDF: poker-size scene and deck cards, and A4 or A5 sheets for the flow description, its diagram and its oracle tables. A card back and a front frame image uploaded to the GameSystem and pinned by each release: the first image storage in the app |
 | B37 | `manual-flavor-images` | Manual | — | Flavor illustrations in the manual: an art style guide per game (Dogwatch, Hard Country) and a neutral house style for the Studio and Play chapters; placements with their prompt and alt text shown until the image lands; images in the web and Paper editions; AI images credited |
-| B38 | `play-tabletop` ([#438](https://github.com/iribarren/ogami/issues/438)) | Play | B34–B37 | A virtual tabletop view of a campaign: a mat where drawn scene cards are laid, the flow's decks, a dice tray and the journal as a notebook to open. Presentation only, beside the current Play page, which stays untouched. Starts with its own brainstorming session. Done: #438 in four slices (PRs #439–#442). See [odd/tasks/play-tabletop.md](../odd/tasks/play-tabletop.md) |
+| B38 | `play-tabletop` ([#438](https://github.com/iribarren/ogami/issues/438)) | Play | B34–B37 | A virtual tabletop view of a campaign: a mat where drawn scene cards are laid, the flow's decks, a dice tray and the journal as a notebook to open. Presentation only, beside the current Play page, which stays untouched. Starts with its own brainstorming session |
 | B39 | `manual-image-credit` ([#437](https://github.com/iribarren/ogami/issues/437)) | Manual | B37 | Name the image generator in the illustration credit once it is chosen: replace `‹image tool›` in both credits chapters and in the content pin. Follow-up of `manual-flavor-images` |
 
 ## Starter prompts
@@ -686,6 +686,8 @@ Provisional answers from 2026-11-27, to re-examine in the session: a separate vi
 
 Reuse B34's diagram, B36's card rendering and images, and the existing flow run, dice, oracle and journal APIs. Questions to settle: what the mat shows (this scene, this session, the whole campaign), where the mat state lives (derived from the flow run or stored), how steps, checks and oracles of a scene are played from the table, theming per campaign theme, and the slice plan.
 ```
+
+Done: `play-tabletop`, #438 in four slices (PRs #439–#442). A table view of a Play campaign at `/play/campaigns/$campaignId/table`, linked by a "Table" button in the Play page header: a mat derived from the campaign's scenes (this session in a row, earlier sessions as piles), a deck that pictures the phase's selection rule, a scene panel that plays the flow through `FocusPanel` and `GuidedControls`, a dice tray, a notebook, an oracle book and a flow map, with table tokens per Theme. Two Play read endpoints serve the pinned release content and card images (ADR 0054). See [odd/tasks/play-tabletop.md](../odd/tasks/play-tabletop.md)
 
 ## Related
 

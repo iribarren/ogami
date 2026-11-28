@@ -1,7 +1,7 @@
 # Feature: play-tabletop
 
 - **Locator:** `odd/tasks/play-tabletop.md` · Engram topic `odd/play-tabletop/tasks`
-- **Issue:** [#438](https://github.com/iribarren/ogami/issues/438) · **Branch:** `feat/play-tabletop-4-notebook` · **Status:** slice 4 in progress (last)
+- **Issue:** [#438](https://github.com/iribarren/ogami/issues/438) · **Branch:** `feat/play-tabletop-4-notebook` · **Status:** done
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B38 in [`docs/roadmap.md`](../../docs/roadmap.md); reuses B34 (`flow-diagram`, [ADR 0051](../../docs/adr/0051-flow-diagram-layout-and-rendering.md)) and B36 (`studio-print-cards`, [ADR 0053](../../docs/adr/0053-card-image-storage.md))
@@ -90,9 +90,9 @@ Re-planned on 2026-11-28 from three slices to four: T1 with its generated API re
 | T3 | 2 | `/table` route and table layout (desktop, tablet, phone dock, D10); `matOf(campaign)` pure derivation of rows and piles (D2) with tests; mat rendering with piles that fan out | delegated writer (Sonnet) | [x] | `91cec6ff`, `373cbaa2` |
 | T4 | 3 | Deck by selection rule (D4) through `useFlowRunCommand`; scene panel rendering `GuidedBody` at the D3 sizes (D5); flip animation | delegated writer (Sonnet): 2+ non-trivial files | [x] | `80c04558`, `037ec2c3` |
 | T5 | 3 | Dice tray (D6): free rolls, latest-roll reveal, reduced motion | delegated writer (Sonnet): 2+ non-trivial files | [x] | `bfc1a9fe` |
-| T6 | 4 | Notebook overlay (D7, D3 sizes), oracle book sheet and flow map (D8) | delegated writer (Sonnet): 2+ non-trivial files | [x] | |
-| T7 | 4 | Theme table tokens (D9); "Table" header button (D1); Playwright spec; Play manual passage "The table"; roadmap Done line | delegated writer (Sonnet): 2+ non-trivial files | [x] | |
-| T8 | 4 | Slice 4 review findings: exact alert texts in the notebook and flow map tests; the note box test's comment matches `min-h-80` (20rem) and says jsdom pins only the class | inline (parent): one test file, mechanical | [x] | |
+| T6 | 4 | Notebook overlay (D7, D3 sizes), oracle book sheet and flow map (D8) | delegated writer (Sonnet): 2+ non-trivial files | [x] || `329aea44` |
+| T7 | 4 | Theme table tokens (D9); "Table" header button (D1); Playwright spec; Play manual passage "The table"; roadmap Done line | delegated writer (Sonnet): 2+ non-trivial files | [x] || `c9a4b4b2` |
+| T8 | 4 | Slice 4 review findings: exact alert texts in the notebook and flow map tests; the note box test's comment matches `min-h-80` (20rem) and says jsdom pins only the class | inline (parent): one test file, mechanical | [x] || `57f047ef` |
 
 ## Acceptance criteria
 
@@ -124,6 +124,7 @@ Re-planned on 2026-11-28 from three slices to four: T1 with its generated API re
 - 2026-11-28: T6 done: `Notebook` (full-screen dialog; `Journal` twice, "This scene" first and "Earlier in the journal" after, both through the Play page's `Journal`; `NoteComposer` with a `min-h-80` note box, 12 lines of 1.5rem, growing by `field-sizing-content`; read errors as `role="alert"`), `OracleBook` (Play's `OraclePanel` with the Play page's props in a right sheet from `md`, a bottom sheet below), `FlowMap` (B34 `FlowDiagramView` from the release content, `selectedId` `phase:<progress.phaseKey>`; wide inline, narrow a dock button and sheet; an unreadable flow is a `role="alert"`). `NoteComposer` has no `rows` prop and sits outside this slice's edit surface, so the box is sized by CSS and the test pins the class. Tests (10) written after the code, no RED observed.
 - 2026-11-28: T7 done: table tokens `--table-surface`, `--table-mat`, `--table-card-shadow` in the default theme (light and `.dark`) and the five Themes, used by the layout, mat, cards and the card fallback back (a test pins them in all seven blocks); "Table" button in the `CampaignPage` header (the only change to that file); manual passage "The table" in the in-ogami block of `cards-and-dice.md`; roadmap B38 Done line; Playwright spec `play-tabletop.spec.ts`. Tests written after the code, no RED observed.
 - 2026-11-28: T8 done: the failed-journal test asserts the shared `useJournal` message ("Loading the journal failed with HTTP 500.", as on the Play page, not the server's text); the unknown-flow test asserts the reason (`no flow "unknown"`); the rows comment is corrected. The journal assertion failed first against the server's text (RED), GREEN on the shared message.
+- 2026-11-28: Feature done: the table is linked from the Play page and plays the whole flow; four slices, PRs #439–#442, PR #442 closes #438. The Chrome pass on desktop and phone width (Checks) was not done in any slice.
 
 ## Reviews
 
@@ -132,7 +133,8 @@ Re-planned on 2026-11-28 from three slices to four: T1 with its generated API re
 | 1 | `review-00d0ab9f669bdc19` | `f341e237`, `78d9c5fd` | approved, acknowledged. R3 non-blocking, fixed in slice 2: `DoesNotPerformAssertions` contradicting asserts in `GetCampaignReleaseHandlersTest`; unreadable-release 500 path untested; a pinned hash whose bytes are missing answered 404 instead of a distinct error | [#439](https://github.com/iribarren/ogami/pull/439) |
 | 2 | `review-40cbbf2902582240` | `625effbc`, `dbd69f3c`, `91cec6ff`, `373cbaa2` | approved, acknowledged. R3 non-blocking, fixed in slice 3: `CardImageUnavailable` → 500 untested at the HTTP level (`CampaignReleaseController.php:76-77`); no test that a release upgrade evicts the cached release (`useReleaseUpgrade.ts:78-79`); no test that unreadable content surfaces as a query error (`useCampaignRelease.ts:67`) | [#440](https://github.com/iribarren/ogami/pull/440) |
 | 3 | `review-078663489e53f2e5` | `a3ba4bd3`, `80c04558`, `bfc1a9fe`, `037ec2c3` | approved, acknowledged. R3 non-blocking, fixed in slice 4: an `oracle` pick whose rolled card is offered falls to the generic "Choose" dialog instead of flipping it (`Deck.tsx:155-198`, untested); `ScenePanel` returns focus to the detached "Play" stand-in opener (`ScenePanel.tsx:47-50`); the API 500 test should assert the mapped message and reset `session_replication_role` in a `finally` (`CampaignReleaseApiTest.php:238-239`); `useCampaignRelease.test.tsx:111` should assert the expected message | [#441](https://github.com/iribarren/ogami/pull/441) |
+| 4 | `review-aa3a3ed25b0f0b87` | `54d6d507`, `329aea44`, `c9a4b4b2` | approved, acknowledged. R3 suggestions, fixed in T8 (`57f047ef`, its review skipped by the user): the failed-journal test asserted only the word "journal" (`TableTools.test.tsx:77`); the unknown-flow test asserted only the fixed prefix (`:146`); the rows test's comment contradicted `min-h-80` and pinned only a class (`:50-51`) | [#442](https://github.com/iribarren/ogami/pull/442) |
 
 ## Next step
 
-Slice 4 (last): slice 3 review fixes, T6 and T7 on `feat/play-tabletop-4-notebook`, then native review, PR (`Closes #438`) and the closing doc commit. Chrome pass on desktop and phone still pending.
+None. Every review finding is fixed. The Chrome pass on desktop and phone width is still open; it can be done before #442 is merged.

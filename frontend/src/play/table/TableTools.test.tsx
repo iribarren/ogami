@@ -47,7 +47,8 @@ describe('the notebook', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Open the notebook' }))
     const box = await screen.findByRole('textbox', { name: 'New note' })
-    // Twelve lines of the 1.5rem reading size, 18rem, and the box grows with its content.
+    // `min-h-80` is 20rem, more than twelve lines at the 1.5rem line height (18rem); the textarea
+    // still grows with its content. jsdom does no layout, so this pins the class, not the height.
     expect(box.closest('form')?.parentElement).toHaveClass('[&_textarea]:min-h-80')
     await user.type(box, 'A new clue')
     await user.click(screen.getByRole('button', { name: 'Write note' }))
@@ -74,7 +75,9 @@ describe('the notebook', () => {
     )
     await user.click(await screen.findByRole('button', { name: 'Open the notebook' }))
     const dialog = within(await screen.findByRole('dialog'))
-    expect((await dialog.findByRole('alert')).textContent).toContain('journal')
+    expect(await dialog.findByRole('alert')).toHaveTextContent(
+      'Loading the journal failed with HTTP 500.',
+    )
   })
 })
 
@@ -143,7 +146,9 @@ describe('the flow map', () => {
   it('says why a flow the release does not have cannot be drawn', async () => {
     renderTableOf({ ...onRoad(), flowKey: 'unknown' })
 
-    expect((await (await map()).findByRole('alert')).textContent).toContain('cannot be drawn')
+    expect(await (await map()).findByRole('alert')).toHaveTextContent(
+      /cannot be drawn: .*no flow "unknown"/,
+    )
   })
 
   it('says so for a campaign without a flow', async () => {

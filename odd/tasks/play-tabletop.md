@@ -92,6 +92,7 @@ Re-planned on 2026-11-28 from three slices to four: T1 with its generated API re
 | T5 | 3 | Dice tray (D6): free rolls, latest-roll reveal, reduced motion | delegated writer (Sonnet): 2+ non-trivial files | [x] | `bfc1a9fe` |
 | T6 | 4 | Notebook overlay (D7, D3 sizes), oracle book sheet and flow map (D8) | delegated writer (Sonnet): 2+ non-trivial files | [x] | |
 | T7 | 4 | Theme table tokens (D9); "Table" header button (D1); Playwright spec; Play manual passage "The table"; roadmap Done line | delegated writer (Sonnet): 2+ non-trivial files | [x] | |
+| T8 | 4 | Slice 4 review findings: exact alert texts in the notebook and flow map tests; the note box test's comment matches `min-h-80` (20rem) and says jsdom pins only the class | inline (parent): one test file, mechanical | [x] | |
 
 ## Acceptance criteria
 
@@ -122,6 +123,7 @@ Re-planned on 2026-11-28 from three slices to four: T1 with its generated API re
 - 2026-11-28: Slice 3 review findings fixed: an `oracle` pick whose rolled card is offered flips that card face up (new Deck branch; RED observed, the test failed on the generic dialog, GREEN after); `ScenePanel` returns focus to the element now in the opener's place (`data-scene-opener` on the Mat's openers; RED observed, GREEN after); the API 500 test asserts the mapped message and resets `session_replication_role` in a `finally`; the release hook test asserts the reader's message. The last two passed on first run, written after the code: no RED.
 - 2026-11-28: T6 done: `Notebook` (full-screen dialog; `Journal` twice, "This scene" first and "Earlier in the journal" after, both through the Play page's `Journal`; `NoteComposer` with a `min-h-80` note box, 12 lines of 1.5rem, growing by `field-sizing-content`; read errors as `role="alert"`), `OracleBook` (Play's `OraclePanel` with the Play page's props in a right sheet from `md`, a bottom sheet below), `FlowMap` (B34 `FlowDiagramView` from the release content, `selectedId` `phase:<progress.phaseKey>`; wide inline, narrow a dock button and sheet; an unreadable flow is a `role="alert"`). `NoteComposer` has no `rows` prop and sits outside this slice's edit surface, so the box is sized by CSS and the test pins the class. Tests (10) written after the code, no RED observed.
 - 2026-11-28: T7 done: table tokens `--table-surface`, `--table-mat`, `--table-card-shadow` in the default theme (light and `.dark`) and the five Themes, used by the layout, mat, cards and the card fallback back (a test pins them in all seven blocks); "Table" button in the `CampaignPage` header (the only change to that file); manual passage "The table" in the in-ogami block of `cards-and-dice.md`; roadmap B38 Done line; Playwright spec `play-tabletop.spec.ts`. Tests written after the code, no RED observed.
+- 2026-11-28: T8 done: the failed-journal test asserts the shared `useJournal` message ("Loading the journal failed with HTTP 500.", as on the Play page, not the server's text); the unknown-flow test asserts the reason (`no flow "unknown"`); the rows comment is corrected. The journal assertion failed first against the server's text (RED), GREEN on the shared message.
 
 ## Reviews
 

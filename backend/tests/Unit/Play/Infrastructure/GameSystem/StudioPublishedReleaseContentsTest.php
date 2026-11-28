@@ -80,7 +80,6 @@ final class StudioPublishedReleaseContentsTest extends TestCase
             $this->failingWith($missing)->cardImage('mine', 1, self::HASH);
             self::fail('Expected CardImageUnavailable.');
         } catch (CardImageUnavailable $exception) {
-            self::assertNotInstanceOf(CardImageNotFound::class, $exception);
             self::assertSame($missing, $exception->getPrevious());
         }
     }

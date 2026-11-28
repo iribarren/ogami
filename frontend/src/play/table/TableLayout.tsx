@@ -41,7 +41,7 @@ export function TableLayout({
   slots?: Partial<Record<(typeof TABLE_SLOTS)[number]['id'], ReactNode>>
 }) {
   return (
-    <div className="@container">
+    <div className="@container rounded-2xl bg-[var(--table-surface)] p-2 @3xl:p-4">
       <div className="grid gap-3 @3xl:grid-cols-[11rem_minmax(0,1fr)_11rem] @3xl:grid-rows-[auto_auto_1fr] @3xl:items-stretch">
         <div className="min-w-0 @3xl:col-start-2 @3xl:row-span-3 @3xl:row-start-1">{mat}</div>
         <div

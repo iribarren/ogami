@@ -178,6 +178,27 @@ export function Deck({
     )
   }
 
+  // An oracle roll that already chose: the rolled card flips face up, ready to play.
+  if (pick.rule === 'oracle' && !pick.forced && pick.cards.length === 1 && only !== undefined) {
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <button
+          type="button"
+          disabled
+          aria-label="Deck, the table rolled a card"
+          className={pileClass}
+        >
+          <CardBack image={backImage} />
+        </button>
+        {caption}
+        <Reveal animation="table-flip">
+          <PlayableCard card={only} forced={false} pending={pending} onPlay={send} />
+        </Reveal>
+        {alert}
+      </div>
+    )
+  }
+
   if (pick.forced) {
     return (
       <div className="flex flex-col items-center gap-1">

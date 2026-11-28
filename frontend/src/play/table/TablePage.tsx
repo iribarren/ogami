@@ -8,8 +8,11 @@ import { useCampaignRelease, type CampaignRelease } from '../campaigns/useCampai
 import { useFlowRunCommand } from '../flow/useFlowRun'
 import { Deck } from './Deck'
 import { DiceTray } from './DiceTray'
+import { FlowMap } from './FlowMap'
 import { Mat } from './Mat'
 import { matOf } from './mat'
+import { Notebook } from './Notebook'
+import { OracleBook } from './OracleBook'
 import { ScenePanel } from './ScenePanel'
 import { TableLayout } from './TableLayout'
 
@@ -96,6 +99,9 @@ function Table({ campaign, release }: { campaign: Campaign; release: CampaignRel
         slots={{
           deck: <Deck campaign={campaign} command={command} backImage={release.images.cardBack} />,
           dice: <DiceTray campaign={campaign} />,
+          notebook: <Notebook campaign={campaign} />,
+          oracle: <OracleBook campaign={campaign} />,
+          map: <FlowMap campaign={campaign} content={release.content} />,
         }}
       />
       <ScenePanel

@@ -50,4 +50,34 @@ describe('the scene panel', () => {
     const dialog = within(await screen.findByRole('dialog', { name: 'Play' }))
     expect(dialog.getByRole('button', { name: 'Start session' })).toBeInTheDocument()
   })
+
+  it('returns focus to the current scene card when the Play stand-in is gone after a start', async () => {
+    const user = userEvent.setup()
+    let started = false
+    const noScene = {
+      ...guided({ ...atStep(promptStep), waitsForSession: true, step: null }),
+      currentSceneNumber: null,
+    }
+    renderTableOf(noScene, {
+      sessions: () => {
+        started = true
+        return Response.json(guided(atStep(promptStep)))
+      },
+    })
+    // The campaign answers the first read with no scene, the next ones with the started scene.
+    await user.click(await screen.findByRole('button', { name: 'Play' }))
+    const dialog = within(await screen.findByRole('dialog', { name: 'Play' }))
+    await user.click(dialog.getByRole('button', { name: 'Start session' }))
+    expect(started).toBe(true)
+    const card = await screen.findByRole('button', {
+      name: 'Open scene Into the dark',
+      hidden: true,
+    })
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+    expect(card).toHaveFocus()
+  })
 })

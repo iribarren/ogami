@@ -108,7 +108,7 @@ describe('useCampaignRelease', () => {
         }),
     })
 
-    expect((await screen.findByRole('alert')).textContent).not.toBe('')
+    expect((await screen.findByRole('alert')).textContent).toMatch(/^Release /)
     expect(screen.queryByTestId('probe')).not.toBeInTheDocument()
   })
 

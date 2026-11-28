@@ -687,6 +687,8 @@ Provisional answers from 2026-11-27, to re-examine in the session: a separate vi
 Reuse B34's diagram, B36's card rendering and images, and the existing flow run, dice, oracle and journal APIs. Questions to settle: what the mat shows (this scene, this session, the whole campaign), where the mat state lives (derived from the flow run or stored), how steps, checks and oracles of a scene are played from the table, theming per campaign theme, and the slice plan.
 ```
 
+Done: `play-tabletop`, #438 in four slices (PRs #439–#442). A table view of a Play campaign at `/play/campaigns/$campaignId/table`, linked by a "Table" button in the Play page header: a mat derived from the campaign's scenes (this session in a row, earlier sessions as piles), a deck that pictures the phase's selection rule, a scene panel that plays the flow through `FocusPanel` and `GuidedControls`, a dice tray, a notebook, an oracle book and a flow map, with table tokens per Theme. Two Play read endpoints serve the pinned release content and card images (ADR 0054). See [odd/tasks/play-tabletop.md](../odd/tasks/play-tabletop.md)
+
 ## Related
 
 - [Vision](vision.md)

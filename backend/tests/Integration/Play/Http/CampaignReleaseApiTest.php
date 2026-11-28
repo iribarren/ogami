@@ -230,13 +230,19 @@ final class CampaignReleaseApiTest extends WebTestCase
         $connection = self::getContainer()->get(Connection::class);
         // Only the bytes go: the release still pins the hash, as after a lost row.
         $connection->executeStatement('SET session_replication_role = replica');
-        $connection->executeStatement('DELETE FROM studio_image WHERE sha256 = :sha256', ['sha256' => $back['sha256']]);
-        $connection->executeStatement('SET session_replication_role = DEFAULT');
+        try {
+            $connection->executeStatement('DELETE FROM studio_image WHERE sha256 = :sha256', ['sha256' => $back['sha256']]);
+        } finally {
+            $connection->executeStatement('SET session_replication_role = DEFAULT');
+        }
 
         $this->client->request('GET', \sprintf('/api/campaigns/%s/card-images/%s', $id, $back['sha256']));
 
         self::assertResponseStatusCodeSame(500);
-        self::assertIsString($this->json()['error'] ?? null);
+        self::assertSame(
+            \sprintf('The image "%s" of the release this campaign plays is missing from storage.', $back['sha256']),
+            $this->json()['error'] ?? null,
+        );
     }
 
     #[Test]

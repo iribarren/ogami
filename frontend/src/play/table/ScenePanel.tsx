@@ -46,7 +46,11 @@ export function ScenePanel({
       <DialogContent
         onCloseAutoFocus={(event) => {
           event.preventDefault()
-          opener.current?.focus()
+          // The "Play" stand-in is replaced by the real card once a scene starts: follow it.
+          const target = opener.current?.isConnected
+            ? opener.current
+            : document.querySelector<HTMLElement>('[data-scene-opener]')
+          target?.focus()
         }}
         className={cn(
           // A phone: the whole screen. From `md`: centred, at least two thirds wide, full height.

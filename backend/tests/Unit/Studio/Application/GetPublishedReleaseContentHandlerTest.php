@@ -14,9 +14,11 @@ use App\Studio\Application\GetPublishedReleaseContent;
 use App\Studio\Application\GetPublishedReleaseContentHandler;
 use App\Studio\Application\OwnedGameSystems;
 use App\Studio\Application\PublishedCardImage;
+use App\Studio\Application\PublishedCardImageMissing;
 use App\Studio\Application\PublishedCardImageView;
 use App\Studio\Application\PublishedReleaseContentView;
 use App\Studio\Application\PublishedReleaseNotFound;
+use App\Studio\Application\PublishedReleaseUnreadable;
 use App\Studio\Application\PublishGameSystemDraft;
 use App\Studio\Application\PublishGameSystemDraftHandler;
 use App\Studio\Application\ReleasePublisher;
@@ -145,6 +147,35 @@ final class GetPublishedReleaseContentHandlerTest extends TestCase
             $this->expectException(PublishedReleaseNotFound::class);
             $this->image(2, str_repeat('a', 64));
         }
+    }
+
+    #[Test]
+    public function aReleaseWhoseStoredContentNoLongerParsesFailsLoudlyInsteadOfServingIt(): void
+    {
+        $this->publish();
+        $published = $this->releases->get('mine', 1);
+        self::assertNotNull($published);
+        $class = new \ReflectionClass($published);
+        $broken = $class->newInstanceWithoutConstructor();
+        $class->getConstructor()?->invoke($broken, $published->id()->toString(), 'mine', 1, 99, ['schemaVersion' => 99], 'hash', $published->publishedAt(), null);
+        $releases = new InMemoryGameSystemReleaseRepository();
+        $releases->add($broken);
+
+        $this->expectException(PublishedReleaseUnreadable::class);
+
+        (new GetPublishedReleaseContentHandler($releases, $this->store))(new GetPublishedReleaseContent('mine', 1));
+    }
+
+    #[Test]
+    public function aPinnedImageWhoseBytesAreGoneIsADataFaultNotAnUnpinnedHash(): void
+    {
+        $this->upload(CardImageSlot::CardBack, 'back');
+        $this->publish();
+        $this->store->removeBytes(hash('sha256', 'back'));
+
+        $this->expectException(PublishedCardImageMissing::class);
+
+        $this->image(1, hash('sha256', 'back'));
     }
 
     private function upload(CardImageSlot $slot, string $bytes): void

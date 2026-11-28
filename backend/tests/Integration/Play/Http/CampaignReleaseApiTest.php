@@ -205,6 +205,21 @@ final class CampaignReleaseApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aPinnedReleaseWhoseContentNoLongerParsesIsAServerFaultNotAnEmptyAnswer(): void
+    {
+        $this->signIn('manager@example.com', ['GAME_MANAGER']);
+        $this->createDraft();
+        $this->publish();
+        $id = $this->createCampaign();
+        self::getContainer()->get(Connection::class)->executeStatement("UPDATE studio_gamesystem_release SET content = '{\"schemaVersion\": 99}'::jsonb");
+
+        $this->client->request('GET', \sprintf('/api/campaigns/%s/release', $id));
+
+        self::assertResponseStatusCodeSame(500);
+        self::assertSame('The GameSystem release this campaign plays can no longer be read.', $this->json()['error'] ?? null);
+    }
+
+    #[Test]
     public function bothPathsNeedASoloPlayer(): void
     {
         $path = '/api/campaigns/'.self::UNKNOWN_ID;

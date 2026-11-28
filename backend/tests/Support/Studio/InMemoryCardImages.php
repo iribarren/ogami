@@ -94,6 +94,14 @@ final class InMemoryCardImages implements ImageStore, CardImagePins, ReleaseCard
         return $this->blobs[$sha256] ?? null;
     }
 
+    /**
+     * Loses the bytes of a stored image while its pins stay, as a corrupted store would.
+     */
+    public function removeBytes(string $sha256): void
+    {
+        unset($this->blobs[$sha256]);
+    }
+
     public function removeIfUnreferenced(string $sha256): void
     {
         foreach ([...$this->pins, ...$this->releasePins] as $slots) {

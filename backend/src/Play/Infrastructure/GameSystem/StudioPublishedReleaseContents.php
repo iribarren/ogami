@@ -6,6 +6,7 @@ namespace App\Play\Infrastructure\GameSystem;
 
 use App\Play\Application\CardImageBytes;
 use App\Play\Application\CardImageNotFound;
+use App\Play\Application\CardImageUnavailable;
 use App\Play\Application\PublishedReleaseContents;
 use App\Play\Application\ReleaseCardImageView;
 use App\Play\Application\ReleaseContentView;
@@ -15,6 +16,7 @@ use App\Shared\Application\Bus\QueryBus;
 use App\Studio\Application\CardImageNotFound as StudioCardImageNotFound;
 use App\Studio\Application\GetPublishedCardImage;
 use App\Studio\Application\GetPublishedReleaseContent;
+use App\Studio\Application\PublishedCardImageMissing;
 use App\Studio\Application\PublishedCardImageView;
 use App\Studio\Application\PublishedReleaseNotFound;
 use App\Studio\Application\PublishedReleaseUnreadable;
@@ -58,6 +60,8 @@ final readonly class StudioPublishedReleaseContents implements PublishedReleaseC
             throw GameSystemReleaseNotFound::for($gameSystemKey, $version, $exception);
         } catch (StudioCardImageNotFound $exception) {
             throw CardImageNotFound::withHash($sha256, $exception);
+        } catch (PublishedCardImageMissing $exception) {
+            throw CardImageUnavailable::withHash($sha256, $exception);
         }
 
         return new CardImageBytes($image->mediaType, $image->bytes);

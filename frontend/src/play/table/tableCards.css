@@ -1,0 +1,112 @@
+/*
+ * The print card faces (shared/print/CardFaces.tsx) on screen. They keep their markup and class
+ * names; this scope sizes them in rem at the poker ratio, 63 x 88 mm, and paints them with the
+ * theme. `--mm` is what a millimetre of the printed card is on screen, so every size below is the
+ * print size scaled: a table sets `--card-width` (default 12rem) and the whole face follows.
+ * The inline padding and frame placement of a face are in mm: the `!important` rules replace them
+ * with the same numbers in `--mm`. Printing is untouched: nothing here is under `.print-cards`.
+ */
+
+.table-cards {
+  --card-width: 12rem;
+  --mm: calc(var(--card-width) / 63);
+  /* A point is 0.3528 mm. */
+  --pt: calc(var(--mm) * 0.3528);
+}
+
+.table-cards .print-card {
+  position: relative;
+  width: var(--card-width);
+  aspect-ratio: 63 / 88;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--mm) * 3);
+  background-color: var(--card);
+  background-repeat: no-repeat;
+  color: var(--card-foreground);
+  box-shadow: var(--table-card-shadow, 0 1px 3px rgb(0 0 0 / 25%));
+  line-height: 1.15;
+  /* 5 mm safe area, and the 69 x 94 mm frame image shifted 3 mm so it fills the trim. */
+  padding: calc(var(--mm) * 5) !important;
+  background-size: calc(var(--mm) * 69) calc(var(--mm) * 94) !important;
+  background-position: calc(var(--mm) * -3) calc(var(--mm) * -3) !important;
+}
+
+.table-cards .print-card h2,
+.table-cards .print-card h3,
+.table-cards .print-card p,
+.table-cards .print-card ul {
+  margin: 0;
+}
+
+.table-cards .print-card h2 {
+  margin-bottom: calc(var(--mm) * 3);
+  font-size: calc(var(--pt) * 17);
+  line-height: 1.05;
+}
+
+.table-cards .print-card .print-purpose {
+  margin-bottom: calc(var(--mm) * 3);
+  font-size: calc(var(--pt) * 10.5);
+  font-style: italic;
+}
+
+.table-cards .print-card .print-tips {
+  font-size: calc(var(--pt) * 9);
+}
+
+.table-cards .print-card.print-back-text {
+  font-size: calc(var(--pt) * 8);
+}
+
+.table-cards .print-card h3 {
+  margin: calc(var(--mm) * 1.5) 0 calc(var(--mm) * 0.5);
+  font-size: calc(var(--pt) * 8.5);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.table-cards .print-card h3:first-child {
+  margin-top: 0;
+}
+
+.table-cards .print-card ul {
+  padding-left: calc(var(--mm) * 3);
+}
+
+.table-cards .print-card li {
+  margin-bottom: calc(var(--mm) * 0.7);
+}
+
+.table-cards .print-card.print-deck-front {
+  display: flex;
+  flex-direction: column;
+  font-size: calc(var(--pt) * 9);
+}
+
+.table-cards .print-card .print-entry {
+  flex: 1;
+  font-size: calc(var(--pt) * 13);
+  line-height: 1.2;
+}
+
+.table-cards .print-card .print-range {
+  font-size: calc(var(--pt) * 9);
+  font-weight: 700;
+}
+
+.table-cards .print-card .print-label {
+  font-size: calc(var(--pt) * 8);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.table-cards .print-card.print-deck-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--pt) * 14);
+  text-align: center;
+}

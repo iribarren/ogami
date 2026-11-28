@@ -91,9 +91,9 @@ final class GetCampaignReleaseHandlersTest extends TestCase
     }
 
     #[Test]
-    #[\PHPUnit\Framework\Attributes\DoesNotPerformAssertions]
     public function anotherPlayersOrAnUnknownCampaignIsNotFound(): void
     {
+        $notFound = 0;
         foreach ([['user-2', 'campaign-1'], ['user-1', 'campaign-9']] as [$user, $campaign]) {
             foreach ([
                 static fn (OwnedCampaigns $owned, PublishedReleaseContents $contents): ReleaseContentView => (new GetCampaignReleaseHandler($owned, $contents))(new GetCampaignRelease($user, $campaign)),
@@ -103,10 +103,12 @@ final class GetCampaignReleaseHandlersTest extends TestCase
                     $read($this->owned, $this->contents);
                     self::fail('The campaign is not '.$user.'\'s to read.');
                 } catch (CampaignNotFound) {
-                    self::addToAssertionCount(1);
+                    ++$notFound;
                 }
             }
         }
+
+        self::assertSame(4, $notFound);
     }
 
     #[Test]

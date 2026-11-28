@@ -7,6 +7,7 @@ namespace App\Play\Infrastructure\Http;
 use App\Identity\Application\AuthenticatedUser;
 use App\Play\Application\CampaignNotFound;
 use App\Play\Application\CardImageNotFound;
+use App\Play\Application\CardImageUnavailable;
 use App\Play\Application\GetCampaignCardImage;
 use App\Play\Application\GetCampaignRelease;
 use App\Play\Domain\GameSystem\GameSystemReleaseNotFound;
@@ -72,6 +73,8 @@ final readonly class CampaignReleaseController
             return $this->error($exception->getMessage(), Response::HTTP_NOT_FOUND);
         } catch (GameSystemReleaseNotFound) {
             return $this->unreadableRelease();
+        } catch (CardImageUnavailable $exception) {
+            return $this->error($exception->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         return new Response($image->bytes, Response::HTTP_OK, [

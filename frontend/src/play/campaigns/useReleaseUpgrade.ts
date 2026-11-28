@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { components } from '@/shared/api/schema'
 import { useApiClient } from '@/shared/api/useApiClient'
 
+import { campaignReleaseKey } from './useCampaignRelease'
 import { campaignError, campaignKey, explainedRefusals, type Campaign } from './useCampaigns'
 
 export type ReleaseUpgrade = components['schemas']['ReleaseUpgradeResponse']
@@ -74,6 +75,8 @@ export function useUpgradeCampaignRelease(campaignId: string) {
     },
     onSuccess: (campaign) => {
       queryClient.removeQueries({ queryKey: previewKey(campaignId) })
+      // The campaign now plays another release: the table must read that one.
+      queryClient.removeQueries({ queryKey: campaignReleaseKey(campaignId) })
       queryClient.setQueryData(campaignKey(campaignId), campaign)
     },
     onError: () => {

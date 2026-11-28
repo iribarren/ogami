@@ -18,8 +18,9 @@ final readonly class GetPublishedCardImageHandler implements QueryHandler
     }
 
     /**
-     * @throws PublishedReleaseNotFound when the release does not exist
-     * @throws CardImageNotFound        when this release did not pin an image with this hash
+     * @throws PublishedReleaseNotFound  when the release does not exist
+     * @throws CardImageNotFound         when this release did not pin an image with this hash
+     * @throws PublishedCardImageMissing when this release pins the hash but its bytes are gone from storage
      */
     public function __invoke(GetPublishedCardImage $query): PublishedCardImage
     {
@@ -28,9 +29,13 @@ final readonly class GetPublishedCardImageHandler implements QueryHandler
             throw PublishedReleaseNotFound::for($query->gameSystemKey, $query->version);
         }
 
-        $stored = \in_array($query->sha256, $this->pins->hashesOf($release->id()), true) ? $this->store->get($query->sha256) : null;
-        if (!$stored instanceof StoredImage) {
+        if (!\in_array($query->sha256, $this->pins->hashesOf($release->id()), true)) {
             throw CardImageNotFound::withHash($query->sha256);
+        }
+
+        $stored = $this->store->get($query->sha256);
+        if (!$stored instanceof StoredImage) {
+            throw PublishedCardImageMissing::withHash($query->sha256);
         }
 
         return new PublishedCardImage($stored->image->mediaType, $stored->bytes);

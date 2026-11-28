@@ -1,7 +1,7 @@
 # Feature: play-tabletop
 
 - **Locator:** `odd/tasks/play-tabletop.md` · Engram topic `odd/play-tabletop/tasks`
-- **Issue:** [#438](https://github.com/iribarren/ogami/issues/438) · **Branch:** `feat/play-tabletop-1-read-paths` · **Status:** slice 1 in progress
+- **Issue:** [#438](https://github.com/iribarren/ogami/issues/438) · **Branch:** `feat/play-tabletop-2-mat` · **Status:** slice 2 in progress
 - **Delivery strategy:** sequential slices to `main` ([ADR 0015](../../docs/adr/0015-sequential-slice-delivery.md)) · merge commit · at most one open PR
 - **RDD:** on (global); assess each work-unit commit against the last reviewed boundary
 - **Roadmap:** B38 in [`docs/roadmap.md`](../../docs/roadmap.md); reuses B34 (`flow-diagram`, [ADR 0051](../../docs/adr/0051-flow-diagram-layout-and-rendering.md)) and B36 (`studio-print-cards`, [ADR 0053](../../docs/adr/0053-card-image-storage.md))
@@ -85,9 +85,9 @@ Re-planned on 2026-11-28 from three slices to four: T1 with its generated API re
 
 | ID | Slice | Task | Route | Done | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Studio Published Language queries for a release's content and pinned image bytes; Play ports and adapters; `GET /api/campaigns/{id}/release` and `GET /api/campaigns/{id}/card-images/{sha256}` (D11) with unit, integration and API tests; `make api` | delegated writer (Sonnet): 2+ non-trivial files; generated API by the parent (`make api`) | [x] | |
-| T2 | 2 | ADR 0054 (D12) and the ADR index; Play `useCampaignRelease` hook; on-screen card faces (a `.table-cards` scope in rem at the 63:88 ratio, reusing `CardFaces`) with Storybook stories from a preset | | [ ] | |
-| T3 | 2 | `/table` route and table layout (desktop, tablet, phone dock, D10); `matOf(campaign)` pure derivation of rows and piles (D2) with tests; mat rendering with piles that fan out | | [ ] | |
+| T1 | 1 | Studio Published Language queries for a release's content and pinned image bytes; Play ports and adapters; `GET /api/campaigns/{id}/release` and `GET /api/campaigns/{id}/card-images/{sha256}` (D11) with unit, integration and API tests; `make api` | delegated writer (Sonnet): 2+ non-trivial files; generated API by the parent (`make api`) | [x] | `f341e237`, `78d9c5fd` |
+| T2 | 2 | ADR 0054 (D12) and the ADR index; Play `useCampaignRelease` hook; on-screen card faces (a `.table-cards` scope in rem at the 63:88 ratio, reusing `CardFaces`) with Storybook stories from a preset | delegated writer (Sonnet) | [x] | |
+| T3 | 2 | `/table` route and table layout (desktop, tablet, phone dock, D10); `matOf(campaign)` pure derivation of rows and piles (D2) with tests; mat rendering with piles that fan out | delegated writer (Sonnet) | [x] | |
 | T4 | 3 | Deck by selection rule (D4) through `useFlowRunCommand`; scene panel rendering `GuidedBody` at the D3 sizes (D5); flip animation | | [ ] | |
 | T5 | 3 | Dice tray (D6): free rolls, latest-roll reveal, reduced motion | | [ ] | |
 | T6 | 4 | Notebook overlay (D7, D3 sizes), oracle book sheet and flow map (D8) | | [ ] | |
@@ -113,12 +113,16 @@ Re-planned on 2026-11-28 from three slices to four: T1 with its generated API re
 
 - 2026-11-28: Brainstorm done, plan approved by the user (D1–D12; oracle deck as a picture, mat as session row plus piles, large read/write zooms, header button, release content visible to the player). Feature doc created: 3 slices, 7 tasks. Issue #438.
 - 2026-11-28: T1 done: Studio Published Language queries `GetPublishedReleaseContent` and `GetPublishedCardImage` (the hash is checked against the pins of that exact release), Play port `PublishedReleaseContents` with its Studio adapter, `GetCampaignRelease` / `GetCampaignCardImage` handlers on the campaign's pinned version, `CampaignReleaseController`. RED observed for the Studio and Play handler tests (classes missing), GREEN after (7 and 5 tests); the API test (12 tests) was written after the code, so no separate RED. An unreadable pinned release answers 500 like the other campaign endpoints. `make backend-qa` clean. Slice re-planned to four (see Slice plan).
+- 2026-11-28: Slice 1 review findings fixed: the `DoesNotPerformAssertions` contradiction removed (the test now asserts four `CampaignNotFound`); unreadable-release tests added (Studio handler, Play adapter, API 500); a pinned hash with no bytes now raises `PublishedCardImageMissing` / `CardImageUnavailable` (500) while unpinned hashes stay 404. The new tests passed on first run, written after the code: no RED observed.
+- 2026-11-28: T2 done: ADR 0054 and its index line; `useCampaignRelease` (`play/campaigns/`, `staleTime` infinite, key under the campaign key, removed by `useUpgradeCampaignRelease` so an upgrade refetches; returns `release` for `buildCards`, raw `content` for `flowDiagramFromReleaseContent`, image URLs from the API); `.table-cards` scope (`play/table/tableCards.css`, `TableCards`) sizes the print faces in rem through `--card-width`/`--mm`, `printCards.css` untouched; Storybook stories from the hard-country preset. Tests passed on first run, written after the code: no RED observed (hook 5, cards 3; print suites still green).
+- 2026-11-28: T3 done: route `/play/campaigns/$campaignId/table` (`$campaignId_`, unlinked, link back to the Play page), `TablePage` (same campaign query as the Play page plus `useCampaignRelease`, theme applied), `TableLayout` (container queries: mat in the middle with five labelled placeholder slots at the edge from `3xl`, mat as a strip with a bottom dock below), `matOf` in `play/table/mat.ts`, `Mat` with piles that fan out in a dialog (focus returns to the pile, Escape closes, `motion-safe` hover). RED observed for `matOf` (module missing), GREEN after (10 tests); component and page tests (8) written after the code, no RED. A session with no scene makes no pile. No Chrome pass done in this slice's writer run.
 
 ## Reviews
 
 | Slice | Lineage | Commits | Outcome | PR |
 |---|---|---|---|---|
+| 1 | `review-00d0ab9f669bdc19` | `f341e237`, `78d9c5fd` | approved, acknowledged. R3 non-blocking, fixed in slice 2: `DoesNotPerformAssertions` contradicting asserts in `GetCampaignReleaseHandlersTest`; unreadable-release 500 path untested; a pinned hash whose bytes are missing answered 404 instead of a distinct error | [#439](https://github.com/iribarren/ogami/pull/439) |
 
 ## Next step
 
-Slice 1: native review of T1, then PR. Slice 2: T2 and T3 on `feat/play-tabletop-2-mat`.
+Slice 2: slice 1 review fixes, T2 and T3 on `feat/play-tabletop-2-mat`, then native review and PR. Slice 3: T4 and T5.

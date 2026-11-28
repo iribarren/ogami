@@ -25,6 +25,7 @@ interface PublishedReleaseContents
      *
      * @throws GameSystemReleaseNotFound when no published release matches
      * @throws CardImageNotFound         when the release did not pin an image with this hash
+     * @throws CardImageUnavailable      when the release pins the hash but its bytes are missing from storage
      */
     public function cardImage(string $gameSystemKey, int $version, string $sha256): CardImageBytes;
 }

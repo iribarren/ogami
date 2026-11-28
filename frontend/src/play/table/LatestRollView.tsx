@@ -21,7 +21,10 @@ function RolledDie({ sides, value, kept }: { sides: number; value: number; kept:
   return hasShape(sides) ? (
     <span
       data-die={sides}
-      className={cn('relative inline-flex size-11 items-center justify-center', !kept && 'opacity-40')}
+      className={cn(
+        'relative inline-flex size-11 items-center justify-center',
+        !kept && 'opacity-40',
+      )}
     >
       <DieShape sides={sides} className="absolute inset-0 size-11" />
       {face}

@@ -106,7 +106,8 @@ export function Deck({
     })
   }
   const failed =
-    command.error !== null && (command.variables?.type === 'pick' || command.variables?.type === 'pickByRoll')
+    command.error !== null &&
+    (command.variables.type === 'pick' || command.variables.type === 'pickByRoll')
   const alert = failed && (
     <p role="alert" className="text-xs text-destructive @3xl:text-sm">
       {command.error.message}

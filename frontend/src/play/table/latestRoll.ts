@@ -38,7 +38,12 @@ export function latestRoll(entries: readonly JournalEntry[]): LatestRoll | null 
   for (const entry of [...entries].reverse()) {
     const { content } = entry
     if (content.kind === 'roll' && content.groups.length > 0) {
-      return { id: entry.id, label: content.expression, total: content.total, groups: content.groups }
+      return {
+        id: entry.id,
+        label: content.expression,
+        total: content.total,
+        groups: content.groups,
+      }
     }
     if (content.kind === 'check') {
       const groups = checkGroups(content)

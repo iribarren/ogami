@@ -11,15 +11,7 @@ const TABLE_SLOTS = [
   { id: 'map', label: 'Flow map', place: '@3xl:col-start-3 @3xl:row-start-3' },
 ] as const
 
-function Slot({
-  label,
-  place,
-  children,
-}: {
-  label: string
-  place: string
-  children?: ReactNode
-}) {
+function Slot({ label, place, children }: { label: string; place: string; children?: ReactNode }) {
   return (
     <section
       aria-label={label}

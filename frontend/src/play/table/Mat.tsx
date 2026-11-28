@@ -27,7 +27,11 @@ export function SceneCardView({ card, className }: { card: MatCard; className?: 
       className={cn(
         'flex shrink-0 flex-col justify-between rounded-lg border bg-card p-3 text-card-foreground shadow-sm',
         'aspect-[63/88]',
-        card.current ? 'table-flip w-40 ring-2 ring-primary' : card.hook ? 'w-20 p-2 text-xs' : 'w-28 text-sm',
+        card.current
+          ? 'table-flip w-40 ring-2 ring-primary'
+          : card.hook
+            ? 'w-20 p-2 text-xs'
+            : 'w-28 text-sm',
         className,
       )}
     >

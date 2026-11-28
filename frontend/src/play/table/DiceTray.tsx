@@ -32,7 +32,9 @@ function TrayContent({ campaign }: { campaign: Campaign }) {
         disabled={disabled}
       />
       {disabled && (
-        <p className="text-muted-foreground">Start a scene to throw dice: a roll is written in the journal.</p>
+        <p className="text-muted-foreground">
+          Start a scene to throw dice: a roll is written in the journal.
+        </p>
       )}
       {journal.status === 'error' ? (
         <p role="alert" className="text-destructive">

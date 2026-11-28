@@ -669,6 +669,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaignId}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the release one of my campaigns is pinned to, with its card images */
+        get: operations["readCampaignRelease"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaignId}/card-images/{sha256}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the bytes of an image the release of one of my campaigns pinned */
+        get: operations["readCampaignCardImage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/campaigns/{campaignId}/release-upgrade": {
         parameters: {
             query?: never;
@@ -3352,6 +3386,37 @@ export interface components {
              * @example 2
              */
             weight?: number | null;
+        };
+        CampaignCardImageResponse: {
+            /**
+             * @description Where the image is used on a card.
+             * @enum {string}
+             */
+            slot: "cardBack" | "cardFront";
+            /** @description The hash of the stored bytes, 64 hexadecimal digits. */
+            sha256: string;
+            /** @enum {string} */
+            mediaType: "image/png" | "image/jpeg";
+            /** @description In pixels. */
+            width: number;
+            /** @description In pixels. */
+            height: number;
+            /** @description Where to read the image bytes. */
+            url: string;
+        };
+        CampaignReleaseResponse: {
+            /** @example ironsworn */
+            gameSystemKey: string;
+            /** @example 3 */
+            version: number;
+            /** Format: date-time */
+            publishedAt: string;
+            /** @description The release content as published, a JSON object of the release contract (docs/contracts/gamesystem-release.md) at the release's schema version. */
+            content: {
+                [key: string]: unknown;
+            };
+            /** @description The images the release pinned, by slot; none for a release published without images. The urls read the bytes whatever the GameSystem publishes later. */
+            cardImages: components["schemas"]["CampaignCardImageResponse"][];
         };
         UpgradeReleaseResponse: {
             /** @example 3 */
@@ -9311,6 +9376,124 @@ export interface operations {
             };
             /** @description Another request changed the campaign meanwhile. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readCampaignRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The pinned release as published: its whole content document and the card images it pinned, never the latest release of its GameSystem. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignReleaseResponse"];
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The pinned release cannot be read. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readCampaignCardImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaignId: string;
+                sha256: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The image, with its stored content type. The URL holds the hash, so it is cached for good. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                    "image/jpeg": string;
+                };
+            };
+            /** @description No session. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The user is not a solo player. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No campaign of the player has this id, or the release it is pinned to did not pin an image with this hash. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The pinned release cannot be found. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

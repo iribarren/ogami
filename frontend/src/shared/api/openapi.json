@@ -3488,6 +3488,164 @@
                 }
             }
         },
+        "/api/campaigns/{campaignId}/release": {
+            "get": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Read the release one of my campaigns is pinned to, with its card images",
+                "operationId": "readCampaignRelease",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The pinned release as published: its whole content document and the card images it pinned, never the latest release of its GameSystem.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CampaignReleaseResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "The pinned release cannot be read.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/campaigns/{campaignId}/card-images/{sha256}": {
+            "get": {
+                "tags": [
+                    "Play"
+                ],
+                "summary": "Read the bytes of an image the release of one of my campaigns pinned",
+                "operationId": "readCampaignCardImage",
+                "parameters": [
+                    {
+                        "name": "campaignId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sha256",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[0-9a-f]{64}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The image, with its stored content type. The URL holds the hash, so it is cached for good.",
+                        "content": {
+                            "image/png": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            },
+                            "image/jpeg": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No session.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The user is not a solo player.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No campaign of the player has this id, or the release it is pinned to did not pin an image with this hash.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "The pinned release cannot be found.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/campaigns/{campaignId}/release-upgrade": {
             "get": {
                 "tags": [
@@ -14976,6 +15134,86 @@
                         "type": "integer",
                         "example": 2,
                         "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "CampaignCardImageResponse": {
+                "required": [
+                    "slot",
+                    "sha256",
+                    "mediaType",
+                    "width",
+                    "height",
+                    "url"
+                ],
+                "properties": {
+                    "slot": {
+                        "description": "Where the image is used on a card.",
+                        "type": "string",
+                        "enum": [
+                            "cardBack",
+                            "cardFront"
+                        ]
+                    },
+                    "sha256": {
+                        "description": "The hash of the stored bytes, 64 hexadecimal digits.",
+                        "type": "string"
+                    },
+                    "mediaType": {
+                        "type": "string",
+                        "enum": [
+                            "image/png",
+                            "image/jpeg"
+                        ]
+                    },
+                    "width": {
+                        "description": "In pixels.",
+                        "type": "integer"
+                    },
+                    "height": {
+                        "description": "In pixels.",
+                        "type": "integer"
+                    },
+                    "url": {
+                        "description": "Where to read the image bytes.",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "CampaignReleaseResponse": {
+                "required": [
+                    "gameSystemKey",
+                    "version",
+                    "publishedAt",
+                    "content",
+                    "cardImages"
+                ],
+                "properties": {
+                    "gameSystemKey": {
+                        "type": "string",
+                        "example": "ironsworn"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "publishedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "content": {
+                        "description": "The release content as published, a JSON object of the release contract (docs/contracts/gamesystem-release.md) at the release's schema version.",
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "cardImages": {
+                        "description": "The images the release pinned, by slot; none for a release published without images. The urls read the bytes whatever the GameSystem publishes later.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CampaignCardImageResponse"
+                        }
                     }
                 },
                 "type": "object"

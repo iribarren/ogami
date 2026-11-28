@@ -220,6 +220,26 @@ final class CampaignReleaseApiTest extends WebTestCase
     }
 
     #[Test]
+    public function aPinnedImageWhoseBytesAreMissingIsAServerFaultNotANotFound(): void
+    {
+        $this->signIn('manager@example.com', ['GAME_MANAGER']);
+        $this->createDraft();
+        $back = $this->upload('cardBack', TestImages::png());
+        $this->publish();
+        $id = $this->createCampaign();
+        $connection = self::getContainer()->get(Connection::class);
+        // Only the bytes go: the release still pins the hash, as after a lost row.
+        $connection->executeStatement('SET session_replication_role = replica');
+        $connection->executeStatement('DELETE FROM studio_image WHERE sha256 = :sha256', ['sha256' => $back['sha256']]);
+        $connection->executeStatement('SET session_replication_role = DEFAULT');
+
+        $this->client->request('GET', \sprintf('/api/campaigns/%s/card-images/%s', $id, $back['sha256']));
+
+        self::assertResponseStatusCodeSame(500);
+        self::assertIsString($this->json()['error'] ?? null);
+    }
+
+    #[Test]
     public function bothPathsNeedASoloPlayer(): void
     {
         $path = '/api/campaigns/'.self::UNKNOWN_ID;

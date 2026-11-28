@@ -96,6 +96,9 @@
  */
 :root {
   --background: oklch(0.975 0.008 85);
+  --table-surface: oklch(0.94 0.012 85);
+  --table-mat: oklch(0.91 0.03 150);
+  --table-card-shadow: 0 2px 6px rgb(60 40 20 / 30%);
   --foreground: oklch(0.22 0.015 60);
   --card: oklch(0.99 0.006 85);
   --card-foreground: oklch(0.22 0.015 60);
@@ -211,6 +214,9 @@
 
 .dark {
   --background: oklch(0.18 0.02 260);
+  --table-surface: oklch(0.16 0.02 260);
+  --table-mat: oklch(0.24 0.04 160);
+  --table-card-shadow: 0 2px 8px rgb(0 0 0 / 60%);
   --foreground: oklch(0.95 0.01 85);
   --card: oklch(0.22 0.022 260);
   --card-foreground: oklch(0.95 0.01 85);
@@ -331,6 +337,9 @@
   color-scheme: light;
   --font-heading: 'EB Garamond', 'Geist Variable', serif;
   --background: oklch(0.93 0.035 85);
+  --table-surface: oklch(0.9 0.04 80);
+  --table-mat: oklch(0.85 0.05 75);
+  --table-card-shadow: 0 2px 5px rgb(90 55 20 / 35%);
   --foreground: oklch(0.27 0.04 55);
   --card: oklch(0.95 0.03 88);
   --card-foreground: oklch(0.27 0.04 55);
@@ -444,6 +453,9 @@
   color-scheme: dark;
   --font-heading: 'Orbitron', 'Geist Variable', sans-serif;
   --background: oklch(0.15 0.03 295);
+  --table-surface: oklch(0.12 0.03 295);
+  --table-mat: oklch(0.2 0.06 300);
+  --table-card-shadow: 0 0 12px oklch(0.65 0.27 340 / 45%);
   --foreground: oklch(0.96 0.02 300);
   --card: oklch(0.19 0.04 295);
   --card-foreground: oklch(0.96 0.02 300);
@@ -563,6 +575,9 @@
   color-scheme: dark;
   --font-heading: 'Special Elite', 'Geist Variable', monospace;
   --background: oklch(0.14 0 0);
+  --table-surface: oklch(0.11 0 0);
+  --table-mat: oklch(0.2 0 0);
+  --table-card-shadow: 0 3px 8px rgb(0 0 0 / 70%);
   --foreground: oklch(0.95 0 0);
   --card: oklch(0.18 0 0);
   --card-foreground: oklch(0.95 0 0);
@@ -671,6 +686,9 @@
   color-scheme: dark;
   --font-heading: 'IM Fell English', 'Geist Variable', serif;
   --background: oklch(0.15 0.025 165);
+  --table-surface: oklch(0.12 0.025 165);
+  --table-mat: oklch(0.2 0.04 160);
+  --table-card-shadow: 0 2px 10px oklch(0.72 0.17 140 / 30%);
   --foreground: oklch(0.93 0.02 95);
   --card: oklch(0.19 0.03 170);
   --card-foreground: oklch(0.93 0.02 95);
@@ -786,6 +804,9 @@
   color-scheme: light;
   --font-heading: 'Exo 2', 'Geist Variable', sans-serif;
   --background: oklch(0.97 0.008 245);
+  --table-surface: oklch(0.95 0.01 245);
+  --table-mat: oklch(0.9 0.02 235);
+  --table-card-shadow: 0 2px 6px rgb(20 40 80 / 25%);
   --foreground: oklch(0.22 0.04 255);
   --card: oklch(0.995 0.004 245);
   --card-foreground: oklch(0.22 0.04 255);

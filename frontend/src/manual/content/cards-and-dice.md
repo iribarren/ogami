@@ -59,6 +59,8 @@ When you draw, write the card in the margin beside the line it answered. A king 
 Ogami has no deck of playing cards. The **Dice** panel in Play rolls any dice expression and records the roll in the journal. It has a **Dice expression** field, such as 2d6+1, and quick rolls for d20, 2d6, 4d6kh3 and d%. The expression can keep the highest or lowest dice, with `kh`, `kl`, `dh` and `dl`, add and subtract dice and numbers, and use brackets.
 
 A table does the work of a deck. A weighted table is a deck in which every entry has as many copies as its **Weight**. Every roll on it is fresh: nothing is removed, and there is no discard pile or reshuffle. Draw a physical deck at the table if you want a pile that runs out.
+
+The **Table** button in the header of a campaign opens the same campaign as a table. It is the Play page seen another way, so what you play on one shows on the other. The mat lies in the middle: this session's scenes in a row, and earlier sessions as piles you can open. The deck follows the rule of the current phase: you choose a card, turn the next one, or roll for it on the phase's table. Click the current scene to play it step by step in a large panel. The dice tray throws dice and shows the latest roll, a check included. Open the notebook to read the journal, this scene first, and to write a note in a tall box. The oracle book holds the same oracles as Play, and the flow map marks the phase you are in.
 :::
 
 ## The Long Carry

@@ -91,6 +91,15 @@ describe('the Play screen', () => {
     )
   })
 
+  it('links to the table of the same campaign from the header', async () => {
+    renderPlayScreen(lostMineCampaign)
+
+    expect(await screen.findByRole('link', { name: 'Table' })).toHaveAttribute(
+      'href',
+      `/play/campaigns/${lostMineCampaign.id}/table`,
+    )
+  })
+
   it('shows the credits of the pinned release in an About this game area', async () => {
     const campaign: Campaign = {
       ...lostMineCampaign,

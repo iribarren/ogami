@@ -3,6 +3,7 @@ import { Eye, Feather, HeartPulse, MapPin, Route, ScrollText, UserRound, Users }
 import { useId, type ReactNode } from 'react'
 
 import { cn } from '@/shared/lib/utils'
+import { Button } from '@/shared/ui/button'
 import { useCampaignTheme } from '@/shared/theme/useCampaignTheme'
 import { IconTile } from '@/shared/ui/icon-tile'
 import { OrnamentDivider } from '@/shared/ui/ornament-divider'
@@ -132,6 +133,11 @@ function CampaignPlay({ campaign }: { campaign: Campaign }) {
           </p>
           <ReleaseUpgradeAction campaign={campaign} />
           <CampaignTransferAction campaign={campaign} />
+          <Button asChild variant="outline" size="sm">
+            <Link to="/play/campaigns/$campaignId/table" params={{ campaignId: campaign.id }}>
+              Table
+            </Link>
+          </Button>
         </div>
         <CreditsNotice credits={campaign.pinnedRelease.credits} />
       </header>

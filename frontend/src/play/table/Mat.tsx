@@ -25,7 +25,7 @@ export function SceneCardView({ card, className }: { card: MatCard; className?: 
       data-hook={card.hook ? 'true' : undefined}
       aria-current={card.current ? 'step' : undefined}
       className={cn(
-        'flex shrink-0 flex-col justify-between rounded-lg border bg-card p-3 text-card-foreground shadow-sm',
+        'flex shrink-0 flex-col justify-between rounded-lg border bg-card p-3 text-card-foreground shadow-[var(--table-card-shadow)]',
         'aspect-[63/88]',
         card.current
           ? 'table-flip w-40 ring-2 ring-primary'
@@ -113,7 +113,7 @@ export function Mat({
     <section
       aria-label="Mat"
       className={cn(
-        'flex min-w-0 flex-col gap-4 rounded-2xl border bg-[var(--table-mat,var(--muted))] p-4',
+        'flex min-w-0 flex-col gap-4 rounded-2xl border bg-[var(--table-mat)] p-4',
         className,
       )}
     >

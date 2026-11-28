@@ -12,7 +12,7 @@ export function CardBack({ image, className }: { image: string | null; className
       aria-hidden="true"
       data-testid="card-back"
       className={cn(
-        'aspect-[63/88] rounded-lg border bg-primary/20 bg-cover bg-center shadow-sm ring-1 ring-primary/30 ring-inset',
+        'aspect-[63/88] rounded-lg border bg-primary/20 bg-cover bg-center shadow-[var(--table-card-shadow)] ring-1 ring-primary/30 ring-inset',
         className,
       )}
       style={image === null ? undefined : { backgroundImage: `url("${image}")` }}

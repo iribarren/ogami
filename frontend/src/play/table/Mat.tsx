@@ -132,6 +132,7 @@ export function Mat({
               {card.current && onOpenScene !== undefined ? (
                 <button
                   type="button"
+                  data-scene-opener
                   aria-label={`Open scene ${card.title}`}
                   onClick={(event) => {
                     onOpenScene(event.currentTarget)
@@ -150,6 +151,7 @@ export function Mat({
       {noCurrent && onOpenScene !== undefined && (
         <button
           type="button"
+          data-scene-opener
           aria-label="Play"
           onClick={(event) => {
             onOpenScene(event.currentTarget)

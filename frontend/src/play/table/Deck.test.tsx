@@ -81,6 +81,23 @@ describe('the deck', () => {
     })
   })
 
+  it('flips the card the oracle table rolled face up instead of offering a choice', async () => {
+    const user = userEvent.setup()
+    const { sent } = renderTableOf(
+      guided(atTheScenePick({ rule: 'oracle', cards: [tourCard], table: 'weather' })),
+      { 'flow-run/pick': picked },
+    )
+
+    expect(await screen.findByText('A tour.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Choose the next Scene Type' })).toBeNull()
+    expect(screen.getByRole('button', { name: /^Deck, the table rolled/ })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Play Tour' }))
+
+    await waitFor(() => {
+      expect(sent['flow-run/pick']).toEqual({ sceneType: 'tour' })
+    })
+  })
+
   it('shows the refusal of a pick near the deck', async () => {
     const user = userEvent.setup()
     renderTableOf(guided(atTheScenePick({ rule: 'oracle', cards: [], table: 'weather' })), {

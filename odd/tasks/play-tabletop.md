@@ -74,21 +74,24 @@ Sequential slices to `main`; forecasts include generated files (OpenAPI spec, TS
 
 | Slice | Branch | Tasks | Forecast | Safe on `main` alone |
 |---|---|---|---|---|
-| 1 | `feat/play-tabletop-1-read-paths` | T1, T2 | ~1,100–1,500 | endpoints and components unused by any UI |
-| 2 | `feat/play-tabletop-2-mat` | T3, T4 | ~1,000–1,400 | `/table` route unlinked |
-| 3 | `feat/play-tabletop-3-tray-notebook` | T5, T6, T7 | ~1,100–1,500 | the header button lands with a working table |
+| 1 | `feat/play-tabletop-1-read-paths` | T1 | ~1,770 (actual) | endpoints unused by any UI |
+| 2 | `feat/play-tabletop-2-mat` | T2, T3 | ~1,300–1,600 | components unused, `/table` route unlinked |
+| 3 | `feat/play-tabletop-3-scene-dice` | T4, T5 | ~1,200–1,500 | `/table` route unlinked |
+| 4 | `feat/play-tabletop-4-notebook` | T6, T7 | ~1,200–1,500 | the header button lands with a working table |
+
+Re-planned on 2026-11-28 from three slices to four: T1 with its generated API reached ~1,770 lines, so T2 moved to slice 2 and the rest shifted.
 
 ## Tasks
 
 | ID | Slice | Task | Route | Done | Commit |
 |---|---|---|---|---|---|
-| T1 | 1 | Studio Published Language queries for a release's content and pinned image bytes; Play ports and adapters; `GET /api/campaigns/{id}/release` and `GET /api/campaigns/{id}/card-images/{sha256}` (D11) with unit, integration and API tests; `make api` | | [ ] | |
-| T2 | 1 | ADR 0054 (D12) and the ADR index; Play `useCampaignRelease` hook; on-screen card faces (a `.table-cards` scope in rem at the 63:88 ratio, reusing `CardFaces`) with Storybook stories from a preset | | [ ] | |
+| T1 | 1 | Studio Published Language queries for a release's content and pinned image bytes; Play ports and adapters; `GET /api/campaigns/{id}/release` and `GET /api/campaigns/{id}/card-images/{sha256}` (D11) with unit, integration and API tests; `make api` | delegated writer (Sonnet): 2+ non-trivial files; generated API by the parent (`make api`) | [x] | |
+| T2 | 2 | ADR 0054 (D12) and the ADR index; Play `useCampaignRelease` hook; on-screen card faces (a `.table-cards` scope in rem at the 63:88 ratio, reusing `CardFaces`) with Storybook stories from a preset | | [ ] | |
 | T3 | 2 | `/table` route and table layout (desktop, tablet, phone dock, D10); `matOf(campaign)` pure derivation of rows and piles (D2) with tests; mat rendering with piles that fan out | | [ ] | |
-| T4 | 2 | Deck by selection rule (D4) through `useFlowRunCommand`; scene panel rendering `GuidedBody` at the D3 sizes (D5); flip animation | | [ ] | |
+| T4 | 3 | Deck by selection rule (D4) through `useFlowRunCommand`; scene panel rendering `GuidedBody` at the D3 sizes (D5); flip animation | | [ ] | |
 | T5 | 3 | Dice tray (D6): free rolls, latest-roll reveal, reduced motion | | [ ] | |
-| T6 | 3 | Notebook overlay (D7, D3 sizes), oracle book sheet and flow map (D8) | | [ ] | |
-| T7 | 3 | Theme table tokens (D9); "Table" header button (D1); Playwright spec; Play manual passage "The table"; roadmap Done line | | [ ] | |
+| T6 | 4 | Notebook overlay (D7, D3 sizes), oracle book sheet and flow map (D8) | | [ ] | |
+| T7 | 4 | Theme table tokens (D9); "Table" header button (D1); Playwright spec; Play manual passage "The table"; roadmap Done line | | [ ] | |
 
 ## Acceptance criteria
 
@@ -104,11 +107,12 @@ Sequential slices to `main`; forecasts include generated files (OpenAPI spec, TS
 
 - PHPUnit: Studio queries, Play adapters, API tests for 200 / 401 / 404 (other user, unknown campaign, unpinned hash, release without images); PHPat via PHPStan.
 - Vitest: `useCampaignRelease`, `matOf`, deck by rule, scene panel, tray, notebook; ESLint, Prettier, tsc; `api-check` — all through `make verify`.
-- Playwright spec in slice 3; a Chrome pass on desktop and phone width in slices 2 and 3.
+- Playwright spec in slice 4; a Chrome pass on desktop and phone width in slices 2–4.
 
 ## Progress
 
 - 2026-11-28: Brainstorm done, plan approved by the user (D1–D12; oracle deck as a picture, mat as session row plus piles, large read/write zooms, header button, release content visible to the player). Feature doc created: 3 slices, 7 tasks. Issue #438.
+- 2026-11-28: T1 done: Studio Published Language queries `GetPublishedReleaseContent` and `GetPublishedCardImage` (the hash is checked against the pins of that exact release), Play port `PublishedReleaseContents` with its Studio adapter, `GetCampaignRelease` / `GetCampaignCardImage` handlers on the campaign's pinned version, `CampaignReleaseController`. RED observed for the Studio and Play handler tests (classes missing), GREEN after (7 and 5 tests); the API test (12 tests) was written after the code, so no separate RED. An unreadable pinned release answers 500 like the other campaign endpoints. `make backend-qa` clean. Slice re-planned to four (see Slice plan).
 
 ## Reviews
 
@@ -117,4 +121,4 @@ Sequential slices to `main`; forecasts include generated files (OpenAPI spec, TS
 
 ## Next step
 
-Slice 1: T1 and T2 on `feat/play-tabletop-1-read-paths`.
+Slice 1: native review of T1, then PR. Slice 2: T2 and T3 on `feat/play-tabletop-2-mat`.
